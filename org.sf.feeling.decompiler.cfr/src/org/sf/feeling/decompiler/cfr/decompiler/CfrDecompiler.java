@@ -11,10 +11,10 @@ package org.sf.feeling.decompiler.cfr.decompiler;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.benf.cfr.reader.apiunreleased.ClassFileSource2;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 import org.benf.cfr.reader.entities.ClassFile;
@@ -50,8 +50,6 @@ public class CfrDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompile(String root, String packege, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
 		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
@@ -122,7 +120,6 @@ public class CfrDecompiler implements IDecompiler {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
 
-		time = stopWatch.getTime();
 	}
 
 	/**
@@ -134,8 +131,7 @@ public class CfrDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompileFromArchive(String archivePath, String packege, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		String tempDir = JavaDecompilerPlugin.getDefault().getPreferenceStore()
 				.getString(JavaDecompilerPlugin.TEMP_DIR);
 		File workingDir = new File(tempDir + "/ecd_cfr_" + System.currentTimeMillis()); //$NON-NLS-1$
@@ -143,7 +139,7 @@ public class CfrDecompiler implements IDecompiler {
 			workingDir.mkdirs();
 			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
-			time = stopWatch.getTime();
+			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 			return;

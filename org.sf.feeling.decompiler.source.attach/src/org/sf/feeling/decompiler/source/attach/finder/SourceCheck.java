@@ -27,7 +27,6 @@ import java.util.Set;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
 import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
@@ -37,9 +36,9 @@ public class SourceCheck {
 	public static boolean proposeSourceLink(String path, String url) throws IOException {
 		boolean success = false;
 		try {
-			if (StringUtils.isNotBlank(path) && StringUtils.isNotBlank(url)) {
-				path = StringUtils.trimToEmpty(path);
-				url = StringUtils.trimToEmpty(url);
+			if (path != null && url != null && !path.isBlank() && !url.isBlank()) {
+				path = path.trim();
+				url = url.trim();
 				final File file1 = new File(path);
 				final List<String> classnames = getJavaFileNames(file1, ".class"); //$NON-NLS-1$
 				final File file2 = download(url);

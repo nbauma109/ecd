@@ -11,8 +11,8 @@ package org.sf.feeling.decompiler.jd.decompiler;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.jetbrains.java.decompiler.struct.StructClass;
 import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
@@ -43,8 +43,7 @@ public class JDCoreDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompile(String root, String classPackage, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
 		Boolean displayNumber = null;
@@ -85,7 +84,7 @@ public class JDCoreDecompiler implements IDecompiler {
 			JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
 		}
 
-		time = stopWatch.getTime();
+		time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 	}
 
 	/**

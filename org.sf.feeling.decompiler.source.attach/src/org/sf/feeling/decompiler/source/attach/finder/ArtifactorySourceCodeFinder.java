@@ -180,10 +180,10 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 					for (int i = 1; i < gavInArray.length - 3; i++) {
 						group += "." + gavInArray[i]; //$NON-NLS-1$
 					}
-					gav.setG(group);
+					gav.setGroup(group);
 
-					gav.setA(gavInArray[gavInArray.length - 3]);
-					gav.setV(gavInArray[gavInArray.length - 2]);
+					gav.setArtifact(gavInArray[gavInArray.length - 3]);
+					gav.setVersion(gavInArray[gavInArray.length - 2]);
 
 					if (getLink)
 						gav.setArtifactLink(uri);

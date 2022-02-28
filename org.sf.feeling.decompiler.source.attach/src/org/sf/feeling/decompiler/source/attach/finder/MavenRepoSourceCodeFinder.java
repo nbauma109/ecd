@@ -159,9 +159,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 			JsonArray docs = response.get("docs").asArray(); //$NON-NLS-1$
 			JsonObject doci = docs.get(i).asObject();
 			GAV gav = new GAV();
-			gav.setG(doci.getString("g", "")); //$NON-NLS-1$ //$NON-NLS-2$
-			gav.setA(doci.getString("a", "")); //$NON-NLS-1$ //$NON-NLS-2$
-			gav.setV(doci.getString("v", "")); //$NON-NLS-1$ //$NON-NLS-2$
+			gav.setGroup(doci.getString("g", "")); //$NON-NLS-1$ //$NON-NLS-2$
+			gav.setArtifact(doci.getString("a", "")); //$NON-NLS-1$ //$NON-NLS-2$
+			gav.setVersion(doci.getString("v", "")); //$NON-NLS-1$ //$NON-NLS-2$
 			results.add(gav);
 		}
 		return results;

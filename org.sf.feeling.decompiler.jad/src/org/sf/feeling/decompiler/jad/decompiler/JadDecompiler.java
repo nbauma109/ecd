@@ -14,10 +14,10 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
@@ -190,8 +190,7 @@ public class JadDecompiler implements IDecompiler {
 		// errorsP.println("\n\n\n/***** DECOMPILE LOG *****\n");
 		int status = 0;
 
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		try {
 
 			errorsP.println("\tJad reported messages/errors:"); //$NON-NLS-1$
@@ -224,7 +223,7 @@ public class JadDecompiler implements IDecompiler {
 			} catch (Exception e) {
 				excList.add(e); // will never get here...
 			}
-			time = stopWatch.getTime();
+			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		}
 
 		source = UnicodeUtil.decode(bos.toString());
@@ -243,8 +242,7 @@ public class JadDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompileFromArchive(String archivePath, String packege, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		File workingDir = new File(
 				JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
 						+ System.currentTimeMillis());
@@ -253,7 +251,7 @@ public class JadDecompiler implements IDecompiler {
 			workingDir.mkdirs();
 			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
-			time = stopWatch.getTime();
+			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {
 			excList.add(e);
 			// logExceptions();

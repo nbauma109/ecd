@@ -8,8 +8,7 @@
 
 package org.sf.feeling.decompiler.source.attach.finder;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import java.util.Objects;
 
 public class GAV {
 
@@ -22,7 +21,7 @@ public class GAV {
 		return g;
 	}
 
-	public void setG(String g) {
+	public void setGroup(String g) {
 		this.g = g;
 	}
 
@@ -30,7 +29,7 @@ public class GAV {
 		return a;
 	}
 
-	public void setA(String a) {
+	public void setArtifact(String a) {
 		this.a = a;
 	}
 
@@ -38,7 +37,7 @@ public class GAV {
 		return v;
 	}
 
-	public void setV(String v) {
+	public void setVersion(String v) {
 		this.v = v;
 	}
 
@@ -51,13 +50,24 @@ public class GAV {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		return EqualsBuilder.reflectionEquals(this, obj);
+	public int hashCode() {
+		return Objects.hash(a, artifactLink, g, v);
 	}
 
 	@Override
-	public int hashCode() {
-		return HashCodeBuilder.reflectionHashCode(this);
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		GAV other = (GAV) obj;
+		return Objects.equals(a, other.a) && Objects.equals(artifactLink, other.artifactLink)
+				&& Objects.equals(g, other.g) && Objects.equals(v, other.v);
 	}
 
 	@Override

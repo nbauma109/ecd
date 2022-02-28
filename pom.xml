@@ -12,6 +12,8 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 	</properties>
 
 	<modules>
@@ -27,7 +29,6 @@
 		<module>org.sf.feeling.decompiler.procyon.feature</module>
 		<module>org.sf.feeling.decompiler.source.attach</module>
 		<module>org.sf.feeling.decompiler.source.feature</module>
-		<module>../update/</module>
 	</modules>
 
 	<build>
@@ -36,34 +37,26 @@
        <plugin>
          <groupId>org.eclipse.tycho</groupId>
          <artifactId>tycho-p2-director-plugin</artifactId>
-         <version>2.2.0</version>
+         <version>2.7.0</version>
        </plugin>
      </plugins>
    </pluginManagement>
 		<plugins>
 			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
-			</plugin>
-			<plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-compiler-plugin</artifactId>
-                <version>2.2.0</version>
+                <version>2.7.0</version>
             </plugin>
             <plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-maven-plugin</artifactId>
-				<version>1.0.0</version>
+				<version>2.7.0</version>
 				<extensions>true</extensions>
 			</plugin>
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>target-platform-configuration</artifactId>
-				<version>1.0.0</version>
+				<version>2.7.0</version>
 
 				<configuration>
 					<environments>
@@ -112,9 +105,9 @@
 
 	<repositories>
 		<repository>
-			<id>eclipse-photon</id>
+			<id>eclipse-2021-12</id>
 			<layout>p2</layout>
-			<url>http://download.eclipse.org/releases/photon/</url>
+			<url>http://download.eclipse.org/releases/2021-12/</url>
 		</repository>
 	</repositories>
 

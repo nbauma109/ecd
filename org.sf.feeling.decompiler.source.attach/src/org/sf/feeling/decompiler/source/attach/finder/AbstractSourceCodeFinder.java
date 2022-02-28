@@ -109,9 +109,9 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 					String artifactId = props.getProperty("artifactId"); //$NON-NLS-1$
 					if (version != null && groupId != null && artifactId != null) {
 						GAV gav = new GAV();
-						gav.setG(groupId);
-						gav.setA(artifactId);
-						gav.setV(version);
+						gav.setGroup(groupId);
+						gav.setArtifact(artifactId);
+						gav.setVersion(version);
 						gavs.add(gav);
 					}
 				}

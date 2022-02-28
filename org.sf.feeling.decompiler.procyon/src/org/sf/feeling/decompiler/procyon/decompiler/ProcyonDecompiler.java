@@ -17,10 +17,10 @@ import java.io.Writer;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.procyon.ProcyonDecompilerPlugin;
@@ -53,8 +53,7 @@ public class ProcyonDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompile(String root, String packege, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
 		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
@@ -153,7 +152,7 @@ public class ProcyonDecompiler implements IDecompiler {
 			source = source.replace(m.group(), ""); //$NON-NLS-1$
 		}
 
-		time = stopWatch.getTime();
+		time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 	}
 
 	/**
@@ -165,8 +164,7 @@ public class ProcyonDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompileFromArchive(String archivePath, String packege, String className) {
-		StopWatch stopWatch = new StopWatch();
-		stopWatch.start();
+		long start = System.nanoTime();
 		File workingDir = new File(
 				JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
 						+ System.currentTimeMillis());
@@ -175,7 +173,7 @@ public class ProcyonDecompiler implements IDecompiler {
 			workingDir.mkdirs();
 			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
-			time = stopWatch.getTime();
+			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 			return;

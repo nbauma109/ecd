@@ -15,10 +15,10 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.scm.ScmBranch;
 import org.apache.maven.scm.ScmFileSet;
 import org.apache.maven.scm.ScmRevision;
@@ -54,7 +54,7 @@ public class UrlDownloader {
 
 	public String download(final String url) throws Exception {
 		String result;
-		if (StringUtils.startsWith(url, "scm:")) //$NON-NLS-1$
+		if (url != null && url.startsWith("scm:")) //$NON-NLS-1$
 		{
 			result = this.downloadFromScm(url);
 		} else if (new File(url).exists()) {
@@ -95,13 +95,14 @@ public class UrlDownloader {
 				scmManager.setScmProvider("jazz", new JazzScmProvider()); //$NON-NLS-1$
 				String scmUrl;
 				ScmVersion scmVersion;
-				if (url.indexOf('#') != -1) {
-					scmUrl = StringUtils.trimToEmpty(url.substring(0, url.indexOf('#')));
-					final String fragment = StringUtils.trimToEmpty(url.substring(url.indexOf('#') + 1));
-					if (fragment.indexOf('=') != -1) {
-						final String[] versionTypeAndVersion = StringUtils.split(fragment, '=');
-						final String version = StringUtils.trim(versionTypeAndVersion[1]);
-						final String type = StringUtils.trim(versionTypeAndVersion[0]);
+				int idx = url.indexOf('#');
+				if (idx != -1) {
+					scmUrl = trimToEmpty(url.substring(0, idx));
+					final String fragment = trimToEmpty(url.substring(idx + 1));
+					int fragmentIndex = fragment.indexOf('=');
+					if (fragmentIndex != -1) {
+						final String version = trim(fragment.substring(fragmentIndex + 1));
+						final String type = trim(fragment.substring(0, fragmentIndex));
 						if ("tag".equals(type)) //$NON-NLS-1$
 						{
 							scmVersion = new ScmTag(version);
@@ -121,45 +122,48 @@ public class UrlDownloader {
 					} else {
 						scmVersion = new ScmTag(fragment);
 					}
-				} else if (url.indexOf(';') != -1) {
-					scmUrl = StringUtils.trimToEmpty(url.substring(0, url.indexOf(';')));
-					final String fragment = StringUtils.trimToEmpty(url.substring(url.indexOf(';') + 1));
-					scmVersion = null;
-					if (fragment.indexOf('=') != -1) {
-						final String[] properties = StringUtils.split(fragment, ';');
-						String[] array;
-						for (int length = (array = properties).length, i = 0; i < length; ++i) {
-							final String property = array[i];
-							final String[] versionTypeAndVersion2 = StringUtils.split(property, '=');
-							final String version2 = StringUtils.strip(versionTypeAndVersion2[1], " \""); //$NON-NLS-1$
-							final String type2 = StringUtils.trim(versionTypeAndVersion2[0]);
-							if ("tag".equals(type2)) //$NON-NLS-1$
-							{
-								scmVersion = new ScmTag(version2);
-								break;
+				} else {
+					int semiColumnIdx = url.indexOf(';');
+					if (semiColumnIdx != -1) {
+						scmUrl = trimToEmpty(url.substring(0, semiColumnIdx));
+						final String fragment = trimToEmpty(url.substring(semiColumnIdx + 1));
+						scmVersion = null;
+						if (fragment.indexOf('=') != -1) {
+							final String[] properties = fragment.split(";");
+							String[] array;
+							for (int length = (array = properties).length, i = 0; i < length; ++i) {
+								final String property = array[i];
+								final String[] versionTypeAndVersion2 = property.split("=");
+								final String version2 = strip(versionTypeAndVersion2[1], " \""); //$NON-NLS-1$
+								final String type2 = trim(versionTypeAndVersion2[0]);
+								if ("tag".equals(type2)) //$NON-NLS-1$
+								{
+									scmVersion = new ScmTag(version2);
+									break;
+								}
+								if ("branch".equals(type2)) //$NON-NLS-1$
+								{
+									scmVersion = new ScmBranch(version2);
+									break;
+								}
+								if ("revision".equals(type2)) //$NON-NLS-1$
+								{
+									scmVersion = new ScmRevision(version2);
+									break;
+								}
+								if ("commitId".equals(type2)) //$NON-NLS-1$
+								{
+									scmVersion = new ScmRevision(version2);
+									break;
+								}
 							}
-							if ("branch".equals(type2)) //$NON-NLS-1$
-							{
-								scmVersion = new ScmBranch(version2);
-								break;
-							}
-							if ("revision".equals(type2)) //$NON-NLS-1$
-							{
-								scmVersion = new ScmRevision(version2);
-								break;
-							}
-							if ("commitId".equals(type2)) //$NON-NLS-1$
-							{
-								scmVersion = new ScmRevision(version2);
-								break;
-							}
+						} else {
+							scmVersion = new ScmTag(fragment);
 						}
 					} else {
-						scmVersion = new ScmTag(fragment);
+						scmUrl = url;
+						scmVersion = null;
 					}
-				} else {
-					scmUrl = url;
-					scmVersion = null;
 				}
 				if (!checkoutDirectory.exists()) {
 					checkoutDirectory.mkdir();
@@ -267,4 +271,56 @@ public class UrlDownloader {
 		} while (redir);
 		return in;
 	}
+
+	public static String trim(final String str) {
+		return str == null ? null : str.trim();
+	}
+
+	public static String trimToEmpty(final String str) {
+		return str == null ? "" : str.trim();
+	}
+
+	public static String strip(String str, final String stripChars) {
+		str = stripStart(str, stripChars);
+		return stripEnd(str, stripChars);
+	}
+
+	public static String stripStart(final String str, final String stripChars) {
+		Objects.requireNonNull(stripChars);
+		final int strLen = length(str);
+		if (strLen == 0) {
+			return str;
+		}
+		int start = 0;
+		if (stripChars.isEmpty()) {
+			return str;
+		} else {
+			while (start != strLen && stripChars.indexOf(str.charAt(start)) != -1) {
+				start++;
+			}
+		}
+		return str.substring(start);
+	}
+
+	public static String stripEnd(final String str, final String stripChars) {
+		Objects.requireNonNull(stripChars);
+		int end = length(str);
+		if (end == 0) {
+			return str;
+		}
+
+		if (stripChars.isEmpty()) {
+			return str;
+		} else {
+			while (end != 0 && stripChars.indexOf(str.charAt(end - 1)) != -1) {
+				end--;
+			}
+		}
+		return str.substring(0, end);
+	}
+
+	public static int length(final CharSequence cs) {
+		return cs == null ? 0 : cs.length();
+	}
+
 }

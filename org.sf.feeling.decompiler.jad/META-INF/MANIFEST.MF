@@ -20,9 +20,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.expressions,
  org.eclipse.ui.navigator,
  org.eclipse.ui.ide;resolution:=optional,
- org.eclipse.core.filesystem,
- org.apache.commons.lang3;bundle-version="3.1.0"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+ org.eclipse.core.filesystem
+Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.jad.actions,

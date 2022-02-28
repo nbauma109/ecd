@@ -21,11 +21,10 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui.navigator,
  org.eclipse.ui.ide;resolution:=optional,
  org.eclipse.core.filesystem
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.cfr.actions,
  org.sf.feeling.decompiler.cfr.decompiler
 Bundle-ClassPath: lib/cfr-0.151.jar,
  .
-Import-Package: org.apache.commons.lang3.time
