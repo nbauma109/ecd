@@ -1,12 +1,4 @@
-jdk:
-  - semjdk17
-before_install:
-  - echo "Before Install"
-  - bash ensure-java-17-sem install
 install:
-  - echo "Install"
-  - if ! bash ensure-java-17-sem use; then source ~/.sdkman/bin/sdkman-init.sh; fi
-  - java -version
   - curl -vkL https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.2%2B8_openj9-0.30.0/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz -o $HOME/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz
   - tar xzvf $HOME/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz -C $HOME
   - export JAVA_HOME=$HOME/jdk-17.0.2+8
