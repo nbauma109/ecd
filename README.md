@@ -94,6 +94,9 @@ Used libraries:
 
 ## Changelog
 
+* Version 3.2.5
+  * Fix a bug "No categorized items" in plug-in installation
+
 * Version 3.2.4
   * Removed calls to services that are no longer online
 

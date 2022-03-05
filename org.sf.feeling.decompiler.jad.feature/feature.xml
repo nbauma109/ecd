@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.jad"
       label="%featureName"
-      version="3.2.3"
+      version="3.2.5"
       provider-name="%providerName"
       plugin="org.sf.feeling.decompiler.jad"
       os="linux,macosx,win32"
@@ -41,8 +41,7 @@
       <import plugin="org.eclipse.core.expressions"/>
       <import plugin="org.eclipse.ui.navigator"/>
       <import plugin="org.eclipse.core.filesystem"/>
-      <import plugin="org.sf.feeling.decompiler" version="3.2.3" match="greaterOrEqual"/>
-      <import plugin="org.apache.commons.lang3" version="3.1.0" match="greaterOrEqual"/>
+      <import plugin="org.sf.feeling.decompiler" version="3.2.5" match="greaterOrEqual"/>
    </requires>
 
    <plugin
@@ -51,7 +50,7 @@
          arch="x86,x86_64"
          download-size="0"
          install-size="0"
-         version="3.2.3"
+         version="3.2.5"
          unpack="false"/>
 
 </feature>

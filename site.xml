@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
     <!-- CFR -->
-    <feature url="features/org.sf.feeling.decompiler.cfr-3.2.3.jar" id="org.sf.feeling.decompiler.cfr" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler.cfr_3.2.5.jar" id="org.sf.feeling.decompiler.cfr" version="3.2.5">
         <category name="org.sf.feeling.decompiler.cfr"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.cfr" label="CFR Plug-in for Enhanced Class Decompiler"/>
     <!-- Procyon -->
-    <feature url="features/org.sf.feeling.decompiler.procyon-3.2.3.jar" id="org.sf.feeling.decompiler.procyon" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler.procyon_3.2.5.jar" id="org.sf.feeling.decompiler.procyon" version="3.2.5">
         <category name="org.sf.feeling.decompiler.procyon"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.procyon" label="Procyon Plug-in for Enhanced Class Decompiler"/>
     <!-- JD -->
-    <feature url="features/org.sf.feeling.decompiler.jd-3.2.3.jar" id="org.sf.feeling.decompiler.jd" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler.jd_3.2.5.jar" id="org.sf.feeling.decompiler.jd" version="3.2.5">
         <category name="org.sf.feeling.decompiler.jd"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.jd" label="JD Plug-in for Enhanced Class Decompiler"/>
     <!-- JAD -->
-    <feature url="features/org.sf.feeling.decompiler.jad-3.2.3.jar" id="org.sf.feeling.decompiler.jad" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler.jad_3.2.5.jar" id="org.sf.feeling.decompiler.jad" version="3.2.5">
         <category name="org.sf.feeling.decompiler.jad"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.jad" label="JAD Plug-in for Enhanced Class Decompiler"/>
     <!-- Fernflower -->
-    <feature url="features/org.sf.feeling.decompiler-3.2.3.jar" id="org.sf.feeling.decompiler" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler_3.2.5.jar" id="org.sf.feeling.decompiler" version="3.2.5">
         <category name="org.sf.feeling.decompiler"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler" label="Fernflower Plug-in for Enhanced Class Decompiler"/>
     <!-- Source attachment -->
-    <feature url="features/org.sf.feeling.decompiler.source-3.2.3.jar" id="org.sf.feeling.decompiler.source" version="3.2.3">
+    <feature url="features/org.sf.feeling.decompiler.source_3.2.5.jar" id="org.sf.feeling.decompiler.source" version="3.2.5">
         <category name="org.sf.feeling.decompiler.source"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.source" label="Source Attachment Plug-in for Enhanced Class Decompiler"/>
