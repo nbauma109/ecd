@@ -1,3 +1,8 @@
+[![](https://jitpack.io/v/nbauma109/ecd.svg)](https://jitpack.io/#nbauma109/ecd)
+[![](https://jitci.com/gh/nbauma109/ecd/svg)](https://jitci.com/gh/nbauma109/ecd)
+[![CodeQL](https://github.com/nbauma109/ecd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/codeql-analysis.yml)
+[![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
+
 # Enhanced Class Decompiler
 Enhanced Class Decompiler integrates **JD**, **Jad**, **FernFlower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
 
@@ -11,15 +16,19 @@ This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by r
 
 ## How to install Enhanced Class Decompiler?
 
-Drag and Drop installation: [![Drag to your running Eclipse workspace.](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=3644319 "Drag to your running Eclipse workspace.")
+Download from Jitpack :
+
+[![Download from Jitpack](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
+
+Drag and Drop installation: 
 
 _If you have currently the "Eclipse" Class Decompiler installed, it is recommended to uninstall that plug-in first and remove the corresponding update site from your Eclipse installation._
   1. Launch _Eclipse_,
   2. Click on _"Help > Install New Software..."_,
-  3. Click on button _"Add..."_ to add an new repository,
-  4. Enter name as _"Enhanced Class Decompiler Update Site"_ and enter location as _"[https://ecd-plugin.github.io/update](https://ecd-plugin.github.io/update)"_, then click on button _"OK"_,
-  5. Check _"Enhanced Class Decompiler"_,
-  6. Next, next, next... and restart.
+  3. Drag and Drop enhanced-class-decompiler-x.y.z.zip
+  4. Check the components to install,
+  5. Click on "Next" and "Finish" buttons.
+  6. A warning dialog windows appear because plug-in is not signed. Click on "Install anyway" button.
 
 ## How to check the file associations?
   1. Click on _"Window > Preferences > General > Editors > File Associations"_
