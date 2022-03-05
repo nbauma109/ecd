@@ -12,33 +12,33 @@ import java.util.Objects;
 
 public class GAV {
 
-	private String g;
-	private String a;
-	private String v;
+	private String groupId;
+	private String artifactId;
+	private String version;
 	private String artifactLink;
 
-	public String getG() {
-		return g;
+	public String getGroupId() {
+		return groupId;
 	}
 
-	public void setGroup(String g) {
-		this.g = g;
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
 	}
 
-	public String getA() {
-		return a;
+	public String getArtifactId() {
+		return artifactId;
 	}
 
-	public void setArtifact(String a) {
-		this.a = a;
+	public void setArtifactId(String a) {
+		this.artifactId = a;
 	}
 
-	public String getV() {
-		return v;
+	public String getVersion() {
+		return version;
 	}
 
-	public void setVersion(String v) {
-		this.v = v;
+	public void setVersion(String version) {
+		this.version = version;
 	}
 
 	public String getArtifactLink() {
@@ -51,7 +51,7 @@ public class GAV {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(a, artifactLink, g, v);
+		return Objects.hash(artifactId, artifactLink, groupId, version);
 	}
 
 	@Override
@@ -66,13 +66,14 @@ public class GAV {
 			return false;
 		}
 		GAV other = (GAV) obj;
-		return Objects.equals(a, other.a) && Objects.equals(artifactLink, other.artifactLink)
-				&& Objects.equals(g, other.g) && Objects.equals(v, other.v);
+		return Objects.equals(artifactId, other.artifactId) && Objects.equals(artifactLink, other.artifactLink)
+				&& Objects.equals(groupId, other.groupId) && Objects.equals(version, other.version);
 	}
 
 	@Override
 	public String toString() {
-		return "GAV [g=" + g + ", a=" + a + ", v=" + v + ", artifactLink=" + artifactLink + "]";
+		return "GAV [groupId=" + groupId + ", artifactId=" + artifactId + ", version=" + version + ", artifactLink="
+				+ artifactLink + "]";
 	}
 
 }

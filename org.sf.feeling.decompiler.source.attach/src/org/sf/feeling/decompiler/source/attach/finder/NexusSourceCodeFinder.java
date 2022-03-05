@@ -101,7 +101,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 		}
 
 		for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-			String name = entry.getKey().getA() + '-' + entry.getKey().getV() + "-sources.jar"; //$NON-NLS-1$
+			String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
 			try {
 				String tmpFile = new UrlDownloader().download(entry.getValue());
 				if (tmpFile != null && new File(tmpFile).exists()
@@ -123,7 +123,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 		for (GAV gav : gavs) {
 			if (canceled)
 				return results;
-			Set<GAV> gavs2 = findArtifactsUsingNexus(gav.getG(), gav.getA(), gav.getV(), "sources", null, true); //$NON-NLS-1$
+			Set<GAV> gavs2 = findArtifactsUsingNexus(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(), "sources", null, true); //$NON-NLS-1$
 			for (GAV gav2 : gavs2) {
 				results.put(gav, gav2.getArtifactLink());
 			}
@@ -210,8 +210,8 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 							for (NexusNGArtifactHit hit : ar.getArtifactHits()) {
 								for (NexusNGArtifactLink link : hit.getArtifactLinks()) {
 									GAV gav = new GAV();
-									gav.setGroup(ar.getGroupId());
-									gav.setArtifact(ar.getArtifactId());
+									gav.setGroupId(ar.getGroupId());
+									gav.setArtifactId(ar.getArtifactId());
 									gav.setVersion(ar.getVersion());
 									// TODO: generate link from NexusNGArtifactLink
 									// gav.setArtifactLink(link.??);
@@ -219,8 +219,8 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 							}
 						} else {
 							GAV gav = new GAV();
-							gav.setGroup(ar.getGroupId());
-							gav.setArtifact(ar.getArtifactId());
+							gav.setGroupId(ar.getGroupId());
+							gav.setArtifactId(ar.getArtifactId());
 							gav.setVersion(ar.getVersion());
 							results.add(gav);
 							Logger.info("GAV result: " + gav);
@@ -230,8 +230,8 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 					SearchResponse srsp = (SearchResponse) resp;
 					for (NexusArtifact ar : srsp.getData()) {
 						GAV gav = new GAV();
-						gav.setGroup(ar.getGroupId());
-						gav.setArtifact(ar.getArtifactId());
+						gav.setGroupId(ar.getGroupId());
+						gav.setArtifactId(ar.getArtifactId());
 						gav.setVersion(ar.getVersion());
 						if (getLink) {
 							gav.setArtifactLink(ar.getArtifactLink());

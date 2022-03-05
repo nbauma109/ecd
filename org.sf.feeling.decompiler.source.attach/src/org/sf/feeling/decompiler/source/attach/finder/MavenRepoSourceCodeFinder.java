@@ -91,7 +91,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 		}
 
 		for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-			String name = entry.getKey().getA() + '-' + entry.getKey().getV() + "-sources.jar"; //$NON-NLS-1$
+			String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
 			try {
 				String tmpFile = new UrlDownloader().download(entry.getValue());
 				if (tmpFile != null && new File(tmpFile).exists()
@@ -116,9 +116,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 
 			// g:"ggg" AND a:"aaa" AND v:"vvv" AND l:"sources"
 			String qVal = "g:\"" //$NON-NLS-1$
-					+ gav.getG() + "\" AND a:\"" //$NON-NLS-1$
-					+ gav.getA() + "\" AND v:\"" //$NON-NLS-1$
-					+ gav.getV() + "\" AND l:\"sources\""; //$NON-NLS-1$
+					+ gav.getGroupId() + "\" AND a:\"" //$NON-NLS-1$
+					+ gav.getArtifactId() + "\" AND v:\"" //$NON-NLS-1$
+					+ gav.getVersion() + "\" AND l:\"sources\""; //$NON-NLS-1$
 			String url = "https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
 					+ URLEncoder.encode(qVal, "UTF-8") //$NON-NLS-1$
 					+ "&rows=20&wt=json"; //$NON-NLS-1$
@@ -159,8 +159,8 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 			JsonArray docs = response.get("docs").asArray(); //$NON-NLS-1$
 			JsonObject doci = docs.get(i).asObject();
 			GAV gav = new GAV();
-			gav.setGroup(doci.getString("g", "")); //$NON-NLS-1$ //$NON-NLS-2$
-			gav.setArtifact(doci.getString("a", "")); //$NON-NLS-1$ //$NON-NLS-2$
+			gav.setGroupId(doci.getString("g", "")); //$NON-NLS-1$ //$NON-NLS-2$
+			gav.setArtifactId(doci.getString("a", "")); //$NON-NLS-1$ //$NON-NLS-2$
 			gav.setVersion(doci.getString("v", "")); //$NON-NLS-1$ //$NON-NLS-2$
 			results.add(gav);
 		}

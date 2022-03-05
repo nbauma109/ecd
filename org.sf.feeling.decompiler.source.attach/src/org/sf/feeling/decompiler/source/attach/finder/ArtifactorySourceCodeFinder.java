@@ -99,7 +99,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 		}
 
 		for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-			String name = entry.getKey().getA() + '-' + entry.getKey().getV() + "-sources.jar"; //$NON-NLS-1$
+			String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
 			try {
 				String result = new UrlDownloader().download(entry.getValue());
 				if (result != null && new File(result).exists() && SourceAttachUtil.isSourceCodeFor(result, binFile)) {
@@ -119,7 +119,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 		for (GAV gav : gavs) {
 			if (canceled)
 				return results;
-			Set<GAV> gavs2 = findArtifactsUsingArtifactory(gav.getG(), gav.getA(), gav.getV(), "sources", null, true); //$NON-NLS-1$
+			Set<GAV> gavs2 = findArtifactsUsingArtifactory(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(), "sources", null, true); //$NON-NLS-1$
 			for (GAV gav2 : gavs2) {
 				if (gav2.getArtifactLink().endsWith("-sources.jar") //$NON-NLS-1$
 						|| gav2.getArtifactLink().endsWith("-sources.zip")) //$NON-NLS-1$
@@ -180,9 +180,9 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 					for (int i = 1; i < gavInArray.length - 3; i++) {
 						group += "." + gavInArray[i]; //$NON-NLS-1$
 					}
-					gav.setGroup(group);
+					gav.setGroupId(group);
 
-					gav.setArtifact(gavInArray[gavInArray.length - 3]);
+					gav.setArtifactId(gavInArray[gavInArray.length - 3]);
 					gav.setVersion(gavInArray[gavInArray.length - 2]);
 
 					if (getLink)
