@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
@@ -11,4 +12,95 @@
 
 	<artifactId>org.sf.feeling.decompiler</artifactId>
 	<packaging>eclipse-plugin</packaging>
+
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<fernflower.version>403</fernflower.version>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<id>copy</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>net.minecraftforge</groupId>
+									<artifactId>fernflower</artifactId>
+									<version>${fernflower.version}</version>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>com.eclipsesource.minimal-json</groupId>
+									<artifactId>minimal-json</artifactId>
+									<version>0.9.4</version>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+									<destFileName>json.jar</destFileName>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.jsoup</groupId>
+									<artifactId>jsoup</artifactId>
+									<version>1.9.2</version>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+									<destFileName>jsoup.jar</destFileName>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.ow2.asm</groupId>
+									<artifactId>asm</artifactId>
+									<version>9.1</version>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<repositories>
+		<repository>
+			<id>minecraftforge</id>
+			<url>https://files.minecraftforge.net/maven/</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>net.minecraftforge</groupId>
+			<artifactId>fernflower</artifactId>
+			<version>${fernflower.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.eclipsesource.minimal-json</groupId>
+			<artifactId>minimal-json</artifactId>
+			<version>0.9.4</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.9.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm</artifactId>
+			<version>9.1</version>
+		</dependency>
+	</dependencies>
 </project>

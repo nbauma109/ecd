@@ -32,9 +32,9 @@ _Primary Source: https://commons.apache.org/downloads/index.html_
 ### Fernflower
 _Primary Source: https://github.com/JetBrains/intellij-community/tree/master/plugins/java-decompiler/engine_
 _Build Source: https://github.com/MinecraftForge/FernFlower with builds at http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/_
-* `./org.sf.feeling.decompiler/lib/fernflower-352.jar`
-  * SHA-256: 799e1e968613abdb74a61bebb08c49132cde5c6eb8d8e5c80a768bfb57a44785
-  * Version from http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/352/fernflower-352.jar
+* `./org.sf.feeling.decompiler/lib/fernflower-403.jar`
+  * SHA-256: fa97145cb184dfa79046b680106305716606bdccfa5e4e680044ae647df1a8a1
+  * Version from http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/403/fernflower-403.jar
 
 ### Minimal JSON
 _Primary Source: https://github.com/ralfstx/minimal-json_
@@ -53,20 +53,20 @@ _Primary Source: http://jsoup.org/_
 ### CFR
 _Primary Source: http://www.benf.org/other/cfr/_
 
-* `./org.sf.feeling.decompiler.cfr/lib/cfr-0.151.jar`
-  * SHA-256: 316E9015B9AF2953FCFF4FE86BF3BBA705F32E7CD25BD6E535C698DE8A25E837
-  * Equal to https://www.benf.org/other/cfr/cfr-0.151.jar
+* `./org.sf.feeling.decompiler.cfr/lib/cfr-0.152.jar`
+  * SHA-256: f686e8f3ded377d7bc87d216a90e9e9512df4156e75b06c655a16648ae8765b2
+  * Equal to https://www.benf.org/other/cfr/cfr-0.152.jar
 
 ### Procyon
 _Primary Source: https://repo1.maven.org/maven2/org/bitbucket/mstrobel/_
 
-* `./org.sf.feeling.decompiler.procyon/lib/procyon-core-0.5.36.jar`
-  * SHA-256: 5123b7db09bea2176fd9ec09e3cab05c728e4f3151fc47dabb0b5d7c8e964896
-  * Version from https://repo1.maven.org/maven2/org/bitbucket/mstrobel/procyon-core/0.5.36/procyon-core-0.5.36.jar
+* `./org.sf.feeling.decompiler.procyon/lib/procyon-core-0.6.0.jar`
+  * SHA-256: e52096fde7ce4c84db7a943298ae6cad4ea9e33824fe6ccb99c308a7ad7e594c
+  * Version from https://repo1.maven.org/maven2/org/bitbucket/mstrobel/procyon-core/0.6.0/procyon-core-0.6.0.jar
 
-* `./org.sf.feeling.decompiler.procyon/lib/procyon-compilertools-0.5.36.jar`
-  * SHA-256: 9f737863b5b577746d7594b45187870bf8184ddb3657ac71817ddc950cf6bff5
-  * Version from https://repo1.maven.org/maven2/org/bitbucket/mstrobel/procyon-compilertools/0.5.36/procyon-compilertools-0.5.36.jar
+* `./org.sf.feeling.decompiler.procyon/lib/procyon-compilertools-0.6.0.jar`
+  * SHA-256: 5b5b40d4bae758a823210c5c1513f2027bd7fe2e9421cd2b004c5d91b0676956
+  * Version from https://repo1.maven.org/maven2/org/bitbucket/mstrobel/procyon-compilertools/0.6.0/procyon-compilertools-0.6.0.jar
 
 ### Netbeans CVSClient
 _Primary Source: https://versioncontrol.netbeans.org/javacvs/library/_
@@ -119,10 +119,13 @@ _Primary Source: http://www.javadecompilers.com/jad_
   * SHA-256: c5f43828592c7a47261b6baf89f13455423f9c528ed1b01e7148ba2475ed6126
 
 ## JD-Core
-_Primary Source: https://github.com/java-decompiler/jd-core/releases_
+_Primary Source: https://github.com/nbauma109/jd-core/releases_
 
-* `./org.sf.feeling.decompiler.jd/lib/jd-core-1.1.3.jar`
-  * SHA-256: 33F60FF75C77DC08905E767694A38F7B6AB792BD2E5831F41E2B56354BB806FB
+* `./org.sf.feeling.decompiler.jd/lib/jd-core-1.2.8.jar`
+  * SHA-256: c709528d032d259ff687b8034e3fe1d5bf3e07b85d3e88ce3dafa6cc4b6a9766
+
+* `./org.sf.feeling.decompiler.jd/lib/jd-util-1.1.6.jar`
+  * SHA-256: 61cba2e459bc7a8957ac127b36ca9d1e9dbf6cc40371853072dfa1a54a726595
 
 ## JAXB
 _Primary Source: https://repo1.maven.org/maven2/_

@@ -10,52 +10,36 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>org.sf.feeling.decompiler.cfr</artifactId>
-	<packaging>eclipse-plugin</packaging>
+	<artifactId>enhanced-class-decompiler</artifactId>
+	<packaging>pom</packaging>
 
 	<properties>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<cfr.version>0.152</cfr.version>
 	</properties>
 
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.2.0</version>
+				<artifactId>maven-assembly-plugin</artifactId>
 				<executions>
 					<execution>
-						<id>copy</id>
-						<phase>validate</phase>
+						<id>distro-assembly</id>
+						<phase>package</phase>
 						<goals>
-							<goal>copy</goal>
+							<goal>single</goal>
 						</goals>
 						<configuration>
-							<artifactItems>
-								<artifactItem>
-									<groupId>org.benf</groupId>
-									<artifactId>cfr</artifactId>
-									<version>${cfr.version}</version>
-									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
-								</artifactItem>
-							</artifactItems>
+							<appendAssemblyId>false</appendAssemblyId>
+							<descriptors>
+								<descriptor>assembly.xml</descriptor>
+							</descriptors>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
 		</plugins>
 	</build>
-
-	<dependencies>
-		<dependency>
-			<groupId>org.benf</groupId>
-			<artifactId>cfr</artifactId>
-			<version>${cfr.version}</version>
-		</dependency>
-	</dependencies>
 </project>

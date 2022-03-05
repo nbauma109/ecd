@@ -65,6 +65,11 @@ public class UrlDownloader {
 		return result;
 	}
 
+	/*
+	 * TODO: Documentation and tests - What use case triggers a download from an scm
+	 * source ?
+	 * 
+	 */
 	private String downloadFromScm(String url) throws Exception {
 		if (url.indexOf("cvs:pserver:") != -1 && url.indexOf("@") == -1) //$NON-NLS-1$ //$NON-NLS-2$
 		{
@@ -123,10 +128,10 @@ public class UrlDownloader {
 						scmVersion = new ScmTag(fragment);
 					}
 				} else {
-					int semiColumnIdx = url.indexOf(';');
-					if (semiColumnIdx != -1) {
-						scmUrl = trimToEmpty(url.substring(0, semiColumnIdx));
-						final String fragment = trimToEmpty(url.substring(semiColumnIdx + 1));
+					int semiColonIdx = url.indexOf(';');
+					if (semiColonIdx != -1) {
+						scmUrl = trimToEmpty(url.substring(0, semiColonIdx));
+						final String fragment = trimToEmpty(url.substring(semiColonIdx + 1));
 						scmVersion = null;
 						if (fragment.indexOf('=') != -1) {
 							final String[] properties = fragment.split(";");
@@ -322,5 +327,4 @@ public class UrlDownloader {
 	public static int length(final CharSequence cs) {
 		return cs == null ? 0 : cs.length();
 	}
-
 }

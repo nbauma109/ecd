@@ -5,7 +5,7 @@ Bundle-SymbolicName: org.sf.feeling.decompiler.cfr;singleton:=true
 Bundle-Version: 3.2.3
 Bundle-Activator: org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin
 Require-Bundle: org.eclipse.core.runtime,
- org.sf.feeling.decompiler;bundle-version="3.2.2",
+ org.sf.feeling.decompiler,
  org.eclipse.core.resources,
  org.eclipse.jface,
  org.eclipse.jface.text,
@@ -26,5 +26,6 @@ Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.cfr.actions,
  org.sf.feeling.decompiler.cfr.decompiler
-Bundle-ClassPath: lib/cfr-0.151.jar,
+Bundle-ClassPath: lib/cfr-0.152.jar,
  .
+Automatic-Module-Name: org.sf.feeling.decompiler.cfr

@@ -135,9 +135,9 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 
 	/**
 	 * @return version of JD-Core
-	 * @since JD-Core 1.1.3
+	 * @since JD-Core 1.2.8
 	 */
 	public static String getVersion() {
-		return "1.1.3";
+		return "1.2.8";
 	}
 }

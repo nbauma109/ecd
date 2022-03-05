@@ -14,12 +14,12 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.core.databinding,
  org.eclipse.jface.databinding,
  org.eclipse.core.databinding.beans,
- org.sf.feeling.decompiler;bundle-version="3.2.2",
+ org.sf.feeling.decompiler,
  org.apache.ant,
  org.eclipse.jgit;resolution:=optional,
  com.jcraft.jsch;resolution:=optional,
  org.eclipse.m2e.jdt;resolution:=optional,
- org.apache.commons.io;bundle-version="2.2.0"
+ org.apache.commons.io
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
@@ -59,3 +59,4 @@ Export-Package: org.sf.feeling.decompiler.source.attach,
  org.sf.feeling.decompiler.source.attach.finder,
  org.sf.feeling.decompiler.source.attach.handler,
  org.sf.feeling.decompiler.source.attach.utils
+Automatic-Module-Name: org.sf.feeling.decompiler.source.attach

@@ -25,7 +25,6 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import org.jd.core.v1.api.loader.Loader;
-import org.jd.core.v1.api.loader.LoaderException;
 import org.objectweb.asm.ClassReader;
 import org.sf.feeling.decompiler.util.IOUtils;
 import org.sf.feeling.decompiler.util.Logger;
@@ -92,7 +91,7 @@ public class JDCoreZipLoader implements Loader, Closeable {
 	}
 
 	@Override
-	public byte[] load(String internalName) throws LoaderException {
+	public byte[] load(String internalName) throws IOException {
 		String entryName = entriesCache.entriesMap.get(internalName);
 		if (entryName == null) {
 			Logger.error("Class not found: " + internalName);
@@ -111,8 +110,6 @@ public class JDCoreZipLoader implements Loader, Closeable {
 				loadedEntries.add(internalName);
 				return out.toByteArray();
 			}
-		} catch (IOException e) {
-			throw new LoaderException(e);
 		}
 	}
 
