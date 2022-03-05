@@ -20,12 +20,8 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 
 	private SourceCodeFinder[] finders = {
 
-			new MavenRepoSourceCodeFinder(), new NexusSourceCodeFinder("https://repository.jboss.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
+			new MavenRepoSourceCodeFinder(), new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
 			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
-			new EclipsePluginSourceByUrlPatternFinder("https://www.filewatcher.com/_/?q={0}"), //$NON-NLS-1$
-			// new GrepCodeSourceCodeFinder(), //
-			new SourceAttacherServiceSourceCodeFinder(),
 
 			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
 			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$
@@ -37,21 +33,16 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 			new ArtifactorySourceCodeFinder("https://repository.cloudera.com/artifactory/webapp/home.html"), //$NON-NLS-1$
 			new ArtifactorySourceCodeFinder("https://repo.spring.io/webapp/home.html"), //$NON-NLS-1$
 
-			// new EclipsePluginSourceByFTPSearchv3Finder(),
 			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
 
 			new EclipseSourceReferencesSourceCodeFinder(), new JreSourceCodeFinder() };
 
 	private SourceCodeFinder[] jreFinders = {
 
-			new MavenRepoSourceCodeFinder(), new NexusSourceCodeFinder("https://repository.jboss.org/nexus/index.html"), //$NON-NLS-1$
-			new JreSourceCodeFinder(),
+			new MavenRepoSourceCodeFinder(), new JreSourceCodeFinder(),
 
 			new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
 			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
-			new EclipsePluginSourceByUrlPatternFinder("https://www.filewatcher.com/_/?q={0}"), //$NON-NLS-1$
-			// new GrepCodeSourceCodeFinder(),
-			new SourceAttacherServiceSourceCodeFinder(),
 
 			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
 			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$
@@ -63,24 +54,18 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 			new ArtifactorySourceCodeFinder("https://repository.cloudera.com/artifactory/webapp/home.html"), //$NON-NLS-1$
 			new ArtifactorySourceCodeFinder("https://repo.spring.io/webapp/home.html"), //$NON-NLS-1$
 
-			new EclipsePluginSourceByFTPSearchv3Finder(),
 			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
 
 			new EclipseSourceReferencesSourceCodeFinder() };
 
 	private SourceCodeFinder[] eclipseFinders = {
 
-			new EclipsePluginSourceByFTPSearchv3Finder(),
 			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
 
-			new MavenRepoSourceCodeFinder(), new NexusSourceCodeFinder("https://repository.jboss.org/nexus/index.html"), //$NON-NLS-1$
-			new EclipseSourceReferencesSourceCodeFinder(),
+			new MavenRepoSourceCodeFinder(), new EclipseSourceReferencesSourceCodeFinder(),
 
 			new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
 			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
-			new EclipsePluginSourceByUrlPatternFinder("https://www.filewatcher.com/_/?q={0}"), //$NON-NLS-1$
-			// new GrepCodeSourceCodeFinder(),
-			new SourceAttacherServiceSourceCodeFinder(),
 
 			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
 			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$

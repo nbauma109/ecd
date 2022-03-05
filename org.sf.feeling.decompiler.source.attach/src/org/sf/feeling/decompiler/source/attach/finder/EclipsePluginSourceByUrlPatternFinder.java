@@ -174,9 +174,6 @@ public class EclipsePluginSourceByUrlPatternFinder extends AbstractSourceCodeFin
 		EclipsePluginSourceByUrlPatternFinder finder;
 		List<SourceFileResult> results = new ArrayList<>();
 		finder = new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"); //$NON-NLS-1$
-		// finder = new
-		// EclipsePluginSourceByUrlPatternFinder("https://www.filewatcher.com/_/?q={0}");
-		// //$NON-NLS-1$
 		finder.find(new File(SourceConstants.USER_M2_REPO_DIR, "ant/ant/1.6.5/ant-1.6.5.jar"), results); //$NON-NLS-1$
 		System.out.println(results);
 	}
