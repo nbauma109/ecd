@@ -7,4 +7,9 @@ install:
   - echo "Install"
   - if ! bash ensure-java-17-sem use; then source ~/.sdkman/bin/sdkman-init.sh; fi
   - java -version
-  - mvn install
+  - curl -vkL https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.2%2B8_openj9-0.30.0/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz -o $HOME/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz
+  - tar xzvf $HOME/ibm-semeru-open-jdk_x64_linux_17.0.2_8_openj9-0.30.0.tar.gz -C $HOME
+  - export JAVA_HOME=$HOME/jdk-17.0.2+8
+  - curl -vkL https://dlcdn.apache.org/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.zip -o $HOME/apache-maven-3.8.4-bin.zip
+  - unzip -o $HOME/apache-maven-3.8.4-bin.zip -d $HOME
+  - $HOME/apache-maven-3.8.4/bin/mvn -B install
