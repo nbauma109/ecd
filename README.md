@@ -94,6 +94,13 @@ Used libraries:
 
 ## Changelog
 
+* Version 3.2.4
+  * Removed calls to services that are no longer online
+
+* Version 3.2.3
+  * Upgraded decompilers (CFR 0.152, Procyon 0.6.0, JD-Core 1.2.8, Fernflower 403)
+  * Tested compatibility with JDK17 and Eclipse 2021-21
+
 * Version 3.2.2
   * Fixed some inconsistencies regarding version numbers and the update site
   * Upgraded some service URL to HTTPS
