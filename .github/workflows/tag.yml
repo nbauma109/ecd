@@ -1,4 +1,4 @@
-name: "Increment version"
+name: "Create tag"
 
 on:
   push:
