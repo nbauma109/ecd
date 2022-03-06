@@ -1,4 +1,4 @@
-name: "Increment version and tag"
+name: "Increment version"
 
 on:
   push:
@@ -14,34 +14,13 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.message, '[update version]')"
 
     steps:
-    - name: Create .ssh directory
-      run: mkdir $HOME/.ssh
-    - name: Create known hosts file
-      run: echo "${{ secrets.KNOWN_HOSTS }}" > $HOME/.ssh/known_hosts
-    - name: Create private key
-      run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > $HOME/.ssh/id_ed25519
-        chmod 400 $HOME/.ssh/id_ed25519
-    - name: Checkout repository
-      uses: actions/checkout@v2
-    - name: Setup git user
-      run: |
-          git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
-          git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
-    - name: Update Version
-      run: |
-         export VERSION=`grep Bundle-Version org.sf.feeling.decompiler/META-INF/MANIFEST.MF | cut -d: -f2 | xargs`
-         export MAJOR=`echo $VERSION | cut -d. -f1`
-         export MINOR=`echo $VERSION | cut -d. -f2`
-         export PATCH=`echo $VERSION | cut -d. -f3`
-         export NEW_PATCH=`expr $PATCH + 1`
-         export NEW_VERSION=$MAJOR.$MINOR.$NEW_PATCH
-         chmod u+x ./update-version.sh
-         ./update-version.sh $NEW_VERSION
-         git commit -a -m "[update version] $VERSION -> $NEW_VERSION"
-         git push
-         git tag -a $NEW_VERSION -m "$NEW_VERSION"
-         git push origin $NEW_VERSION
+      - uses: actions/checkout@v2
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
        
