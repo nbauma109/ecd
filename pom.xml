@@ -1,11 +1,9 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.ecd-plugin</groupId>
 	<artifactId>com.github.ecd-plugin.ecd</artifactId>
-	<version>3.2.18-SNAPSHOT</version>
+	<version>3.2.18</version>
 	<packaging>pom</packaging>
 
 	<name>com.github.ecd-plugin.ecd</name>
@@ -38,7 +36,7 @@
 		<connection>scm:git:https://github.com/nbauma109/ecd.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/nbauma109/ecd.git</developerConnection>
 		<url>https://github.com/nbauma109/ecd</url>
-		<tag>HEAD</tag>
+		<tag>3.2.18</tag>
 	</scm>
 
 	<build>
