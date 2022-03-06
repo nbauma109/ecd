@@ -1,15 +1,13 @@
 name: "Github Release"
 
 on:
-  push:
-    tags:
-      - "*"
+  create:
 
 jobs:
   tagged-release:
     name: "Github Release"
     runs-on: "ubuntu-latest"
-
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}   
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 17
