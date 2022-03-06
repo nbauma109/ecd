@@ -26,8 +26,8 @@ jobs:
         chmod 400 $HOME/.ssh/id_ed25519
     - name: Git Config
       run: |
-        git config --global user.email "github-actions@github.com"
-        git config --global user.name "github-actions"
+        git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+        git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
     - name: Checkout repository
       uses: actions/checkout@v2
     - name: Update Version
