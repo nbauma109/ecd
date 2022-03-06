@@ -10,11 +10,19 @@
 		<fileSet>
 			<directory>..</directory>
 			<outputDirectory></outputDirectory>
+			<filtered>true</filtered>
+			<includes>
+				<include>site.xml</include>
+			</includes>
+		</fileSet>
+		<fileSet>
+			<directory>..</directory>
+			<outputDirectory></outputDirectory>
+			<filtered>false</filtered>
 			<includes>
 				<include>README*</include>
 				<include>LICENSE*</include>
 				<include>AUDIT*</include>
-				<include>site.xml</include>
 			</includes>
 		</fileSet>
 	</fileSets>
