@@ -40,8 +40,6 @@ jobs:
          export NEW_VERSION=$MAJOR.$MINOR.$NEW_PATCH
          chmod u+x ./update-version.sh
          ./update-version.sh $NEW_VERSION
-    - name: Git Commit and Tag
-      run: |
          git commit -a -m "[update version] $VERSION -> $NEW_VERSION"
          git push
          git tag $NEW_VERSION
