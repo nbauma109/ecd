@@ -24,10 +24,6 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > $HOME/.ssh/id_ed25519
         chmod 400 $HOME/.ssh/id_ed25519
-    - name: Convert to UNIX format
-      run: |
-        dos2unix $HOME/.ssh/known_hosts
-        dos2unix $HOME/.ssh/id_ed25519
     - name: Git Config
       run: |
         git config --global user.email "git@github.com"
