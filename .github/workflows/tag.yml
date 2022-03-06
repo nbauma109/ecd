@@ -26,8 +26,8 @@ jobs:
         chmod 400 $HOME/.ssh/id_ed25519
     - name: Git Config
       run: |
-        git config --global user.email "git@github.com"
-        git config --global user.name "git"
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
     - name: Checkout repository
       uses: actions/checkout@v2
     - name: Update Version
@@ -44,4 +44,4 @@ jobs:
          git push
          git tag -a $NEW_VERSION -m "$NEW_VERSION"
          git push origin $NEW_VERSION
-         
+       
