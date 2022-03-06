@@ -28,10 +28,8 @@ jobs:
       run: |
         git config --global user.email "git@github.com"
         git config --global user.name "git"
-    - name: Git Clone
-      run: |
-         git clone git@github.com:nbauma109/ecd.git
-         cd ecd
+    - name: Checkout repository
+      uses: actions/checkout@v2
     - name: Update Version
       run: |
          export VERSION=`grep Bundle-Version org.sf.feeling.decompiler/META-INF/MANIFEST.MF | cut -d: -f2 | xargs`
