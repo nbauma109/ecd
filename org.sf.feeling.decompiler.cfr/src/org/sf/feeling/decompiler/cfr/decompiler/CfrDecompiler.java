@@ -62,7 +62,11 @@ public class CfrDecompiler implements IDecompiler {
 			Pair<List<String>, Options> options = getOptParser.parse(new String[] { classPathStr },
 					OptionsImpl.getFactory());
 			Options namedOptions = options.getSecond();
-			ClassFileSource2 classFileSource = new ClassFileSourceImpl(namedOptions);
+			ClassFileSource2 classFileSource = new ClassFileSourceImpl(namedOptions) {
+				@Override
+				public void informAnalysisRelativePathDetail(String usePath, String classFilePath) {
+				}
+			};
 			DCCommonState dcCommonState = new DCCommonState(namedOptions, classFileSource);
 
 			IllegalIdentifierDump illegalIdentifierDump = IllegalIdentifierDump.Factory.get(namedOptions);
