@@ -6,7 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
-	<classpathentry exported="true" kind="lib" path="lib/commons-compress-1.3.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/cvsclient-20060125.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/maven-scm-api-1.9.4.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-accurev-1.9.4.jar"/>

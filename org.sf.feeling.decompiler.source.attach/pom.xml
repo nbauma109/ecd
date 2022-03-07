@@ -45,12 +45,6 @@
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
-									<groupId>org.apache.commons</groupId>
-									<artifactId>commons-compress</artifactId>
-									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
-								</artifactItem>
-								<artifactItem>
 									<groupId>org.apache.maven.scm</groupId>
 									<artifactId>maven-scm-api</artifactId>
 									<overWrite>true</overWrite>
@@ -227,10 +221,6 @@
 		<dependency>
 			<groupId>javax.xml.bind</groupId>
 			<artifactId>jaxb-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-compress</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.maven.scm</groupId>

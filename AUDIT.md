@@ -21,14 +21,6 @@ _Primary Source: https://mvnrepository.com/artifact/org.ow2.asm/asm_
   * SHA-256: cda4de455fab48ff0bcb7c48b4639447d4de859a7afc30a094a986f0936beba2
   * https://repo1.maven.org/maven2/org/ow2/asm/asm/9.1/asm-9.1.jar
 
-### Apache commons
-
-_Primary Source: https://commons.apache.org/downloads/index.html_
-
-* `./org.sf.feeling.decompiler.source.attach/lib/commons-compress-1.3.jar`
-  * SHA-256: 56291a5427f6c0abc0b34fbf9bfafa0c21b60d503ece95c38741424d76e2aa04
-  * Equal to http://central.maven.org/maven2/org/apache/commons/commons-compress/1.3/commons-compress-1.3.jar
-
 ### Fernflower
 _Primary Source: https://github.com/JetBrains/intellij-community/tree/master/plugins/java-decompiler/engine_
 _Build Source: https://github.com/MinecraftForge/FernFlower with builds at http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/_
