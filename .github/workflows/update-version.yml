@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
@@ -27,7 +25,8 @@ jobs:
          git config --global user.email "action@github.com"
          git config --global user.name "GitHub Action"
     - name: Update Version
-      id: update_version
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
       run: |
          export VERSION=`grep Bundle-Version org.sf.feeling.decompiler/META-INF/MANIFEST.MF | cut -d: -f2 | xargs`
          export MAJOR=`echo $VERSION | cut -d. -f1`
