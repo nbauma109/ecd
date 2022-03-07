@@ -35,13 +35,6 @@ _Primary Source: https://github.com/ralfstx/minimal-json_
   * SHA-256: e1d280900c78f18ae2e00c14e7410a77ba19cf084154b386532846aa6dc81721
   * Version from http://central.maven.org/maven2/com/eclipsesource/minimal-json/minimal-json/0.9.4/minimal-json-0.9.4.jar
 
-### JSOUP
-_Primary Source: http://jsoup.org/_
-
-* `./org.sf.feeling.decompiler/lib/jsoup.jar`
-  * SHA-256: fec4c4a7bb210e2d382ddef6ef9d86e8431aa6d7d3113d88132435483e4aa65e
-  * Version from http://central.maven.org/maven2/org/jsoup/jsoup/1.9.2/jsoup-1.9.2.jar
-
 ### CFR
 _Primary Source: http://www.benf.org/other/cfr/_
 
