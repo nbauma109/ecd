@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.source"
       label="%featureName"
-      version="3.2.26"
+      version="3.2.27"
       provider-name="%providerName">
 
    <description url="%aboutURL">
@@ -32,7 +32,7 @@
       <import plugin="org.eclipse.core.databinding"/>
       <import plugin="org.eclipse.jface.databinding"/>
       <import plugin="org.eclipse.core.databinding.beans"/>
-      <import plugin="org.sf.feeling.decompiler" version="3.2.26" match="greaterOrEqual"/>
+      <import plugin="org.sf.feeling.decompiler" version="3.2.27" match="greaterOrEqual"/>
       <import plugin="org.apache.ant"/>
       <import plugin="org.apache.commons.io" version="2.2.0" match="greaterOrEqual"/>
    </requires>
@@ -41,7 +41,7 @@
          id="org.sf.feeling.decompiler.source.attach"
          download-size="0"
          install-size="0"
-         version="3.2.26"
+         version="3.2.27"
          unpack="false"/>
 
 </feature>
