@@ -75,7 +75,7 @@ Used libraries:
   * Fernflower: Copyright (c) JetBrains, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Minimal JSON: Copyright (c) 2013, 2014 EclipseSource, [MIT License](https://opensource.org/licenses/MIT)
   * JSOUP: Copyright (c) 2009 - 2018 Jonathan Hedley, [MIT License](https://opensource.org/licenses/MIT)
-  * CFR: Copyright Leee Benfield, [MIT License](https://opensource.org/licenses/MIT)
+  * CFR: Copyright Lee Benfield, [MIT License](https://opensource.org/licenses/MIT)
   * Procyon: Copyright Mike Strobel, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Netbeans CVSClient: Copyright (c) NetBeans Community, [Eclipse Public License v1.0](https://www.eclipse.org/legal/epl-v10.html) and [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Maven SCM: Copyright (c) Apache Software Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
@@ -99,7 +99,7 @@ Used libraries:
   * Fix a NPE bug for CFR
   * Removed calls to services that are no longer online
   * Upgraded decompilers (CFR 0.152, Procyon 0.6.0, JD-Core 1.2.8, Fernflower 403)
-  * Tested compatibility with JDK17 and Eclipse 2021-21
+  * Tested compatibility with JDK17 and Eclipse 2021-12
 
 * Version 3.2.2
   * Fixed some inconsistencies regarding version numbers and the update site
