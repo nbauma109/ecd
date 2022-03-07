@@ -9,19 +9,33 @@
 package org.sf.feeling.decompiler.cfr.decompiler;
 
 import java.io.File;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.benf.cfr.reader.api.CfrDriver;
+import org.benf.cfr.reader.apiunreleased.ClassFileSource2;
+import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
+import org.benf.cfr.reader.entities.ClassFile;
+import org.benf.cfr.reader.entities.Method;
+import org.benf.cfr.reader.state.ClassFileSourceImpl;
+import org.benf.cfr.reader.state.DCCommonState;
+import org.benf.cfr.reader.state.TypeUsageCollectingDumper;
+import org.benf.cfr.reader.state.TypeUsageInformation;
+import org.benf.cfr.reader.util.CannotLoadClassException;
+import org.benf.cfr.reader.util.getopt.GetOptParser;
+import org.benf.cfr.reader.util.getopt.Options;
+import org.benf.cfr.reader.util.getopt.OptionsImpl;
+import org.benf.cfr.reader.util.output.IllegalIdentifierDump;
+import org.benf.cfr.reader.util.output.MethodErrorCollector;
+import org.benf.cfr.reader.util.output.StringStreamDumper;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
-import org.sf.feeling.decompiler.util.ClassUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
+import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 public class CfrDecompiler implements IDecompiler {
 
@@ -38,18 +52,75 @@ public class CfrDecompiler implements IDecompiler {
 	public void decompile(String root, String packege, String className) {
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
-		try (CFRZipLoader loader = new CFRZipLoader(Paths.get(root), null)) {
-			CFROutputStreamFactory sink = new CFROutputStreamFactory();
-			String entryPath = packege + '/' + className;
-			String internalName = ClassUtil.getInternalName(className);
-			CfrDriver driver = new CfrDriver.Builder()
-					.withClassFileSource(new CFRDataSource(loader, loader.load(internalName), entryPath))
-					.withOutputSink(sink).build();
-			driver.analyse(Arrays.asList(entryPath));
-			source = sink.getGeneratedSource();
+		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
+
+		String classPathStr = new File(workingDir, className).getAbsolutePath();
+
+		GetOptParser getOptParser = new GetOptParser();
+
+		try {
+			Pair<List<String>, Options> options = getOptParser.parse(new String[] { classPathStr },
+					OptionsImpl.getFactory());
+			Options namedOptions = options.getSecond();
+			ClassFileSource2 classFileSource = new ClassFileSourceImpl(namedOptions);
+			classFileSource.informAnalysisRelativePathDetail(null, null);
+			DCCommonState dcCommonState = new DCCommonState(namedOptions, classFileSource);
+
+			IllegalIdentifierDump illegalIdentifierDump = IllegalIdentifierDump.Factory.get(namedOptions);
+
+			ClassFile classFile = dcCommonState.getClassFileMaybePath(classPathStr);
+			dcCommonState.configureWith(classFile);
+			try {
+				classFile = dcCommonState.getClassFile(classFile.getClassType());
+			} catch (CannotLoadClassException e) {
+				e.printStackTrace();
+			}
+			if (namedOptions.getOption(OptionsImpl.DECOMPILE_INNER_CLASSES).booleanValue()) {
+				classFile.loadInnerClasses(dcCommonState);
+			}
+			TypeUsageCollectingDumper typeUsageCollectingDumper = new TypeUsageCollectingDumper(namedOptions,
+					classFile);
+
+			classFile.analyseTop(dcCommonState, typeUsageCollectingDumper);
+
+			TypeUsageInformation typeUsageInfo = typeUsageCollectingDumper.getRealTypeUsageInformation();
+
+			MethodErrorCollector methodErrorCollector = new MethodErrorCollector() {
+
+				@Override
+				public void addSummaryError(Method paramMethod, String msg) {
+					log += String.format("\n%s: %s", paramMethod.toString(), msg);
+				}
+
+			};
+
+			StringBuilder stringBuilder = new StringBuilder(4096);
+			StringStreamDumper dumper = new StringStreamDumper(methodErrorCollector, stringBuilder, typeUsageInfo,
+					namedOptions, illegalIdentifierDump);
+			classFile.dump(dumper);
+			source = UnicodeUtil.decode(stringBuilder.toString().trim());
+
+			Pattern wp = Pattern.compile("/\\*.+?\\*/", Pattern.DOTALL); //$NON-NLS-1$
+			Matcher m = wp.matcher(source);
+			while (m.find()) {
+				if (m.group().matches("/\\*\\s+\\d*\\s+\\*/")) //$NON-NLS-1$
+					continue;
+				String group = m.group();
+				group = group.replace("/*", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				group = group.replace("*/", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				group = group.replace("*", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				if (log.length() > 0) {
+					log += "\n"; //$NON-NLS-1$
+				}
+				log += group;
+
+				source = source.replace(m.group(), "").trim(); //$NON-NLS-1$
+			}
+
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
+
 	}
 
 	/**
