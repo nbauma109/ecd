@@ -36,15 +36,8 @@ import org.eclipse.jdt.internal.ui.javaeditor.InternalClassFileEditorInput;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IFindReplaceTarget;
 import org.eclipse.jface.text.ITextViewerExtension5;
-import org.eclipse.jface.text.Region;
-import org.eclipse.jface.text.hyperlink.HyperlinkManager;
-import org.eclipse.jface.text.hyperlink.IHyperlink;
-import org.eclipse.jface.text.hyperlink.IHyperlinkDetector;
-import org.eclipse.jface.text.hyperlink.IHyperlinkPresenter;
-import org.eclipse.jface.text.hyperlink.URLHyperlink;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ISelectionProvider;
@@ -56,8 +49,6 @@ import org.eclipse.search2.internal.ui.text.WindowAnnotationManager;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.MouseAdapter;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
@@ -74,7 +65,6 @@ import org.eclipse.ui.texteditor.FindNextAction;
 import org.eclipse.ui.texteditor.FindReplaceAction;
 import org.eclipse.ui.texteditor.GotoLineAction;
 import org.eclipse.ui.texteditor.IAbstractTextEditorHelpContextIds;
-import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.ui.texteditor.ITextEditorActionConstants;
 import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
@@ -280,7 +270,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	}
 
 	/**
-	 * Sets edditor input only if buffer was actually opened.
+	 * Sets editor input only if buffer was actually opened.
 	 * 
 	 * @param force if <code>true</code> initialize no matter what
 	 */
@@ -293,8 +283,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
 		}
-
-		handleMarkLink();
 	}
 
 	public void doSetInput(String type, boolean force) {
@@ -306,8 +294,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
 		}
-
-		handleMarkLink();
 	}
 
 	@Override
@@ -425,8 +411,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
 			super.doSetInput(input);
 		}
-
-		handleMarkLink();
 	}
 
 	protected void setPartName(String partName) {
@@ -448,24 +432,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		showSource();
 	}
 
-	private void handleMarkLink() {
-		IDocumentProvider documentProvider = this.getDocumentProvider();
-		if (documentProvider != null) {
-			IDocument doc = documentProvider.getDocument(getEditorInput());
-			final int index = doc.get().indexOf("://"); //$NON-NLS-1$
-			if (index != -1) {
-				Display.getDefault().asyncExec(new Runnable() {
-
-					@Override
-					public void run() {
-						updateMatchAnnonation();
-						handleMarkLink(index);
-					}
-				});
-			}
-		}
-	}
-
 	protected JavaDecompilerBufferManager getBufferManager() {
 		JavaDecompilerBufferManager manager;
 		BufferManager defManager = BufferManager.getDefaultBufferManager();
@@ -480,113 +446,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		ReflectionUtils.invokeMethod(this.getViewer(), "fireSelectionChanged", //$NON-NLS-1$
 				new Class[] { SelectionChangedEvent.class }, new Object[] {
 						new SelectionChangedEvent((ISelectionProvider) this.getViewer(), new StructuredSelection()) });
-	}
-
-	private void handleMarkLink(final int index) {
-		ISourceViewer sourceViewer = getSourceViewer();
-		if (sourceViewer == null)
-			return;
-
-		final StyledText text = sourceViewer.getTextWidget();
-		if (text.isDisposed()) {
-			return;
-		}
-
-		IHyperlinkDetector[] descriptors = getSourceViewerConfiguration().getHyperlinkDetectors(sourceViewer);
-		for (int i = 0; i < descriptors.length; i++) {
-			final IHyperlink[] links = descriptors[i].detectHyperlinks(sourceViewer, new Region(index, 0), true);
-
-			if (links != null && links.length > 0 && links[0] instanceof URLHyperlink) {
-				final IHyperlinkPresenter fHyperlinkPresenter = (IHyperlinkPresenter) ReflectionUtils
-						.getFieldValue(sourceViewer, "fHyperlinkPresenter"); //$NON-NLS-1$
-
-				final HyperlinkManager fHyperlinkManager = (HyperlinkManager) ReflectionUtils
-						.getFieldValue(sourceViewer, "fHyperlinkManager"); //$NON-NLS-1$
-
-				if (fHyperlinkPresenter == null || fHyperlinkManager == null)
-					continue;
-
-				fHyperlinkPresenter.showHyperlinks(links);
-
-				final boolean[] flags = new boolean[1];
-
-				if (!text.isDisposed() && paintListener != null) {
-					text.removePaintListener(paintListener);
-				}
-
-				paintListener = new PaintListener() {
-
-					private Boolean isActive(final HyperlinkManager fHyperlinkManager) {
-						return (Boolean) ReflectionUtils.getFieldValue(fHyperlinkManager, "fActive");//$NON-NLS-1$
-					}
-
-					private void addPaintListener(final StyledText text) {
-						Display.getDefault().asyncExec(new Runnable() {
-
-							@Override
-							public void run() {
-								if (!text.isDisposed() && paintListener != null) {
-									text.removePaintListener(paintListener);
-									text.addPaintListener(paintListener);
-								}
-							}
-						});
-					}
-
-					@Override
-					public void paintControl(PaintEvent e) {
-						if (flags[0]) {
-							return;
-						}
-
-						flags[0] = true;
-
-						Display.getDefault().asyncExec(new Runnable() {
-
-							@Override
-							public void run() {
-								boolean fActive = isActive(fHyperlinkManager);
-								if (!fActive && !text.isDisposed()) {
-									text.removePaintListener(paintListener);
-									updateMatchAnnonation();
-									addPaintListener(text);
-								}
-								flags[0] = false;
-							}
-						});
-					}
-				};
-
-				text.addPaintListener(paintListener);
-
-				if (mouseAdapter != null) {
-					text.removeMouseListener(mouseAdapter);
-				}
-				mouseAdapter = new MouseAdapter() {
-
-					@Override
-					public void mouseUp(MouseEvent e) {
-
-						int offset = getCaretModelOffset(text);
-						if (offset == -1)
-							return;
-						for (int j = 0; j < links.length; j++) {
-							int linkOffset = links[j].getHyperlinkRegion().getOffset();
-							int linkLength = links[j].getHyperlinkRegion().getLength();
-							if (offset >= linkOffset && offset < linkOffset + linkLength) {
-								if (links[j] instanceof URLHyperlink) {
-									String url = ((URLHyperlink) links[j]).getURLString();
-									UIUtil.openBrowser(url);
-								}
-								return;
-							}
-						}
-
-					}
-				};
-				text.addMouseListener(mouseAdapter);
-			}
-		}
 	}
 
 	/**

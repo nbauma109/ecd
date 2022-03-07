@@ -24,5 +24,3 @@ mvn \
 mvn \
 	org.eclipse.tycho:tycho-versions-plugin:2.7.0:update-eclipse-metadata \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven
-
-sed -ri 's/org\.sf\.feeling\.decompiler(\.[a-z]+)?" version="[0-9]+\.[0-9]+\.[0-9]+"/org.sf.feeling.decompiler\1" version="'"$VERSION"'"/g' */*.xml

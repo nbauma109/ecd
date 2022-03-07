@@ -9,7 +9,6 @@
 package org.sf.feeling.decompiler.util;
 
 import java.lang.reflect.Field;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -23,22 +22,12 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.navigator.IExtensionStateConstants.Values;
 import org.eclipse.jdt.internal.ui.packageview.PackageExplorerPart;
-import org.eclipse.jdt.ui.text.IJavaColorConstants;
-import org.eclipse.jdt.ui.text.JavaTextTools;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
@@ -49,33 +38,15 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.browser.IWebBrowser;
 import org.eclipse.ui.navigator.CommonNavigator;
 import org.eclipse.ui.navigator.CommonNavigatorManager;
 import org.eclipse.ui.navigator.IExtensionStateModel;
 import org.eclipse.ui.navigator.INavigatorContentService;
-import org.eclipse.ui.themes.ColorUtil;
 import org.eclipse.ui.views.contentoutline.ContentOutline;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.JavaDecompilerClassFileEditor;
 
-import com.eclipsesource.json.Json;
-import com.eclipsesource.json.JsonObject;
-import com.eclipsesource.json.JsonValue;
-
 public class UIUtil {
-
-	public static void openBrowser(String url) {
-		try {
-			final URL urlToOpen = new URL(url);
-			IWebBrowser browser = PlatformUI.getWorkbench().getBrowserSupport().getExternalBrowser();
-			if (browser != null) {
-				browser.openURL(urlToOpen);
-			}
-		} catch (Exception e) {
-			Logger.debug(e);
-		}
-	}
 
 	public static JavaDecompilerClassFileEditor getActiveEditor() {
 		final JavaDecompilerClassFileEditor[] editors = new JavaDecompilerClassFileEditor[1];
@@ -407,142 +378,6 @@ public class UIUtil {
 		return false;
 	}
 
-	public static StyleRange getAdTextStyleRange(StyledText textWidget, int offset, int length) {
-		JavaTextTools textTools = JavaPlugin.getDefault().getJavaTextTools();
-		IPreferenceStore preferences = (IPreferenceStore) ReflectionUtils.getFieldValue(textTools, "fPreferenceStore"); //$NON-NLS-1$
-		String textColor = preferences.getString(IJavaColorConstants.JAVADOC_LINK);
-
-		StyleRange styleRange = null;
-		if (isDark(textWidget)) {
-			String darkStyleValue = JavaDecompilerPlugin.getDefault().getPreferenceStore().getString("darkStyle"); //$NON-NLS-1$
-			if (darkStyleValue != null && darkStyleValue.trim().length() > 0) {
-				styleRange = handleStyleValue(textWidget, offset, length, darkStyleValue, "text", textColor, false); //$NON-NLS-1$
-			}
-		} else {
-			String brightStyleValue = JavaDecompilerPlugin.getDefault().getPreferenceStore().getString("brightStyle"); //$NON-NLS-1$
-			if (brightStyleValue != null && brightStyleValue.trim().length() > 0) {
-				styleRange = handleStyleValue(textWidget, offset, length, brightStyleValue, "text", textColor, false); //$NON-NLS-1$
-			}
-
-		}
-
-		if (styleRange == null) {
-			styleRange = getDefaultCommonRange(textWidget, offset, length);
-		}
-		return styleRange;
-	}
-
-	private static StyleRange handleStyleValue(StyledText textWidget, int offset, int length, String brightStyleValue,
-			String property, String defaultColor, boolean isLink) {
-		JsonValue styleValue = null;
-		try {
-			styleValue = Json.parse(brightStyleValue);
-		} catch (Exception e) {
-			Logger.debug(e);
-		}
-
-		if (styleValue != null && styleValue.isObject()) {
-			JsonObject style = styleValue.asObject();
-			if (style.get(property) != null && style.get(property).isObject()) {
-				return getStyleRange(textWidget, offset, length, style.get(property).asObject(), defaultColor, isLink);
-			}
-		}
-
-		return null;
-	}
-
-	private static StyleRange getStyleRange(StyledText textWidget, int offset, int length, JsonObject style,
-			String defaultColor, boolean isLink) {
-		int contentLength = textWidget.getCharCount();
-		if (contentLength - offset < 0)
-			return null;
-		StyleRange range = new StyleRange(offset, offset + length < contentLength ? length : contentLength - offset,
-				defaultColor == null ? null
-						: JFaceResources.getResources().createColor(ColorUtil.getColorValue(defaultColor)),
-				null);
-		JsonValue fontStyleValue = style.get("fontStyle"); //$NON-NLS-1$
-		if (fontStyleValue != null && fontStyleValue.isNumber()) {
-			range.fontStyle = fontStyleValue.asInt();
-		}
-
-		JsonValue fontFamilyValue = style.get("fontFamily"); //$NON-NLS-1$
-		if (fontFamilyValue != null && fontFamilyValue.isString()) {
-			if (range.font == null) {
-				FontData fontData = textWidget.getFont().getFontData()[0];
-				fontData.setName(fontFamilyValue.asString());
-				Font font = new Font(textWidget.getDisplay(), fontData);
-				range.font = font;
-			} else {
-				FontData fontData = range.font.getFontData()[0];
-				fontData.setName(fontFamilyValue.asString());
-			}
-		}
-
-		JsonValue fontSizeValue = style.get("fontSize"); //$NON-NLS-1$
-		if (fontSizeValue != null && fontSizeValue.isNumber()) {
-			FontData textFontData = textWidget.getFont().getFontData()[0];
-			if (fontSizeValue.asInt() > textFontData.getHeight()) {
-				if (range.font == null) {
-					FontData fontData = textFontData;
-					fontData.setHeight(fontSizeValue.asInt());
-					Font font = new Font(textWidget.getDisplay(), fontData);
-					range.font = font;
-				} else {
-					FontData fontData = range.font.getFontData()[0];
-					fontData.setHeight(fontSizeValue.asInt());
-				}
-			}
-		}
-
-		if (isLink) {
-			range.underline = true;
-			range.underlineStyle = SWT.UNDERLINE_LINK;
-		}
-
-		JsonValue underlineValue = style.get("underline"); //$NON-NLS-1$
-		if (underlineValue != null && underlineValue.isBoolean()) {
-			range.underline = underlineValue.asBoolean();
-			if (range.underline) {
-				range.underlineStyle = SWT.UNDERLINE_LINK;
-			}
-		}
-
-		JsonValue underlineStyleValue = style.get("underlineStyle"); //$NON-NLS-1$
-		if (underlineStyleValue != null && underlineStyleValue.isNumber()) {
-			range.underlineStyle = underlineStyleValue.asInt();
-		}
-
-		JsonValue hideUnderlineValue = style.get("hideUnderline"); //$NON-NLS-1$
-		if (hideUnderlineValue != null && hideUnderlineValue.isBoolean()) {
-			if (hideUnderlineValue.asBoolean()) {
-				range.underlineColor = textWidget.getBackground();
-			}
-		}
-
-		JsonValue backgroundValue = style.get("background"); //$NON-NLS-1$
-		if (backgroundValue != null && backgroundValue.isString()) {
-			String backgroundString = backgroundValue.asString();
-			RGB rgb = ColorUtil.getColorValue(backgroundString);
-			if (rgb != null) {
-				range.background = new Color(textWidget.getDisplay(), rgb);
-			}
-		}
-
-		JsonValue foregroundValue = style.get("foreground"); //$NON-NLS-1$
-		if (foregroundValue != null && foregroundValue.isString()) {
-			String foregroundString = foregroundValue.asString();
-			RGB rgb = ColorUtil.getColorValue(foregroundString);
-			if (rgb != null) {
-				range.foreground = new Color(textWidget.getDisplay(), rgb);
-				if (range.underlineColor == null) {
-					range.underlineColor = range.foreground;
-				}
-			}
-		}
-
-		return range;
-	}
-
 	public static boolean isDark(Control textWidget) {
 		if (textWidget != null && !textWidget.isDisposed()) {
 			Color color = textWidget.getBackground();
@@ -552,54 +387,6 @@ public class UIUtil {
 			return red < 127 || blue < 127 || green < 127;
 		}
 		return false;
-	}
-
-	public static StyleRange getAdLinkStyleRange(StyledText textWidget, int offset, int length) {
-		JavaTextTools textTools = JavaPlugin.getDefault().getJavaTextTools();
-		IPreferenceStore preferences = (IPreferenceStore) ReflectionUtils.getFieldValue(textTools, "fPreferenceStore"); //$NON-NLS-1$
-		String linkColor = preferences.getString(IJavaColorConstants.JAVADOC_DEFAULT);
-
-		StyleRange styleRange = null;
-		if (isDark(textWidget)) {
-			String darkStyleValue = JavaDecompilerPlugin.getDefault().getPreferenceStore().getString("darkStyle"); //$NON-NLS-1$
-			if (darkStyleValue != null && darkStyleValue.trim().length() > 0) {
-				styleRange = handleStyleValue(textWidget, offset, length, darkStyleValue, "link", linkColor, true); //$NON-NLS-1$
-			}
-		} else {
-			String brightStyleValue = JavaDecompilerPlugin.getDefault().getPreferenceStore().getString("brightStyle"); //$NON-NLS-1$
-			if (brightStyleValue != null && brightStyleValue.trim().length() > 0) {
-				styleRange = handleStyleValue(textWidget, offset, length, brightStyleValue, "link", linkColor, true); //$NON-NLS-1$
-			}
-		}
-
-		if (styleRange == null) {
-			styleRange = getDefaultLinkRange(textWidget, offset, length);
-		}
-		return styleRange;
-	}
-
-	private static StyleRange getDefaultLinkRange(StyledText textWidget, int offset, int length) {
-		JavaTextTools textTools = JavaPlugin.getDefault().getJavaTextTools();
-		IPreferenceStore preferences = (IPreferenceStore) ReflectionUtils.getFieldValue(textTools, "fPreferenceStore"); //$NON-NLS-1$
-		String linkColor = preferences.getString(IJavaColorConstants.JAVADOC_LINK);
-
-		StyleRange range = new StyleRange(offset, length,
-				JFaceResources.getResources().createColor(ColorUtil.getColorValue(linkColor)), null);
-		range.font = textWidget.getFont();
-		range.underline = true;
-		range.underlineStyle = SWT.UNDERLINE_LINK;
-		return range;
-	}
-
-	private static StyleRange getDefaultCommonRange(StyledText textWidget, int offset, int length) {
-		JavaTextTools textTools = JavaPlugin.getDefault().getJavaTextTools();
-		IPreferenceStore preferences = (IPreferenceStore) ReflectionUtils.getFieldValue(textTools, "fPreferenceStore"); //$NON-NLS-1$
-		String commentColor = preferences.getString(IJavaColorConstants.JAVADOC_DEFAULT);
-
-		StyleRange range = new StyleRange(offset, length,
-				new Color(textWidget.getDisplay(), ColorUtil.getColorValue(commentColor)), null);
-		range.font = textWidget.getFont();
-		return range;
 	}
 
 	public static boolean requestFromLinkToSelection() {
