@@ -25,6 +25,7 @@ import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
+import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
 
@@ -47,6 +48,7 @@ public class CfrDecompiler implements IDecompiler {
 
 		try {
 			source = decompile(classPathStr, null, false, true);
+			source = CommentUtil.clearComments(source);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
