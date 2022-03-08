@@ -9,33 +9,24 @@
 package org.sf.feeling.decompiler.cfr.decompiler;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Scanner;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.benf.cfr.reader.apiunreleased.ClassFileSource2;
+import org.benf.cfr.reader.api.CfrDriver;
+import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
-import org.benf.cfr.reader.entities.ClassFile;
-import org.benf.cfr.reader.entities.Method;
-import org.benf.cfr.reader.state.ClassFileSourceImpl;
-import org.benf.cfr.reader.state.DCCommonState;
-import org.benf.cfr.reader.state.TypeUsageCollectingDumper;
-import org.benf.cfr.reader.state.TypeUsageInformation;
-import org.benf.cfr.reader.util.CannotLoadClassException;
-import org.benf.cfr.reader.util.getopt.GetOptParser;
-import org.benf.cfr.reader.util.getopt.Options;
-import org.benf.cfr.reader.util.getopt.OptionsImpl;
-import org.benf.cfr.reader.util.output.IllegalIdentifierDump;
-import org.benf.cfr.reader.util.output.MethodErrorCollector;
-import org.benf.cfr.reader.util.output.StringStreamDumper;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
-import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 public class CfrDecompiler implements IDecompiler {
 
@@ -44,79 +35,18 @@ public class CfrDecompiler implements IDecompiler {
 	private String log = ""; //$NON-NLS-1$
 
 	/**
-	 * Performs a <code>Runtime.exec()</code> on CFR with selected options.
-	 * 
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
 	public void decompile(String root, String packege, String className) {
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
-		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
+		File workingDir = new File(root, packege); // $NON-NLS-1$
 
 		String classPathStr = new File(workingDir, className).getAbsolutePath();
 
-		GetOptParser getOptParser = new GetOptParser();
-
 		try {
-			Pair<List<String>, Options> options = getOptParser.parse(new String[] { classPathStr },
-					OptionsImpl.getFactory());
-			Options namedOptions = options.getSecond();
-			ClassFileSource2 classFileSource = new ClassFileSourceImpl(namedOptions);
-			classFileSource.informAnalysisRelativePathDetail(null, null);
-			DCCommonState dcCommonState = new DCCommonState(namedOptions, classFileSource);
-
-			IllegalIdentifierDump illegalIdentifierDump = IllegalIdentifierDump.Factory.get(namedOptions);
-
-			ClassFile classFile = dcCommonState.getClassFileMaybePath(classPathStr);
-			dcCommonState.configureWith(classFile);
-			try {
-				classFile = dcCommonState.getClassFile(classFile.getClassType());
-			} catch (CannotLoadClassException e) {
-				e.printStackTrace();
-			}
-			if (namedOptions.getOption(OptionsImpl.DECOMPILE_INNER_CLASSES).booleanValue()) {
-				classFile.loadInnerClasses(dcCommonState);
-			}
-			TypeUsageCollectingDumper typeUsageCollectingDumper = new TypeUsageCollectingDumper(namedOptions,
-					classFile);
-
-			classFile.analyseTop(dcCommonState, typeUsageCollectingDumper);
-
-			TypeUsageInformation typeUsageInfo = typeUsageCollectingDumper.getRealTypeUsageInformation();
-
-			MethodErrorCollector methodErrorCollector = new MethodErrorCollector() {
-
-				@Override
-				public void addSummaryError(Method paramMethod, String msg) {
-					log += String.format("\n%s: %s", paramMethod.toString(), msg);
-				}
-
-			};
-
-			StringBuilder stringBuilder = new StringBuilder(4096);
-			StringStreamDumper dumper = new StringStreamDumper(methodErrorCollector, stringBuilder, typeUsageInfo,
-					namedOptions, illegalIdentifierDump);
-			classFile.dump(dumper);
-			source = UnicodeUtil.decode(stringBuilder.toString().trim());
-
-			Pattern wp = Pattern.compile("/\\*.+?\\*/", Pattern.DOTALL); //$NON-NLS-1$
-			Matcher m = wp.matcher(source);
-			while (m.find()) {
-				if (m.group().matches("/\\*\\s+\\d*\\s+\\*/")) //$NON-NLS-1$
-					continue;
-				String group = m.group();
-				group = group.replace("/*", ""); //$NON-NLS-1$ //$NON-NLS-2$
-				group = group.replace("*/", ""); //$NON-NLS-1$ //$NON-NLS-2$
-				group = group.replace("*", ""); //$NON-NLS-1$ //$NON-NLS-2$
-				if (log.length() > 0) {
-					log += "\n"; //$NON-NLS-1$
-				}
-				log += group;
-
-				source = source.replace(m.group(), "").trim(); //$NON-NLS-1$
-			}
-
+			source = decompile(classPathStr, null, false, true);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
@@ -124,10 +54,6 @@ public class CfrDecompiler implements IDecompiler {
 	}
 
 	/**
-	 * Jad doesn't support decompilation from archives. This methods extracts
-	 * request class file from the specified archive into temp directory and then
-	 * calls <code>decompile</code>.
-	 * 
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
@@ -143,10 +69,89 @@ public class CfrDecompiler implements IDecompiler {
 			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
-			return;
 		} finally {
 			FileUtil.deltree(workingDir);
 		}
+	}
+
+	public static String decompile(String classFilePath, String methodName) {
+		return decompile(classFilePath, methodName, false);
+	}
+
+	public static String decompile(String classFilePath, String methodName, boolean hideUnicode) {
+		return decompile(classFilePath, methodName, hideUnicode, true);
+	}
+
+	public static Pair<String, NavigableMap<Integer, Integer>> decompileWithMappings(String classFilePath,
+			String methodName, boolean hideUnicode, boolean printLineNumber) {
+		final StringBuilder sb = new StringBuilder();
+
+		final NavigableMap<Integer, Integer> lineMapping = new TreeMap<>();
+
+		OutputSinkFactory mySink = new CfrOutputSinkFactory(sb, lineMapping);
+
+		HashMap<String, String> options = new HashMap<>();
+		options.put("showversion", "true");
+		options.put("hideutf", String.valueOf(hideUnicode));
+		options.put("trackbytecodeloc", "true");
+		if (methodName != null && !methodName.isBlank()) {
+			options.put("methodname", methodName);
+		}
+
+		CfrDriver driver = new CfrDriver.Builder().withOptions(options).withOutputSink(mySink).build();
+		List<String> toAnalyse = new ArrayList<>();
+		toAnalyse.add(classFilePath);
+		driver.analyse(toAnalyse);
+
+		String resultCode = sb.toString();
+		if (printLineNumber && !lineMapping.isEmpty()) {
+			resultCode = addLineNumber(resultCode, lineMapping);
+		}
+
+		return Pair.make(resultCode, lineMapping);
+	}
+
+	public static String decompile(String classFilePath, String methodName, boolean hideUnicode,
+			boolean printLineNumber) {
+		return decompileWithMappings(classFilePath, methodName, hideUnicode, printLineNumber).getFirst();
+	}
+
+	private static String addLineNumber(String src, Map<Integer, Integer> lineMapping) {
+		int maxLineNumber = 0;
+		for (Integer value : lineMapping.values()) {
+			if (value != null && value > maxLineNumber) {
+				maxLineNumber = value;
+			}
+		}
+
+		String formatStr = "/* %2d */ ";
+		String emptyStr = "       ";
+
+		StringBuilder sb = new StringBuilder();
+
+		if (maxLineNumber >= 1000) {
+			formatStr = "/* %4d */ ";
+			emptyStr = "         ";
+		} else if (maxLineNumber >= 100) {
+			formatStr = "/* %3d */ ";
+			emptyStr = "        ";
+		}
+
+		int index = 0;
+		try (Scanner sc = new Scanner(src)) {
+			while (sc.hasNextLine()) {
+				String line = sc.nextLine();
+				Integer srcLineNumber = lineMapping.get(index + 1);
+				if (srcLineNumber != null) {
+					sb.append(String.format(formatStr, srcLineNumber));
+				} else {
+					sb.append(emptyStr);
+				}
+				sb.append(line).append("\n");
+				index++;
+			}
+		}
+		return sb.toString();
 	}
 
 	@Override
@@ -192,11 +197,11 @@ public class CfrDecompiler implements IDecompiler {
 
 	@Override
 	public boolean supportDebugLevel(int level) {
-		return false;
+		return true;
 	}
 
 	@Override
 	public boolean supportDebug() {
-		return false;
+		return true;
 	}
 }
