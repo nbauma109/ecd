@@ -3,17 +3,17 @@ package org.sf.feeling.decompiler.cfr.decompiler;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NavigableMap;
 
 import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.api.SinkReturns.LineNumberMapping;
 
 public final class CfrOutputSinkFactory implements OutputSinkFactory {
 	private final StringBuilder sb;
-	private final NavigableMap<Integer, Integer> lineMapping;
+	private final Map<Integer, Integer> lineMapping;
 
-	public CfrOutputSinkFactory(StringBuilder sb, NavigableMap<Integer, Integer> lineMapping) {
+	public CfrOutputSinkFactory(StringBuilder sb, Map<Integer, Integer> lineMapping) {
 		this.sb = sb;
 		this.lineMapping = lineMapping;
 	}
@@ -32,8 +32,8 @@ public final class CfrOutputSinkFactory implements OutputSinkFactory {
 			}
 			if (sinkType == SinkType.LINENUMBER) {
 				LineNumberMapping mapping = (LineNumberMapping) sinkable;
-				NavigableMap<Integer, Integer> classFileMappings = mapping.getClassFileMappings();
-				NavigableMap<Integer, Integer> mappings = mapping.getMappings();
+				Map<Integer, Integer> classFileMappings = mapping.getClassFileMappings();
+				Map<Integer, Integer> mappings = mapping.getMappings();
 				if (classFileMappings != null && mappings != null) {
 					for (Entry<Integer, Integer> entry : mappings.entrySet()) {
 						Integer srcLineNumber = classFileMappings.get(entry.getKey());

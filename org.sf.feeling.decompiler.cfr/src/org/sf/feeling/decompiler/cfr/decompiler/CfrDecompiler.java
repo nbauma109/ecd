@@ -9,7 +9,7 @@
 package org.sf.feeling.decompiler.cfr.decompiler;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -22,12 +22,17 @@ import java.util.concurrent.TimeUnit;
 import org.benf.cfr.reader.api.CfrDriver;
 import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
+import org.sf.feeling.decompiler.util.ASTParserUtil;
 import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
+import org.sf.feeling.decompiler.util.SortMemberUtil;
 
 public class CfrDecompiler implements IDecompiler {
 
@@ -44,11 +49,10 @@ public class CfrDecompiler implements IDecompiler {
 		source = ""; //$NON-NLS-1$
 		File workingDir = new File(root, packege); // $NON-NLS-1$
 
-		String classPathStr = new File(workingDir, className).getAbsolutePath();
-
 		try {
-			source = decompile(classPathStr, null, false, true);
+			source = decompile(workingDir, className, false, true);
 			source = CommentUtil.clearComments(source);
+			source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
@@ -76,16 +80,19 @@ public class CfrDecompiler implements IDecompiler {
 		}
 	}
 
-	public static String decompile(String classFilePath, String methodName) {
-		return decompile(classFilePath, methodName, false);
+	public static String decompile(File workingDir, String className) {
+		return decompile(workingDir, className, false);
 	}
 
-	public static String decompile(String classFilePath, String methodName, boolean hideUnicode) {
-		return decompile(classFilePath, methodName, hideUnicode, true);
+	public static String decompile(File workingDir, String className, boolean hideUnicode) {
+		return decompile(workingDir, className, hideUnicode, true);
 	}
 
-	public static Pair<String, NavigableMap<Integer, Integer>> decompileWithMappings(String classFilePath,
-			String methodName, boolean hideUnicode, boolean printLineNumber) {
+	public static Pair<String, NavigableMap<Integer, Integer>> decompileWithMappings(File workingDir, String className,
+			boolean hideUnicode, boolean printLineNumber) {
+
+		String classPathStr = new File(workingDir, className).getAbsolutePath();
+
 		final StringBuilder sb = new StringBuilder();
 
 		final NavigableMap<Integer, Integer> lineMapping = new TreeMap<>();
@@ -96,16 +103,17 @@ public class CfrDecompiler implements IDecompiler {
 		options.put("showversion", "true");
 		options.put("hideutf", String.valueOf(hideUnicode));
 		options.put("trackbytecodeloc", "true");
-		if (methodName != null && !methodName.isBlank()) {
-			options.put("methodname", methodName);
-		}
 
 		CfrDriver driver = new CfrDriver.Builder().withOptions(options).withOutputSink(mySink).build();
-		List<String> toAnalyse = new ArrayList<>();
-		toAnalyse.add(classFilePath);
+		List<String> toAnalyse = Collections.singletonList(classPathStr);
 		driver.analyse(toAnalyse);
 
 		String resultCode = sb.toString();
+
+		// Parse source code into AST
+		CompilationUnit unit = ASTParserUtil.parse(resultCode);
+		unit.accept(new CfrInnerClassVisitor(options, lineMapping, className, unit, workingDir));
+
 		if (printLineNumber && !lineMapping.isEmpty()) {
 			resultCode = addLineNumber(resultCode, lineMapping);
 		}
@@ -113,9 +121,8 @@ public class CfrDecompiler implements IDecompiler {
 		return Pair.make(resultCode, lineMapping);
 	}
 
-	public static String decompile(String classFilePath, String methodName, boolean hideUnicode,
-			boolean printLineNumber) {
-		return decompileWithMappings(classFilePath, methodName, hideUnicode, printLineNumber).getFirst();
+	public static String decompile(File workingDir, String className, boolean hideUnicode, boolean printLineNumber) {
+		return decompileWithMappings(workingDir, className, hideUnicode, printLineNumber).getFirst();
 	}
 
 	private static String addLineNumber(String src, Map<Integer, Integer> lineMapping) {
@@ -154,6 +161,20 @@ public class CfrDecompiler implements IDecompiler {
 			}
 		}
 		return sb.toString();
+	}
+
+	public static Integer getFirstTypeLineNumber(String source) {
+		// Parse source code into AST
+		CompilationUnit unit = ASTParserUtil.parse(source);
+		SimpleEntry<String, Integer> lineNumber = new SimpleEntry<>("lineNumber", 0);
+		unit.accept(new ASTVisitor() {
+			@Override
+			public boolean visit(TypeDeclaration node) {
+				lineNumber.setValue(unit.getLineNumber(node.getStartPosition()));
+				return super.visit(node);
+			}
+		});
+		return lineNumber.getValue();
 	}
 
 	@Override

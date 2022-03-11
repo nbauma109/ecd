@@ -10,14 +10,12 @@ package org.sf.feeling.decompiler.util;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
@@ -26,7 +24,6 @@ import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtil {
@@ -97,16 +94,7 @@ public class DecompilerOutputUtil {
 
 		// Parse source code into AST
 		javaSrcLines.add(null);
-		ASTParser parser = ASTParser.newParser(DecompilerOutputUtil.getMaxJSLLevel()); // AST.JLS3
-		CompilerOptions option = new CompilerOptions();
-		Map<String, String> options = option.getMap();
-		options.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
-		options.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
-		parser.setCompilerOptions(options);
-
-		parser.setSource(input.toCharArray());
-
-		unit = (CompilationUnit) parser.createAST(null);
+		unit = ASTParserUtil.parse(input);
 
 		// Iterate over types (ignoring enums and annotations)
 		List types = unit.types();
@@ -361,7 +349,7 @@ public class DecompilerOutputUtil {
 	}
 
 	public static int parseJavaLineNumber(String decompilerType, String line) {
-		String regex = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
+		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
 		if (DecompilerType.FernFlower.equals(decompilerType)) {
 			regex = "//\\s+\\d+"; //$NON-NLS-1$
 		}
@@ -374,7 +362,7 @@ public class DecompilerOutputUtil {
 	}
 
 	public static int parseJavaLineNumber(String line) {
-		String regex = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
+		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(line.trim());
 		if (matcher.find()) {
@@ -391,7 +379,7 @@ public class DecompilerOutputUtil {
 	}
 
 	private String removeJavaLineNumber(String line, boolean generageEmptyString, int leftTrimSpace) {
-		String regex = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
+		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
 		if (DecompilerType.FernFlower.equals(decompilerType)) {
 			regex = "//\\s+\\d+(\\s*\\d*)*"; //$NON-NLS-1$
 		}

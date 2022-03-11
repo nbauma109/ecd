@@ -30,15 +30,21 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.internal.corext.codemanipulation.SortMembersOperation;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.text.edits.MalformedTreeException;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
-public class SortMemberUtil {
+public final class SortMemberUtil {
 
 	private static IPackageFragmentRoot decompilerSourceFolder = null;
+
+	private SortMemberUtil() {
+	}
 
 	public static String sortMember(String packageName, String className, String code) {
 
@@ -90,9 +96,7 @@ public class SortMemberUtil {
 			if (content != null)
 				code = content;
 			packageFragment.getJavaProject().close();
-		} catch (IOException e) {
-			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-		} catch (CoreException e) {
+		} catch (IOException | CoreException e) {
 			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
 		}
 		return code;
@@ -173,5 +177,13 @@ public class SortMemberUtil {
 			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
 		}
 		return null;
+	}
+
+	public static String sortMembersBySourceCodeOrder(String source, String className)
+			throws MalformedTreeException, BadLocationException {
+		CompilationUnit unitWithLineNumbers = ASTParserUtil.parse(source);
+		SortMembersVisitor sortMembersVisitor = new SortMembersVisitor(source, unitWithLineNumbers, className);
+		unitWithLineNumbers.accept(sortMembersVisitor);
+		return sortMembersVisitor.sortMembers();
 	}
 }

@@ -11,7 +11,6 @@ package org.sf.feeling.decompiler.editor;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,19 +36,12 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IFindReplaceTarget;
-import org.eclipse.jface.text.ITextViewerExtension5;
-import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.search2.internal.ui.text.AnnotationManagers;
-import org.eclipse.search2.internal.ui.text.EditorAnnotationManager;
-import org.eclipse.search2.internal.ui.text.WindowAnnotationManager;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.events.MouseAdapter;
-import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
@@ -57,7 +49,6 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IWorkbenchCommandConstants;
-import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
 import org.eclipse.ui.ide.FileStoreEditorInput;
@@ -73,6 +64,7 @@ import org.eclipse.ui.texteditor.IncrementalFindAction;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.actions.DecompileActionGroup;
 import org.sf.feeling.decompiler.util.ClassUtil;
+import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.DecompileUtil;
 import org.sf.feeling.decompiler.util.DecompilerOutputUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
@@ -85,8 +77,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	public static final String ID = "org.sf.feeling.decompiler.ClassFileEditor"; //$NON-NLS-1$
 
 	private IBuffer classBuffer;
-	private PaintListener paintListener;
-	private MouseAdapter mouseAdapter;
 	private int currentSourceMode = -1;
 	private boolean selectionChange = false;
 	private ISourceReference selectedElement = null;
@@ -260,7 +250,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	public static boolean isDebug(String source) {
 		if (source == null)
 			return false;
-		Pattern pattern = Pattern.compile("/\\*\\s*\\d+\\s*\\*/"); //$NON-NLS-1$
+		Pattern pattern = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
 		Matcher matcher = pattern.matcher(source);
 		return matcher.find() || source.indexOf(DecompilerOutputUtil.NO_LINE_NUMBER) != -1;
 	}
@@ -446,47 +436,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		ReflectionUtils.invokeMethod(this.getViewer(), "fireSelectionChanged", //$NON-NLS-1$
 				new Class[] { SelectionChangedEvent.class }, new Object[] {
 						new SelectionChangedEvent((ISelectionProvider) this.getViewer(), new StructuredSelection()) });
-	}
-
-	/**
-	 * Returns the absolute offset of the caret, which includes all characters in
-	 * collapsed code for the given text.
-	 *
-	 * getCaretOffset returns actual offset that user sees not including characters
-	 * collapsed code. See https://stackoverflow.com/a/42828319
-	 *
-	 * @param text to get caret position from
-	 * @return model (absolute) offset of caret
-	 */
-	private int getCaretModelOffset(final StyledText text) {
-		int offset;
-		ISourceViewer sourceViewer = getSourceViewer();
-		if (sourceViewer instanceof ITextViewerExtension5) {
-			ITextViewerExtension5 extension = (ITextViewerExtension5) sourceViewer;
-			offset = extension.widgetOffset2ModelOffset(text.getCaretOffset());
-		} else {
-			int visibleRegionOffset = sourceViewer.getVisibleRegion().getOffset();
-			offset = visibleRegionOffset + text.getCaretOffset();
-		}
-		return offset;
-	}
-
-	private void updateMatchAnnonation() {
-		WindowAnnotationManager mgr = (WindowAnnotationManager) ReflectionUtils.invokeMethod(AnnotationManagers.class,
-				"getWindowAnnotationManager", //$NON-NLS-1$
-				new Class[] { IWorkbenchWindow.class },
-				new Object[] { PlatformUI.getWorkbench().getActiveWorkbenchWindow() });
-		if (mgr == null)
-			return;
-		Map<IEditorPart, EditorAnnotationManager> fAnnotationManagers = (Map<IEditorPart, EditorAnnotationManager>) ReflectionUtils
-				.getFieldValue(mgr, "fAnnotationManagers"); //$NON-NLS-1$
-		if (fAnnotationManagers == null)
-			return;
-		EditorAnnotationManager amgr = fAnnotationManagers.get(JavaDecompilerClassFileEditor.this);
-		if (amgr == null)
-			return;
-		ReflectionUtils.invokeMethod(amgr, "removeAllAnnotations", //$NON-NLS-1$
-				new Class[0], new Object[0]);
 	}
 
 	@Override
