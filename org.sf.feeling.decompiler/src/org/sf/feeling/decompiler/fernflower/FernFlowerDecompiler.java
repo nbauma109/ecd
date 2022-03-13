@@ -10,13 +10,18 @@ package org.sf.feeling.decompiler.fernflower;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.text.edits.MalformedTreeException;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
@@ -28,6 +33,8 @@ import org.sf.feeling.decompiler.util.ClassUtil;
 import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
+import org.sf.feeling.decompiler.util.Logger;
+import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 public class FernFlowerDecompiler implements IDecompiler {
@@ -55,9 +62,9 @@ public class FernFlowerDecompiler implements IDecompiler {
 
 		loggerStream = new ByteArrayOutputStream();
 
-		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
+		File workingDir = new File(root, packege); // $NON-NLS-1$
 
-		final Map<String, Object> mapOptions = new HashMap<String, Object>();
+		final Map<String, Object> mapOptions = new HashMap<>();
 
 		mapOptions.put(IFernflowerPreferences.REMOVE_SYNTHETIC, "1"); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES, "1"); //$NON-NLS-1$
@@ -65,7 +72,10 @@ public class FernFlowerDecompiler implements IDecompiler {
 		mapOptions.put(IFernflowerPreferences.DECOMPILE_ENUM, "1"); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.LOG_LEVEL, IFernflowerLogger.Severity.ERROR.name());
 		mapOptions.put(IFernflowerPreferences.ASCII_STRING_CHARACTERS, "1"); //$NON-NLS-1$
-		if (ClassUtil.isDebug()) {
+		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+		if (showLineNumber || ClassUtil.isDebug()) {
 			mapOptions.put(IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1"); //$NON-NLS-1$
 			mapOptions.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1"); //$NON-NLS-1$
 		}
@@ -86,18 +96,10 @@ public class FernFlowerDecompiler implements IDecompiler {
 		}
 		ConsoleDecompiler decompiler = new EmbeddedConsoleDecompiler();
 
-		File[] files = workingDir.listFiles(new FilenameFilter() {
-
-			@Override
-			public boolean accept(File dir, String name) {
-				if (name.toLowerCase().indexOf(className.toLowerCase()) != -1)
-					return true;
-				return false;
-			}
-		});
+		File[] files = workingDir.listFiles();
 		if (files != null) {
-			for (int j = 0; j < files.length; j++) {
-				decompiler.addSource(files[j]);
+			for (File file : files) {
+				decompiler.addSource(file);
 			}
 		}
 
@@ -105,13 +107,23 @@ public class FernFlowerDecompiler implements IDecompiler {
 
 		File classFile = new File(tmpDir, className.replaceAll("(?i)\\.class", ".java")); //$NON-NLS-1$ //$NON-NLS-2$
 
-		source = UnicodeUtil.decode(FileUtil.getContent(classFile));
-
-		classFile.delete();
+		try {
+			source = UnicodeUtil.decode(Files.readString(classFile.toPath(), StandardCharsets.UTF_8));
+			Files.delete(classFile.toPath());
+		} catch (IOException e) {
+			Logger.error(e);
+		}
 
 		FileUtil.deltree(tmpDir);
 
-		source = CommentUtil.clearComments(source);
+		if (align) {
+			try {
+				source = CommentUtil.clearComments(source);
+				source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
+			} catch (MalformedTreeException | BadLocationException e) {
+				Logger.error(e);
+			}
+		}
 
 		time = System.currentTimeMillis() - start;
 	}
@@ -136,7 +148,6 @@ public class FernFlowerDecompiler implements IDecompiler {
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
-			return;
 		} finally {
 			FileUtil.deltree(workingDir);
 		}

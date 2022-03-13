@@ -31,7 +31,7 @@ public class CfrSourceMapper extends BaseDecompilerSourceMapper {
 		source.append("\tTotal time: ") //$NON-NLS-1$
 				.append(decompilationTime).append(" ms\n"); //$NON-NLS-1$
 		source.append("\t" //$NON-NLS-1$
-				+ origionalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ origionalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
 		exceptions.addAll(origionalDecompiler.getExceptions());
 		logExceptions(exceptions, source);

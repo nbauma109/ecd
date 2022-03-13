@@ -16,7 +16,7 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<fernflower.version>403</fernflower.version>
+		<fernflower.version>1.0.8</fernflower.version>
 	</properties>
 
 	<build>
@@ -35,7 +35,7 @@
 						<configuration>
 							<artifactItems>
 								<artifactItem>
-									<groupId>net.minecraftforge</groupId>
+									<groupId>com.github.nbauma109.fernflower</groupId>
 									<artifactId>fernflower</artifactId>
 									<version>${fernflower.version}</version>
 									<overWrite>true</overWrite>
@@ -66,14 +66,14 @@
 
 	<repositories>
 		<repository>
-			<id>minecraftforge</id>
-			<url>https://files.minecraftforge.net/maven/</url>
+			<id>jitpack</id>
+			<url>https://jitpack.io</url>
 		</repository>
 	</repositories>
 
 	<dependencies>
 		<dependency>
-			<groupId>net.minecraftforge</groupId>
+			<groupId>com.github.nbauma109.fernflower</groupId>
 			<artifactId>fernflower</artifactId>
 			<version>${fernflower.version}</version>
 		</dependency>

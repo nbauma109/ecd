@@ -23,10 +23,10 @@ _Primary Source: https://mvnrepository.com/artifact/org.ow2.asm/asm_
 
 ### Fernflower
 _Primary Source: https://github.com/JetBrains/intellij-community/tree/master/plugins/java-decompiler/engine_
-_Build Source: https://github.com/MinecraftForge/FernFlower with builds at http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/_
-* `./org.sf.feeling.decompiler/lib/fernflower-403.jar`
-  * SHA-256: fa97145cb184dfa79046b680106305716606bdccfa5e4e680044ae647df1a8a1
-  * Version from http://files.minecraftforge.net/maven/net/minecraftforge/fernflower/403/fernflower-403.jar
+_Build Source: https://github.com/nbauma109/fernflower
+* `./org.sf.feeling.decompiler/lib/fernflower-1.0.8.jar`
+  * SHA-256: 0c175ad447f0e2ae31b3b2196a23bb6e90c33b96dda82fc21b2e4d1d2080a260
+  * Version from https://jitpack.io/com/github/nbauma109/fernflower/fernflower/1.0.8/fernflower-1.0.8.jar
 
 ### Minimal JSON
 _Primary Source: https://github.com/ralfstx/minimal-json_

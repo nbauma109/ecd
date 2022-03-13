@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.jetbrains.java.decompiler.struct.StructClass;
 import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
+import org.jetbrains.java.decompiler.util.DataInputFullStream;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.jd.JDCoreDecompilerPlugin;
@@ -56,8 +57,8 @@ public class JDCoreDecompiler implements IDecompiler {
 
 		try {
 			if (classPackage.length() == 0) {
-				StructClass structClass = new StructClass(FileUtil.getBytes(new File(root, className)), true,
-						new LazyLoader(null));
+				DataInputFullStream difs = new DataInputFullStream(FileUtil.getBytes(new File(root, className)));
+				StructClass structClass = StructClass.create(difs, true, new LazyLoader(null));
 				structClass.releaseResources();
 				classPackage = structClass.qualifiedName.replace("/" //$NON-NLS-1$
 						+ className.replaceAll("(?i)\\.class", ""), ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$

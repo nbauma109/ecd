@@ -25,6 +25,7 @@ import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
@@ -50,9 +51,14 @@ public class CfrDecompiler implements IDecompiler {
 		File workingDir = new File(root, packege); // $NON-NLS-1$
 
 		try {
-			source = decompile(workingDir, className, false, true);
-			source = CommentUtil.clearComments(source);
-			source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
+			IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+			boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+			boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+			source = decompile(workingDir, className, false, showLineNumber);
+			if (align) {
+				source = CommentUtil.clearComments(source);
+				source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
+			}
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
@@ -134,16 +140,16 @@ public class CfrDecompiler implements IDecompiler {
 		}
 
 		String formatStr = "/* %2d */ ";
-		String emptyStr = "       ";
+		String emptyStr = "         ";
 
 		StringBuilder sb = new StringBuilder();
 
 		if (maxLineNumber >= 1000) {
 			formatStr = "/* %4d */ ";
-			emptyStr = "         ";
+			emptyStr = "           ";
 		} else if (maxLineNumber >= 100) {
 			formatStr = "/* %3d */ ";
-			emptyStr = "        ";
+			emptyStr = "          ";
 		}
 
 		int index = 0;

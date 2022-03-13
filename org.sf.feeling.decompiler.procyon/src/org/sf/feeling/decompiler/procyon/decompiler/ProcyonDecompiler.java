@@ -14,11 +14,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.procyon.ProcyonDecompilerPlugin;
@@ -28,8 +30,10 @@ import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
 import org.sf.feeling.decompiler.util.Logger;
+import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
 
+import com.strobel.assembler.InputTypeLoader;
 import com.strobel.assembler.metadata.DeobfuscationUtilities;
 import com.strobel.assembler.metadata.MetadataSystem;
 import com.strobel.assembler.metadata.TypeDefinition;
@@ -55,21 +59,16 @@ public class ProcyonDecompiler implements IDecompiler {
 		long start = System.nanoTime();
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
-		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
+		File workingDir = new File(root, packege); // $NON-NLS-1$
 
 		final String classPathStr = new File(workingDir, className).getAbsolutePath();
 
-		boolean includeLineNumbers = false;
-		boolean stretchLines = false;
-		if (ClassUtil.isDebug()) {
-			includeLineNumbers = true;
-			stretchLines = true;
-		}
+		final boolean includeLineNumbers = ClassUtil.isDebug();
 
 		DecompilationOptions decompilationOptions = new DecompilationOptions();
 
 		DecompilerSettings settings = DecompilerSettings.javaDefaults();
-		settings.setTypeLoader(new com.strobel.assembler.InputTypeLoader());
+		settings.setTypeLoader(new InputTypeLoader((internalName, buffer) -> false));
 		settings.setForceExplicitImports(true);
 
 		decompilationOptions.setSettings(settings);
@@ -82,8 +81,8 @@ public class ProcyonDecompiler implements IDecompiler {
 
 		TypeDefinition resolvedType;
 		if ((type == null) || ((resolvedType = type.resolve()) == null)) {
-			System.err.printf("!!! ERROR: Failed to load class %s.\n", //$NON-NLS-1$
-					new Object[] { classPathStr });
+			Logger.error("!!! ERROR: Failed to load class " //$NON-NLS-1$
+					+ classPathStr);
 			return;
 		}
 
@@ -108,34 +107,39 @@ public class ProcyonDecompiler implements IDecompiler {
 
 			List<LineNumberPosition> lineNumberPositions = results.getLineNumberPositions();
 
-			if (includeLineNumbers || stretchLines) {
+			if (includeLineNumbers) {
 				EnumSet<LineNumberOption> lineNumberOptions = EnumSet.noneOf(LineNumberOption.class);
 
-				if (includeLineNumbers) {
-					lineNumberOptions.add(LineNumberFormatter.LineNumberOption.LEADING_COMMENTS);
-				}
-
-				if (stretchLines) {
-					lineNumberOptions.add(LineNumberFormatter.LineNumberOption.STRETCHED);
-				}
+				lineNumberOptions.add(LineNumberFormatter.LineNumberOption.LEADING_COMMENTS);
 
 				LineNumberFormatter lineFormatter = new LineNumberFormatter(classFile, lineNumberPositions,
 						lineNumberOptions);
 
-				source = lineFormatter.reformatFile();
+				IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+				boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+				boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+				if (showLineNumber) {
+					source = lineFormatter.reformatFile();
+					if (align) {
+						source = CommentUtil.clearComments(source);
+						source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
+					}
+				}
 			} else {
 				source = FileUtil.getContent(classFile);
 			}
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 			Logger.error(e);
 		}
 
 		source = UnicodeUtil.decode(source);
 
-		classFile.delete();
-
-		source = CommentUtil.clearComments(source);
+		try {
+			Files.delete(classFile.toPath());
+		} catch (IOException e) {
+			Logger.error(e);
+		}
 
 		time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 	}
@@ -161,7 +165,6 @@ public class ProcyonDecompiler implements IDecompiler {
 			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
-			return;
 		} finally {
 			FileUtil.deltree(workingDir);
 		}

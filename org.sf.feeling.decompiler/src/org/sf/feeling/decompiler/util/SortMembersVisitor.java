@@ -92,11 +92,7 @@ public final class SortMembersVisitor extends ASTVisitor {
 			String newBodyText = resultCode.substring(newBodyStart, newBodyStart + newBody.getLength());
 			edits.addChild(new ReplaceEdit(oldBody.getStartPosition(), oldBody.getLength(), newBodyText));
 		}
-		try {
-			edits.apply(document);
-		} catch (MalformedTreeException | BadLocationException e) {
-			e.printStackTrace();
-		}
+		edits.apply(document);
 		return document.get();
 	}
 }

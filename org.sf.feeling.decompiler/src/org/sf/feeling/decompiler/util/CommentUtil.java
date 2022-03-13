@@ -1,6 +1,5 @@
 package org.sf.feeling.decompiler.util;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -14,7 +13,6 @@ import org.eclipse.jface.text.Document;
 import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.MalformedTreeException;
 import org.eclipse.text.edits.TextEdit;
-import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public final class CommentUtil {
 
@@ -23,13 +21,12 @@ public final class CommentUtil {
 	private CommentUtil() {
 	}
 
-	public static String clearComments(String input) {
+	public static String clearComments(String input) throws MalformedTreeException, BadLocationException {
 		CompilationUnit unit = ASTParserUtil.parse(input);
 		AST ast = unit.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
 		Document document = new Document(input);
 		TextEdit edits = rewriter.rewriteAST(document, null);
-		List<TextEdit> textEdits = new ArrayList<>();
 		List<Comment> commentList = unit.getCommentList();
 		for (Comment comment : commentList) {
 			if (comment.isBlockComment()) {
@@ -39,16 +36,11 @@ public final class CommentUtil {
 				int commentEnd = commentStart + commentLength;
 				String commentText = input.substring(commentStart, commentEnd);
 				if (!LINE_NUMBER_COMMENT.matcher(commentText.trim()).matches()) {
-					textEdits.add(new DeleteEdit(commentStart, commentLength));
+					edits.addChild(new DeleteEdit(commentStart, commentLength));
 				}
 			}
 		}
-		edits.addChildren(textEdits.toArray(TextEdit[]::new));
-		try {
-			edits.apply(document);
-		} catch (MalformedTreeException | BadLocationException e) {
-			JavaDecompilerPlugin.logError(e, e.getMessage());
-		}
+		edits.apply(document);
 		return document.get();
 	}
 }

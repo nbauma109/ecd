@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import com.strobel.decompiler.languages.LineNumberPosition;
 
@@ -38,7 +39,7 @@ import com.strobel.decompiler.languages.LineNumberPosition;
 public class LineNumberFormatter {
 	private final List<LineNumberPosition> _positions;
 	private final File _file;
-	private final EnumSet<LineNumberOption> _options;
+	private final Set<LineNumberOption> _options;
 
 	public enum LineNumberOption {
 		LEADING_COMMENTS, STRETCHED,
@@ -53,8 +54,7 @@ public class LineNumberFormatter {
 	 * @param options             controls how 'this' represents line numbers in the
 	 *                            resulting file
 	 */
-	public LineNumberFormatter(File file, List<LineNumberPosition> lineNumberPositions,
-			EnumSet<LineNumberOption> options) {
+	public LineNumberFormatter(File file, List<LineNumberPosition> lineNumberPositions, Set<LineNumberOption> options) {
 		_file = file;
 		_positions = lineNumberPositions;
 		_options = (options == null ? EnumSet.noneOf(LineNumberOption.class) : options);
@@ -142,9 +142,7 @@ public class LineNumberFormatter {
 		return brokenLines;
 	}
 
-	private void emitFormatted(List<String> brokenLines, List<LineNumberPosition> lineBrokenPositions, Writer writer)
-			throws IOException {
-		File tempFile = new File(_file.getAbsolutePath() + ".fixed");
+	private void emitFormatted(List<String> brokenLines, List<LineNumberPosition> lineBrokenPositions, Writer writer) {
 		int globalOffset = 0;
 		int numLinesRead = 0;
 		Iterator<String> lines = brokenLines.iterator();
@@ -234,11 +232,6 @@ public class LineNumberFormatter {
 				w.println(line);
 			}
 		}
-
-		// Delete the original file and rename the formatted temp file over the
-		// original.
-		_file.delete();
-		tempFile.renameTo(_file);
 	}
 
 }
