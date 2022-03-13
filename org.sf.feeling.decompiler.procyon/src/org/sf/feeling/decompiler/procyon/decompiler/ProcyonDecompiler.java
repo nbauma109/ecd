@@ -30,7 +30,6 @@ import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
 import org.sf.feeling.decompiler.util.Logger;
-import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 import com.strobel.assembler.InputTypeLoader;
@@ -122,7 +121,6 @@ public class ProcyonDecompiler implements IDecompiler {
 					source = lineFormatter.reformatFile();
 					if (align) {
 						source = CommentUtil.clearComments(source);
-						source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
 					}
 				}
 			} else {

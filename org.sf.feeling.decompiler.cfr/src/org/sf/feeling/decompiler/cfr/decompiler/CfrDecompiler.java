@@ -33,7 +33,6 @@ import org.sf.feeling.decompiler.util.ASTParserUtil;
 import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
-import org.sf.feeling.decompiler.util.SortMemberUtil;
 
 public class CfrDecompiler implements IDecompiler {
 
@@ -57,7 +56,6 @@ public class CfrDecompiler implements IDecompiler {
 			source = decompile(workingDir, className, false, showLineNumber);
 			if (align) {
 				source = CommentUtil.clearComments(source);
-				source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
 			}
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());

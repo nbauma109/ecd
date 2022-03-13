@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.text.edits.MalformedTreeException;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
@@ -34,7 +32,6 @@ import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
 import org.sf.feeling.decompiler.util.Logger;
-import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 public class FernFlowerDecompiler implements IDecompiler {
@@ -119,8 +116,7 @@ public class FernFlowerDecompiler implements IDecompiler {
 		if (align) {
 			try {
 				source = CommentUtil.clearComments(source);
-				source = SortMemberUtil.sortMembersBySourceCodeOrder(source, className);
-			} catch (MalformedTreeException | BadLocationException e) {
+			} catch (Exception e) {
 				Logger.error(e);
 			}
 		}
