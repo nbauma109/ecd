@@ -315,7 +315,7 @@ public class DecompilerOutputUtil {
 		return number;
 	}
 
-	private String generageEmptyString(int length) {
+	private String generateEmptyString(int length) {
 		char[] chs = new char[length];
 		for (int i = 0; i < chs.length; i++) {
 			chs[i] = ' ';
@@ -372,14 +372,16 @@ public class DecompilerOutputUtil {
 		return -1;
 	}
 
-	private String removeJavaLineNumber(String line, boolean generageEmptyString, int leftTrimSpace) {
+	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(line.trim());
 
 		if (matcher.find()) {
 			line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-			line = generageEmptyString(matcher.group().length()) + line;
+			if (generateEmptyString) {
+				line = generateEmptyString(matcher.group().length()) + line;
+			}
 		}
 		regex = "/\\*\\s+\\*/"; //$NON-NLS-1$
 		pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
@@ -387,11 +389,11 @@ public class DecompilerOutputUtil {
 
 		if (matcher.find()) {
 			line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-			if (generageEmptyString) {
-				line = generageEmptyString(matcher.group().length()) + line;
+			if (generateEmptyString) {
+				line = generateEmptyString(matcher.group().length()) + line;
 			}
 		}
-		if (leftTrimSpace > 0 && line.startsWith(generageEmptyString(leftTrimSpace))) {
+		if (leftTrimSpace > 0 && line.startsWith(generateEmptyString(leftTrimSpace))) {
 			line = line.substring(leftTrimSpace);
 		}
 		return line;
