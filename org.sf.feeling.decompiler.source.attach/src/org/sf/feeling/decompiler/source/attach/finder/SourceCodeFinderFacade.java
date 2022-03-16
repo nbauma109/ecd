@@ -131,8 +131,12 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 		String nexusUrl = prefs.getString(JavaDecompilerPlugin.NEXUS_URL);
 		String nexusUser = prefs.getString(JavaDecompilerPlugin.NEXUS_USER);
 		String nexusPassword = prefs.getString(JavaDecompilerPlugin.NEXUS_PASSWORD);
-		if (!nexusUrl.isBlank() && !nexusUser.isBlank() && !nexusPassword.isBlank()) {
-			finders.add(new Nexus3SourceCodeFinder(nexusUrl, nexusUser, nexusPassword));
+		if (!nexusUrl.isBlank()) {
+			if (!nexusUser.isBlank() && !nexusPassword.isBlank()) {
+				finders.add(new Nexus3SourceCodeFinder(nexusUrl, nexusUser, nexusPassword));
+			} else {
+				finders.add(new Nexus3SourceCodeFinder(nexusUrl));
+			}
 		}
 	}
 
