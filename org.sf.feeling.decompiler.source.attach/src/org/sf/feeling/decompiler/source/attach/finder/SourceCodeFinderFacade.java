@@ -12,72 +12,80 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class SourceCodeFinderFacade implements SourceCodeFinder {
 
-	private SourceCodeFinder[] finders = {
+	private static final String HTTPS_WWW_MMNT_RU_INT_GET_ST_0 = "https://www.mmnt.ru/int/get?st={0}";
+	private static final String HTTPS_REPO_SPRING_IO_WEBAPP_HOME_HTML = "https://repo.spring.io/webapp/home.html";
+	private static final String HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY_WEBAPP_HOME_HTML = "https://repository.cloudera.com/artifactory/webapp/home.html";
+	private static final String HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML = "https://nexus.xwiki.org/nexus/index.html";
+	private static final String HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML = "https://maven.alfresco.com/nexus/index.html";
+	private static final String HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML = "https://maven.nuxeo.org/nexus/index.html";
+	private static final String HTTPS_MAVEN_JAVA_NET_INDEX_HTML = "https://maven.java.net/index.html";
+	private static final String HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML = "https://repository.ow2.org/nexus/index.html";
+	private static final String HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML = "https://repository.apache.org/index.html";
+	private static final String HTTPS_REPO_GRAILS_ORG_GRAILS_WEBAPP_HOME_HTML = "https://repo.grails.org/grails/webapp/home.html";
+	private static final String HTTPS_OSS_SONATYPE_ORG_INDEX_HTML = "https://oss.sonatype.org/index.html";
 
-			new MavenRepoSourceCodeFinder(), new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
+	private static List<SourceCodeFinder> finders = new ArrayList<>();
+	static {
+		addPrivateNexusRepo(finders);
+		finders.add(new MavenRepoSourceCodeFinder());
+		finders.add(new NexusSourceCodeFinder(HTTPS_OSS_SONATYPE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_GRAILS_ORG_GRAILS_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_JAVA_NET_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new NexusSourceCodeFinder(HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_SPRING_IO_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		finders.add(new EclipsePluginSourceByUrlPatternFinder(HTTPS_WWW_MMNT_RU_INT_GET_ST_0)); // $NON-NLS-1$
+		finders.add(new EclipseSourceReferencesSourceCodeFinder());
+		finders.add(new JreSourceCodeFinder());
+	}
 
-			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.java.net/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.nuxeo.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.alfresco.com/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://nexus.xwiki.org/nexus/index.html"), //$NON-NLS-1$
+	private static List<SourceCodeFinder> jreFinders = new ArrayList<>();
+	static {
+		jreFinders.add(new MavenRepoSourceCodeFinder());
+		jreFinders.add(new JreSourceCodeFinder());
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_OSS_SONATYPE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_GRAILS_ORG_GRAILS_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_JAVA_NET_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new NexusSourceCodeFinder(HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		jreFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		jreFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_SPRING_IO_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		jreFinders.add(new EclipsePluginSourceByUrlPatternFinder(HTTPS_WWW_MMNT_RU_INT_GET_ST_0)); // $NON-NLS-1$
+		jreFinders.add(new EclipseSourceReferencesSourceCodeFinder());
+	}
 
-			new ArtifactorySourceCodeFinder("https://repository.cloudera.com/artifactory/webapp/home.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.spring.io/webapp/home.html"), //$NON-NLS-1$
-
-			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
-
-			new EclipseSourceReferencesSourceCodeFinder(), new JreSourceCodeFinder() };
-
-	private SourceCodeFinder[] jreFinders = {
-
-			new MavenRepoSourceCodeFinder(), new JreSourceCodeFinder(),
-
-			new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
-
-			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.java.net/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.nuxeo.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.alfresco.com/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://nexus.xwiki.org/nexus/index.html"), //$NON-NLS-1$
-
-			new ArtifactorySourceCodeFinder("https://repository.cloudera.com/artifactory/webapp/home.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.spring.io/webapp/home.html"), //$NON-NLS-1$
-
-			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
-
-			new EclipseSourceReferencesSourceCodeFinder() };
-
-	private SourceCodeFinder[] eclipseFinders = {
-
-			new EclipsePluginSourceByUrlPatternFinder("https://www.mmnt.ru/int/get?st={0}"), //$NON-NLS-1$
-
-			new MavenRepoSourceCodeFinder(), new EclipseSourceReferencesSourceCodeFinder(),
-
-			new NexusSourceCodeFinder("https://oss.sonatype.org/index.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.grails.org/grails/webapp/home.html"), //$NON-NLS-1$
-
-			new NexusSourceCodeFinder("https://repository.apache.org/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://repository.ow2.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.java.net/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.nuxeo.org/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://maven.alfresco.com/nexus/index.html"), //$NON-NLS-1$
-			new NexusSourceCodeFinder("https://nexus.xwiki.org/nexus/index.html"), //$NON-NLS-1$
-
-			new ArtifactorySourceCodeFinder("https://repository.cloudera.com/artifactory/webapp/home.html"), //$NON-NLS-1$
-			new ArtifactorySourceCodeFinder("https://repo.spring.io/webapp/home.html"), //$NON-NLS-1$
-
-			new JreSourceCodeFinder() };
+	private static List<SourceCodeFinder> eclipseFinders = new ArrayList<>();
+	static {
+		eclipseFinders.add(new EclipsePluginSourceByUrlPatternFinder(HTTPS_WWW_MMNT_RU_INT_GET_ST_0)); // $NON-NLS-1$
+		eclipseFinders.add(new MavenRepoSourceCodeFinder());
+		eclipseFinders.add(new EclipseSourceReferencesSourceCodeFinder());
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_OSS_SONATYPE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_GRAILS_ORG_GRAILS_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_JAVA_NET_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new NexusSourceCodeFinder(HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_SPRING_IO_WEBAPP_HOME_HTML)); // $NON-NLS-1$
+		eclipseFinders.add(new JreSourceCodeFinder());
+	}
 
 	private boolean canceled;
 
@@ -96,7 +104,7 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 			return;
 		}
 
-		SourceCodeFinder[] searchFinders = finders;
+		List<SourceCodeFinder> searchFinders = finders;
 		if (binFilePath.toLowerCase().indexOf("jre") != -1) //$NON-NLS-1$
 		{
 			searchFinders = jreFinders;
@@ -105,9 +113,9 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 			searchFinders = eclipseFinders;
 		}
 
-		for (int i = 0; i < searchFinders.length && !this.canceled; i++) {
+		for (int i = 0; i < searchFinders.size() && !this.canceled; i++) {
 			List<SourceFileResult> results2 = new ArrayList<>();
-			SourceCodeFinder finder = searchFinders[i];
+			SourceCodeFinder finder = searchFinders.get(i);
 			Logger.debug(finder + " " + binFile, null); //$NON-NLS-1$
 
 			finder.find(binFilePath, results2);
@@ -118,11 +126,21 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 		}
 	}
 
+	private static void addPrivateNexusRepo(List<SourceCodeFinder> finders) {
+		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+		String nexusUrl = prefs.getString(JavaDecompilerPlugin.NEXUS_URL);
+		String nexusUser = prefs.getString(JavaDecompilerPlugin.NEXUS_USER);
+		String nexusPassword = prefs.getString(JavaDecompilerPlugin.NEXUS_PASSWORD);
+		if (!nexusUrl.isBlank() && !nexusUser.isBlank() && !nexusPassword.isBlank()) {
+			finders.add(new Nexus3SourceCodeFinder(nexusUrl, nexusUser, nexusPassword));
+		}
+	}
+
 	@Override
 	public void cancel() {
 		this.canceled = true;
-		for (int i = 0; i < this.finders.length && !this.canceled; i++) {
-			SourceCodeFinder finder = this.finders[i];
+		for (int i = 0; i < finders.size() && !this.canceled; i++) {
+			SourceCodeFinder finder = finders.get(i);
 			finder.cancel();
 		}
 	}

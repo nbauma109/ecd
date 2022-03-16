@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -115,18 +116,19 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 	}
 
 	protected Map<GAV, String> findSourcesUsingArtifactory(Collection<GAV> gavs) throws Exception {
-		Map<GAV, String> results = new HashMap<GAV, String>();
+		Map<GAV, String> results = new HashMap<>();
 		for (GAV gav : gavs) {
 			if (canceled)
 				return results;
-			Set<GAV> gavs2 = findArtifactsUsingArtifactory(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(), "sources", null, true); //$NON-NLS-1$
+			Set<GAV> gavs2 = findArtifactsUsingArtifactory(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(),
+					"sources", null, true); //$NON-NLS-1$
 			for (GAV gav2 : gavs2) {
 				if (gav2.getArtifactLink().endsWith("-sources.jar") //$NON-NLS-1$
 						|| gav2.getArtifactLink().endsWith("-sources.zip")) //$NON-NLS-1$
 				{
 					String uri = gav2.getArtifactLink();
 					File file = new File(new UrlDownloader().download(uri));
-					String json = FileUtils.readFileToString(file, "UTF-8");
+					String json = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
 					JsonObject resp = Json.parse(json).asObject();
 					results.put(gav, resp.getString("downloadUri", "")); //$NON-NLS-1$ //$NON-NLS-2$
 				}
@@ -160,7 +162,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 		try {
 			String json;
 			try (InputStream is = connection.getInputStream()) {
-				json = IOUtils.toString(is, "UTF-8");
+				json = IOUtils.toString(is, StandardCharsets.UTF_8);
 			}
 
 			JsonObject resp = Json.parse(json).asObject();

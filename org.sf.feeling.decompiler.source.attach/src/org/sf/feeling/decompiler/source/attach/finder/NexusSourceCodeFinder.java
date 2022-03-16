@@ -119,11 +119,12 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 	}
 
 	private Map<GAV, String> findSourcesUsingNexus(Collection<GAV> gavs) throws Exception {
-		Map<GAV, String> results = new HashMap<GAV, String>();
+		Map<GAV, String> results = new HashMap<>();
 		for (GAV gav : gavs) {
 			if (canceled)
 				return results;
-			Set<GAV> gavs2 = findArtifactsUsingNexus(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(), "sources", null, true); //$NON-NLS-1$
+			Set<GAV> gavs2 = findArtifactsUsingNexus(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(), "sources", //$NON-NLS-1$
+					null, true);
 			for (GAV gav2 : gavs2) {
 				results.put(gav, gav2.getArtifactLink());
 			}
@@ -160,7 +161,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 
 		String[] endpoints = new String[] { //
 				nexusUrl + "service/local/data_index", //$NON-NLS-1$
-				// nexusUrl + "service/local/lucene/search" //$NON-NLS-1$
+				nexusUrl + "service/local/lucene/search" //$NON-NLS-1$
 		};
 		for (String endpoint : endpoints) {
 			if (canceled)
@@ -241,7 +242,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 					}
 				}
 			} catch (Throwable e) {
-				Logger.error("Failed to query source code artuifact", e);
+				Logger.error("Failed to query source code artifact", e);
 			}
 		}
 		return results;

@@ -62,6 +62,12 @@
             class="org.sf.feeling.decompiler.preferences.DisassemblerPreferencePage"
             id="org.sf.feeling.decompiler.Disassembler">
       </page>
+      <page
+            name="%Nexus"
+            category="org.sf.feeling.decompiler.Main"
+            class="org.sf.feeling.decompiler.preferences.NexusPreferencePage"
+            id="org.sf.feeling.decompiler.Nexus">
+      </page>
    </extension>
    <extension
          point="org.eclipse.jdt.ui.javaElementFilters">

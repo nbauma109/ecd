@@ -84,6 +84,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 	public static final String BRANCH_TARGET_ADDRESS_ABSOLUTE = BRANCH_TARGET_ADDRESS_RENDERING + "_ABSOLUTE"; //$NON-NLS-1$
 	public static final String BRANCH_TARGET_ADDRESS_RELATIVE = BRANCH_TARGET_ADDRESS_RENDERING + "_RELATIVE"; //$NON-NLS-1$
 
+	public static final String NEXUS_URL = "NEXUS_URL"; //$NON-NLS-1$
+	public static final String NEXUS_USER = "NEXUS_USER"; //$NON-NLS-1$
+	public static final String NEXUS_PASSWORD = "NEXUS_PASSWORD"; //$NON-NLS-1$
+
 	private static JavaDecompilerPlugin plugin;
 
 	private IPreferenceStore preferenceStore;
