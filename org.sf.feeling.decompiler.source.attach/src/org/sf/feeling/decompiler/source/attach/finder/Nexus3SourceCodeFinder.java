@@ -223,10 +223,7 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 					gav.setVersion(jsonValue.getString("version", ""));
 					if (getLink) {
 						StringBuilder link = new StringBuilder();
-						link.append(serviceUrl);
-						if (!serviceUrl.endsWith("/")) {
-							link.append('/');
-						}
+						link.append(getNexusContextUrl());
 						link.append("repository/");
 						link.append(jsonValue.getString("repositoryName", ""));
 						link.append('/');
