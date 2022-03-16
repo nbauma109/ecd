@@ -3,7 +3,7 @@
 
 	<groupId>com.github.ecd-plugin</groupId>
 	<artifactId>com.github.ecd-plugin.ecd</artifactId>
-	<version>3.3.11</version>
+	<version>3.3.12</version>
 	<packaging>pom</packaging>
 
 	<name>com.github.ecd-plugin.ecd</name>
