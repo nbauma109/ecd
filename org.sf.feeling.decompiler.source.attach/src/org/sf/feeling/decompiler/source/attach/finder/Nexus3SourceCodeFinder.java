@@ -108,12 +108,15 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 		for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
 			String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
 			try {
-				String tmpFile = new UrlDownloader().download(entry.getValue());
+				UrlDownloader urlDownloader = new UrlDownloader();
+				urlDownloader.setServiceUser(serviceUser);
+				urlDownloader.setServicePassword(servicePassword);
+				String tmpFile = urlDownloader.download(entry.getValue());
 				if (tmpFile != null && new File(tmpFile).exists()
 						&& SourceAttachUtil.isSourceCodeFor(tmpFile, binFile)) {
 					setDownloadUrl(entry.getValue());
 					SourceFileResult object = new SourceFileResult(this, binFile, tmpFile, name, 100);
-					Logger.error(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
+					Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
 					results.add(object);
 
 				}

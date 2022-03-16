@@ -12,7 +12,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Authenticator;
 import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Objects;
@@ -51,6 +53,8 @@ import org.sf.feeling.decompiler.util.Logger;
 public class UrlDownloader {
 
 	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.63 Safari/535.7"; //$NON-NLS-1$
+	private String serviceUser;
+	private String servicePassword;
 
 	public String download(final String url) throws Exception {
 		String result;
@@ -223,6 +227,14 @@ public class UrlDownloader {
 		final File file = File.createTempFile(SourceConstants.TEMP_SOURCE_PREFIX, ".tmp"); //$NON-NLS-1$
 		try {
 			final URLConnection conn = new URL(url).openConnection();
+			if (serviceUser != null && servicePassword != null) {
+				((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
+					@Override
+					protected PasswordAuthentication getPasswordAuthentication() {
+						return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
+					}
+				});
+			}
 			conn.setConnectTimeout(5000);
 			conn.setReadTimeout(5000);
 			try (InputStream is = this.openConnectionCheckRedirects(conn)) {
@@ -231,11 +243,11 @@ public class UrlDownloader {
 				}
 			}
 		} catch (Exception ex) {
+			Logger.error(ex);
 			file.delete();
 			return file.getAbsolutePath();
 		}
-		final String result = file.getAbsolutePath();
-		return result;
+		return file.getAbsolutePath();
 	}
 
 	private InputStream openConnectionCheckRedirects(URLConnection c) throws IOException {
@@ -326,5 +338,33 @@ public class UrlDownloader {
 
 	public static int length(final CharSequence cs) {
 		return cs == null ? 0 : cs.length();
+	}
+
+	/**
+	 * @return the serviceUser
+	 */
+	public String getServiceUser() {
+		return serviceUser;
+	}
+
+	/**
+	 * @param serviceUser the serviceUser to set
+	 */
+	public void setServiceUser(String serviceUser) {
+		this.serviceUser = serviceUser;
+	}
+
+	/**
+	 * @return the servicePassword
+	 */
+	public String getServicePassword() {
+		return servicePassword;
+	}
+
+	/**
+	 * @param servicePassword the servicePassword to set
+	 */
+	public void setServicePassword(String servicePassword) {
+		this.servicePassword = servicePassword;
 	}
 }
