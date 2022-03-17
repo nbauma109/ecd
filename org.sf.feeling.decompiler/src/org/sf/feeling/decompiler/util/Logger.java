@@ -34,6 +34,12 @@ public class Logger {
 		}
 	}
 
+	public static void warn(String message) {
+		if (message != null) {
+			JavaDecompilerPlugin.logWarn(message);
+		}
+	}
+
 	public static void error(String message) {
 		if (message != null) {
 			JavaDecompilerPlugin.logError(null, message);

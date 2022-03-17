@@ -125,6 +125,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 		JavaDecompilerPlugin.getDefault().getLog().log(new Status(IStatus.INFO, PLUGIN_ID, 0, message, null));
 	}
 
+	public static void logWarn(String message) {
+		JavaDecompilerPlugin.getDefault().getLog().log(new Status(IStatus.WARNING, PLUGIN_ID, 0, message, null));
+	}
+
 	public static void log(int severity, Throwable t, String message) {
 		JavaDecompilerPlugin.getDefault().getLog().log(new Status(severity, PLUGIN_ID, 0, message, t));
 	}
