@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClassFile;
@@ -57,12 +58,12 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		options.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
 	}
 
-	public BaseDecompilerSourceMapper(IPath sourcePath, String rootPath) {
+	protected BaseDecompilerSourceMapper(IPath sourcePath, String rootPath) {
 
 		this(sourcePath, rootPath, options);
 	}
 
-	public BaseDecompilerSourceMapper(IPath sourcePath, String rootPath, Map<String, String> options) {
+	protected BaseDecompilerSourceMapper(IPath sourcePath, String rootPath, Map<String, String> options) {
 		super(sourcePath, rootPath, options);
 	}
 
@@ -137,7 +138,33 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		isAttachedSource = false;
 
 		if (JavaDecompilerPlugin.getDefault().isAutoAttachSource()) {
-			JavaDecompilerPlugin.getDefault().attachSource(root, false);
+			boolean waitForSources = prefs.getBoolean(JavaDecompilerPlugin.WAIT_FOR_SOURCES);
+			Thread attachSourceThread = JavaDecompilerPlugin.getDefault().attachSource(root, false);
+			if (!always && waitForSources && attachSourceThread != null && root instanceof PackageFragmentRoot) {
+				try {
+					long t0 = System.nanoTime();
+					attachSourceThread.join(10000);
+					long t1 = System.nanoTime();
+					Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t0 - t1) + " millis");
+					PackageFragmentRoot pfr = (PackageFragmentRoot) root;
+					SourceMapper sourceMapper = pfr.getSourceMapper();
+					if (sourceMapper != null && !(sourceMapper instanceof DecompilerSourceMapper)) {
+						attachedSource = sourceMapper.findSource(type, info);
+						if (attachedSource != null) {
+							updateSourceRanges(type, attachedSource);
+							isAttachedSource = true;
+							mapSourceSwitch(type, attachedSource, true);
+							SourceMapperUtil.mapSource(((PackageFragmentRoot) root).getSourceMapper(), type,
+									attachedSource, info);
+							return attachedSource;
+						}
+					}
+				} catch (InterruptedException e) {
+					Logger.error(e);
+					// Restore interrupted state...
+					Thread.currentThread().interrupt();
+				}
+			}
 		}
 
 		String className = new String(info.getName());
@@ -360,7 +387,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 	protected void logExceptions(Collection<Exception> exceptions, StringBuffer buffer) {
 		if (!exceptions.isEmpty()) {
 			buffer.append("\n\tCaught exceptions:"); //$NON-NLS-1$
-			if (exceptions == null || exceptions.isEmpty())
+			if (exceptions.isEmpty())
 				return; // nothing to do
 			buffer.append("\n"); //$NON-NLS-1$
 			StringWriter stackTraces = new StringWriter();

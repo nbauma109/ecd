@@ -24,12 +24,12 @@ import org.sf.feeling.decompiler.util.Logger;
 public class AttachSourceHandler implements IAttachSourceHandler {
 
 	@Override
-	public void execute(final IPackageFragmentRoot library, final boolean showUI) {
+	public Thread execute(final IPackageFragmentRoot library, final boolean showUI) {
 		if (!showUI && SourceAttachUtil.isMavenLibrary(library) && SourceAttachUtil.enableMavenDownload()) {
-			return;
+			return null;
 		}
 
-		final List<IPackageFragmentRoot> selections = new ArrayList<IPackageFragmentRoot>();
+		final List<IPackageFragmentRoot> selections = new ArrayList<>();
 		selections.add(library);
 		if (!selections.isEmpty()) {
 			if (showUI) {
@@ -52,16 +52,17 @@ public class AttachSourceHandler implements IAttachSourceHandler {
 				};
 				thread.setDaemon(true);
 				thread.start();
-
+				return thread;
 			}
 		}
+		return null;
 
 	}
 
 	@Override
 	public boolean syncAttachSource(final IPackageFragmentRoot root) {
 		try {
-			boolean download = SourceAttachUtil.needDownloadSource(Arrays.asList(new IPackageFragmentRoot[] { root }));
+			boolean download = SourceAttachUtil.needDownloadSource(Arrays.asList(root));
 
 			if (download) {
 				return SourceAttachUtil.refreshSourceAttachStatus(root);

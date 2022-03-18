@@ -56,6 +56,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 	public static final String DEFAULT_EDITOR = "org.sf.feeling.decompiler.default_editor"; //$NON-NLS-1$ ;
 	public static final String EXPORT_ENCODING = "org.sf.feeling.decompiler.export.encoding"; //$NON-NLS-1$ ;
 	public static final String ATTACH_SOURCE = "org.sf.feeling.decompiler.attach_source"; //$NON-NLS-1$ ;
+	public static final String WAIT_FOR_SOURCES = "org.sf.feeling.decompiler.wait_for_sources"; //$NON-NLS-1$ ;
 
 	public static final String bytecodeMnemonicPreferencesPrefix = "BYTECODEMNEMONIC_"; //$NON-NLS-1$
 	public static final String BYTECODE_MNEMONIC = bytecodeMnemonicPreferencesPrefix + "bytecodeMnemonic"; //$NON-NLS-1$
@@ -163,6 +164,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 		store.setDefault(PREF_DISPLAY_METADATA, false);
 		store.setDefault(DEFAULT_EDITOR, true);
 		store.setDefault(ATTACH_SOURCE, true);
+		store.setDefault(WAIT_FOR_SOURCES, true);
 		store.setDefault(EXPORT_ENCODING, "UTF-8"); //$NON-NLS-1$
 
 		PreferenceConverter.setDefault(store, BYTECODE_MNEMONIC, new RGB(0, 0, 0));
@@ -263,23 +265,20 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
 	public boolean enableAttachSourceSetting() {
 		Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
-		if (attachSourceAdapter instanceof IAttachSourceHandler) {
-			return true;
-		}
-
-		return false;
+		return attachSourceAdapter instanceof IAttachSourceHandler;
 	}
 
-	private Set<String> librarys = new ConcurrentSkipListSet<String>();
+	private Set<String> librarys = new ConcurrentSkipListSet<>();
 
-	public void attachSource(IPackageFragmentRoot library, boolean force) {
+	public Thread attachSource(IPackageFragmentRoot library, boolean force) {
 		Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
 		if (attachSourceAdapter instanceof IAttachSourceHandler) {
 			if (!librarys.contains(library.getPath().toOSString()) || force) {
 				librarys.add(library.getPath().toOSString());
-				((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
+				return ((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
 			}
 		}
+		return null;
 	}
 
 	public void syncLibrarySource(IPackageFragmentRoot library) {
@@ -295,7 +294,6 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 						if (!((IAttachSourceHandler) attachSourceAdapter).syncAttachSource(library)) {
 							librarys.remove(library.getPath().toOSString());
 						}
-						;
 					}
 				}
 			}

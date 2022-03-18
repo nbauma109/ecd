@@ -12,7 +12,7 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 
 public interface IAttachSourceHandler {
 
-	public void execute(IPackageFragmentRoot library, boolean showUI);
+	public Thread execute(IPackageFragmentRoot library, boolean showUI);
 
 	public boolean syncAttachSource(IPackageFragmentRoot root);
 

@@ -72,11 +72,6 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 	}
 
 	@Override
-	public void createControl(Composite parent) {
-		super.createControl(parent);
-	}
-
-	@Override
 	protected void createFieldEditors() {
 
 		defaultDecompiler = new StringChoiceFieldEditor(JavaDecompilerPlugin.DECOMPILER_TYPE,
@@ -128,6 +123,7 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 
 		if (JavaDecompilerPlugin.getDefault().enableAttachSourceSetting()) {
 			createAttachSourceFieldEditor(basicGroup);
+			createWaitForSourcesFieldEditor(basicGroup);
 		}
 
 		BooleanFieldEditor alwaysUse = new BooleanFieldEditor(JavaDecompilerPlugin.IGNORE_EXISTING,
@@ -211,6 +207,13 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 		addField(attachSource);
 	}
 
+	private void createWaitForSourcesFieldEditor(Group group) {
+		CheckFieldEditor waitForSources = new CheckFieldEditor(JavaDecompilerPlugin.WAIT_FOR_SOURCES,
+				Messages.getString("JavaDecompilerPreferencePage.Label.Attach.WaitForSources"), //$NON-NLS-1$
+				group);
+		addField(waitForSources);
+	}
+
 	private void createEncodingFieldEditor(Composite composite) {
 		Group encodingGroup = new Group(composite, SWT.NONE);
 		encodingGroup.setText(Messages.getString("JavaDecompilerPreferencePage.Label.Export.Encoding")); //$NON-NLS-1$
@@ -230,7 +233,7 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 
 	@Override
 	public void init(IWorkbench arg0) {
-
+		// TODO document why this method is empty
 	}
 
 	@Override
