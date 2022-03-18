@@ -9,21 +9,20 @@
 package org.sf.feeling.decompiler.source.attach.finder;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
@@ -84,10 +83,10 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 		Set<GAV> gavs = new HashSet<>();
 
 		// META-INF/maven/commons-beanutils/commons-beanutils/pom.properties
-		try (ZipInputStream in = new ZipInputStream(new FileInputStream(binFile))) {
-			byte[] data = new byte[4096];
-			do {
-				ZipEntry entry = in.getNextEntry();
+		try (ZipFile zipFile = new ZipFile(new File(binFile))) {
+			Enumeration<? extends ZipEntry> entries = zipFile.entries();
+			while (entries.hasMoreElements()) {
+				ZipEntry entry = entries.nextElement();
 				if (entry == null) {
 					break;
 				}
@@ -95,27 +94,22 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 				String zipEntryName = entry.getName();
 				if (zipEntryName.startsWith("META-INF/maven/") && zipEntryName.endsWith("/pom.properties")) //$NON-NLS-1$ //$NON-NLS-2$
 				{
-					ByteArrayOutputStream os = new ByteArrayOutputStream();
-					do {
-						int read = in.read(data);
-						if (read < 0)
-							break;
-						os.write(data, 0, read);
-					} while (true);
-					Properties props = new Properties();
-					props.load(new ByteArrayInputStream(os.toByteArray()));
-					String version = props.getProperty("version"); //$NON-NLS-1$
-					String groupId = props.getProperty("groupId"); //$NON-NLS-1$
-					String artifactId = props.getProperty("artifactId"); //$NON-NLS-1$
-					if (version != null && groupId != null && artifactId != null) {
-						GAV gav = new GAV();
-						gav.setGroupId(groupId);
-						gav.setArtifactId(artifactId);
-						gav.setVersion(version);
-						gavs.add(gav);
+					try (InputStream in = zipFile.getInputStream(entry)) {
+						Properties props = new Properties();
+						props.load(in);
+						String version = props.getProperty("version"); //$NON-NLS-1$
+						String groupId = props.getProperty("groupId"); //$NON-NLS-1$
+						String artifactId = props.getProperty("artifactId"); //$NON-NLS-1$
+						if (version != null && groupId != null && artifactId != null) {
+							GAV gav = new GAV();
+							gav.setGroupId(groupId);
+							gav.setArtifactId(artifactId);
+							gav.setVersion(version);
+							gavs.add(gav);
+						}
 					}
 				}
-			} while (true);
+			}
 		}
 
 		if (gavs.size() > 1)

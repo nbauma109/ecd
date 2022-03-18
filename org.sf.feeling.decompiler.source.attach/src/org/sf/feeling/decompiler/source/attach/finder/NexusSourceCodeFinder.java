@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
@@ -160,7 +161,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 		String nexusUrl = getNexusContextUrl();
 
 		String[] endpoints = new String[] { //
-				nexusUrl + "service/local/data_index", //$NON-NLS-1$
+				// nexusUrl + "service/local/data_index" /* DEPRECATED */, //$NON-NLS-1$
 				nexusUrl + "service/local/lucene/search" //$NON-NLS-1$
 		};
 		for (String endpoint : endpoints) {
@@ -201,9 +202,11 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 			URLConnection connection = new URL(urlStr).openConnection();
 			connection.setConnectTimeout(5000);
 			connection.setReadTimeout(10000);
-			connection.connect();
 			try {
+				long t0 = System.nanoTime();
 				Object resp = unmarshaller.unmarshal(connection.getInputStream());
+				long t1 = System.nanoTime();
+				Logger.warn("URL " + urlStr + " took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
 				if (resp instanceof SearchNGResponse) {
 					SearchNGResponse srsp = (SearchNGResponse) resp;
 					for (NexusNGArtifact ar : srsp.getData()) {
@@ -214,6 +217,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 									gav.setGroupId(ar.getGroupId());
 									gav.setArtifactId(ar.getArtifactId());
 									gav.setVersion(ar.getVersion());
+									Logger.warn("GAV result: " + gav);
 									// TODO: generate link from NexusNGArtifactLink
 									// gav.setArtifactLink(link.??);
 								}
@@ -224,7 +228,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 							gav.setArtifactId(ar.getArtifactId());
 							gav.setVersion(ar.getVersion());
 							results.add(gav);
-							Logger.info("GAV result: " + gav);
+							Logger.warn("GAV result: " + gav);
 						}
 					}
 				} else if (resp instanceof SearchResponse) {
@@ -238,7 +242,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 							gav.setArtifactLink(ar.getArtifactLink());
 						}
 						results.add(gav);
-						Logger.info("GAV result: " + gav);
+						Logger.warn("GAV result: " + gav);
 					}
 				}
 			} catch (Throwable e) {
