@@ -145,7 +145,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 					long t0 = System.nanoTime();
 					attachSourceThread.join(10000);
 					long t1 = System.nanoTime();
-					Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t0 - t1) + " millis");
+					Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
 					PackageFragmentRoot pfr = (PackageFragmentRoot) root;
 					SourceMapper sourceMapper = pfr.getSourceMapper();
 					if (sourceMapper != null && !(sourceMapper instanceof DecompilerSourceMapper)) {
