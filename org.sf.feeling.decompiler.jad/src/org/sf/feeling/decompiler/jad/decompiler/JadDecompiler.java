@@ -314,7 +314,7 @@ public class JadDecompiler implements IDecompiler {
 	@Override
 	public String removeComment(String source) {
 
-		String[] spilts = source.replaceAll("\r\n", "\n").split("\n"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		String[] spilts = source.replace("\r\n", "\n").split("\n"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 0; i < spilts.length; i++) {
 			if (i > 0 && i < 5)

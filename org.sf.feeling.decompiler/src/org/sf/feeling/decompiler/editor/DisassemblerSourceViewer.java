@@ -111,13 +111,13 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 	}
 
 	private IPreferenceStore createCombinedPreferenceStore() {
-		List<IPreferenceStore> stores = new ArrayList<IPreferenceStore>(3);
+		List<IPreferenceStore> stores = new ArrayList<>(3);
 
 		stores.add(JavaDecompilerPlugin.getDefault().getPreferenceStore());
 		stores.add(JavaPlugin.getDefault().getPreferenceStore());
 		stores.add(EditorsUI.getPreferenceStore());
 
-		return new ChainedPreferenceStore((IPreferenceStore[]) stores.toArray(new IPreferenceStore[stores.size()]));
+		return new ChainedPreferenceStore(stores.toArray(new IPreferenceStore[stores.size()]));
 	}
 
 	public Composite createControl(Composite parent) {
@@ -194,7 +194,7 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 		if (ruler instanceof CompositeRuler)
 			updateContributedRulerColumns((CompositeRuler) ruler);
 
-		IColumnSupport columnSupport = (IColumnSupport) getAdapter(IColumnSupport.class);
+		IColumnSupport columnSupport = getAdapter(IColumnSupport.class);
 
 		RulerColumnDescriptor lineNumberColumnDescriptor = RulerColumnRegistry.getDefault()
 				.getColumnDescriptor(LineNumberColumn.ID);
@@ -247,8 +247,8 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 
 	class JdtSelectionProvider extends SelectionProvider {
 
-		private List<ISelectionChangedListener> fSelectionListeners = new ArrayList<ISelectionChangedListener>();
-		private List<ISelectionChangedListener> fPostSelectionListeners = new ArrayList<ISelectionChangedListener>();
+		private List<ISelectionChangedListener> fSelectionListeners = new ArrayList<>();
+		private List<ISelectionChangedListener> fPostSelectionListeners = new ArrayList<>();
 		private ITextSelection fInvalidSelection;
 		private ISelection fValidSelection;
 
@@ -477,6 +477,7 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 		return editor.collectContextMenuPreferencePages();
 	}
 
+	@Override
 	public boolean isEditorInputModifiable() {
 		return false;
 	}
@@ -530,7 +531,8 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 				disassemblerText.setSelection(lineStartOffset);
 			}
 
-			int elementIndex, elementLength;
+			int elementIndex;
+			int elementLength;
 			switch (elementType) {
 			case IJavaElement.CLASS_FILE:
 				lineStartOffset = 0;
@@ -540,7 +542,7 @@ public class DisassemblerSourceViewer extends AbstractDecoratedTextEditor implem
 						|| (startIndex = header.indexOf("enum")) != -1 //$NON-NLS-1$
 						|| (startIndex = header.indexOf("interface")) != -1) //$NON-NLS-1$
 				{
-					elementIndex = startIndex + header.substring(startIndex).indexOf(elementName);
+					elementIndex = startIndex + header.indexOf(elementName, startIndex) - startIndex;
 				} else {
 					elementIndex = header.indexOf(elementName);
 				}

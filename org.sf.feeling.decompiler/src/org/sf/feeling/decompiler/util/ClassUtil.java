@@ -120,11 +120,4 @@ public class ClassUtil {
 		}
 		return new FernFlowerDecompiler();
 	}
-
-	public static String getInternalName(String s) {
-		if (!s.endsWith(".class")) {
-			throw new IllegalArgumentException("Not a .class file: " + s);
-		}
-		return s.substring(0, s.length() - 6); // 6 = ".class".length()
-	}
 }

@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import org.jd.core.v1.api.loader.Loader;
@@ -45,7 +44,7 @@ public class JDCoreZipLoader implements Loader, Closeable {
 
 	private final Set<String> loadedEntries = new TreeSet<>();
 
-	public JDCoreZipLoader(Path zipFilePath, EntriesCache entriesCache) throws ZipException, IOException {
+	public JDCoreZipLoader(Path zipFilePath, EntriesCache entriesCache) throws IOException {
 		super();
 		if (entriesCache != null && !entriesCache.zipFilePath.equals(zipFilePath)) {
 			throw new IllegalArgumentException("entriesCache is for the wrong zipFilePath");
@@ -86,8 +85,7 @@ public class JDCoreZipLoader implements Loader, Closeable {
 
 	@Override
 	public boolean canLoad(String internalName) {
-		boolean result = entriesCache.entriesMap.containsKey(internalName);
-		return result;
+		return entriesCache.entriesMap.containsKey(internalName);
 	}
 
 	@Override

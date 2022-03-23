@@ -34,11 +34,11 @@ public class JDCoreSourceMapper extends JDSourceMapper {
 		source.append("\tTotal time: ") //$NON-NLS-1$
 				.append(decompilationTime).append(" ms\n"); //$NON-NLS-1$
 		source.append("\t" //$NON-NLS-1$
-				+ origionalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ origionalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
 		exceptions.addAll(origionalDecompiler.getExceptions());
 		logExceptions(exceptions, source);
-		source.append("\n\tDecompiled with JD-Core " + JDCoreSourceMapper.getVersion()); //$NON-NLS-1$
+		source.append("\n\tDecompiled with JD-Core " + JDSourceMapper.getVersion()); //$NON-NLS-1$
 		source.append("\n*/"); //$NON-NLS-1$
 	}
 

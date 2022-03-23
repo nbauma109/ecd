@@ -301,7 +301,7 @@ class ElementAdapterSet extends TreeSet {
 		}
 	};
 
-	private List overwriteList;
+	private transient List overwriteList;
 
 	private boolean isReset;
 
@@ -332,7 +332,7 @@ class ElementAdapterSet extends TreeSet {
 	}
 
 	/**
-	 * remove overwrited adapters.
+	 * remove overwritten adapters.
 	 */
 	public void reset() {
 		if (!isReset && this.overwriteList != null) {

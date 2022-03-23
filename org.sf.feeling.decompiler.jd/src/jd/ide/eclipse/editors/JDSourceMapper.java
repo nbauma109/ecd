@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.jd.core.v1.ClassFileToJavaSourceDecompiler;
@@ -73,12 +74,12 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 					}
 				} else {
 					JavaDecompilerPlugin.getDefault().getLog()
-							.log(new Status(Status.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0,
+							.log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0,
 									"Unable to decompile: " + decompilePath + " is not a valid file.", null));
 				}
 			} catch (Exception e) {
 				JavaDecompilerPlugin.getDefault().getLog()
-						.log(new Status(Status.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
+						.log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
 			}
 		}
 

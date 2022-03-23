@@ -41,17 +41,16 @@ import org.sf.feeling.decompiler.util.SourceMapperUtil;
 
 public class ImportSourceMapper extends SourceMapper {
 
-	private static Map<String, String> options = new HashMap<>();
+	private static Map<String, String> compilerOptions = new HashMap<>();
 	static {
-		CompilerOptions option = new CompilerOptions();
-		options = option.getMap();
-		options.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
-		options.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
+		compilerOptions = new CompilerOptions().getMap();
+		compilerOptions.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel());
+		compilerOptions.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel());
 	}
 
 	public ImportSourceMapper(IPath sourcePath, String rootPath) {
 
-		this(sourcePath, rootPath, options);
+		this(sourcePath, rootPath, compilerOptions);
 	}
 
 	public ImportSourceMapper(IPath sourcePath, String rootPath, Map options) {

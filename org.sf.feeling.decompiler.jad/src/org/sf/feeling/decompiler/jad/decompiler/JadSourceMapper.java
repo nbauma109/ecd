@@ -31,7 +31,7 @@ public class JadSourceMapper extends BaseDecompilerSourceMapper {
 		source.append("\tTotal time: ") //$NON-NLS-1$
 				.append(decompilationTime).append(" ms\n"); //$NON-NLS-1$
 		source.append("\t" //$NON-NLS-1$
-				+ origionalDecompiler.getLog().replaceAll("\t", "").replaceAll("\n", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				+ origionalDecompiler.getLog().replace("\t", "").replace("\n", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 						"\n\t")); //$NON-NLS-1$
 		logExceptions(exceptions, source);
 		source.append("\n*/"); //$NON-NLS-1$

@@ -14,22 +14,22 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class SourceConstants {
 
+	public static final String TEMP_SOURCE_PREFIX = "source"; //$NON-NLS-1$
+
 	public static final File USER_M2_REPO_DIR = new File(String.valueOf(System.getProperty("user.home")) //$NON-NLS-1$
 			+ File.separatorChar + ".m2" + File.separatorChar + "repository"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	public static final File SourceAttacherDir = new File(String.valueOf(System.getProperty("user.home")) //$NON-NLS-1$
-			+ File.separatorChar + ".decompiler" + File.separatorChar + "source"); //$NON-NLS-1$ //$NON-NLS-2$
+			+ File.separatorChar + ".decompiler" + File.separatorChar + TEMP_SOURCE_PREFIX); //$NON-NLS-1$ //$NON-NLS-2$
 
 	public static final File getSourceTempDir() {
 		return new File(JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)
-				+ File.separatorChar + "source"); //$NON-NLS-1$
+				+ File.separatorChar + TEMP_SOURCE_PREFIX);
 	}
+
+	public static final String SourceAttachPath = SourceAttacherDir.getAbsolutePath();
 
 	public static final String getSourceTempPath() {
 		return getSourceTempDir().getAbsolutePath();
 	}
-
-	public static final String SourceAttachPath = SourceAttacherDir.getAbsolutePath();
-	public static final String TEMP_SOURCE_PREFIX = "source"; //$NON-NLS-1$
-
 }

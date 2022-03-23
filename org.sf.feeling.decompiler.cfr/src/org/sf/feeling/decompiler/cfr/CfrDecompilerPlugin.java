@@ -49,7 +49,7 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
 
 	@Override
 	public void propertyChange(PropertyChangeEvent event) {
-
+		// TODO document why this method is empty
 	}
 
 	@Override

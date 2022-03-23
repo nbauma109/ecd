@@ -8,20 +8,15 @@
 
 package org.sf.feeling.decompiler.jd.decompiler;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import org.jetbrains.java.decompiler.struct.StructClass;
-import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
-import org.jetbrains.java.decompiler.util.DataInputFullStream;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.jd.JDCoreDecompilerPlugin;
-import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.UIUtil;
 
+import jd.core.ClassUtil;
 import jd.ide.eclipse.editors.JDSourceMapper;
 
 public class JDCoreDecompiler implements IDecompiler {
@@ -37,55 +32,12 @@ public class JDCoreDecompiler implements IDecompiler {
 	}
 
 	/**
-	 * Performs a <code>Runtime.exec()</code> on jad executable with selected
-	 * options.
-	 * 
-	 * @see IDecompiler#decompile(String, String, String)
+	 * @deprecated
 	 */
 	@Override
+	@Deprecated(since = "3.4.4", forRemoval = true)
 	public void decompile(String root, String classPackage, String className) {
-		long start = System.nanoTime();
-		log = ""; //$NON-NLS-1$
-		source = ""; //$NON-NLS-1$
-		Boolean displayNumber = null;
-
-		File workingDir = new File(root); // $NON-NLS-1$
-
-		File zipFile = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
-				className.replaceAll("(?i)\\.class", System.currentTimeMillis() + ".jar")); //$NON-NLS-1$ //$NON-NLS-2$
-		String zipFileName = zipFile.getAbsolutePath();
-
-		try {
-			if (classPackage.length() == 0) {
-				DataInputFullStream difs = new DataInputFullStream(FileUtil.getBytes(new File(root, className)));
-				StructClass structClass = StructClass.create(difs, true, new LazyLoader(null));
-				structClass.releaseResources();
-				classPackage = structClass.qualifiedName.replace("/" //$NON-NLS-1$
-						+ className.replaceAll("(?i)\\.class", ""), ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-			}
-
-			FileUtil.zipDir(workingDir, classPackage, zipFileName);
-
-			if (UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode()) {
-				displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
-				JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
-			}
-
-			source = mapper.decompile(zipFileName, (classPackage.length() > 0 ? (classPackage + "/") : "") //$NON-NLS-1$ //$NON-NLS-2$
-					+ className);
-
-			if (!zipFile.delete()) {
-				zipFile.deleteOnExit();
-			}
-		} catch (Exception e) {
-			JavaDecompilerPlugin.logError(e, e.getMessage());
-		}
-
-		if (displayNumber != null) {
-			JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
-		}
-
-		time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+		throw new UnsupportedOperationException();
 	}
 
 	/**
@@ -105,9 +57,14 @@ public class JDCoreDecompiler implements IDecompiler {
 				JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
 			}
 
-			String decompileClassName = packege + "/" + className.replaceAll("(?i)\\.class$", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			StringBuilder decompileClassName = new StringBuilder();
+			if (packege != null && !packege.isEmpty()) {
+				decompileClassName.append(packege);
+				decompileClassName.append('/');
+			}
+			decompileClassName.append(ClassUtil.getInternalName(className));
 
-			source = mapper.decompile(archivePath, decompileClassName);
+			source = mapper.decompile(archivePath, decompileClassName.toString());
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
 		}
