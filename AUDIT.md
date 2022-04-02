@@ -24,9 +24,9 @@ _Primary Source: https://mvnrepository.com/artifact/org.ow2.asm/asm_
 ### Fernflower
 _Primary Source: https://github.com/JetBrains/intellij-community/tree/master/plugins/java-decompiler/engine_
 _Build Source: https://github.com/nbauma109/fernflower
-* `./org.sf.feeling.decompiler/lib/fernflower-1.0.8.jar`
-  * SHA-256: 0c175ad447f0e2ae31b3b2196a23bb6e90c33b96dda82fc21b2e4d1d2080a260
-  * Version from https://jitpack.io/com/github/nbauma109/fernflower/fernflower/1.0.8/fernflower-1.0.8.jar
+* `./org.sf.feeling.decompiler/lib/fernflower-1.0.9.jar`
+  * SHA-256: 84cb1c7e3fb201c35f1a626e7e3be6f86ee4a2525f2a4d87d784cf3374e59bf5
+  * Version from https://jitpack.io/com/github/nbauma109/fernflower/fernflower/1.0.9/fernflower-1.0.9.jar
 
 ### Minimal JSON
 _Primary Source: https://github.com/ralfstx/minimal-json_

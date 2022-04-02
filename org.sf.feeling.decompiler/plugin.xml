@@ -364,4 +364,11 @@
    <extension point="org.eclipse.help.toc">
     <toc file="doc/toc.xml" primary="true" />
   </extension>	 
+  <extension point="org.eclipse.debug.core.sourceLocators">
+   <sourceLocator
+    id="org.eclipse.jdt.launching.sourceLocator.JavaSourceLookupDirector"
+    class="org.sf.feeling.decompiler.debug.core.sourceLocators.DecompilerSourceLocator"
+    name="Decompiler Source Locator">
+   </sourceLocator>
+  </extension>
 </plugin>
