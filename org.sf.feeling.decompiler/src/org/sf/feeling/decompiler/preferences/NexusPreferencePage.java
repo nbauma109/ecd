@@ -68,5 +68,6 @@ public class NexusPreferencePage extends FieldEditorPreferencePage implements IW
 
 	@Override
 	public void init(IWorkbench arg0) {
+		// TODO document why this method is empty
 	}
 }

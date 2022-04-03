@@ -89,6 +89,20 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 	public static final String NEXUS_USER = "NEXUS_USER"; //$NON-NLS-1$
 	public static final String NEXUS_PASSWORD = "NEXUS_PASSWORD"; //$NON-NLS-1$
 
+	public static final String PUBLIC_REPO_MAVEN_CENTRAL = "PUBLIC_REPO_MAVEN_CENTRAL"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET = "PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_MMNT_RU = "PUBLIC_REPO_MMNT_RU"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_SPRING = "PUBLIC_REPO_SPRING"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_CLOUDERA = "PUBLIC_REPO_CLOUDERA"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_NEXUS_XWIKI_ORG = "PUBLIC_REPO_NEXUS_XWIKI_ORG"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_MAVEN_ALFRESCO = "PUBLIC_REPO_MAVEN_ALFRESCO"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_MAVEN_NUXEO_ORG = "PUBLIC_REPO_MAVEN_NUXEO_ORG"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_JAVA_NET = "PUBLIC_REPO_JAVA_NET"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_OW2_ORG = "PUBLIC_REPO_OW2_ORG"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_APACHE_ORG = "PUBLIC_REPO_APACHE_ORG"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_GRAILS_ORG = "PUBLIC_REPO_GRAILS_ORG"; //$NON-NLS-1$
+	public static final String PUBLIC_REPO_OSS_SONATYPE_ORG = "PUBLIC_REPO_OSS_SONATYPE_ORG"; //$NON-NLS-1$
+
 	private static JavaDecompilerPlugin plugin;
 
 	private IPreferenceStore preferenceStore;

@@ -12,12 +12,9 @@ import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.ColorFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.RadioGroupFieldEditor;
-import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
@@ -26,46 +23,12 @@ import org.sf.feeling.decompiler.i18n.Messages;
 
 public class DisassemblerPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-	class CheckFieldEditor extends BooleanFieldEditor {
-
-		public CheckFieldEditor(String name, String label, Composite parent) {
-			super(name, label, parent);
-		}
-
-		@Override
-		protected void fireStateChanged(String property, boolean oldValue, boolean newValue) {
-			fireValueChanged(property, oldValue ? Boolean.TRUE : Boolean.FALSE,
-					newValue ? Boolean.TRUE : Boolean.FALSE);
-		}
-
-		public void handleSelection(Composite parent) {
-			boolean isSelected = getChangeControl(parent).getSelection();
-			valueChanged(false, isSelected);
-		}
-
-		@Override
-		protected void valueChanged(boolean oldValue, boolean newValue) {
-			setPresentsDefaultValue(false);
-			fireStateChanged(VALUE, oldValue, newValue);
-		}
-
-		@Override
-		public Button getChangeControl(Composite parent) {
-			return super.getChangeControl(parent);
-		}
-	}
-
 	private Group basicGroup;
 	private Group styleGroup;
 
 	public DisassemblerPreferencePage() {
 		super(FieldEditorPreferencePage.GRID);
 		setPreferenceStore(JavaDecompilerPlugin.getDefault().getPreferenceStore());
-	}
-
-	@Override
-	public void createControl(Composite parent) {
-		super.createControl(parent);
 	}
 
 	@Override
@@ -172,17 +135,6 @@ public class DisassemblerPreferencePage extends FieldEditorPreferencePage implem
 
 	@Override
 	public void init(IWorkbench arg0) {
-
+		// TODO document why this method is empty
 	}
-
-	@Override
-	protected void performDefaults() {
-		super.performDefaults();
-	}
-
-	@Override
-	public void propertyChange(PropertyChangeEvent event) {
-		super.propertyChange(event);
-	}
-
 }

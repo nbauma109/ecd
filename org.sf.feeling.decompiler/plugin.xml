@@ -68,6 +68,12 @@
             class="org.sf.feeling.decompiler.preferences.NexusPreferencePage"
             id="org.sf.feeling.decompiler.Nexus">
       </page>
+      <page
+            name="%Public.Repositories"
+            category="org.sf.feeling.decompiler.Main"
+            class="org.sf.feeling.decompiler.preferences.PublicRepositoriesPreferencePage"
+            id="org.sf.feeling.decompiler.PublicRepositories">
+      </page>
    </extension>
    <extension
          point="org.eclipse.jdt.ui.javaElementFilters">
