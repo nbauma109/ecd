@@ -25,7 +25,7 @@ import org.sf.feeling.decompiler.editor.DecompilerSourceMapper;
 import org.sf.feeling.decompiler.editor.SourceMapperFactory;
 import org.sf.feeling.decompiler.util.Logger;
 
-public class DecompilerSourceLocator implements IPersistableSourceLocator {
+public class DecompilerSourceLocator extends JavaSourceLookupDirector implements IPersistableSourceLocator {
 
 	private JavaSourceLookupDirector javaSourceLocator = new JavaSourceLookupDirector();
 
@@ -41,6 +41,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * 
 	 * @see org.eclipse.jdt.internal.launching.JavaSourceLookupDirector#initializeParticipants()
 	 */
+	@Override
 	public void initializeParticipants() {
 		javaSourceLocator.initializeParticipants();
 	}
@@ -50,6 +51,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.jdt.internal.launching.JavaSourceLookupDirector#supportsSourceContainerType(org.eclipse.debug.core.sourcelookup.ISourceContainerType)
 	 */
+	@Override
 	public boolean supportsSourceContainerType(ISourceContainerType type) {
 		return javaSourceLocator.supportsSourceContainerType(type);
 	}
@@ -61,6 +63,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @see org.eclipse.jdt.internal.launching.JavaSourceLookupDirector#equalSourceElements(java.lang.Object,
 	 *      java.lang.Object)
 	 */
+	@Override
 	public boolean equalSourceElements(Object o1, Object o2) {
 		return javaSourceLocator.equalSourceElements(o1, o2);
 	}
@@ -78,6 +81,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param id
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#setId(java.lang.String)
 	 */
+	@Override
 	public void setId(String id) {
 		javaSourceLocator.setId(id);
 	}
@@ -86,7 +90,8 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * 
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#dispose()
 	 */
-	public void dispose() {
+	@Override
+	public synchronized void dispose() {
 		javaSourceLocator.dispose();
 	}
 
@@ -102,7 +107,8 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getSourceContainers()
 	 */
-	public ISourceContainer[] getSourceContainers() {
+	@Override
+	public synchronized ISourceContainer[] getSourceContainers() {
 		return javaSourceLocator.getSourceContainers();
 	}
 
@@ -110,6 +116,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#isFindDuplicates()
 	 */
+	@Override
 	public boolean isFindDuplicates() {
 		return javaSourceLocator.isFindDuplicates();
 	}
@@ -118,6 +125,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param duplicates
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#setFindDuplicates(boolean)
 	 */
+	@Override
 	public void setFindDuplicates(boolean duplicates) {
 		javaSourceLocator.setFindDuplicates(duplicates);
 	}
@@ -126,6 +134,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param configuration
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchConfigurationAdded(org.eclipse.debug.core.ILaunchConfiguration)
 	 */
+	@Override
 	public void launchConfigurationAdded(ILaunchConfiguration configuration) {
 		javaSourceLocator.launchConfigurationAdded(configuration);
 	}
@@ -134,6 +143,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param configuration
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchConfigurationChanged(org.eclipse.debug.core.ILaunchConfiguration)
 	 */
+	@Override
 	public void launchConfigurationChanged(ILaunchConfiguration configuration) {
 		javaSourceLocator.launchConfigurationChanged(configuration);
 	}
@@ -142,6 +152,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param configuration
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchConfigurationRemoved(org.eclipse.debug.core.ILaunchConfiguration)
 	 */
+	@Override
 	public void launchConfigurationRemoved(ILaunchConfiguration configuration) {
 		javaSourceLocator.launchConfigurationRemoved(configuration);
 	}
@@ -151,7 +162,8 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @throws CoreException
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getMemento()
 	 */
-	public String getMemento() throws CoreException {
+	@Override
+	public synchronized String getMemento() throws CoreException {
 		return javaSourceLocator.getMemento();
 	}
 
@@ -160,6 +172,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @throws CoreException
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#initializeFromMemento(java.lang.String)
 	 */
+	@Override
 	public void initializeFromMemento(String memento) throws CoreException {
 		javaSourceLocator.initializeFromMemento(memento);
 	}
@@ -168,7 +181,8 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param containers
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#setSourceContainers(org.eclipse.debug.core.sourcelookup.ISourceContainer[])
 	 */
-	public void setSourceContainers(ISourceContainer[] containers) {
+	@Override
+	public synchronized void setSourceContainers(ISourceContainer[] containers) {
 		javaSourceLocator.setSourceContainers(containers);
 	}
 
@@ -177,6 +191,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getSourceElement(org.eclipse.debug.core.model.IStackFrame)
 	 */
+	@Override
 	public Object getSourceElement(IStackFrame stackFrame) {
 		Object sourceElement = javaSourceLocator.getSourceElement(stackFrame);
 		if (sourceElement instanceof IClassFile) {
@@ -210,6 +225,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#resolveSourceElement(java.lang.Object,
 	 *      java.util.List)
 	 */
+	@Override
 	public Object resolveSourceElement(Object element, List<Object> sources) {
 		return javaSourceLocator.resolveSourceElement(element, sources);
 	}
@@ -221,6 +237,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#initializeFromMemento(java.lang.String,
 	 *      org.eclipse.debug.core.ILaunchConfiguration)
 	 */
+	@Override
 	public void initializeFromMemento(String memento, ILaunchConfiguration configuration) throws CoreException {
 		javaSourceLocator.initializeFromMemento(memento, configuration);
 	}
@@ -230,6 +247,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @throws CoreException
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#initializeDefaults(org.eclipse.debug.core.ILaunchConfiguration)
 	 */
+	@Override
 	public void initializeDefaults(ILaunchConfiguration configuration) throws CoreException {
 		javaSourceLocator.initializeDefaults(configuration);
 	}
@@ -238,6 +256,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getLaunchConfiguration()
 	 */
+	@Override
 	public ILaunchConfiguration getLaunchConfiguration() {
 		return javaSourceLocator.getLaunchConfiguration();
 	}
@@ -246,6 +265,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param launch
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchAdded(org.eclipse.debug.core.ILaunch)
 	 */
+	@Override
 	public void launchAdded(ILaunch launch) {
 		javaSourceLocator.launchAdded(launch);
 	}
@@ -254,6 +274,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param launch
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchChanged(org.eclipse.debug.core.ILaunch)
 	 */
+	@Override
 	public void launchChanged(ILaunch launch) {
 		javaSourceLocator.launchChanged(launch);
 	}
@@ -262,6 +283,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param launch
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#launchRemoved(org.eclipse.debug.core.ILaunch)
 	 */
+	@Override
 	public void launchRemoved(ILaunch launch) {
 		javaSourceLocator.launchRemoved(launch);
 	}
@@ -270,7 +292,8 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getParticipants()
 	 */
-	public ISourceLookupParticipant[] getParticipants() {
+	@Override
+	public synchronized ISourceLookupParticipant[] getParticipants() {
 		return javaSourceLocator.getParticipants();
 	}
 
@@ -278,6 +301,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param element
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#clearSourceElements(java.lang.Object)
 	 */
+	@Override
 	public void clearSourceElements(Object element) {
 		javaSourceLocator.clearSourceElements(element);
 	}
@@ -286,6 +310,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param participants
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#addParticipants(org.eclipse.debug.core.sourcelookup.ISourceLookupParticipant[])
 	 */
+	@Override
 	public void addParticipants(ISourceLookupParticipant[] participants) {
 		javaSourceLocator.addParticipants(participants);
 	}
@@ -294,6 +319,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param participants
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#removeParticipants(org.eclipse.debug.core.sourcelookup.ISourceLookupParticipant[])
 	 */
+	@Override
 	public void removeParticipants(ISourceLookupParticipant[] participants) {
 		javaSourceLocator.removeParticipants(participants);
 	}
@@ -302,6 +328,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getId()
 	 */
+	@Override
 	public String getId() {
 		return javaSourceLocator.getId();
 	}
@@ -310,6 +337,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getSourcePathComputer()
 	 */
+	@Override
 	public ISourcePathComputer getSourcePathComputer() {
 		return javaSourceLocator.getSourcePathComputer();
 	}
@@ -318,6 +346,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @param computer
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#setSourcePathComputer(org.eclipse.debug.core.sourcelookup.ISourcePathComputer)
 	 */
+	@Override
 	public void setSourcePathComputer(ISourcePathComputer computer) {
 		javaSourceLocator.setSourcePathComputer(computer);
 	}
@@ -328,6 +357,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @throws CoreException
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#findSourceElements(java.lang.Object)
 	 */
+	@Override
 	public Object[] findSourceElements(Object object) throws CoreException {
 		return javaSourceLocator.findSourceElements(object);
 	}
@@ -337,6 +367,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getSourceElement(java.lang.Object)
 	 */
+	@Override
 	public Object getSourceElement(Object element) {
 		return javaSourceLocator.getSourceElement(element);
 	}
@@ -345,6 +376,7 @@ public class DecompilerSourceLocator implements IPersistableSourceLocator {
 	 * @return
 	 * @see org.eclipse.debug.core.sourcelookup.AbstractSourceLookupDirector#getCurrentParticipant()
 	 */
+	@Override
 	public ISourceLookupParticipant getCurrentParticipant() {
 		return javaSourceLocator.getCurrentParticipant();
 	}
