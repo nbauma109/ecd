@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.BlockComment;
 import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -43,4 +44,18 @@ public final class CommentUtil {
 		edits.apply(document);
 		return document.get();
 	}
+
+	public static List<Comment> getContainedComments(CompilationUnit cu, ASTNode node) {
+		List<Comment> commentList = cu.getCommentList();
+		return commentList.stream().filter(comment -> isContained(comment, node)).toList();
+	}
+
+	public static boolean isContained(ASTNode comment, ASTNode node) {
+		int nodeStart = node.getStartPosition();
+		int commStart = comment.getStartPosition();
+		int commEnd = commStart + comment.getLength();
+		int nodeEnd = nodeStart + node.getLength();
+		return nodeStart < commStart && commEnd < nodeEnd;
+	}
+
 }

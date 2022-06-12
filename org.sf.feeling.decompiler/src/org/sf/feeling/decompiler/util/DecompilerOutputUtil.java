@@ -9,21 +9,35 @@
 package org.sf.feeling.decompiler.util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.Document;
+import org.eclipse.text.edits.DeleteEdit;
+import org.eclipse.text.edits.MalformedTreeException;
+import org.eclipse.text.edits.TextEdit;
+import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtil {
 
@@ -142,6 +156,62 @@ public class DecompilerOutputUtil {
 		return toString();
 	}
 
+	public static String prepareOutput(String source) {
+		// Parse source code into AST
+		CompilationUnit cu = ASTParserUtil.parse(source);
+		ASTRewrite astRewrite = ASTRewrite.create(cu.getAST());
+		Document document = new Document(source);
+		TextEdit textEdit = astRewrite.rewriteAST(document, null);
+		cu.accept(new ASTVisitor() {
+			@Override
+			public boolean visit(IfStatement node) {
+				processBrackets(textEdit, node.getThenStatement());
+				processBrackets(textEdit, node.getElseStatement());
+				return super.visit(node);
+			}
+
+			private void processBrackets(TextEdit textEdit, Statement statements) {
+				if (statements instanceof Block) {
+					Block block = (Block) statements;
+					List<Statement> stmts = block.statements();
+					if (stmts.size() == 1) {
+						int closingBracketPosition = block.getStartPosition() + block.getLength();
+						textEdit.addChild(new DeleteEdit(block.getStartPosition(), 1));
+						textEdit.addChild(new DeleteEdit(closingBracketPosition - 1, 1));
+					}
+				}
+			}
+		});
+		try {
+			textEdit.apply(document);
+		} catch (MalformedTreeException | BadLocationException e) {
+			Logger.error(e);
+		}
+		return document.get();
+	}
+
+	public static int getMaxLineNumber(String source, CompilationUnit cu, ASTNode node) {
+		int maxLineNumber = Integer.MIN_VALUE;
+		List<Comment> comments = CommentUtil.getContainedComments(cu, node);
+		for (Comment comment : comments) {
+			String commentText = getCommentText(source, comment);
+			int lineNumber = DecompilerOutputUtil.parseJavaLineNumber(commentText);
+			maxLineNumber = Math.max(maxLineNumber, lineNumber);
+		}
+		return maxLineNumber;
+	}
+
+	private static String getCommentText(String source, Comment comment) {
+		int commStart = comment.getStartPosition();
+		return source.substring(commStart, commStart + comment.getLength());
+	}
+
+	public static boolean containsLineNumber(CompilationUnit cu, String source, int lineNumber) {
+		List<Comment> commentList = cu.getCommentList();
+		return commentList.stream()
+				.anyMatch(comment -> lineNumber == parseJavaLineNumber(getCommentText(source, comment)));
+	}
+
 	public static boolean isEmpty(String str) {
 		return str == null || str.length() == 0;
 	}
@@ -211,11 +281,13 @@ public class DecompilerOutputUtil {
 			}
 		}
 
+		Map<Integer, String> misalignedLines = new HashMap<>();
+		int outputLineNumber = -1;
 		for (int i = 1; i < javaSrcLines.size(); i++) {
 			JavaSrcLine javaSrcLine = initJavaSrcListItem(i);
 
 			if (javaSrcLine.inputLines.size() > 0) {
-				int outputLineNumber = getOutputLineNumber(javaSrcLine);
+				outputLineNumber = getOutputLineNumber(javaSrcLine);
 
 				if (outputLineNumber != -1) {
 					List<Integer> beforeLines = getBeforeLines(javaSrcLine);
@@ -231,7 +303,11 @@ public class DecompilerOutputUtil {
 								line = removeJavaLineNumber(line.replace("\r\n", "\n") //$NON-NLS-1$ //$NON-NLS-2$
 										.replace("\n", ""), //$NON-NLS-1$ //$NON-NLS-2$
 										j == 0 && generateEmptyString, leftTrimSpace);
-								realignOutput.append(line);
+								if (outputLineNumber == numLine) {
+									realignOutput.append(line);
+								} else {
+									misalignedLines.put(numLine, line);
+								}
 							}
 
 							realignOutput.append(line_separator);
@@ -256,6 +332,10 @@ public class DecompilerOutputUtil {
 			} else if (i > 1) {
 				realignOutput.append("/* " //$NON-NLS-1$
 						+ getLineNumber(-1, lineNumberWidth) + " */ "); //$NON-NLS-1$
+				String misalignedLine = misalignedLines.get(outputLineNumber + 1);
+				if (misalignedLine != null) {
+					realignOutput.append(misalignedLine);
+				}
 			}
 			realignOutput.append(line_separator);
 		}
@@ -347,6 +427,12 @@ public class DecompilerOutputUtil {
 
 	public static int parseJavaLineNumber(String decompilerType, String line) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
+		if (DecompilerType.FernFlower.equals(decompilerType)) {
+			regex = "//\\s+\\d+"; //$NON-NLS-1$
+			if (line.matches("\\s*}//[0-9 ]+\\s*")) {
+				return -1; // line number on closing bracket cannot be known
+			}
+		}
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(line.trim());
 		if (matcher.find()) {
@@ -374,23 +460,28 @@ public class DecompilerOutputUtil {
 
 	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
+		if (DecompilerType.FernFlower.equals(decompilerType)) {
+			regex = "//\\s+\\d+(\\s*\\d*)*"; //$NON-NLS-1$
+		}
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(line.trim());
 
 		if (matcher.find()) {
 			line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-			if (generateEmptyString) {
+			if (!DecompilerType.FernFlower.equals(decompilerType) && generateEmptyString) {
 				line = generateEmptyString(matcher.group().length()) + line;
 			}
 		}
-		regex = "/\\*\\s+\\*/"; //$NON-NLS-1$
-		pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		matcher = pattern.matcher(line);
+		if (!DecompilerType.FernFlower.equals(decompilerType)) {
+			regex = "/\\*\\s+\\*/"; //$NON-NLS-1$
+			pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+			matcher = pattern.matcher(line);
 
-		if (matcher.find()) {
-			line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-			if (generateEmptyString) {
-				line = generateEmptyString(matcher.group().length()) + line;
+			if (matcher.find()) {
+				line = line.replace(matcher.group(), ""); //$NON-NLS-1$
+				if (generateEmptyString) {
+					line = generateEmptyString(matcher.group().length()) + line;
+				}
 			}
 		}
 		if (leftTrimSpace > 0 && line.startsWith(generateEmptyString(leftTrimSpace))) {
