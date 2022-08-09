@@ -77,8 +77,9 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
 			e.printStackTrace();
 		}
 		ImageDescriptor actionIcon = null;
-		if (url != null)
+		if (url != null) {
 			actionIcon = ImageDescriptor.createFromURL(url);
+		}
 		return actionIcon;
 	}
 

@@ -10,6 +10,7 @@ package org.sf.feeling.decompiler.cfr.decompiler;
 
 import java.util.Collection;
 
+import org.benf.cfr.reader.util.CfrVersionInfo;
 import org.eclipse.core.runtime.Path;
 import org.sf.feeling.decompiler.editor.BaseDecompilerSourceMapper;
 
@@ -35,6 +36,7 @@ public class CfrSourceMapper extends BaseDecompilerSourceMapper {
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
 		exceptions.addAll(origionalDecompiler.getExceptions());
 		logExceptions(exceptions, source);
+		source.append("\n\tDecompiled with CFR " + CfrVersionInfo.VERSION + "."); //$NON-NLS-1$
 		source.append("\n*/"); //$NON-NLS-1$
 	}
 

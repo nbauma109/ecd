@@ -50,8 +50,9 @@ public class FernFlowerDecompiler implements IDecompiler {
 	 */
 	@Override
 	public void decompile(String root, String packege, final String className) {
-		if (root == null || packege == null || className == null)
+		if (root == null || packege == null || className == null) {
 			return;
+		}
 
 		start = System.currentTimeMillis();
 		log = ""; //$NON-NLS-1$
@@ -91,9 +92,19 @@ public class FernFlowerDecompiler implements IDecompiler {
 			}
 
 		}
+
+		String classNameFilterTmp = className.toLowerCase();
+		if (classNameFilterTmp.endsWith(".class")) {
+			classNameFilterTmp = classNameFilterTmp.substring(0, classNameFilterTmp.length() - 6);
+		}
+		final String classNameFilter = classNameFilterTmp;
+
 		ConsoleDecompiler decompiler = new EmbeddedConsoleDecompiler();
 
-		File[] files = workingDir.listFiles();
+		File[] files = workingDir.listFiles((dir, name) -> {
+			name = name.toLowerCase();
+			return name.startsWith(classNameFilter) && name.endsWith(".class");
+		});
 		if (files != null) {
 			for (File file : files) {
 				decompiler.addSource(file);

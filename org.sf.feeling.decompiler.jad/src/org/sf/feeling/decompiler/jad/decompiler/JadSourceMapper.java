@@ -34,6 +34,7 @@ public class JadSourceMapper extends BaseDecompilerSourceMapper {
 				+ origionalDecompiler.getLog().replace("\t", "").replace("\n", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 						"\n\t")); //$NON-NLS-1$
 		logExceptions(exceptions, source);
+		source.append("\n\tDecompiled with Jad."); //$NON-NLS-1$
 		source.append("\n*/"); //$NON-NLS-1$
 	}
 
