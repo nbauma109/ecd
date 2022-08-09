@@ -90,8 +90,8 @@ https://repo1.maven.org/maven2/org/sonatype/nexus/plugins/nexus-indexer-lucene-m
 
 ### Plexus Utils
 Primary Source: _https://github.com/codehaus-plexus/plexus-utils_
-* `./org.sf.feeling.decompiler.source.attach/lib/plexus-utils-3.0.15.jar`
-  * SHA-256: D0BE76C5CE910134A7E07FD2AA48D9B677800AB0E95873F314B445C6F177C973
+* `./org.sf.feeling.decompiler.source.attach/lib/plexus-utils-3.0.16.jar`
+  * SHA-256: E6C16A7D5FECB58B32560D161D3FFD913932DB811A496846A09128146870960F
 
 ### JAD
 _Primary Source: http://www.javadecompilers.com/jad_
