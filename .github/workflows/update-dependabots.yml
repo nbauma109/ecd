@@ -1,0 +1,34 @@
+name: "Update dependabots"
+
+on:
+  push:
+    branches: [ 'dependabot/**' ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.message, 'Bump')"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+          token: ${{ secrets.PAT_TOKEN }}
+    - name: Setup git user
+      run: |
+         git config --global user.email "action@github.com"
+         git config --global user.name "GitHub Action"
+    - name: Update Version
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+         export BUMP=$(git log -1 | grep -w Bump)
+         export ARTIFACT=$(echo $BUMP | cut -d' ' -f2)
+         export OLD_VERSION=$(echo $BUMP | cut -d' ' -f4)
+         export NEW_VERSION=$(echo $BUMP | cut -d' ' -f6)
+         shopt -s globstar
+         sed -bi "s/$ARTIFACT-$OLD_VERSION/$ARTIFACT-$NEW_VERSION/g" **/MANIFEST.MF **/build.properties
+         git commit -a -m "[$ARTIFACT] $OLD_VERSION -> $NEW_VERSION"
+         git push
+       
