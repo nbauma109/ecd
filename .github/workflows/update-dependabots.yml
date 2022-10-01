@@ -21,7 +21,7 @@ jobs:
          git config --global user.name "GitHub Action"
     - name: Update Version
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
       run: |
          export BUMP=$(git log -1 | grep -w Bump)
          export ARTIFACT=$(echo $BUMP | cut -d' ' -f2)
