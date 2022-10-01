@@ -2,13 +2,13 @@ name: "Update dependabots"
 
 on:
   push:
-    branches: [ 'dependabot/**' ]
+    branches: [ 'combine-prs-branch' ]
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.message, 'Bump')"
+    if: "contains(github.event.head_commit.message, 'Merge dependabot/maven/')"
 
     steps:
     - name: Checkout repository
@@ -21,14 +21,10 @@ jobs:
          git config --global user.name "GitHub Action"
     - name: Update Version
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-         export BUMP=$(git log -1 | grep -w Bump)
-         export ARTIFACT=$(echo $BUMP | cut -d' ' -f2)
-         export OLD_VERSION=$(echo $BUMP | cut -d' ' -f4)
-         export NEW_VERSION=$(echo $BUMP | cut -d' ' -f6)
          shopt -s globstar
-         sed -bi "s/$ARTIFACT-$OLD_VERSION/$ARTIFACT-$NEW_VERSION/g" **/MANIFEST.MF **/build.properties
-         git commit -a -m "[$ARTIFACT] $OLD_VERSION -> $NEW_VERSION"
+         git log | grep -w Bump | cut -d' ' -f6,8,10 | xargs -n3 sh -c 'sed -bi "s/$1-$2/$1-$3/g" **/MANIFEST.MF **/build.properties' sh
+         git commit -a -m "Updated versions in **/MANIFEST.MF **/build.properties"
          git push
        
