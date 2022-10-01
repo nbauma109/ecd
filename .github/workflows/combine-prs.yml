@@ -51,31 +51,14 @@ jobs:
                 let statusOK = true;
                 if(${{ github.event.inputs.mustBeGreen }}) {
                   console.log('Checking green status: ' + branch);
-                  const stateQuery = `query($owner: String!, $repo: String!, $pull_number: Int!) {
-                    repository(owner: $owner, name: $repo) {
-                      pullRequest(number:$pull_number) {
-                        commits(last: 1) {
-                          nodes {
-                            commit {
-                              statusCheckRollup {
-                                state
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }`
-                  const vars = {
+                  const statusResponse = await github.rest.repos.getCombinedStatusForRef({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    pull_number: pull['number']
-                  };
-                  const result = await github.graphql(stateQuery, vars);
-                  const [{ commit }] = result.repository.pullRequest.commits.nodes;
-                  const state = commit.statusCheckRollup.state
+                    ref: branch
+                  });
+                  const state = statusResponse['data']['state'];
                   console.log('Validating status: ' + state);
-                  if(state != 'SUCCESS') {
+                  if(state != 'success') {
                     console.log('Discarding ' + branch + ' with status ' + state);
                     statusOK = false;
                   }
