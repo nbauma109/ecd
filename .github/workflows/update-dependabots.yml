@@ -20,6 +20,8 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > $HOME/.ssh/id_ed25519
         chmod 600 $HOME/.ssh/id_ed25519
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.ref }}
     - name: Setup git user
       run: |
         git config --global user.email "git@github.com"
