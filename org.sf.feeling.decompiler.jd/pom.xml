@@ -17,6 +17,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<jd.version>1.2.12</jd.version>
+		<jd.util.version>1.1.6</jd.util.version>
 	</properties>
 
 	<build>
@@ -50,7 +51,7 @@
 								<artifactItem>
 									<groupId>com.github.nbauma109</groupId>
 									<artifactId>jd-util</artifactId>
-									<version>1.1.6</version>
+									<version>${jd.util.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -81,6 +82,11 @@
 			<groupId>com.github.nbauma109</groupId>
 			<artifactId>jd-core</artifactId>
 			<version>${jd.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.nbauma109</groupId>
+			<artifactId>jd-util</artifactId>
+			<version>${jd.util.version}</version>
 		</dependency>
 	</dependencies>
 </project>
