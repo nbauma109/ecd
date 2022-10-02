@@ -4,12 +4,6 @@ on:
   push:
     branches: [ 'dependabot/**' ]
 
-# Set the access for individual scopes, or use permissions: write-all
-permissions:
-  pull-requests: write
-  issues: write
-  repository-projects: write
-
 jobs:
   build:
 
