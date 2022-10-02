@@ -8,10 +8,6 @@ on:
         description: 'Branch prefix to find combinable PRs based on'
         required: true
         default: 'dependabot'
-      mustBeGreen:
-        description: 'Only combine PRs that are green (status is success)'
-        required: true
-        default: true
       combineBranchName:
         description: 'Name of the branch to combine PRs into'
         required: true
@@ -44,42 +40,13 @@ jobs:
             let baseBranch = null;
             let baseBranchSHA = null;
             for (const pull of pulls) {
+              baseBranch = pull['base']['ref'];
+              baseBranchSHA = pull['base']['sha'];
               const branch = pull['head']['ref'];
               console.log('Pull for branch: ' + branch);
               if (branch.startsWith('${{ github.event.inputs.branchPrefix }}')) {
                 console.log('Branch matched prefix: ' + branch);
                 let statusOK = true;
-                if(${{ github.event.inputs.mustBeGreen }}) {
-                  console.log('Checking green status: ' + branch);
-                  const stateQuery = `query($owner: String!, $repo: String!, $pull_number: Int!) {
-                    repository(owner: $owner, name: $repo) {
-                      pullRequest(number:$pull_number) {
-                        commits(last: 1) {
-                          nodes {
-                            commit {
-                              statusCheckRollup {
-                                state
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }`
-                  const vars = {
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: pull['number']
-                  };
-                  const result = await github.graphql(stateQuery, vars);
-                  const [{ commit }] = result.repository.pullRequest.commits.nodes;
-                  const state = commit.statusCheckRollup.state
-                  console.log('Validating status: ' + state);
-                  if(state != 'SUCCESS') {
-                    console.log('Discarding ' + branch + ' with status ' + state);
-                    statusOK = false;
-                  }
-                }
                 console.log('Checking labels: ' + branch);
                 const labels = pull['labels'];
                 for(const label of labels) {
