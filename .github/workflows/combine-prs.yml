@@ -119,7 +119,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          ref: "refs/heads/${{ github.event.inputs.combineBranchName }}"
+          ref: '${{ github.event.inputs.combineBranchName }}'
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup git user
         run: |
