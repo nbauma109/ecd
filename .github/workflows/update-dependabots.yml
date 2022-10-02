@@ -1,7 +1,7 @@
 name: "Update dependabots"
 
 on:
-  push:
+  pull_request:
     branches: [ 'combine-prs-branch' ]
 
 # Set the access for individual scopes, or use permissions: write-all
@@ -14,7 +14,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.message, 'Merge dependabot/maven/')"
 
     steps:
     - name: Checkout repository
