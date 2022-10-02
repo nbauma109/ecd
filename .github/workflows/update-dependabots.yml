@@ -20,14 +20,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
     - name: Setup git user
       run: |
          git config --global user.email "action@github.com"
          git config --global user.name "GitHub Action"
     - name: Update Version
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
       run: |
          git log | grep -w Bump | cut -d' ' -f6,8,10 | xargs -n3 bash -c 'shopt -s globstar && sed -bi "s/$1-$2/$1-$3/g" **/MANIFEST.MF **/build.properties' sh-replace-in-files
          git commit -a -m "Updated versions in **/MANIFEST.MF **/build.properties"
