@@ -17,7 +17,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<jd.version>1.2.12</jd.version>
-		<jd.util.version>1.1.6</jd.util.version>
+		<jd.util.version>1.1.9</jd.util.version>
+		<commons.io.version>2.11.0</commons.io.version>
+		<bcel.version>6.5.0</bcel.version>
 	</properties>
 
 	<build>
@@ -38,14 +40,15 @@
 								<artifactItem>
 									<groupId>commons-io</groupId>
 									<artifactId>commons-io</artifactId>
-									<version>2.11.0</version>
+									<version>${commons.io.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.apache.bcel</groupId>
 									<artifactId>bcel</artifactId>
-									<version>6.5.0</version>
+									<version>${bcel.version}</version>
+									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
@@ -87,6 +90,16 @@
 			<groupId>com.github.nbauma109</groupId>
 			<artifactId>jd-util</artifactId>
 			<version>${jd.util.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.bcel</groupId>
+			<artifactId>bcel</artifactId>
+			<version>${bcel.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>${commons.io.version}</version>
 		</dependency>
 	</dependencies>
 </project>

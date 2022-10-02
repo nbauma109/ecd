@@ -17,6 +17,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<fernflower.version>1.8.1</fernflower.version>
+		<asm.version>9.4</asm.version>
+		<minimal.json.version>0.9.5</minimal.json.version>
 	</properties>
 
 	<build>
@@ -44,7 +46,7 @@
 								<artifactItem>
 									<groupId>com.eclipsesource.minimal-json</groupId>
 									<artifactId>minimal-json</artifactId>
-									<version>0.9.4</version>
+									<version>${minimal.json.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 									<destFileName>json.jar</destFileName>
@@ -52,7 +54,7 @@
 								<artifactItem>
 									<groupId>org.ow2.asm</groupId>
 									<artifactId>asm</artifactId>
-									<version>9.1</version>
+									<version>${asm.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -80,12 +82,12 @@
 		<dependency>
 			<groupId>com.eclipsesource.minimal-json</groupId>
 			<artifactId>minimal-json</artifactId>
-			<version>0.9.5</version>
+			<version>${minimal.json.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ow2.asm</groupId>
 			<artifactId>asm</artifactId>
-			<version>9.1</version>
+			<version>${asm.version}</version>
 		</dependency>
 	</dependencies>
 </project>
