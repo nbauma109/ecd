@@ -1,0 +1,35 @@
+name: "Update dependabots"
+
+on:
+  push:
+    branches: [ 'dependabot/**' ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.message, 'Bump')"
+
+    steps:
+    - name: Create .ssh directory
+      run: mkdir $HOME/.ssh
+    - name: Create known hosts file
+      run: echo "${{ secrets.KNOWN_HOSTS }}" > $HOME/.ssh/known_hosts
+    - name: Create private key
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > $HOME/.ssh/id_ed25519
+        chmod 600 $HOME/.ssh/id_ed25519
+    - name: Setup git user
+      run: |
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+    - name: SSH-style git clone
+      run: |
+        git clone git@github.com:nbauma109/ecd.git
+        git checkout ${{ github.ref }}
+    - name: Update Version
+      run: |
+        cd ecd
+        git log | grep -w Bump | cut -d' ' -f6,8,10 | xargs -n3 bash -c 'shopt -s globstar && sed -bi "s/$1-$2/$1-$3/g" **/MANIFEST.MF **/build.properties' sh-replace-in-files
+        git commit -a -m "Updated versions in **/MANIFEST.MF **/build.properties"
+        git push
