@@ -30,5 +30,5 @@ Bundle-ClassPath: .,
  lib/bcel-6.5.0.jar,
  lib/commons-io-2.11.0.jar,
  lib/jd-util-1.1.6.jar,
- lib/jd-core-1.2.8.jar
+ lib/jd-core-1.2.15.jar
 Automatic-Module-Name: org.sf.feeling.decompiler.jd
