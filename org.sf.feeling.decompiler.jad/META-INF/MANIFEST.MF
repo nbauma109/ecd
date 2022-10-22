@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Enhanced Class Decompiler Jad Extension
 Bundle-SymbolicName: org.sf.feeling.decompiler.jad;singleton:=true
-Bundle-Version: 3.4.18
+Bundle-Version: 3.4.19
 Bundle-Activator: org.sf.feeling.decompiler.jad.JadDecompilerPlugin
 Require-Bundle: org.eclipse.core.runtime,
  org.sf.feeling.decompiler,
