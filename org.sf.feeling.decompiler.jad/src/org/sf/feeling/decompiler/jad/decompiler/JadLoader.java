@@ -12,6 +12,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.eclipse.core.runtime.Platform;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
@@ -23,14 +27,15 @@ public final class JadLoader {
 		String jadFileName = null;
 		String jadFilePath = null;
 
-		if (Platform.OS_WIN32.equalsIgnoreCase(Platform.getOS())) {
+		String os = Platform.getOS();
+		if (Platform.OS_WIN32.equalsIgnoreCase(os)) {
 			jadFileName = "jad" + System.currentTimeMillis() + ".exe"; //$NON-NLS-1$ //$NON-NLS-2$
 			// Jad_exe instead of Jad.exe to avoid GitHub page nag message
 			jadFilePath = "/native/jad/win32/jad_exe"; //$NON-NLS-1$
-		} else if (Platform.OS_LINUX.equalsIgnoreCase(Platform.getOS())) {
+		} else if (Platform.OS_LINUX.equalsIgnoreCase(os)) {
 			jadFileName = "jad" + System.currentTimeMillis(); //$NON-NLS-1$
 			jadFilePath = "/native/jad/linux/jad"; //$NON-NLS-1$
-		} else if (Platform.OS_MACOSX.equalsIgnoreCase(Platform.getOS())) {
+		} else if (Platform.OS_MACOSX.equalsIgnoreCase(os)) {
 			jadFileName = "jad" + System.currentTimeMillis(); //$NON-NLS-1$
 			jadFilePath = "/native/jad/macosx/jad"; //$NON-NLS-1$
 		} else {
@@ -56,19 +61,15 @@ public final class JadLoader {
 				}
 			}
 
-			try {
-				if (Platform.OS_LINUX.equalsIgnoreCase(Platform.getOS())) {
-					Runtime.getRuntime().exec("chmod a+x " //$NON-NLS-1$
-							+ jad.getAbsolutePath()).waitFor();
-				} else if (Platform.OS_MACOSX.equalsIgnoreCase(Platform.getOS())) {
-					Runtime.getRuntime().exec("chmod a+x " //$NON-NLS-1$
-							+ jad.getAbsolutePath()).waitFor();
-				}
-			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
+			if (Platform.OS_LINUX.equalsIgnoreCase(os) || Platform.OS_MACOSX.equalsIgnoreCase(os)) {
+				Set<PosixFilePermission> perms = new HashSet<>();
+				perms.add(PosixFilePermission.OWNER_EXECUTE);
+				perms.add(PosixFilePermission.GROUP_EXECUTE);
+				perms.add(PosixFilePermission.OTHERS_EXECUTE);
+
+				Files.setPosixFilePermissions(jad.toPath(), perms);
 			}
 
-			// jad.setExecutable( true );
 			return jad.getAbsolutePath();
 		} catch (IOException e) {
 			throw new Error("Failed to create temporary file for jad.exe: " //$NON-NLS-1$

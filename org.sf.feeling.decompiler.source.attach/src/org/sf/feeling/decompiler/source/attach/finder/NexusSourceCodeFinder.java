@@ -23,6 +23,9 @@ import java.util.concurrent.TimeUnit;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.transform.stream.StreamSource;
 
 import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
@@ -202,9 +205,12 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 			URLConnection connection = new URL(urlStr).openConnection();
 			connection.setConnectTimeout(5000);
 			connection.setReadTimeout(10000);
+			XMLInputFactory xif = XMLInputFactory.newFactory();
+			xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+			XMLStreamReader xsr = xif.createXMLStreamReader(new StreamSource(connection.getInputStream()));
 			try {
 				long t0 = System.nanoTime();
-				Object resp = unmarshaller.unmarshal(connection.getInputStream());
+				Object resp = unmarshaller.unmarshal(xsr);
 				long t1 = System.nanoTime();
 				Logger.warn("URL " + urlStr + " took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
 				if (resp instanceof SearchNGResponse) {

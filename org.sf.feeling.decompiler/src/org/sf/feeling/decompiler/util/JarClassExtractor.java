@@ -33,7 +33,8 @@ public class JarClassExtractor {
 			List<ZipEntry> entries = findRelevant(archive, packege, className, inner);
 			byte[] buffer = new byte[1024 * 16];
 			String outFile;
-			int lastSep, amountRead;
+			int lastSep;
+			int amountRead;
 
 			for (ZipEntry entry : entries) {
 				outFile = entry.getName();
@@ -45,6 +46,9 @@ public class JarClassExtractor {
 						throw new IOException("Zip file entry <" //$NON-NLS-1$
 								+ entry.getName() + "> not found"); //$NON-NLS-1$
 					Path outPath = Paths.get(to + File.separator + outFile);
+					if (!outPath.normalize().startsWith(Paths.get(to))) {
+						throw new IOException("Bad zip entry");
+					}
 					try (OutputStream out = Files.newOutputStream(outPath)) {
 						while ((amountRead = in.read(buffer)) != -1)
 							out.write(buffer, 0, amountRead);
