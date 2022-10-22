@@ -361,12 +361,12 @@ public class JadDecompiler implements IDecompiler {
 
 	@Override
 	public boolean supportLevel(int level) {
-		return level < 8;
+		return true;
 	}
 
 	@Override
 	public boolean supportDebugLevel(int level) {
-		return level < 8;
+		return true;
 	}
 
 	@Override
