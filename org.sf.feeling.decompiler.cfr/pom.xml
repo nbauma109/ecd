@@ -16,7 +16,6 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<cfr.version>0.152</cfr.version>
 	</properties>
 
 	<build>
@@ -37,7 +36,6 @@
 								<artifactItem>
 									<groupId>org.benf</groupId>
 									<artifactId>cfr</artifactId>
-									<version>${cfr.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -53,7 +51,6 @@
 		<dependency>
 			<groupId>org.benf</groupId>
 			<artifactId>cfr</artifactId>
-			<version>${cfr.version}</version>
 		</dependency>
 	</dependencies>
 </project>
