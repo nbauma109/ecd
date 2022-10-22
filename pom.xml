@@ -1,9 +1,11 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.ecd-plugin</groupId>
 	<artifactId>com.github.ecd-plugin.ecd</artifactId>
-	<version>3.4.15</version>
+	<version>3.4.17</version>
 	<packaging>pom</packaging>
 
 	<name>com.github.ecd-plugin.ecd</name>
@@ -126,9 +128,13 @@
 
 	<repositories>
 		<repository>
-			<id>eclipse-2022-03</id>
+			<id>eclipse-2022-09</id>
 			<layout>p2</layout>
-			<url>https://download.eclipse.org/releases/2022-03/</url>
+			<url>https://download.eclipse.org/releases/2022-09/</url>
+		</repository>
+		<repository>
+			<id>jitpack</id>
+			<url>https://jitpack.io</url>
 		</repository>
 	</repositories>
 
@@ -137,7 +143,7 @@
 			<dependency>
 				<groupId>com.sun.xml.bind</groupId>
 				<artifactId>jaxb-impl</artifactId>
-				<version>2.3.3</version>
+				<version>3.0.2</version>
 			</dependency>
 			<dependency>
 				<groupId>javax.activation</groupId>
@@ -152,107 +158,107 @@
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-api</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-accurev</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-bazaar</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-clearcase</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-cvs-commons</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-cvsexe</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-cvsjava</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-git-commons</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-gitexe</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-hg</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-integrity</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-jazz</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-jgit</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-local</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-perforce</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-starteam</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-svn-commons</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-svnexe</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-synergy</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-tfs</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.maven.scm</groupId>
 				<artifactId>maven-scm-provider-vss</artifactId>
-				<version>1.9.4</version>
+				<version>1.13.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.codehaus.plexus</groupId>
@@ -278,6 +284,56 @@
 				<groupId>org.sonatype.nexus.plugins</groupId>
 				<artifactId>nexus-restlet1x-model</artifactId>
 				<version>2.9.2-01</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>2.11.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.bcel</groupId>
+				<artifactId>bcel</artifactId>
+				<version>6.6.0</version>
+			</dependency>
+			<dependency>
+				<groupId>com.github.nbauma109</groupId>
+				<artifactId>jd-util</artifactId>
+				<version>1.1.11</version>
+			</dependency>
+			<dependency>
+				<groupId>com.github.nbauma109</groupId>
+				<artifactId>jd-core</artifactId>
+				<version>1.2.17</version>
+			</dependency>
+			<dependency>
+				<groupId>com.github.QuiltMC</groupId>
+				<artifactId>quiltflower</artifactId>
+				<version>1.8.1</version>
+			</dependency>
+			<dependency>
+				<groupId>com.eclipsesource.minimal-json</groupId>
+				<artifactId>minimal-json</artifactId>
+				<version>0.9.5</version>
+			</dependency>
+			<dependency>
+				<groupId>org.ow2.asm</groupId>
+				<artifactId>asm</artifactId>
+				<version>9.4</version>
+			</dependency>
+			<dependency>
+				<groupId>org.benf</groupId>
+				<artifactId>cfr</artifactId>
+				<version>0.152</version>
+			</dependency>
+			<dependency>
+				<groupId>org.bitbucket.mstrobel</groupId>
+				<artifactId>procyon-compilertools</artifactId>
+				<version>0.6.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.bitbucket.mstrobel</groupId>
+				<artifactId>procyon-core</artifactId>
+				<version>0.6.0</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

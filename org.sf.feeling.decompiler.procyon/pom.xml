@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.github.ecd-plugin</groupId>
 		<artifactId>com.github.ecd-plugin.ecd</artifactId>
-		<version>3.4.15</version>
+		<version>3.4.17</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
@@ -16,7 +16,6 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<procyon.version>0.6.0</procyon.version>
 	</properties>
 
 	<build>
@@ -37,14 +36,12 @@
 								<artifactItem>
 									<groupId>org.bitbucket.mstrobel</groupId>
 									<artifactId>procyon-compilertools</artifactId>
-									<version>${procyon.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.bitbucket.mstrobel</groupId>
 									<artifactId>procyon-core</artifactId>
-									<version>${procyon.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -60,7 +57,10 @@
 		<dependency>
 			<groupId>org.bitbucket.mstrobel</groupId>
 			<artifactId>procyon-compilertools</artifactId>
-			<version>${procyon.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bitbucket.mstrobel</groupId>
+			<artifactId>procyon-core</artifactId>
 		</dependency>
 	</dependencies>
 </project>
