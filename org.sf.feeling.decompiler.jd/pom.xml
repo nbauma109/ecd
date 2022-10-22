@@ -1,10 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>com.github.ecd-plugin</groupId>
 		<artifactId>com.github.ecd-plugin.ecd</artifactId>
-		<version>3.4.15</version>
+		<version>3.4.17</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
@@ -16,7 +18,6 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<jd.version>1.2.8</jd.version>
 	</properties>
 
 	<build>
@@ -24,7 +25,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.2.0</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>copy</id>
@@ -37,27 +38,24 @@
 								<artifactItem>
 									<groupId>commons-io</groupId>
 									<artifactId>commons-io</artifactId>
-									<version>2.11.0</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.apache.bcel</groupId>
 									<artifactId>bcel</artifactId>
-									<version>6.5.0</version>
+									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.github.nbauma109</groupId>
 									<artifactId>jd-util</artifactId>
-									<version>1.1.6</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.github.nbauma109</groupId>
 									<artifactId>jd-core</artifactId>
-									<version>${jd.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -78,9 +76,20 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.bcel</groupId>
+			<artifactId>bcel</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.nbauma109</groupId>
+			<artifactId>jd-util</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.github.nbauma109</groupId>
 			<artifactId>jd-core</artifactId>
-			<version>${jd.version}</version>
 		</dependency>
 	</dependencies>
 </project>
