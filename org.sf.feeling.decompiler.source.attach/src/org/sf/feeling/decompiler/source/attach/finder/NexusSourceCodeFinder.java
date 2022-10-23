@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
@@ -206,6 +207,11 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 			connection.setConnectTimeout(5000);
 			connection.setReadTimeout(10000);
 			XMLInputFactory xif = XMLInputFactory.newFactory();
+			// This disables DTDs entirely for that factory
+			xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+			// This causes XMLStreamException to be thrown if external DTDs are accessed.
+			xif.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			// disable external entities
 			xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
 			XMLStreamReader xsr = xif.createXMLStreamReader(new StreamSource(connection.getInputStream()));
 			try {
