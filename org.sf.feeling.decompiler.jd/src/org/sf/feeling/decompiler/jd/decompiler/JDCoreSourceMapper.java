@@ -9,6 +9,7 @@
 package org.sf.feeling.decompiler.jd.decompiler;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -37,8 +38,13 @@ public class JDCoreSourceMapper extends JDSourceMapper {
 				+ origionalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
 		exceptions.addAll(origionalDecompiler.getExceptions());
+		try {
+			source.append("\n\tDecompiled with JD-Core " + printer.getVersion()); //$NON-NLS-1$
+		} catch (IOException e) {
+			source.append("\n\tDecompiled with JD-Core SNAPSHOT"); //$NON-NLS-1$
+			exceptions.add(e);
+		}
 		logExceptions(exceptions, source);
-		source.append("\n\tDecompiled with JD-Core " + JDSourceMapper.getVersion()); //$NON-NLS-1$
 		source.append("\n*/"); //$NON-NLS-1$
 	}
 

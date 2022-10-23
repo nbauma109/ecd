@@ -8,20 +8,23 @@ package jd.ide.eclipse.editors;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.jd.core.v1.ClassFileToJavaSourceDecompiler;
+import org.jd.core.v1.printer.LineNumberStringBuilderPrinter;
+import org.jd.core.v1.util.StringConstants;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.BaseDecompilerSourceMapper;
-import org.sf.feeling.decompiler.jd.decompiler.JDCorePrinter;
 import org.sf.feeling.decompiler.jd.decompiler.JDCoreZipLoader;
 import org.sf.feeling.decompiler.jd.decompiler.JDCoreZipLoader.EntriesCache;
+
+import jd.core.preferences.Preferences;
 
 /**
  * JDSourceMapper
@@ -32,15 +35,19 @@ import org.sf.feeling.decompiler.jd.decompiler.JDCoreZipLoader.EntriesCache;
  */
 public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 
-	private final static String JAVA_CLASS_SUFFIX = ".class";
-	private final static String JAVA_SOURCE_SUFFIX = ".java";
-	private final static int JAVA_SOURCE_SUFFIX_LENGTH = 5;
+	private static final String JAVA_CLASS_SUFFIX = ".class";
+	private static final String JAVA_SOURCE_SUFFIX = ".java";
+	private static final int JAVA_SOURCE_SUFFIX_LENGTH = 5;
 
 	private static EntriesCache entriesCache = null;
 
+	private static final ClassFileToJavaSourceDecompiler DECOMPILER = new ClassFileToJavaSourceDecompiler();
+
 	private File basePath;
 
-	public JDSourceMapper(File basePath, IPath sourcePath, String sourceRootPath, Map<String, String> options) {
+	protected LineNumberStringBuilderPrinter printer = new LineNumberStringBuilderPrinter();
+
+	protected JDSourceMapper(File basePath, IPath sourcePath, String sourceRootPath, Map<String, String> options) {
 		super(sourcePath, sourceRootPath, options);
 		this.basePath = basePath;
 	}
@@ -101,11 +108,14 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 		boolean unicodeEscape = false; // currently unused :
 										// store.getBoolean(JavaDecompilerPlugin.PREF_ESCAPE_UNICODE_CHARACTERS);
 		boolean showLineNumbers = store.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
-		// boolean showMetadata =
+		boolean showMetaData = false; // currently unused :
 		// store.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
 
-		Map<String, Object> configuration = new TreeMap<>();
-		configuration.put("realignLineNumbers", realignmentLineNumber);
+		Map<String, String> configuration = new HashMap<>();
+		configuration.put(Preferences.REALIGN_LINE_NUMBERS, Boolean.toString(realignmentLineNumber));
+		configuration.put(Preferences.ESCAPE_UNICODE_CHARACTERS, Boolean.toString(unicodeEscape));
+		configuration.put(Preferences.WRITE_LINE_NUMBERS, Boolean.toString(showLineNumbers));
+		configuration.put(Preferences.WRITE_METADATA, Boolean.toString(showMetaData));
 
 		if (classPath.endsWith(JAVA_CLASS_SUFFIX)) {
 			classPath = classPath.substring(0, classPath.length() - 6);
@@ -121,24 +131,14 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 		}
 
 		try (JDCoreZipLoader loader = new JDCoreZipLoader(jarPath, cache)) {
-			JDCorePrinter printer = new JDCorePrinter(unicodeEscape, showLineNumbers);
-
-			ClassFileToJavaSourceDecompiler decompiler = new ClassFileToJavaSourceDecompiler();
-			decompiler.decompile(loader, printer, classPath, configuration);
+			String entryPath = classPath + StringConstants.CLASS_FILE_SUFFIX;
+			String decompiledOutput = printer.buildDecompiledOutput(configuration, loader, entryPath, DECOMPILER);
 
 			// Save the cache so we don't have to re-load the class names
 			// in case we decompile another class from the same JAR file
 			entriesCache = loader.getEntriesCache();
 
-			return printer.toString();
+			return decompiledOutput;
 		}
-	}
-
-	/**
-	 * @return version of JD-Core
-	 * @since JD-Core 1.2.8
-	 */
-	public static String getVersion() {
-		return "1.2.8";
 	}
 }
