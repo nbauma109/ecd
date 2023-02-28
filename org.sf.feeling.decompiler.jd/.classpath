@@ -7,9 +7,9 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src/"/>
-	<classpathentry exported="true" kind="lib" path="lib/bcel-6.6.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/bcel-6.7.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-io-2.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/jd-util-1.1.12.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/jd-core-1.2.18.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jd-util-1.1.14.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jd-core-1.2.25.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

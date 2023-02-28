@@ -27,8 +27,8 @@ Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.jd.actions,
  org.sf.feeling.decompiler.jd.decompiler
 Bundle-ClassPath: .,
- lib/bcel-6.6.0.jar,
+ lib/bcel-6.7.0.jar,
  lib/commons-io-2.11.0.jar,
- lib/jd-util-1.1.12.jar,
- lib/jd-core-1.2.18.jar
+ lib/jd-util-1.1.14.jar,
+ lib/jd-core-1.2.25.jar
 Automatic-Module-Name: org.sf.feeling.decompiler.jd
