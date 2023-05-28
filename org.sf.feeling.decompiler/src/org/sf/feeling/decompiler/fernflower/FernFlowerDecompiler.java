@@ -43,7 +43,7 @@ public class FernFlowerDecompiler implements IDecompiler {
 	ByteArrayOutputStream loggerStream;
 
 	/**
-	 * Performs a <code>Runtime.exec()</code> on jad executable with selected
+	 * Performs a <code>Runtime.exec()</code> on FernFlower executable with selected
 	 * options.
 	 * 
 	 * @see IDecompiler#decompile(String, String, String)
@@ -136,10 +136,6 @@ public class FernFlowerDecompiler implements IDecompiler {
 	}
 
 	/**
-	 * Jad doesn't support decompilation from archives. This methods extracts
-	 * request class file from the specified archive into temp directory and then
-	 * calls <code>decompile</code>.
-	 * 
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override

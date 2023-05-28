@@ -4,6 +4,7 @@ package org.sf.feeling.decompiler.cfr;
 import java.net.MalformedURLException;
 import java.net.URL;
 
+import org.benf.cfr.reader.util.CfrVersionInfo;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.util.IPropertyChangeListener;
@@ -17,6 +18,8 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
 	public static final String PLUGIN_ID = "org.sf.feeling.decompiler.cfr"; //$NON-NLS-1$
 
 	public static final String decompilerType = "CFR"; //$NON-NLS-1$
+
+	public static final String decompilerVersion = CfrVersionInfo.VERSION;
 
 	private static CfrDecompilerPlugin plugin;
 

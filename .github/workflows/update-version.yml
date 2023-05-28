@@ -1,20 +1,16 @@
 name: "Increment version"
 
 on:
-  push:
-    branches: [ master ]
-    paths-ignore:
-      - '**/README.md'
+  workflow_dispatch:
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[update version]')"
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
           token: ${{ secrets.PAT_TOKEN }}
     - name: Setup git user

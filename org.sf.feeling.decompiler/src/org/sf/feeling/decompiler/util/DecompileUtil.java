@@ -87,25 +87,6 @@ public class DecompileUtil {
 			HashMap sourceRange = (HashMap) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
 			sourceRange.remove(type);
 			SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
-
-			// List rootPaths = (List) ReflectionUtils.getFieldValue( mapper,
-			// "rootPaths" );
-			// String rootPath = null;
-			// if ( rootPaths != null && rootPaths.size( ) > 0 )
-			// {
-			// rootPath = (String) rootPaths.get( 0 );
-			// }
-			//
-			// if ( "".equals( rootPath ) )
-			// rootPath = null;
-			//
-			// ImportSourceMapper importMapper = new ImportSourceMapper(
-			// (IPath) ReflectionUtils.getFieldValue( mapper,
-			// "sourcePath" ),
-			// rootPath,
-			// (Map) ReflectionUtils.getFieldValue( mapper, "options" ) );
-			// importMapper.mapSource( type, contents.toCharArray( ), typeInfo
-			// );
 		}
 	}
 

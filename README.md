@@ -5,12 +5,12 @@
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
 
 # Enhanced Class Decompiler
-Enhanced Class Decompiler integrates **JD**, **Jad**, **FernFlower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
+Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Quiltflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
 
 <p align="center"><img src="https://ecd-plugin.github.io/ecd/doc/o_debug_class.png"></p>
 
 ## Description
-Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, Jad, FernFlower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
+Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, FernFlower, Quiltflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
 ## Why is this plug-in "enhanced"?
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
@@ -46,11 +46,13 @@ _If you have currently the "Eclipse" Class Decompiler installed, it is recommend
 
 ## How to build from source?
 
+  Requiremnent: JDK 11 or newer (make sure `JAVA_HOME` environment variable points to an appropriate JDK)
+
   If you want to test the latest features of this plugin, you have to build it from source. For this, proceed as following:
 
-  1. Clone this project
-  1. Clone https://github.com/ecd-plugin/update next to this project
-  1. Run mvn clean package
+  1. `git clone https://github.com/ecd-plugin/ecd`
+  2. `git clone --depth 1 https://github.com/ecd-plugin/update` next to this project
+  3. Run `mvn clean package`
 
   If you want to use Eclipse and help developing, continue like this:
 
@@ -60,6 +62,15 @@ _If you have currently the "Eclipse" Class Decompiler installed, it is recommend
   5. Open the file _site.xml_ within the project
   6. Press "Build All"
   7. Copy the jar files generated in the _build/features_ and _build/plugins_ folder of the project into the correspondent folders of your normal Eclipse installation.
+
+## Plugin Signature
+
+Since version 3.3.0 ECD is signed by a self-signed 4096 bit RSA key:
+
+* Subject: `CN=ECD Software Distribution,OU=ECD,O=ECD`
+* SHA-1 fingerprint: 2D DB EE 7E 07 32 EB 0D 7C F2 FF C6 68 A0 C4 B8 B9 58 40 29
+* SHA-256 fingerprint: 8A 68 55 D3 91 B7 6F 95 DA D1 1E DF 1C 38 8D 38 F1 8A 0C A2 97 E5 12 85 DD 5B 05 9C C3 21 1B D4
+* Certificate file: [ecd.cer](ecd.cer)
 
 ## Licenses
 
@@ -81,8 +92,8 @@ Used libraries:
   * Nexus Indexer: [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Nexus Restlet1x Model: [Eclipse Public License v1.0](https://www.eclipse.org/legal/epl-v10.html)
   * Plexus Utils: Copyright The Codehaus Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
-  * JAD: Copyright 1997-2001 Pavel Kouznetsov, Free for non-commercial use
   * JD-Core: Copyright Emmanuel Dupuy, [GPL 3](https://www.gnu.org/licenses/gpl-3.0-standalone.html)
+  * Quiltflower: [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 ## Contributors
 
@@ -93,6 +104,13 @@ Used libraries:
 * Jan Peter Stotz
 
 ## Changelog
+* Version 3.3.0
+  * ECD releases are now signed with a self-signed certificate
+  * Removed Jad decompiler (decompiler was released 2001)
+  * Quiltflower plugin and feature added
+  * Updated Embedded Decompilers
+    * CFR to version 0.152 (JDK 14 support)
+    * Procyon to version 0.6.0
 
 * Version 3.3.0
   * Fix a NPE bug for CFR

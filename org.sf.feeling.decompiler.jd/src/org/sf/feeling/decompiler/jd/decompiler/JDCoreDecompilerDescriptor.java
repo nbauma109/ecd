@@ -31,8 +31,9 @@ public class JDCoreDecompilerDescriptor implements IDecompilerDescriptor {
 
 	@Override
 	public IDecompiler getDecompiler() {
-		if (decompiler == null)
+		if (decompiler == null) {
 			decompiler = new JDCoreDecompiler(getDecompilerSourceMapper());
+		}
 		return decompiler;
 	}
 

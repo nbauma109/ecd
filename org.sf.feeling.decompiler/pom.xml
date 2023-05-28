@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.github.ecd-plugin</groupId>
 		<artifactId>com.github.ecd-plugin.ecd</artifactId>
-		<version>3.4.24</version>
+		<version>3.5.3</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
@@ -16,6 +16,7 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<fernflower.version>403</fernflower.version>
 	</properties>
 
 	<build>
@@ -23,7 +24,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.5.0</version>
 				<executions>
 					<execution>
 						<id>copy</id>
@@ -34,8 +35,9 @@
 						<configuration>
 							<artifactItems>
 								<artifactItem>
-									<groupId>com.github.QuiltMC</groupId>
-									<artifactId>quiltflower</artifactId>
+									<groupId>net.minecraftforge</groupId>
+									<artifactId>fernflower</artifactId>
+									<version>${fernflower.version}</version>
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
@@ -59,10 +61,19 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<repositories>
+		<repository>
+			<id>minecraftforge</id>
+			<url>https://files.minecraftforge.net/maven/</url>
+		</repository>
+	</repositories>
+
 	<dependencies>
 		<dependency>
-			<groupId>com.github.QuiltMC</groupId>
-			<artifactId>quiltflower</artifactId>
+			<groupId>net.minecraftforge</groupId>
+			<artifactId>fernflower</artifactId>
+			<version>${fernflower.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.eclipsesource.minimal-json</groupId>

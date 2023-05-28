@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.procyon"
       label="%featureName"
-      version="3.4.24"
+      version="3.5.3"
       provider-name="%providerName"
       plugin="org.sf.feeling.decompiler.procyon">
 
@@ -46,7 +46,7 @@
          id="org.sf.feeling.decompiler.procyon"
          download-size="0"
          install-size="0"
-         version="3.4.24"
+         version="3.5.3"
          unpack="false"/>
 
 </feature>

@@ -15,11 +15,11 @@
         <category name="org.sf.feeling.decompiler.jd"/>
     </feature>
     <category-def name="org.sf.feeling.decompiler.jd" label="JD Plug-in for Enhanced Class Decompiler"/>
-    <!-- JAD -->
-    <feature url="features/org.sf.feeling.decompiler.jad_${project.version}.jar" id="org.sf.feeling.decompiler.jad" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.jad"/>
+    <!-- Quiltflower -->
+    <feature url="features/org.sf.feeling.decompiler.quiltflower_${project.version}.jar" id="org.sf.feeling.decompiler.quiltflower" version="${project.version}">
+        <category name="org.sf.feeling.decompiler.quiltflower"/>
     </feature>
-    <category-def name="org.sf.feeling.decompiler.jad" label="JAD Plug-in for Enhanced Class Decompiler"/>
+    <category-def name="org.sf.feeling.decompiler.quiltflower" label="Quiltflower Plug-in for Enhanced Class Decompiler"/>
     <!-- Fernflower -->
     <feature url="features/org.sf.feeling.decompiler_${project.version}.jar" id="org.sf.feeling.decompiler" version="${project.version}">
         <category name="org.sf.feeling.decompiler"/>

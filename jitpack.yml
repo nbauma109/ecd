@@ -5,4 +5,4 @@ install:
   - export M3_VERSION=3.8.5
   - curl -vkL https://archive.apache.org/dist/maven/maven-3/${M3_VERSION}/binaries/apache-maven-${M3_VERSION}-bin.zip -o $HOME/apache-maven-${M3_VERSION}-bin.zip
   - unzip -o $HOME/apache-maven-${M3_VERSION}-bin.zip -d $HOME
-  - $HOME/apache-maven-${M3_VERSION}/bin/mvn -B install
+  - $HOME/apache-maven-${M3_VERSION}/bin/mvn -B install -Dsigning.disabled=true

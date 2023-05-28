@@ -167,7 +167,13 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		String className = new String(info.getName());
 		String fullName = new String(info.getFileName());
-		className = fullName.substring(fullName.lastIndexOf(className));
+		int classNameIndex = fullName.lastIndexOf(className);
+		if (classNameIndex < 0) {
+			JavaDecompilerPlugin.logError(null,
+					"Unable to find className \"" + className + "\" in fullName \"" + fullName + "\""); //$NON-NLS-1$
+			return null;
+		}
+		className = fullName.substring(classNameIndex);
 
 		int index = className.lastIndexOf('/');
 		className = className.substring(index + 1);
