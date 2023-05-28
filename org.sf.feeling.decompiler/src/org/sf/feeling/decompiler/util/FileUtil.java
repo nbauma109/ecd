@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +45,7 @@ public class FileUtil {
 			} catch (Exception e) {
 			}
 			if (encoding == null || encoding.trim().length() == 0) {
-				encoding = "UTF-8"; //$NON-NLS-1$
+				encoding = StandardCharsets.UTF_8.name();
 			}
 			try (PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), encoding))) {
 				out.print(string);
@@ -73,8 +74,9 @@ public class FileUtil {
 				}
 				fouts.flush();
 			}
-			if (close)
+			if (close) {
 				bis.close();
+			}
 		} catch (IOException e) {
 			Logger.getLogger(FileUtil.class.getName()).log(Level.WARNING, "Write binaray file failed.", //$NON-NLS-1$
 					e);
@@ -294,7 +296,7 @@ public class FileUtil {
 			if (monitor != null) {
 				monitor.subTask(path);
 			}
-			byte[] bt = new byte[512];
+			byte[] bt = new byte[4096];
 			ZipEntry ze = new ZipEntry(path);
 			ze.setSize(file.length());
 			zos.putNextEntry(ze);
@@ -378,8 +380,9 @@ public class FileUtil {
 				int readLen = 0;
 				for (int i = 0; i < files.length; i++) {
 					File file = files[i];
-					if (file.isDirectory())
+					if (file.isDirectory()) {
 						continue;
+					}
 					ze = new ZipEntry((classPackage.length() > 0 ? (classPackage + "/") //$NON-NLS-1$
 							: "") + file.getName()); //$NON-NLS-1$
 					ze.setSize(file.length());

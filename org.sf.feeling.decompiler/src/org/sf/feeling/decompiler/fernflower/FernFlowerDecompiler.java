@@ -43,7 +43,7 @@ public class FernFlowerDecompiler implements IDecompiler {
 	ByteArrayOutputStream loggerStream;
 
 	/**
-	 * Performs a <code>Runtime.exec()</code> on jad executable with selected
+	 * Performs a <code>Runtime.exec()</code> on FernFlower executable with selected
 	 * options.
 	 * 
 	 * @see IDecompiler#decompile(String, String, String)

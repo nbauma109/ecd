@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 
+import org.jetbrains.java.decompiler.struct.StructClass;
+import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.editor.IDecompilerDescriptor;
@@ -85,8 +87,8 @@ public class ClassUtil {
 		return -1;
 	}
 
-	public static boolean isClassFile(byte[] bytes) {
-		try (DataInputStream data = new DataInputStream(new ByteArrayInputStream(bytes))) {
+	public static boolean isClassFile(byte[] classData) {
+		try (DataInputStream data = new DataInputStream(new ByteArrayInputStream(classData))) {
 			if (0xCAFEBABE != data.readInt()) {
 				return false;
 			}
@@ -97,6 +99,15 @@ public class ClassUtil {
 			Logger.error("Class file test failed", e);
 		}
 		return false;
+	}
+
+	/**
+	 * Uses FernFlower library to read the class and extract it's qualified name
+	 */
+	public static String getClassQualifiedName(byte[] classData) throws IOException {
+		StructClass structClass = new StructClass(classData, true, new LazyLoader(null));
+		structClass.releaseResources();
+		return structClass.qualifiedName;
 	}
 
 	public static IDecompiler getDefaultDecompiler(int level, boolean debug) {

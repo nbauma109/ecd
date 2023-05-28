@@ -45,7 +45,7 @@ public interface IDecompiler {
 	public long getDecompilationTime();
 
 	/**
-	 * If any exceptions occured during decompilation thaey should be included into
+	 * If any exceptions occurred during decompilation they should be included into
 	 * the <code>List</code> returned by this method.
 	 * 
 	 * @return non-<code>null</code> value which is a list containing

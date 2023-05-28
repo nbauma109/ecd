@@ -12,11 +12,15 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
+import com.strobel.Procyon;
+
 public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
 	public static final String PLUGIN_ID = "org.sf.feeling.decompiler.procyon"; //$NON-NLS-1$
 
 	public static final String decompilerType = "Procyon"; //$NON-NLS-1$
+
+	public static final String decompilerVersion = Procyon.version();
 
 	private static ProcyonDecompilerPlugin plugin;
 
@@ -77,8 +81,9 @@ public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IProper
 			e.printStackTrace();
 		}
 		ImageDescriptor actionIcon = null;
-		if (url != null)
+		if (url != null) {
 			actionIcon = ImageDescriptor.createFromURL(url);
+		}
 		return actionIcon;
 	}
 

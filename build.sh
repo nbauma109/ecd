@@ -6,6 +6,4 @@
 # Example: ./build.sh
 
 
-mvn \
-	clean \
-	verify
+mvn clean verify -Dsigning.disabled=true

@@ -5,7 +5,7 @@
 
 	<groupId>com.github.ecd-plugin</groupId>
 	<artifactId>com.github.ecd-plugin.ecd</artifactId>
-	<version>3.4.24</version>
+	<version>3.5.0</version>
 	<packaging>pom</packaging>
 
 	<name>com.github.ecd-plugin.ecd</name>
@@ -15,7 +15,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
-		<tycho.version>2.7.4</tycho.version>
+		<tycho.version>2.7.5</tycho.version>
 	</properties>
 
 	<modules>
@@ -23,12 +23,12 @@
 		<module>org.sf.feeling.decompiler.feature</module>
 		<module>org.sf.feeling.decompiler.cfr</module>
 		<module>org.sf.feeling.decompiler.cfr.feature</module>
-		<module>org.sf.feeling.decompiler.jad</module>
-		<module>org.sf.feeling.decompiler.jad.feature</module>
 		<module>org.sf.feeling.decompiler.jd</module>
 		<module>org.sf.feeling.decompiler.jd.feature</module>
 		<module>org.sf.feeling.decompiler.procyon</module>
 		<module>org.sf.feeling.decompiler.procyon.feature</module>
+		<module>org.sf.feeling.decompiler.quiltflower</module>
+		<module>org.sf.feeling.decompiler.quiltflower.feature</module>
 		<module>org.sf.feeling.decompiler.source.attach</module>
 		<module>org.sf.feeling.decompiler.source.feature</module>
 		<module>org.sf.feeling.decompiler.assembly</module>
@@ -80,7 +80,6 @@
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>target-platform-configuration</artifactId>
 				<version>${tycho.version}</version>
-
 				<configuration>
 					<environments>
 
@@ -108,7 +107,7 @@
 							<arch>x86_64</arch>
 						</environment>
 
-						<!-- MacOSX (32bit and 64bit) -->
+						<!-- MacOSX (Intel 32bit/64bit and ARM64) -->
 						<environment>
 							<os>macosx</os>
 							<ws>cocoa</ws>
@@ -119,18 +118,46 @@
 							<ws>cocoa</ws>
 							<arch>x86_64</arch>
 						</environment>
-
+						<environment>
+							<os>macosx</os>
+							<ws>cocoa</ws>
+							<arch>arm64</arch>
+						</environment>
 					</environments>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jarsigner-plugin</artifactId>
+				<version>3.0.0</version>
+				<configuration>
+					<keystore>${signing.keystore}</keystore>
+					<alias>ecd</alias>
+					<storepass>${signing.password}</storepass>
+					<keypass>${signing.password}</keypass>
+					<verbose>true</verbose>
+					<certs>true</certs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>sign</id>
+						<goals>
+							<goal>sign</goal>
+						</goals>
+						<configuration>
+							<skip>${signing.disabled}</skip>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
 
 	<repositories>
 		<repository>
-			<id>eclipse-2022-09</id>
+			<id>eclipse-2023-03</id>
 			<layout>p2</layout>
-			<url>https://download.eclipse.org/releases/2022-09/</url>
+			<url>https://download.eclipse.org/releases/2023-03/</url>
 		</repository>
 		<repository>
 			<id>jitpack</id>
@@ -308,7 +335,7 @@
 			<dependency>
 				<groupId>com.github.QuiltMC</groupId>
 				<artifactId>quiltflower</artifactId>
-				<version>1.8.1</version>
+				<version>1.9.0</version>
 			</dependency>
 			<dependency>
 				<groupId>com.eclipsesource.minimal-json</groupId>
