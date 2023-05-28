@@ -126,30 +126,6 @@
 					</environments>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jarsigner-plugin</artifactId>
-				<version>3.0.0</version>
-				<configuration>
-					<keystore>${signing.keystore}</keystore>
-					<alias>ecd</alias>
-					<storepass>${signing.password}</storepass>
-					<keypass>${signing.password}</keypass>
-					<verbose>true</verbose>
-					<certs>true</certs>
-				</configuration>
-				<executions>
-					<execution>
-						<id>sign</id>
-						<goals>
-							<goal>sign</goal>
-						</goals>
-						<configuration>
-							<skip>${signing.disabled}</skip>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
 
