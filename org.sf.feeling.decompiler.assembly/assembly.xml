@@ -33,7 +33,7 @@
 				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler</include>
 				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.cfr</include>
 				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.jd</include>
-				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.jad</include>
+				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.quiltflower</include>
 				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.procyon</include>
 				<include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.source</include>
 			</includes>
@@ -49,7 +49,7 @@
 				<include>com.github.ecd-plugin:org.sf.feeling.decompiler</include>
 				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.cfr</include>
 				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.jd</include>
-				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.jad</include>
+				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.quiltflower</include>
 				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.procyon</include>
 				<include>com.github.ecd-plugin:org.sf.feeling.decompiler.source.attach</include>
 			</includes>
