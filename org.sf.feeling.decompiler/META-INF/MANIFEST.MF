@@ -6,7 +6,7 @@ Bundle-ClassPath: lib/quiltflower-1.8.1.jar,
  lib/com.drgarbage.asm.util_5.0.3.jar,
  lib/com.drgarbage.bytecodevisualizer.plugin_4.4.1.201408050542.jar,
  lib/com.drgarbage.core.plugin_4.4.1.201408050542.jar,
- lib/asm-9.4.jar,
+ lib/asm-9.5.jar,
  .
 Bundle-Name: Enhanced Class Decompiler
 Bundle-Localization: plugin
