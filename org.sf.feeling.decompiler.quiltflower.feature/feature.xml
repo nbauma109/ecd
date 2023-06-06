@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.quiltflower"
       label="%featureName"
-      version="3.5.4"
+      version="3.5.5"
       provider-name="%providerName"
       plugin="org.sf.feeling.decompiler.quiltflower">
 
@@ -46,7 +46,7 @@
          id="org.sf.feeling.decompiler.quiltflower"
          download-size="0"
          install-size="0"
-         version="3.5.4"
+         version="3.5.5"
          unpack="false"/>
 
 </feature>
