@@ -28,6 +28,7 @@ Export-Package: org.sf.feeling.decompiler.jd.actions,
  org.sf.feeling.decompiler.jd.decompiler
 Bundle-ClassPath: .,
  lib/bcel-6.7.0.jar,
+ lib/commons-lang3-3.12.0.jar,
  lib/commons-io-2.12.0.jar,
  lib/jd-util-1.1.16.jar,
  lib/jd-core-1.2.26.jar
