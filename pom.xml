@@ -316,7 +316,7 @@
 			<dependency>
 				<groupId>com.github.QuiltMC</groupId>
 				<artifactId>quiltflower</artifactId>
-				<version>1.9.0</version>
+				<version>1.9.3</version>
 			</dependency>
 			<dependency>
 				<groupId>com.eclipsesource.minimal-json</groupId>
