@@ -26,12 +26,12 @@ import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
-import org.sf.feeling.decompiler.editor.DecompilerType;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.util.ClassUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
+import org.sf.feeling.decompiler.vineflower.VineflowerDecompilerPlugin;
 
 public class VineflowerDecompiler implements IDecompiler {
 
@@ -204,7 +204,7 @@ public class VineflowerDecompiler implements IDecompiler {
 
 	@Override
 	public String getDecompilerType() {
-		return DecompilerType.FernFlower;
+		return VineflowerDecompilerPlugin.decompilerType;
 	}
 
 	@Override
