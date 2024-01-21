@@ -20,8 +20,6 @@ public class VineflowerDecompilerPlugin extends AbstractUIPlugin implements IPro
 
 	public static final String decompilerType = "Vineflower"; //$NON-NLS-1$
 
-	public static final String decompilerVersion = "1.9"; //$NON-NLS-1$
-
 	private static VineflowerDecompilerPlugin plugin;
 
 	private IPreferenceStore preferenceStore;

@@ -11,6 +11,7 @@ package org.sf.feeling.decompiler.vineflower.decompiler;
 import java.util.Collection;
 
 import org.eclipse.core.runtime.Path;
+import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 import org.sf.feeling.decompiler.editor.BaseDecompilerSourceMapper;
 import org.sf.feeling.decompiler.vineflower.VineflowerDecompilerPlugin;
 
@@ -40,7 +41,7 @@ public class VineflowerSourceMapper extends BaseDecompilerSourceMapper {
 		source.append("\n\tDecompiled with "); //$NON-NLS-1$
 		source.append(VineflowerDecompilerPlugin.decompilerType);
 		source.append(" version "); //$NON-NLS-1$
-		source.append(VineflowerDecompilerPlugin.decompilerVersion);
+		source.append(ConsoleDecompiler.class.getPackage().getImplementationVersion());
 		source.append(".\n*/"); //$NON-NLS-1$
 	}
 
