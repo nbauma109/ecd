@@ -27,8 +27,8 @@
 		<module>org.sf.feeling.decompiler.jd.feature</module>
 		<module>org.sf.feeling.decompiler.procyon</module>
 		<module>org.sf.feeling.decompiler.procyon.feature</module>
-		<module>org.sf.feeling.decompiler.quiltflower</module>
-		<module>org.sf.feeling.decompiler.quiltflower.feature</module>
+		<module>org.sf.feeling.decompiler.vineflower</module>
+		<module>org.sf.feeling.decompiler.vineflower.feature</module>
 		<module>org.sf.feeling.decompiler.source.attach</module>
 		<module>org.sf.feeling.decompiler.source.feature</module>
 		<module>org.sf.feeling.decompiler.assembly</module>
@@ -314,8 +314,8 @@
 				<version>1.2.26</version>
 			</dependency>
 			<dependency>
-				<groupId>com.github.QuiltMC</groupId>
-				<artifactId>quiltflower</artifactId>
+				<groupId>org.vineflower</groupId>
+				<artifactId>vineflower</artifactId>
 				<version>1.9.3</version>
 			</dependency>
 			<dependency>

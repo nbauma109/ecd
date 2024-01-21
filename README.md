@@ -5,12 +5,12 @@
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
 
 # Enhanced Class Decompiler
-Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Quiltflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
+Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
 
 <p align="center"><img src="https://ecd-plugin.github.io/ecd/doc/o_debug_class.png"></p>
 
 ## Description
-Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, FernFlower, Quiltflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
+Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, FernFlower, Vineflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
 ## Why is this plug-in "enhanced"?
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
@@ -93,7 +93,7 @@ Used libraries:
   * Nexus Restlet1x Model: [Eclipse Public License v1.0](https://www.eclipse.org/legal/epl-v10.html)
   * Plexus Utils: Copyright The Codehaus Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * JD-Core: Copyright Emmanuel Dupuy, [GPL 3](https://www.gnu.org/licenses/gpl-3.0-standalone.html)
-  * Quiltflower: [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
+  * Vineflower: [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 ## Contributors
 
@@ -107,7 +107,7 @@ Used libraries:
 * Version 3.3.0
   * ECD releases are now signed with a self-signed certificate
   * Removed Jad decompiler (decompiler was released 2001)
-  * Quiltflower plugin and feature added
+  * Vineflower plugin and feature added
   * Updated Embedded Decompilers
     * CFR to version 0.152 (JDK 14 support)
     * Procyon to version 0.6.0

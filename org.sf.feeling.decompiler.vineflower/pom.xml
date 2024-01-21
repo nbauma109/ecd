@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.github.ecd-plugin</groupId>
+		<artifactId>com.github.ecd-plugin.ecd</artifactId>
+		<version>3.5.5</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>org.sf.feeling.decompiler.vineflower</artifactId>
+	<packaging>eclipse-plugin</packaging>
+
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.6.0</version>
+				<executions>
+					<execution>
+						<id>copy</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>org.vineflower</groupId>
+									<artifactId>vineflower</artifactId>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>com.eclipsesource.minimal-json</groupId>
+									<artifactId>minimal-json</artifactId>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+									<destFileName>json.jar</destFileName>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.ow2.asm</groupId>
+									<artifactId>asm</artifactId>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.vineflower</groupId>
+			<artifactId>vineflower</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.eclipsesource.minimal-json</groupId>
+			<artifactId>minimal-json</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm</artifactId>
+		</dependency>
+	</dependencies>
+</project>
