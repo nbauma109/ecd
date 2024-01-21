@@ -27,4 +27,4 @@ Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.quiltflower.actions,
  org.sf.feeling.decompiler.quiltflower.decompiler
 Bundle-ClassPath: .,
- lib/quiltflower-1.9.0.jar
+ lib/quiltflower-1.9.3.jar
