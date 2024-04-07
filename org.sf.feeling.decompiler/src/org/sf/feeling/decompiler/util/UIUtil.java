@@ -197,14 +197,9 @@ public class UIUtil {
 						return activePart;
 				}
 			} else {
-				IWorkbenchPage[] pgs = window.getPages();
-
-				for (int i = 0; i < pgs.length; i++) {
-					IWorkbenchPage pg = pgs[i];
-
+				for (IWorkbenchPage pg : window.getPages()) {
 					if (pg != null) {
 						IWorkbenchPart part = pg.getActivePart();
-
 						if (part != null) {
 							return part;
 						}
@@ -222,16 +217,18 @@ public class UIUtil {
 		if (windows != null) {
 			for (int i = 0; i < windows.length; i++) {
 				IWorkbenchWindow window = windows[i];
-				IWorkbenchPage[] pgs = window.getPages();
-				for (int j = 0; j < pgs.length; j++) {
-					IWorkbenchPage pg = pgs[j];
-					if (pg != null) {
-						IEditorPart[] parts = pg.getEditors();
-						if (parts != null) {
-							for (int k = 0; k < parts.length; k++) {
-								if (parts[i] instanceof JavaDecompilerClassFileEditor)
-									return true;
-							}
+				for (IWorkbenchPage pg : window.getPages()) {
+					if (pg == null) {
+						continue;
+					}
+					// Deprecated since ?? use getEditorReferences() instead
+					IEditorPart[] editorParts = pg.getEditors();
+					if (editorParts == null) {
+						continue;
+					}
+					for (IEditorPart part : editorParts) {
+						if (part instanceof JavaDecompilerClassFileEditor) {
+							return true;
 						}
 					}
 				}

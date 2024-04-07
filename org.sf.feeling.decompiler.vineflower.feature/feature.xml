@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.vineflower"
       label="%featureName"
-      version="3.5.7"
+      version="3.5.8"
       provider-name="%providerName"
       plugin="org.sf.feeling.decompiler.vineflower">
 
@@ -46,7 +46,7 @@
          id="org.sf.feeling.decompiler.vineflower"
          download-size="0"
          install-size="0"
-         version="3.5.7"
+         version="3.5.8"
          unpack="false"/>
 
 </feature>

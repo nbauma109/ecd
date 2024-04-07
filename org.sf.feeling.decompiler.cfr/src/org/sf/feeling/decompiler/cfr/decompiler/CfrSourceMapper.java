@@ -30,6 +30,7 @@ public class CfrSourceMapper extends BaseDecompilerSourceMapper {
 		source.append("\n\tDECOMPILATION REPORT\n"); //$NON-NLS-1$
 		source.append("\n\tDecompiled from: "); //$NON-NLS-1$
 		source.append(fileLocation);
+		source.append("\n\tTotal time: "); //$NON-NLS-1$
 		source.append(decompilationTime);
 		source.append(" ms\n\t"); //$NON-NLS-1$
 		source.append(logMsg);
