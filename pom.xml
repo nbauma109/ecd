@@ -5,7 +5,7 @@
 
 	<groupId>com.github.ecd-plugin</groupId>
 	<artifactId>com.github.ecd-plugin.ecd</artifactId>
-	<version>3.5.7</version>
+	<version>3.5.8</version>
 	<packaging>pom</packaging>
 
 	<name>com.github.ecd-plugin.ecd</name>
@@ -46,7 +46,7 @@
 			<plugins>
 				<plugin>
 					<artifactId>maven-assembly-plugin</artifactId>
-					<version>3.6.0</version>
+					<version>3.7.1</version>
 				</plugin>
 				<plugin>
 					<groupId>org.eclipse.tycho</groupId>
@@ -316,7 +316,7 @@
 			<dependency>
 				<groupId>org.vineflower</groupId>
 				<artifactId>vineflower</artifactId>
-				<version>1.9.3</version>
+				<version>1.10.0</version>
 			</dependency>
 			<dependency>
 				<groupId>com.eclipsesource.minimal-json</groupId>
