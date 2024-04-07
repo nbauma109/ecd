@@ -27,4 +27,4 @@ Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.vineflower.actions,
  org.sf.feeling.decompiler.vineflower.decompiler
 Bundle-ClassPath: .,
- lib/vineflower-1.9.3.jar
+ lib/vineflower-1.10.0.jar
