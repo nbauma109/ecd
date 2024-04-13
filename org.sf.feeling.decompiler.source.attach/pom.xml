@@ -200,6 +200,12 @@
 									<overWrite>true</overWrite>
 									<outputDirectory>lib</outputDirectory>
 								</artifactItem>
+								<artifactItem>
+									<groupId>commons-io</groupId>
+									<artifactId>commons-io</artifactId>
+									<overWrite>true</overWrite>
+									<outputDirectory>lib</outputDirectory>
+								</artifactItem>
 							</artifactItems>
 						</configuration>
 					</execution>
@@ -325,6 +331,10 @@
 		<dependency>
 			<groupId>org.sonatype.nexus.plugins</groupId>
 			<artifactId>nexus-restlet1x-model</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
 		</dependency>
 	</dependencies>
 

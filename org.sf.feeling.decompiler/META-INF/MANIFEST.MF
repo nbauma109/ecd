@@ -31,8 +31,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.search,
  org.eclipse.core.filesystem,
  org.eclipse.equinox.p2.metadata;resolution:=optional,
- org.eclipse.help.base,
- org.apache.commons.codec
+ org.eclipse.help.base
 Bundle-Vendor: ECD Project Team
 Bundle-Version: 2024.3.0
 Bundle-ManifestVersion: 2

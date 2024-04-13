@@ -42,7 +42,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
 
 	protected boolean isAttachedSource;
 
-	public DecompilerSourceMapper(IPath sourcePath, String rootPath, Map options) {
+	protected DecompilerSourceMapper(IPath sourcePath, String rootPath, Map options) {
 		super(sourcePath, rootPath, options);
 	}
 
@@ -58,7 +58,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
 		}
 		IBinaryType info = null;
 
-		info = (IBinaryType) declType.getElementInfo();
+		info = (IBinaryType) declType.getElementInfo(null);
 
 		if (info == null) {
 			return null;
