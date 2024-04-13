@@ -18,8 +18,7 @@ Require-Bundle: org.eclipse.ui,
  org.apache.ant,
  org.eclipse.jgit;resolution:=optional,
  com.jcraft.jsch;resolution:=optional,
- org.eclipse.m2e.jdt;resolution:=optional,
- org.apache.commons.io
+ org.eclipse.m2e.jdt;resolution:=optional
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
@@ -52,6 +51,7 @@ Bundle-ClassPath: lib/cvsclient-20060125.jar,
  lib/jaxb-impl-2.3.8.jar,
  lib/jaxb-runtime-2.3.3.jar,
  lib/activation-1.1.1.jar,
+ lib/commons-io-2.16.0.jar,
  .
 Export-Package: org.sf.feeling.decompiler.source.attach,
  org.sf.feeling.decompiler.source.attach.attacher,

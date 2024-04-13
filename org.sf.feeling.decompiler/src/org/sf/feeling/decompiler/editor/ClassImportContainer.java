@@ -15,6 +15,5 @@ public class ClassImportContainer extends ImportContainer {
 
 	protected ClassImportContainer(ClassFile parent) {
 		super(null);
-		setParent(parent);
 	}
 }
