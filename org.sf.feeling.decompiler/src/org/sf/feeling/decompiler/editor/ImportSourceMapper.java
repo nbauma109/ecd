@@ -138,10 +138,6 @@ public class ImportSourceMapper extends SourceMapper {
 		return new JavaElement[0];
 	}
 
-	protected ImportContainer createImportContainer(ClassFile parent) {
-		return new ClassImportContainer(parent);
-	}
-
 	private void addToChildren(Object parentInfo, JavaElement handle) {
 		List childrenList = this.children.get(parentInfo);
 		if (childrenList == null)
