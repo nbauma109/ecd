@@ -114,8 +114,8 @@ public class SourceBindingUtil {
 		}
 
 		if (!exist) {
-			JsonObject record = createSourceBindingRecord(sourceFile, sha, downloadUrl, tempSourceFile);
-			records.add(record);
+			JsonObject sourceBindingRecord = createSourceBindingRecord(sourceFile, sha, downloadUrl, tempSourceFile);
+			records.add(sourceBindingRecord);
 		}
 
 		saveSourceBindingJson(config);
@@ -149,21 +149,21 @@ public class SourceBindingUtil {
 		config.set("version", "1.0"); //$NON-NLS-1$ //$NON-NLS-2$
 		JsonArray records = new JsonArray();
 		config.set("records", records); //$NON-NLS-1$
-		JsonObject record = createSourceBindingRecord(sourceFile, sha, downloadUrl, tempSourceFile);
-		records.add(record);
+		JsonObject sourceBindingRecord = createSourceBindingRecord(sourceFile, sha, downloadUrl, tempSourceFile);
+		records.add(sourceBindingRecord);
 		return config;
 	}
 
 	private static synchronized JsonObject createSourceBindingRecord(File sourceFile, String sha, String downloadUrl,
 			File tempSourceFile) {
-		JsonObject record = new JsonObject();
-		record.set("source", sourceFile.getAbsolutePath()); //$NON-NLS-1$
-		record.set("downloadUrl", downloadUrl); //$NON-NLS-1$
+		JsonObject sourceBindingRecord = new JsonObject();
+		sourceBindingRecord.set("source", sourceFile.getAbsolutePath()); //$NON-NLS-1$
+		sourceBindingRecord.set("downloadUrl", downloadUrl); //$NON-NLS-1$
 		JsonArray shaArray = new JsonArray();
 		shaArray.add(sha);
-		record.set("sha", shaArray); //$NON-NLS-1$
-		record.set("temp", tempSourceFile.getAbsolutePath()); //$NON-NLS-1$
-		return record;
+		sourceBindingRecord.set("sha", shaArray); //$NON-NLS-1$
+		sourceBindingRecord.set("temp", tempSourceFile.getAbsolutePath()); //$NON-NLS-1$
+		return sourceBindingRecord;
 	}
 
 	public static void checkSourceBindingConfig() {
