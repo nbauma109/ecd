@@ -74,7 +74,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 
 		if (gavs.isEmpty()) {
 			try {
-				gavs.addAll(findGAVFromFile(binFile));
+				findGAVFromFile(binFile).ifPresent(gavs::add);
 			} catch (Throwable e) {
 				Logger.debug(e);
 			}

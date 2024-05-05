@@ -53,7 +53,7 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 	public void find(String binFile, List<SourceFileResult> results) {
 		Collection<GAV> gavs = new HashSet<>();
 		try {
-			gavs.addAll(findGAVFromFile(binFile));
+			findGAVFromFile(binFile).ifPresent(gavs::add);
 		} catch (Throwable e) {
 			Logger.error(e);
 		}

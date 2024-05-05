@@ -242,20 +242,22 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 					} else {
 						sourceFile = new File(source);
 						sourceTempFile = new File(tempSource);
-						sourceTempFile.deleteOnExit();
+						if (sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+							sourceTempFile.deleteOnExit();
+						}
 					}
 
 					if (pkgRoot.getSourceAttachmentPath() != null
 							&& sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
 						if (SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl)) {
 							String[] files = SourceBindingUtil.getSourceFileByDownloadUrl(downloadUrl);
-							attachLibrarys(response, pkgRoot, new File(files[1]), sourceFile);
+							attachLibraries(response, pkgRoot, new File(files[1]), sourceFile);
 						}
 					} else if (attachSource(pkgRoot, sourceTempFile)) {
 						SourceBindingUtil.saveSourceBindingRecord(sourceFile,
 								HashUtils.sha1Hash(new File(response.getBinFile())), downloadUrl, sourceTempFile);
 						String[] files = SourceBindingUtil.getSourceFileByDownloadUrl(downloadUrl);
-						attachLibrarys(response, pkgRoot, new File(files[1]), sourceFile);
+						attachLibraries(response, pkgRoot, new File(files[1]), sourceFile);
 					}
 				} catch (Exception e) {
 					if (pkgRoot != null && pkgRoot.getResource() != null
@@ -267,7 +269,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 		}
 	}
 
-	private static void attachLibrarys(final SourceFileResult response, final IPackageFragmentRoot pkgRoot,
+	private static void attachLibraries(final SourceFileResult response, final IPackageFragmentRoot pkgRoot,
 			final File sourceTempFile, final File sourceFile) {
 		Thread thread = new Thread() {
 

@@ -36,7 +36,6 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 	@Override
 	public void cancel() {
 		this.canceled = true;
-
 	}
 
 	@Override
@@ -46,7 +45,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 
 	@Override
 	public void find(String binFile, List<SourceFileResult> results) {
-		Collection<GAV> gavs = new HashSet<GAV>();
+		Collection<GAV> gavs = new HashSet<>();
 		try {
 			String sha1 = HashUtils.sha1Hash(new File(binFile));
 			gavs.addAll(findArtifactsUsingMavenCentral(sha1));
@@ -59,7 +58,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 
 		if (gavs.isEmpty()) {
 			try {
-				gavs.addAll(findGAVFromFile(binFile));
+				findGAVFromFile(binFile).ifPresent(gavs::add);
 			} catch (Exception e) {
 				Logger.debug(e);
 			}
@@ -68,7 +67,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 		if (canceled)
 			return;
 
-		Map<GAV, String> sourcesUrls = new HashMap<GAV, String>();
+		Map<GAV, String> sourcesUrls = new HashMap<>();
 		try {
 			sourcesUrls.putAll(findSourcesUsingMavenCentral(gavs));
 		} catch (Exception e) {
@@ -109,7 +108,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 	}
 
 	private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws Exception {
-		Map<GAV, String> results = new HashMap<GAV, String>();
+		Map<GAV, String> results = new HashMap<>();
 		for (GAV gav : gavs) {
 			if (canceled)
 				return results;
@@ -147,7 +146,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 	}
 
 	private Collection<GAV> findArtifactsUsingMavenCentral(String sha1) throws Exception {
-		Set<GAV> results = new HashSet<GAV>();
+		Set<GAV> results = new HashSet<>();
 		String json = IOUtils.toString(new URL("https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
 				+ URLEncoder.encode("1:\"" + sha1 + "\"", "UTF-8") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 				+ "&rows=20&wt=json").openStream()); //$NON-NLS-1$

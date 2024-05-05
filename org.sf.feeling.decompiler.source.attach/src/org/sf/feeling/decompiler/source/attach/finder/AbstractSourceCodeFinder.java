@@ -14,10 +14,10 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
@@ -66,7 +66,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 					bytes = IOUtils.toByteArray(conIs);
 				}
 				try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
-					return IOUtils.toString(is, "UTF-8");
+					return IOUtils.toString(is, StandardCharsets.UTF_8);
 				}
 			} catch (Exception e) {
 				if (bytes != null) {
@@ -79,7 +79,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 		return "";
 	}
 
-	protected Collection<GAV> findGAVFromFile(String binFile) throws Exception {
+	protected Optional<GAV> findGAVFromFile(String binFile) throws Exception {
 		Set<GAV> gavs = new HashSet<>();
 
 		// META-INF/maven/commons-beanutils/commons-beanutils/pom.properties
@@ -114,14 +114,13 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
 		if (gavs.size() > 1)
 			gavs.clear(); // a merged file, the result will not be correct
-		return gavs;
+		return gavs.stream().findFirst();
 	}
 
 	protected String getText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws BadLocationException {
 		int startOffset = iterator.getStartOffset();
 		int endOffset = iterator.getEndOffset();
 		int length = endOffset - startOffset;
-		String text = doc.getText(startOffset, length);
-		return text;
+		return doc.getText(startOffset, length);
 	}
 }

@@ -55,7 +55,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
 	@Override
 	public void find(String binFile, List<SourceFileResult> results) {
-		Collection<GAV> gavs = new HashSet<GAV>();
+		Collection<GAV> gavs = new HashSet<>();
 		try {
 			String sha1 = HashUtils.sha1Hash(new File(binFile));
 			gavs.addAll(findArtifactsUsingArtifactory(null, null, null, null, sha1, false));
@@ -68,7 +68,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
 		if (gavs.isEmpty()) {
 			try {
-				gavs.addAll(findGAVFromFile(binFile));
+				findGAVFromFile(binFile).ifPresent(gavs::add);
 			} catch (Throwable e) {
 				Logger.debug(e);
 			}
@@ -77,7 +77,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 		if (canceled)
 			return;
 
-		Map<GAV, String> sourcesUrls = new HashMap<GAV, String>();
+		Map<GAV, String> sourcesUrls = new HashMap<>();
 		try {
 			sourcesUrls.putAll(findSourcesUsingArtifactory(gavs));
 		} catch (Throwable e) {

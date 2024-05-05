@@ -34,6 +34,7 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 
 	private static List<SourceCodeFinder> getFinders() {
 		List<SourceCodeFinder> finders = new ArrayList<>();
+		finders.add(new LocalSourceFinder());
 		addPrivateNexusRepo(finders);
 		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL)) {
@@ -81,6 +82,8 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 
 	private static List<SourceCodeFinder> getJreFinders() {
 		List<SourceCodeFinder> jreFinders = new ArrayList<>();
+		jreFinders.add(new LocalSourceFinder());
+		addPrivateNexusRepo(jreFinders);
 		jreFinders.add(new MavenRepoSourceCodeFinder());
 		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET)) {
@@ -125,6 +128,8 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 
 	private static List<SourceCodeFinder> getEclipseFinders() {
 		List<SourceCodeFinder> eclipseFinders = new ArrayList<>();
+		eclipseFinders.add(new LocalSourceFinder());
+		addPrivateNexusRepo(eclipseFinders);
 		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MMNT_RU)) {
 			eclipseFinders.add(new EclipsePluginSourceByUrlPatternFinder(HTTPS_WWW_MMNT_RU_INT_GET_ST_0));
