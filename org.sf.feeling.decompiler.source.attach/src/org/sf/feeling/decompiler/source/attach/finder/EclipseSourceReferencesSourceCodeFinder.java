@@ -49,8 +49,8 @@ public class EclipseSourceReferencesSourceCodeFinder extends AbstractSourceCodeF
 
 			Manifest manifest = new Manifest(new java.io.ByteArrayInputStream(os.toByteArray()));
 			Attributes attr = manifest.getMainAttributes();
-			String ESR = attr.getValue("Eclipse-SourceReferences"); //$NON-NLS-1$
-			result = ESR;
+			String esr = attr.getValue("Eclipse-SourceReferences"); //$NON-NLS-1$
+			result = esr;
 		}
 		return result;
 	}

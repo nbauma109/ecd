@@ -147,8 +147,8 @@ public class SourceAttachUtil {
 			for (Enumeration<? extends ZipEntry> entries = zf.entries(); entries.hasMoreElements();) {
 				String zipEntryName = ((ZipEntry) entries.nextElement()).getName();
 				if (zipEntryName.endsWith(".project")) {//$NON-NLS-1$
-					String[] segements = zipEntryName.replace("/.project", "").split("/"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-					plugins.add(segements[segements.length - 1]);
+					String[] segments = zipEntryName.replace("/.project", "").split("/"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+					plugins.add(segments[segments.length - 1]);
 				}
 			}
 		}

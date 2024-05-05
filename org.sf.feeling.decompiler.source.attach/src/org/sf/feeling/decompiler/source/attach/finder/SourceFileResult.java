@@ -39,13 +39,12 @@ public class SourceFileResult {
 
 	@Override
 	public String toString() {
-		String s = "SourceFileResult[source = " //$NON-NLS-1$
+		return "SourceFileResult[source = " //$NON-NLS-1$
 				+ this.source + " ; suggestedSourceFileName = " //$NON-NLS-1$
 				+ this.suggestedSourceFileName + " ; accuracy = " //$NON-NLS-1$
 				+ this.accuracy + " ; binFile = " //$NON-NLS-1$
 				+ this.binFile + " ; finder = " //$NON-NLS-1$
-				+ this.finder + "]"; //$NON-NLS-1$
-		return s;
+				+ this.finder + "]";
 	}
 
 	public String getBinFile() {
