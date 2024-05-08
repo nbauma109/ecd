@@ -8,9 +8,12 @@
 
 package org.sf.feeling.decompiler.source.attach.finder;
 
+import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
+import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class FinderManager {
@@ -59,7 +62,7 @@ public class FinderManager {
 
 	private static class WorkQueue {
 
-		LinkedList<String> queue = new LinkedList<String>();
+		LinkedList<String> queue = new LinkedList<>();
 
 		public synchronized void addWork(String o) {
 			this.queue.addLast(o);
@@ -76,7 +79,7 @@ public class FinderManager {
 
 	private static class Worker extends Thread {
 
-		public static final String NO_MORE_WORK = new String("NO_MORE_WORK"); //$NON-NLS-1$
+		public static final String NO_MORE_WORK = "NO_MORE_WORK"; //$NON-NLS-1$
 		private FinderManager.WorkQueue q;
 		private List<SourceFileResult> results;
 		private boolean canceled;
@@ -98,11 +101,12 @@ public class FinderManager {
 			try {
 				while (!this.canceled) {
 					String binFile = this.q.getWork();
-					if (binFile == NO_MORE_WORK) {
+					if (Objects.equals(binFile, NO_MORE_WORK)) {
 						break;
 					}
 
-					this.finder.find(binFile, this.results);
+					String sha1 = HashUtils.sha1Hash(new File(binFile));
+					this.finder.find(binFile, sha1, this.results);
 				}
 			} catch (InterruptedException e) {
 				Logger.debug(e);

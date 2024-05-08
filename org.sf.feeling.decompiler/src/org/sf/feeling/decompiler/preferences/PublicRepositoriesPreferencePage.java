@@ -48,7 +48,6 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
 
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL, HTTPS_SEARCH_MAVEN_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET, HTTPS_HG_OPENJDK, g));
-		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MMNT_RU, HTTPS_WWW_MMNT_RU_INT_GET_ST_0, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_SPRING, HTTPS_REPO_SPRING_IO, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA, HTTPS_REPOSITORY_CLOUDERA, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG, HTTPS_NEXUS_XWIKI_ORG, g));

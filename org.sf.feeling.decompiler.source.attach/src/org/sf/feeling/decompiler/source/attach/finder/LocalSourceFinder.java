@@ -5,7 +5,6 @@ import java.net.MalformedURLException;
 import java.util.List;
 
 import org.sf.feeling.decompiler.source.attach.utils.SourceConstants;
-import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class LocalSourceFinder extends AbstractSourceCodeFinder {
@@ -23,7 +22,7 @@ public class LocalSourceFinder extends AbstractSourceCodeFinder {
 	}
 
 	@Override
-	public void find(String binFile, List<SourceFileResult> resultList) {
+	public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
 		if (canceled) {
 			return;
 		}
@@ -32,14 +31,14 @@ public class LocalSourceFinder extends AbstractSourceCodeFinder {
 			registerSource(binFile, resultList, sourceFile);
 		} else {
 			try {
-				findGAVFromFile(binFile).ifPresent(gav -> find(gav, binFile, resultList));
+				findGAVFromFile(binFile).ifPresent(gav -> find(gav, binFile, sha1, resultList));
 			} catch (Exception e) {
 				Logger.error(e);
 			}
 		}
 	}
 
-	private void find(GAV gav, String binFile, List<SourceFileResult> resultList) {
+	private void find(GAV gav, String binFile, String sha1, List<SourceFileResult> resultList) {
 		String groupId = gav.getGroupId();
 		String artifactId = gav.getArtifactId();
 		String version = gav.getVersion();
@@ -54,7 +53,6 @@ public class LocalSourceFinder extends AbstractSourceCodeFinder {
 			if (!cacheDir.exists()) {
 				return;
 			}
-			String sha1 = new String(HashUtils.sha1Digest(new File(binFile)));
 			File[] cacheSubDirs = cacheDir.listFiles((dir, name) -> !name.equals(sha1));
 			if (cacheSubDirs != null && cacheSubDirs.length == 1) {
 				sourceFile = new File(cacheSubDirs[0], sourceFileName);

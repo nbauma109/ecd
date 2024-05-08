@@ -20,6 +20,7 @@ import java.util.Set;
 import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
+import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements SourceCodeFinder {
@@ -50,7 +51,7 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 	}
 
 	@Override
-	public void find(String binFile, List<SourceFileResult> results) {
+	public void find(String binFile, String sha1, List<SourceFileResult> results) {
 		Collection<GAV> gavs = new HashSet<>();
 		try {
 			findGAVFromFile(binFile).ifPresent(gavs::add);
@@ -154,7 +155,8 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 		File downloadDir = new File(System.getProperty("user.home"), "Downloads");
 		File jarFile = new File(downloadDir, "activemq-broker-5.17.0.jar");
 		if (jarFile.exists()) {
-			directLinkSourceCodeFinder.find(jarFile, results);
+			String sha1 = HashUtils.sha1Hash(jarFile);
+			directLinkSourceCodeFinder.find(jarFile.getAbsolutePath(), sha1, results);
 			System.out.println(results);
 		}
 	}

@@ -1,40 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-17">
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
-			<attribute name="module" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry exported="true" kind="lib" path="lib/cvsclient-20060125.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-api-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-accurev-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-bazaar-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-clearcase-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-cvs-commons-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-cvsexe-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-cvsjava-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-git-commons-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-gitexe-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-hg-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-integrity-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-jazz-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-local-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-perforce-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-starteam-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-svn-commons-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-svnexe-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-synergy-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-tfs-1.13.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-vss-1.13.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/plexus-utils-4.0.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/nexus-indexer-lucene-model-2.14.20-02.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/nexus-restlet1x-model-2.15.1-02.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/maven-scm-provider-jgit-1.13.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jaxb-api-2.3.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jaxb-impl-2.3.8.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jaxb-runtime-2.3.3.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/activation-1.1.1.jar"/>
-	<classpathentry kind="src" path="src/"/>
-	<classpathentry kind="output" path="target/classes"/>
+	<classpathentry exported="true" kind="lib" path="lib/commons-io-2.16.0.jar"/>
+	<classpathentry kind="src" output="bin" path="src">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin"/>
 </classpath>

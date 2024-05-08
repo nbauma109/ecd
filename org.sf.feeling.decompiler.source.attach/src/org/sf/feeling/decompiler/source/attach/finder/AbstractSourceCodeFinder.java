@@ -16,7 +16,6 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -43,14 +42,6 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
 	public void setDownloadUrl(String downloadUrl) {
 		this.downloadUrl = downloadUrl;
-	}
-
-	public void find(File jarFile, List<SourceFileResult> resultList) {
-		jarFile = jarFile.getAbsoluteFile();
-		if (!jarFile.exists()) {
-			throw new RuntimeException("file does not exist: " + jarFile);
-		}
-		find(jarFile.getAbsolutePath(), resultList);
 	}
 
 	protected String getString(URL url) throws Exception {

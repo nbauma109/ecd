@@ -159,111 +159,6 @@
 				<version>2.3.1</version>
 			</dependency>
 			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-api</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-accurev</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-bazaar</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-clearcase</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-cvs-commons</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-cvsexe</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-cvsjava</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-git-commons</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-gitexe</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-hg</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-integrity</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-jazz</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-jgit</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-local</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-perforce</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-starteam</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-svn-commons</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-svnexe</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-synergy</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-tfs</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.maven.scm</groupId>
-				<artifactId>maven-scm-provider-vss</artifactId>
-				<version>1.13.0</version>
-			</dependency>
-			<dependency>
 				<groupId>org.codehaus.plexus</groupId>
 				<artifactId>plexus-utils</artifactId>
 				<version>4.0.0</version>
@@ -342,6 +237,12 @@
 				<groupId>org.bitbucket.mstrobel</groupId>
 				<artifactId>procyon-core</artifactId>
 				<version>0.6.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter</artifactId>
+				<version>5.10.2</version>
+				<scope>test</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

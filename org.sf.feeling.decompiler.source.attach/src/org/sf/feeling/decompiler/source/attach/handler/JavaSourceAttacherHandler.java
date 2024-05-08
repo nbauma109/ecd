@@ -10,7 +10,6 @@ package org.sf.feeling.decompiler.source.attach.handler;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,9 +35,7 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.sf.feeling.decompiler.source.attach.attacher.SourceAttacher;
-import org.sf.feeling.decompiler.source.attach.finder.EclipseSourceReferencesSourceCodeFinder;
 import org.sf.feeling.decompiler.source.attach.finder.FinderManager;
-import org.sf.feeling.decompiler.source.attach.finder.JreSourceCodeFinder;
 import org.sf.feeling.decompiler.source.attach.finder.SourceCheck;
 import org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFacade;
 import org.sf.feeling.decompiler.source.attach.finder.SourceFileResult;
@@ -249,90 +246,15 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 
 					if (pkgRoot.getSourceAttachmentPath() != null
 							&& sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
-						if (SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl)) {
-							String[] files = SourceBindingUtil.getSourceFileByDownloadUrl(downloadUrl);
-							attachLibraries(response, pkgRoot, new File(files[1]), sourceFile);
-						}
+						SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
 					} else if (attachSource(pkgRoot, sourceTempFile)) {
 						SourceBindingUtil.saveSourceBindingRecord(sourceFile,
 								HashUtils.sha1Hash(new File(response.getBinFile())), downloadUrl, sourceTempFile);
-						String[] files = SourceBindingUtil.getSourceFileByDownloadUrl(downloadUrl);
-						attachLibraries(response, pkgRoot, new File(files[1]), sourceFile);
 					}
 				} catch (Exception e) {
 					if (pkgRoot != null && pkgRoot.getResource() != null
 							&& pkgRoot.getResource().getLocation() != null) {
 						Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
-					}
-				}
-			}
-		}
-	}
-
-	private static void attachLibraries(final SourceFileResult response, final IPackageFragmentRoot pkgRoot,
-			final File sourceTempFile, final File sourceFile) {
-		Thread thread = new Thread() {
-
-			@Override
-			public void run() {
-				try {
-					if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
-					{
-						attachJRELibrarySources(response, pkgRoot, sourceTempFile);
-					}
-					if (sourceFile.getName().startsWith("eclipse_")) //$NON-NLS-1$
-					{
-						attachEclipseLibrarySources(response, pkgRoot, sourceTempFile);
-					}
-				} catch (Exception e) {
-					Logger.debug(e);
-				}
-			}
-		};
-		thread.setDaemon(true);
-		thread.start();
-	}
-
-	private static void attachJRELibrarySources(final SourceFileResult response, final IPackageFragmentRoot pkgRoot,
-			File sourceTempFile) throws Exception {
-		if (response.getFinder() instanceof JreSourceCodeFinder) {
-			IPackageFragmentRoot[] roots = pkgRoot.getJavaProject().getAllPackageFragmentRoots();
-			for (int i = 0; i < roots.length; i++) {
-				IPackageFragmentRoot element = roots[i];
-				if (element.equals(pkgRoot))
-					continue;
-				List<String> paths = Arrays.asList(element.getPath().segments());
-				if (paths.contains("jre")) //$NON-NLS-1$
-				{
-					if (element.getSourceAttachmentPath() == null
-							|| element.getSourceAttachmentPath().toOSString() == null
-							|| !new File(element.getSourceAttachmentPath().toOSString()).exists()) {
-						attachSource(element, sourceTempFile);
-					}
-				}
-			}
-		}
-	}
-
-	private static void attachEclipseLibrarySources(final SourceFileResult response, final IPackageFragmentRoot pkgRoot,
-			File sourceTempFile) throws Exception {
-		if (response.getFinder() instanceof EclipseSourceReferencesSourceCodeFinder) {
-			List<String> plugins = SourceAttachUtil.getEclipsePlugins(sourceTempFile);
-
-			IPackageFragmentRoot[] roots = pkgRoot.getJavaProject().getAllPackageFragmentRoots();
-			for (int i = 0; i < roots.length; i++) {
-				IPackageFragmentRoot element = roots[i];
-				if (element.equals(pkgRoot))
-					continue;
-				String fileName = element.getPath().lastSegment();
-				if (plugins.contains(fileName.split("_")[0])) //$NON-NLS-1$
-				{
-					if (element.getSourceAttachmentPath() == null
-							|| element.getSourceAttachmentPath().toOSString() == null
-							|| !new File(element.getSourceAttachmentPath().toOSString()).exists()
-							|| !SourceAttachUtil.isSourceCodeFor(element.getSourceAttachmentPath().toOSString(),
-									SourceAttachUtil.getBinFile(element).getAbsolutePath())) {
-						attachSource(element, sourceTempFile);
 					}
 				}
 			}

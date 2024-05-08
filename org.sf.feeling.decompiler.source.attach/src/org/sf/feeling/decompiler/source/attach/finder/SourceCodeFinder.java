@@ -12,7 +12,7 @@ import java.util.List;
 
 public abstract interface SourceCodeFinder {
 
-	public abstract void find(String binFile, List<SourceFileResult> resultList);
+	public abstract void find(String binFile, String sha1, List<SourceFileResult> resultList);
 
 	public abstract void cancel();
 

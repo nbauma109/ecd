@@ -22,7 +22,6 @@ import org.apache.commons.io.IOUtils;
 import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
-import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 import com.eclipsesource.json.Json;
@@ -44,10 +43,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 	}
 
 	@Override
-	public void find(String binFile, List<SourceFileResult> results) {
+	public void find(String binFile, String sha1, List<SourceFileResult> results) {
 		Collection<GAV> gavs = new HashSet<>();
 		try {
-			String sha1 = HashUtils.sha1Hash(new File(binFile));
 			gavs.addAll(findArtifactsUsingMavenCentral(sha1));
 		} catch (Exception e) {
 			Logger.debug(e);

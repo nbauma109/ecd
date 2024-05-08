@@ -27,7 +27,6 @@ import org.apache.commons.io.IOUtils;
 import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
-import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 import com.eclipsesource.json.Json;
@@ -54,10 +53,9 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 	}
 
 	@Override
-	public void find(String binFile, List<SourceFileResult> results) {
+	public void find(String binFile, String sha1, List<SourceFileResult> results) {
 		Collection<GAV> gavs = new HashSet<>();
 		try {
-			String sha1 = HashUtils.sha1Hash(new File(binFile));
 			gavs.addAll(findArtifactsUsingArtifactory(null, null, null, null, sha1, false));
 		} catch (Throwable e) {
 			Logger.debug(e);
