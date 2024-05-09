@@ -23,9 +23,9 @@ import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.io.IOUtils;
 import org.jd.core.v1.api.loader.Loader;
 import org.objectweb.asm.ClassReader;
-import org.sf.feeling.decompiler.util.IOUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 /**

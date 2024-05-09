@@ -30,6 +30,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
