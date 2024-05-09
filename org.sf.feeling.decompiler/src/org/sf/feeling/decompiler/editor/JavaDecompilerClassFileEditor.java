@@ -77,6 +77,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	public static final String ID = "org.sf.feeling.decompiler.ClassFileEditor"; //$NON-NLS-1$
 
 	private IBuffer classBuffer;
+	private boolean sourceShown = false;
 	private boolean selectionChange = false;
 	private ISourceReference selectedElement = null;
 	private String decompilerType = null;
@@ -568,7 +569,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	}
 
 	protected void showSource(IClassFileEditorInput classFileEditorInput) {
-
+		if (sourceShown) {
+			return;
+		}
 		try {
 			StackLayout fStackLayout = (StackLayout) ReflectionUtils.getFieldValue(this, "fStackLayout"); //$NON-NLS-1$
 			Composite fParent = (Composite) ReflectionUtils.getFieldValue(this, "fParent"); //$NON-NLS-1$
@@ -580,6 +583,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 		} catch (Exception e) {
 			Logger.debug(e);
 		}
+		sourceShown = true;
 	}
 
 }
