@@ -19,11 +19,12 @@ fi
 # Extract the Tycho version from pom.xml
 TYCHO_VERSION=$(grep "<tycho.version>" pom.xml | sed 's/.*<tycho.version>\(.*\)<\/tycho.version>.*/\1/')
 
-# Use the extracted Tycho version in Maven commands
-mvn \
+# Use the extracted Tycho version and maven wrapper
+mvn wrapper:wrapper -Dmaven=3.9.6 --no-transfer-progress
+./mvnw \
 	org.eclipse.tycho:tycho-versions-plugin:${TYCHO_VERSION}:set-version \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
 
-mvn \
+./mvnw \
 	org.eclipse.tycho:tycho-versions-plugin:${TYCHO_VERSION}:update-eclipse-metadata \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
