@@ -8,3 +8,6 @@ bin/**/*
 /bin/
 */target
 lib/
+/mvnw
+/mvnw.cmd
+/.mvn/
