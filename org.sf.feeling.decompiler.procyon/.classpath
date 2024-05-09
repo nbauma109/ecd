@@ -6,8 +6,8 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
-	<classpathentry exported="true" kind="lib" path="lib/procyon-core.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/procyon-compilertools.jar"/>
+	<classpathentry exported="true" kind="lib" path="target/lib/procyon-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="target/lib/procyon-compilertools.jar"/>
 	<classpathentry kind="src" output="target/classes" path="src">
 		<attributes>
 			<attribute name="optional" value="true"/>
