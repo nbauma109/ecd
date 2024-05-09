@@ -6,4 +6,4 @@
 # Example: ./build.sh
 
 
-mvn clean verify -Dsigning.disabled=true
+mvn clean verify -Dsigning.disabled=true --no-transfer-progress

@@ -19,8 +19,8 @@ fi
 
 mvn \
 	org.eclipse.tycho:tycho-versions-plugin:2.7.5:set-version \
-	-DnewVersion="$VERSION" -Dtycho.mode=maven
+	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
 
 mvn \
 	org.eclipse.tycho:tycho-versions-plugin:2.7.5:update-eclipse-metadata \
-	-DnewVersion="$VERSION" -Dtycho.mode=maven
+	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
