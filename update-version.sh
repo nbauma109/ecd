@@ -9,7 +9,6 @@
 # in the files have not been manually edited and actually match the current
 # version.
 
-
 VERSION="$*"
 
 if [ -z "$VERSION" ]; then
@@ -17,10 +16,14 @@ if [ -z "$VERSION" ]; then
 	exit 1
 fi
 
+# Extract the Tycho version from pom.xml
+TYCHO_VERSION=$(grep "<tycho.version>" pom.xml | sed 's/.*<tycho.version>\(.*\)<\/tycho.version>.*/\1/')
+
+# Use the extracted Tycho version in Maven commands
 mvn \
-	org.eclipse.tycho:tycho-versions-plugin:2.7.5:set-version \
+	org.eclipse.tycho:tycho-versions-plugin:${TYCHO_VERSION}:set-version \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
 
 mvn \
-	org.eclipse.tycho:tycho-versions-plugin:2.7.5:update-eclipse-metadata \
+	org.eclipse.tycho:tycho-versions-plugin:${TYCHO_VERSION}:update-eclipse-metadata \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
