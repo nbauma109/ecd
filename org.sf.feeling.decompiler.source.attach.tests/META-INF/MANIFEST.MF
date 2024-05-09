@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Enhanced Class Decompiler Source Attach
-Bundle-SymbolicName: org.sf.feeling.decompiler.source.attach;singleton:=true
+Bundle-SymbolicName: org.sf.feeling.decompiler.source.attach.tests;singleton:=true
 Bundle-Version: 2024.3.1
 Bundle-Activator: org.sf.feeling.decompiler.source.attach.SourceAttachPlugin
 Bundle-Localization: plugin
@@ -18,15 +18,15 @@ Require-Bundle: org.eclipse.ui,
  org.apache.ant,
  org.eclipse.jgit;resolution:=optional,
  com.jcraft.jsch;resolution:=optional,
- org.eclipse.m2e.jdt;resolution:=optional
+ org.eclipse.m2e.jdt;resolution:=optional,
+ org.junit,
+ org.eclipse.jdt.junit4.runtime,
+ org.eclipse.jdt.junit.core,
+ org.eclipse.jdt.junit.runtime,
+ org.sf.feeling.decompiler.source.attach
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Bundle-ClassPath: target/lib/commons-io-2.16.1.jar,
  .
-Export-Package: org.sf.feeling.decompiler.source.attach,
- org.sf.feeling.decompiler.source.attach.attacher,
- org.sf.feeling.decompiler.source.attach.finder,
- org.sf.feeling.decompiler.source.attach.handler,
- org.sf.feeling.decompiler.source.attach.utils
-Automatic-Module-Name: org.sf.feeling.decompiler.source.attach
+Automatic-Module-Name: org.sf.feeling.decompiler.source.attach.tests

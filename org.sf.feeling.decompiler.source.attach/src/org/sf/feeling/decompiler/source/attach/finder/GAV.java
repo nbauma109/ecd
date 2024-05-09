@@ -49,6 +49,10 @@ public class GAV {
 		this.artifactLink = artifactLink;
 	}
 
+	public boolean isValid() {
+		return groupId != null && artifactId != null && version != null;
+	}
+
 	@Override
 	public int hashCode() {
 		return Objects.hash(artifactId, artifactLink, groupId, version);

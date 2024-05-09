@@ -18,13 +18,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.stream.StreamSource;
 
@@ -32,12 +31,6 @@ import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
 import org.sf.feeling.decompiler.util.Logger;
-import org.sonatype.nexus.rest.model.NexusArtifact;
-import org.sonatype.nexus.rest.model.NexusNGArtifact;
-import org.sonatype.nexus.rest.model.NexusNGArtifactHit;
-import org.sonatype.nexus.rest.model.NexusNGArtifactLink;
-import org.sonatype.nexus.rest.model.SearchNGResponse;
-import org.sonatype.nexus.rest.model.SearchResponse;
 
 public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements SourceCodeFinder {
 
@@ -65,17 +58,6 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 			gavs.addAll(findArtifactsUsingNexus(null, null, null, null, sha1, false));
 		} catch (Throwable e) {
 			Logger.debug(e);
-		}
-
-		if (canceled)
-			return;
-
-		if (gavs.isEmpty()) {
-			try {
-				findGAVFromFile(binFile).ifPresent(gavs::add);
-			} catch (Throwable e) {
-				Logger.debug(e);
-			}
 		}
 
 		if (canceled)
@@ -199,9 +181,10 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 						+ URLEncoder.encode(entry.getValue(), "UTF-8"); //$NON-NLS-1$
 			}
 
-			JAXBContext context = JAXBContext.newInstance(SearchResponse.class, SearchNGResponse.class);
-			Unmarshaller unmarshaller = context.createUnmarshaller();
-			URLConnection connection = new URL(urlStr).openConnection();
+			URL url = new URL(urlStr);
+
+			URLConnection connection = url.openConnection();
+
 			connection.setConnectTimeout(5000);
 			connection.setReadTimeout(10000);
 			XMLInputFactory xif = XMLInputFactory.newFactory();
@@ -212,52 +195,45 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 			// disable external entities
 			xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
 			XMLStreamReader xsr = xif.createXMLStreamReader(new StreamSource(connection.getInputStream()));
-			try {
-				long t0 = System.nanoTime();
-				Object resp = unmarshaller.unmarshal(xsr);
-				long t1 = System.nanoTime();
-				Logger.warn("URL " + urlStr + " took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
-				if (resp instanceof SearchNGResponse) {
-					SearchNGResponse srsp = (SearchNGResponse) resp;
-					for (NexusNGArtifact ar : srsp.getData()) {
-						if (getLink) {
-							for (NexusNGArtifactHit hit : ar.getArtifactHits()) {
-								for (NexusNGArtifactLink link : hit.getArtifactLinks()) {
-									GAV gav = new GAV();
-									gav.setGroupId(ar.getGroupId());
-									gav.setArtifactId(ar.getArtifactId());
-									gav.setVersion(ar.getVersion());
-									Logger.warn("GAV result: " + gav);
-									// TODO: generate link from NexusNGArtifactLink
-									// gav.setArtifactLink(link.??);
-								}
-							}
-						} else {
-							GAV gav = new GAV();
-							gav.setGroupId(ar.getGroupId());
-							gav.setArtifactId(ar.getArtifactId());
-							gav.setVersion(ar.getVersion());
-							results.add(gav);
-							Logger.warn("GAV result: " + gav);
-						}
-					}
-				} else if (resp instanceof SearchResponse) {
-					SearchResponse srsp = (SearchResponse) resp;
-					for (NexusArtifact ar : srsp.getData()) {
-						GAV gav = new GAV();
-						gav.setGroupId(ar.getGroupId());
-						gav.setArtifactId(ar.getArtifactId());
-						gav.setVersion(ar.getVersion());
-						if (getLink) {
-							gav.setArtifactLink(ar.getArtifactLink());
-						}
-						results.add(gav);
-						Logger.warn("GAV result: " + gav);
+
+			Map<String, String> gavMap = new HashMap<>();
+			String name = "";
+			while (xsr.hasNext()) {
+				int next = xsr.next();
+				if (next == XMLStreamConstants.START_ELEMENT) {
+					name = xsr.getLocalName();
+				}
+				if (next == XMLStreamConstants.CHARACTERS) {
+					String text = xsr.getText().trim();
+					if (text.length() > 0) {
+						gavMap.put(name, text);
 					}
 				}
-			} catch (Throwable e) {
-				Logger.error("Failed to query source code artifact", e);
 			}
+
+			xsr.close();
+
+			GAV gav = new GAV();
+			gav.setGroupId(gavMap.get("groupId"));
+			gav.setArtifactId(gavMap.get("artifactId"));
+			gav.setVersion(gavMap.get("version"));
+
+			if (gav.isValid()) {
+				if (getLink) {
+					String repositoryId = gavMap.get("repositoryId");
+					String extension = Optional.ofNullable(gavMap.get("extension")).orElse("jar");
+					StringBuilder artifactLink = new StringBuilder();
+					artifactLink.append(urlStr.replace("lucene/search", "artifact/maven/redirect"));
+					artifactLink.append("&r=");
+					artifactLink.append(repositoryId);
+					artifactLink.append("&e=");
+					artifactLink.append(extension);
+					gav.setArtifactLink(artifactLink.toString());
+				}
+				results.add(gav);
+				Logger.warn("GAV result: " + gav);
+			}
+
 		}
 		return results;
 

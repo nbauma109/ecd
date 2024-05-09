@@ -9,7 +9,6 @@
 package org.sf.feeling.decompiler.source.attach.finder;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,7 +19,6 @@ import java.util.Set;
 import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
 import org.sf.feeling.decompiler.source.attach.utils.UrlDownloader;
-import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements SourceCodeFinder {
@@ -146,18 +144,5 @@ public class Nexus3SourceCodeFinder extends AbstractSourceCodeFinder implements 
 		gav.setArtifactLink(link.toString());
 		results.add(gav);
 		return results;
-	}
-
-	public static void main(String[] args) {
-		String serviceUrl = "https://repo1.maven.org/maven2/";
-		Nexus3SourceCodeFinder directLinkSourceCodeFinder = new Nexus3SourceCodeFinder(serviceUrl);
-		List<SourceFileResult> results = new ArrayList<>();
-		File downloadDir = new File(System.getProperty("user.home"), "Downloads");
-		File jarFile = new File(downloadDir, "activemq-broker-5.17.0.jar");
-		if (jarFile.exists()) {
-			String sha1 = HashUtils.sha1Hash(jarFile);
-			directLinkSourceCodeFinder.find(jarFile.getAbsolutePath(), sha1, results);
-			System.out.println(results);
-		}
 	}
 }

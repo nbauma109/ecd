@@ -48,12 +48,10 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
 
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL, HTTPS_SEARCH_MAVEN_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET, HTTPS_HG_OPENJDK, g));
-		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_SPRING, HTTPS_REPO_SPRING_IO, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA, HTTPS_REPOSITORY_CLOUDERA, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG, HTTPS_NEXUS_XWIKI_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO, HTTPS_MAVEN_ALFRESCO, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_NUXEO_ORG, HTTPS_MAVEN_NUXEO_ORG, g));
-		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_JAVA_NET, HTTPS_MAVEN_JAVA_NET, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_OW2_ORG, HTTPS_REPOSITORY_OW2_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_APACHE_ORG, HTTPS_REPOSITORY_APACHE_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_GRAILS_ORG, HTTPS_REPO_GRAILS_ORG, g));

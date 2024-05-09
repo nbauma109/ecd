@@ -54,17 +54,6 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 		if (canceled)
 			return;
 
-		if (gavs.isEmpty()) {
-			try {
-				findGAVFromFile(binFile).ifPresent(gavs::add);
-			} catch (Exception e) {
-				Logger.debug(e);
-			}
-		}
-
-		if (canceled)
-			return;
-
 		Map<GAV, String> sourcesUrls = new HashMap<>();
 		try {
 			sourcesUrls.putAll(findSourcesUsingMavenCentral(gavs));

@@ -10,17 +10,15 @@ package org.sf.feeling.decompiler.source.attach.utils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Target;
 import org.apache.tools.ant.taskdefs.Delete;
@@ -29,7 +27,6 @@ import org.sf.feeling.decompiler.util.Logger;
 
 public class UrlDownloader {
 
-	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.63 Safari/535.7"; //$NON-NLS-1$
 	private String serviceUser;
 	private String servicePassword;
 
@@ -83,56 +80,13 @@ public class UrlDownloader {
 			}
 			conn.setConnectTimeout(5000);
 			conn.setReadTimeout(5000);
-			try (InputStream is = this.openConnectionCheckRedirects(conn)) {
-				try (OutputStream os = FileUtils.openOutputStream(file)) {
-					IOUtils.copy(is, os);
-				}
-			}
+			PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		} catch (Exception ex) {
 			Logger.error(ex);
 			file.delete();
 			return file.getAbsolutePath();
 		}
 		return file.getAbsolutePath();
-	}
-
-	private InputStream openConnectionCheckRedirects(URLConnection c) throws IOException {
-		int redirects = 0;
-		InputStream in = null;
-		boolean redir;
-		do {
-			if (c instanceof HttpURLConnection) {
-				((HttpURLConnection) c).setInstanceFollowRedirects(false);
-				c.setRequestProperty("User-Agent", //$NON-NLS-1$
-						USER_AGENT);
-			}
-			in = c.getInputStream();
-			redir = false;
-			if (c instanceof HttpURLConnection) {
-				final HttpURLConnection http = (HttpURLConnection) c;
-				final int stat = http.getResponseCode();
-				if (stat < 300 || stat > 307 || stat == 306 || stat == 304) {
-					continue;
-				}
-				final URL base = http.getURL();
-				final String loc = http.getHeaderField("Location"); //$NON-NLS-1$
-				URL target = null;
-				if (loc != null) {
-					target = new URL(base, loc);
-				}
-				http.disconnect();
-				if (target == null || (!target.getProtocol().equals("http") && !target.getProtocol().equals("https")) //$NON-NLS-1$ //$NON-NLS-2$
-						|| redirects >= 5) {
-					throw new SecurityException("illegal URL redirect"); //$NON-NLS-1$
-				}
-				redir = true;
-				c = target.openConnection();
-				c.setConnectTimeout(5000);
-				c.setReadTimeout(5000);
-				++redirects;
-			}
-		} while (redir);
-		return in;
 	}
 
 	public static String trim(final String str) {

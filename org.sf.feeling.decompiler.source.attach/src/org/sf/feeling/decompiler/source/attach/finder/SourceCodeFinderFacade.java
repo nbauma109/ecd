@@ -15,21 +15,18 @@ import java.util.List;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.source.attach.utils.SourceBindingUtil;
-import org.sf.feeling.decompiler.util.HashUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 public class SourceCodeFinderFacade implements SourceCodeFinder {
 
-	private static final String HTTPS_REPO_SPRING_IO = "https://repo.spring.io/webapp/home.html";
-	private static final String HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY = "https://repository.cloudera.com/artifactory/webapp/home.html";
-	private static final String HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML = "https://nexus.xwiki.org/nexus/index.html";
-	private static final String HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML = "https://maven.alfresco.com/nexus/index.html";
-	private static final String HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML = "https://maven.nuxeo.org/nexus/index.html";
-	private static final String HTTPS_MAVEN_JAVA_NET_INDEX_HTML = "https://maven.java.net/index.html";
-	private static final String HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML = "https://repository.ow2.org/nexus/index.html";
-	private static final String HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML = "https://repository.apache.org/index.html";
-	private static final String HTTPS_REPO_GRAILS_ORG_GRAILS = "https://repo.grails.org/grails/webapp/home.html";
-	private static final String HTTPS_OSS_SONATYPE_ORG_INDEX_HTML = "https://oss.sonatype.org/index.html";
+	static final String HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY = "https://repository.cloudera.com/repository/public";
+	static final String HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML = "https://nexus.xwiki.org/nexus/index.html";
+	static final String HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML = "https://maven.alfresco.com/nexus/index.html";
+	static final String HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML = "https://maven.nuxeo.org/nexus/index.html";
+	static final String HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML = "https://repository.ow2.org/nexus/index.html";
+	static final String HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML = "https://repository.apache.org/index.html";
+	static final String HTTPS_REPO_GRAILS_ORG_GRAILS = "https://repo.grails.org/grails/webapp/home.html";
+	static final String HTTPS_OSS_SONATYPE_ORG_INDEX_HTML = "https://oss.sonatype.org/index.html";
 
 	private static List<SourceCodeFinder> getFinders() {
 		List<SourceCodeFinder> finders = new ArrayList<>();
@@ -51,9 +48,6 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_OW2_ORG)) {
 			finders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML));
 		}
-		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_JAVA_NET)) {
-			finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_JAVA_NET_INDEX_HTML));
-		}
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_NUXEO_ORG)) {
 			finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML));
 		}
@@ -64,10 +58,7 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 			finders.add(new NexusSourceCodeFinder(HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML));
 		}
 		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA)) {
-			finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY));
-		}
-		if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_SPRING)) {
-			finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_SPRING_IO));
+			finders.add(new Nexus3SourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY));
 		}
 		return finders;
 	}
@@ -127,16 +118,4 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 	public String getDownloadUrl() {
 		return null;
 	}
-
-	public static void main(String[] args) {
-		SourceCodeFinderFacade finder = new SourceCodeFinderFacade();
-		List<SourceFileResult> results = new ArrayList<>();
-		String binFile = "C:\\Temp\\groovy-all-1.7.6.jar"; //$NON-NLS-1$
-		String sha1 = HashUtils.sha1Hash(new File(binFile));
-		finder.find(binFile, sha1, results);
-		for (SourceFileResult r : results) {
-			System.out.println(r);
-		}
-	}
-
 }
