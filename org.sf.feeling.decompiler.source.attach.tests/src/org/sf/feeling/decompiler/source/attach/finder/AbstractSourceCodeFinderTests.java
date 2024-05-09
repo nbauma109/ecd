@@ -5,7 +5,6 @@ import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,32 +14,32 @@ import org.sf.feeling.decompiler.util.HashUtils;
 
 public abstract class AbstractSourceCodeFinderTests {
 
-	protected void testFindCommonsIo(String serviceUrl) throws Exception {
+	protected void testFindCommonsIo(String serviceUrl) throws IOException {
 		String gavUrl = "https://repo1.maven.org/maven2/commons-io/commons-io/2.16.0/";
 		String fileName = "commons-io-2.16.0";
 		testFind(serviceUrl, gavUrl, fileName);
 	}
 
-	protected void testFindSlf4jNop(String serviceUrl) throws Exception {
+	protected void testFindSlf4jNop(String serviceUrl) throws IOException {
 		String gavUrl = "https://repo1.maven.org/maven2/org/slf4j/slf4j-nop/2.1.0-alpha1/";
 		String fileName = "slf4j-nop-2.1.0-alpha1";
 		testFind(serviceUrl, gavUrl, fileName);
 	}
 
-	protected void testFindAsmUtil(String serviceUrl) throws Exception {
+	protected void testFindAsmUtil(String serviceUrl) throws IOException {
 		String gavUrl = "https://repo1.maven.org/maven2/org/ow2/asm/asm-util/9.7/";
 		String fileName = "asm-util-9.7";
 		testFind(serviceUrl, gavUrl, fileName);
 	}
 
-	protected void testFindJunit(String serviceUrl) throws Exception {
+	protected void testFindJunit(String serviceUrl) throws IOException {
 		String gavUrl = "https://maven.alfresco.com/nexus/content/groups/public/junit/junit/4.11-20120805-1225/";
 		String fileName = "junit-4.11-20120805-1225";
 		testFind(serviceUrl, gavUrl, fileName);
 	}
 
 	protected void testFind(String serviceUrl, String gavUrl, String fileName)
-			throws MalformedURLException, IOException {
+			throws IOException {
 		AbstractSourceCodeFinder directLinkSourceCodeFinder = newSourceCodeFinder(serviceUrl);
 		List<SourceFileResult> results = new ArrayList<>();
 		File downloadDir = new File("target");
