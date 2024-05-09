@@ -20,7 +20,6 @@ import org.sf.feeling.decompiler.i18n.Messages;
 
 public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-	private static final String HTTPS_HG_OPENJDK = "https://hg.openjdk.java.net"; // $NON-NLS-1$
 	private static final String HTTPS_SEARCH_MAVEN_ORG = "https://search.maven.org"; // $NON-NLS-1$
 	private static final String HTTPS_REPOSITORY_CLOUDERA = "https://repository.cloudera.com/artifactory/webapp/home.html"; // $NON-NLS-1$
 	private static final String HTTPS_NEXUS_XWIKI_ORG = "https://nexus.xwiki.org/nexus/index.html"; // $NON-NLS-1$
@@ -44,7 +43,6 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
 		g.setLayoutData(gd);
 
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL, HTTPS_SEARCH_MAVEN_ORG, g));
-		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_HG_OPEN_JDK_JAVA_NET, HTTPS_HG_OPENJDK, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA, HTTPS_REPOSITORY_CLOUDERA, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG, HTTPS_NEXUS_XWIKI_ORG, g));
 		addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO, HTTPS_MAVEN_ALFRESCO, g));
