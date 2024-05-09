@@ -10,17 +10,16 @@ package org.sf.feeling.decompiler.vineflower.decompiler;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
@@ -28,8 +27,10 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.util.ClassUtil;
+import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.JarClassExtractor;
+import org.sf.feeling.decompiler.util.Logger;
 import org.sf.feeling.decompiler.util.UnicodeUtil;
 import org.sf.feeling.decompiler.vineflower.VineflowerDecompilerPlugin;
 
@@ -42,8 +43,8 @@ public class VineflowerDecompiler implements IDecompiler {
 	ByteArrayOutputStream loggerStream;
 
 	/**
-	 * Performs a <code>Runtime.exec()</code> on Vineflower executable with
-	 * selected options.
+	 * Performs a <code>Runtime.exec()</code> on Vineflower executable with selected
+	 * options.
 	 * 
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
@@ -59,7 +60,7 @@ public class VineflowerDecompiler implements IDecompiler {
 
 		loggerStream = new ByteArrayOutputStream();
 
-		File workingDir = new File(root + "/" + packege); //$NON-NLS-1$
+		File workingDir = new File(root, packege); // $NON-NLS-1$
 
 		final Map<String, Object> mapOptions = new HashMap<>();
 
@@ -69,17 +70,19 @@ public class VineflowerDecompiler implements IDecompiler {
 		mapOptions.put(IFernflowerPreferences.DECOMPILE_ENUM, "1"); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.LOG_LEVEL, IFernflowerLogger.Severity.ERROR.name());
 		mapOptions.put(IFernflowerPreferences.ASCII_STRING_CHARACTERS, "1"); //$NON-NLS-1$
-		if (ClassUtil.isDebug()) {
+		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+		if (showLineNumber || ClassUtil.isDebug()) {
 			mapOptions.put(IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1"); //$NON-NLS-1$
 			mapOptions.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1"); //$NON-NLS-1$
 		}
 
-		File tmpDir;
-		try {
-			tmpDir = Files.createTempDirectory("ecd_vineflower").toFile();
-		} catch (IOException e) {
-			throw new RuntimeException("Failed to create temporary working directory", e); //$NON-NLS-1$
-		}
+		final File tmpDir = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
+				String.valueOf(System.currentTimeMillis()));
+
+		if (!tmpDir.exists())
+			tmpDir.mkdirs();
 
 		// Work around protected constructor
 		class EmbeddedConsoleDecompiler extends ConsoleDecompiler {
@@ -96,62 +99,45 @@ public class VineflowerDecompiler implements IDecompiler {
 		}
 		final String classNameFilter = classNameFilterTmp;
 
-		File[] files = workingDir.listFiles(new FilenameFilter() {
-
-			@Override
-			public boolean accept(File dir, String name) {
-				name = name.toLowerCase();
-				if (name.startsWith(classNameFilter) && name.endsWith(".class")) {
-					return true;
-				}
-				return false;
-			}
-		});
-
 		try (ConsoleDecompiler decompiler = new EmbeddedConsoleDecompiler()) {
-			for (File f : files) {
-				decompiler.addSource(f);
+			File[] files = workingDir.listFiles((dir, name) -> {
+				name = name.toLowerCase();
+				return name.startsWith(classNameFilter) && name.endsWith(".class");
+			});
+			if (files != null) {
+				for (File file : files) {
+					decompiler.addSource(file);
+				}
 			}
+
 			decompiler.decompileContext();
-
-			File classFile = new File(tmpDir, className.replaceAll("(?i)\\.class", ".java")); //$NON-NLS-1$ //$NON-NLS-2$
-
-			source = UnicodeUtil.decode(FileUtil.getContent(classFile));
-
-			classFile.delete();
-
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} finally {
-			FileUtil.deltree(tmpDir);
+		} catch (IOException ex) {
+			Logger.error(ex);
 		}
 
-		Pattern wp = Pattern.compile("/\\*.+?\\*/", Pattern.DOTALL); //$NON-NLS-1$
-		Matcher m = wp.matcher(source);
-		while (m.find()) {
-			if (m.group().matches("/\\*\\s*\\d*\\s*\\*/")) {//$NON-NLS-1$
-				continue;
-			}
-			String group = m.group();
-			group = group.replace("/*", ""); //$NON-NLS-1$ //$NON-NLS-2$
-			group = group.replace("*/", ""); //$NON-NLS-1$ //$NON-NLS-2$
-			group = group.replace("*", ""); //$NON-NLS-1$ //$NON-NLS-2$
-			if (log.length() > 0) {
-				log += "\n"; //$NON-NLS-1$
-			}
-			log += group;
+		File classFile = new File(tmpDir, className.replaceAll("(?i)\\.class", ".java")); //$NON-NLS-1$ //$NON-NLS-2$
 
-			source = source.replace(m.group(), ""); //$NON-NLS-1$
+		try {
+			source = UnicodeUtil.decode(Files.readString(classFile.toPath(), StandardCharsets.UTF_8));
+			Files.delete(classFile.toPath());
+		} catch (IOException e) {
+			Logger.error(e);
+		}
+
+		FileUtil.deltree(tmpDir);
+
+		if (align) {
+			try {
+				source = CommentUtil.clearComments(source);
+			} catch (Exception e) {
+				Logger.error(e);
+			}
 		}
 
 		time = System.currentTimeMillis() - start;
 	}
 
 	/**
-	 * Vineflower doesn't support decompilation from archives. This method extracts
-	 * request class file from the specified archive into temp directory and then
-	 * calls <code>decompile</code>.
-	 * 
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
@@ -167,7 +153,6 @@ public class VineflowerDecompiler implements IDecompiler {
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());
-			return;
 		} finally {
 			FileUtil.deltree(workingDir);
 		}

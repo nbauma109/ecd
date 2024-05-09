@@ -427,7 +427,7 @@ public class DecompilerOutputUtil {
 
 	public static int parseJavaLineNumber(String decompilerType, String line) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
-		if (DecompilerType.FernFlower.equals(decompilerType)) {
+		if (DecompilerType.isFernFlowerBased(decompilerType)) {
 			regex = "//\\s+\\d+"; //$NON-NLS-1$
 			if (line.matches("\\s*}//[0-9 ]+\\s*")) {
 				return -1; // line number on closing bracket cannot be known
@@ -460,7 +460,8 @@ public class DecompilerOutputUtil {
 
 	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
-		if (DecompilerType.FernFlower.equals(decompilerType)) {
+		boolean fernFlowerBased = DecompilerType.isFernFlowerBased(decompilerType);
+		if (fernFlowerBased) {
 			regex = "//\\s+\\d+(\\s*\\d*)*"; //$NON-NLS-1$
 		}
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
@@ -468,11 +469,11 @@ public class DecompilerOutputUtil {
 
 		if (matcher.find()) {
 			line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-			if (!DecompilerType.FernFlower.equals(decompilerType) && generateEmptyString) {
+			if (!fernFlowerBased && generateEmptyString) {
 				line = generateEmptyString(matcher.group().length()) + line;
 			}
 		}
-		if (!DecompilerType.FernFlower.equals(decompilerType)) {
+		if (!fernFlowerBased) {
 			regex = "/\\*\\s+\\*/"; //$NON-NLS-1$
 			pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 			matcher = pattern.matcher(line);
