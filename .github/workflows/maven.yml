@@ -29,6 +29,6 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: |
-        - .\install_certs.bat
-        - .\build.bat
+        .\install_certs.bat
+        .\build.bat
 
