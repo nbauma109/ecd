@@ -22,13 +22,10 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
 
 	private static final String HTTPS_HG_OPENJDK = "https://hg.openjdk.java.net"; // $NON-NLS-1$
 	private static final String HTTPS_SEARCH_MAVEN_ORG = "https://search.maven.org"; // $NON-NLS-1$
-	private static final String HTTPS_WWW_MMNT_RU_INT_GET_ST_0 = "https://www.mmnt.ru/int/get?st={0}"; // $NON-NLS-1$
-	private static final String HTTPS_REPO_SPRING_IO = "https://repo.spring.io/webapp/home.html"; // $NON-NLS-1$
 	private static final String HTTPS_REPOSITORY_CLOUDERA = "https://repository.cloudera.com/artifactory/webapp/home.html"; // $NON-NLS-1$
 	private static final String HTTPS_NEXUS_XWIKI_ORG = "https://nexus.xwiki.org/nexus/index.html"; // $NON-NLS-1$
 	private static final String HTTPS_MAVEN_ALFRESCO = "https://maven.alfresco.com/nexus/index.html"; // $NON-NLS-1$
 	private static final String HTTPS_MAVEN_NUXEO_ORG = "https://maven.nuxeo.org/nexus/index.html"; // $NON-NLS-1$
-	private static final String HTTPS_MAVEN_JAVA_NET = "https://maven.java.net/index.html"; // $NON-NLS-1$
 	private static final String HTTPS_REPOSITORY_OW2_ORG = "https://repository.ow2.org/nexus/index.html"; // $NON-NLS-1$
 	private static final String HTTPS_REPOSITORY_APACHE_ORG = "https://repository.apache.org/index.html"; // $NON-NLS-1$
 	private static final String HTTPS_REPO_GRAILS_ORG = "https://repo.grails.org/grails/webapp/home.html"; // $NON-NLS-1$
