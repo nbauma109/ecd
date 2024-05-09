@@ -32,25 +32,25 @@
 							<goal>copy</goal>
 						</goals>
 						<configuration>
+							<outputDirectory>target/lib</outputDirectory>
 							<artifactItems>
 								<artifactItem>
 									<groupId>org.vineflower</groupId>
 									<artifactId>vineflower</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>vineflower.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.eclipsesource.minimal-json</groupId>
 									<artifactId>minimal-json</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
 									<destFileName>json.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.ow2.asm</groupId>
 									<artifactId>asm</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>asm.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>

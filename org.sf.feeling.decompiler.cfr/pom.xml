@@ -37,7 +37,8 @@
 									<groupId>org.benf</groupId>
 									<artifactId>cfr</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<outputDirectory>target/lib</outputDirectory>
+									<destFileName>cfr.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>

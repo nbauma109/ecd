@@ -32,18 +32,19 @@
 							<goal>copy</goal>
 						</goals>
 						<configuration>
+							<outputDirectory>target/lib</outputDirectory>
 							<artifactItems>
 								<artifactItem>
 									<groupId>org.bitbucket.mstrobel</groupId>
 									<artifactId>procyon-compilertools</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>procyon-compilertools.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.bitbucket.mstrobel</groupId>
 									<artifactId>procyon-core</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>procyon-core.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>

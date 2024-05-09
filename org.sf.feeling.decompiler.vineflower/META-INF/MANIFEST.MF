@@ -1,5 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
+Automatic-Module-Name: org.sf.feeling.decompiler.vineflower
 Bundle-Name: Enhanced Class Decompiler Vineflower Extension
 Bundle-SymbolicName: org.sf.feeling.decompiler.vineflower;singleton:=true
 Bundle-Version: 2024.3.1
@@ -21,10 +22,10 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui.navigator,
  org.eclipse.ui.ide;resolution:=optional,
  org.eclipse.core.filesystem
-Bundle-RequiredExecutionEnvironment: JavaSE-11
+Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.vineflower.actions,
  org.sf.feeling.decompiler.vineflower.decompiler
 Bundle-ClassPath: .,
- lib/vineflower-1.10.0.jar
+ target/lib/vineflower.jar

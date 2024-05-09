@@ -22,7 +22,7 @@ Require-Bundle: org.eclipse.ui,
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
-Bundle-ClassPath: target/lib/commons-io-2.16.1.jar,
+Bundle-ClassPath: target/lib/commons-io.jar,
  .
 Export-Package: org.sf.feeling.decompiler.source.attach,
  org.sf.feeling.decompiler.source.attach.attacher,

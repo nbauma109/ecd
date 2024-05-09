@@ -16,7 +16,7 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<fernflower.version>403</fernflower.version>
+		<fernflower.version>241.15989.150</fernflower.version>
 	</properties>
 
 	<build>
@@ -33,26 +33,26 @@
 							<goal>copy</goal>
 						</goals>
 						<configuration>
+							<outputDirectory>target/lib</outputDirectory>
 							<artifactItems>
 								<artifactItem>
-									<groupId>net.minecraftforge</groupId>
-									<artifactId>fernflower</artifactId>
+									<groupId>com.jetbrains.intellij.java</groupId>
+									<artifactId>java-decompiler-engine</artifactId>
 									<version>${fernflower.version}</version>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>fernflower.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.eclipsesource.minimal-json</groupId>
 									<artifactId>minimal-json</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
 									<destFileName>json.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.ow2.asm</groupId>
 									<artifactId>asm</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>asm.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>
@@ -64,15 +64,15 @@
 
 	<repositories>
 		<repository>
-			<id>minecraftforge</id>
-			<url>https://files.minecraftforge.net/maven/</url>
+			<id>intellij</id>
+			<url>https://www.jetbrains.com/intellij-repository/releases/</url>
 		</repository>
 	</repositories>
 
 	<dependencies>
 		<dependency>
-			<groupId>net.minecraftforge</groupId>
-			<artifactId>fernflower</artifactId>
+			<groupId>com.jetbrains.intellij.java</groupId>
+			<artifactId>java-decompiler-engine</artifactId>
 			<version>${fernflower.version}</version>
 		</dependency>
 		<dependency>

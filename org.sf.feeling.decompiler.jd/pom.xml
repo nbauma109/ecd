@@ -34,36 +34,37 @@
 							<goal>copy</goal>
 						</goals>
 						<configuration>
+							<outputDirectory>target/lib</outputDirectory>
 							<artifactItems>
 								<artifactItem>
 									<groupId>commons-io</groupId>
 									<artifactId>commons-io</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>commons-io.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.apache.commons</groupId>
 									<artifactId>commons-lang3</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>commons-lang3.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>org.apache.bcel</groupId>
 									<artifactId>bcel</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>bcel.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.github.nbauma109</groupId>
 									<artifactId>jd-util</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>jd-util.jar</destFileName>
 								</artifactItem>
 								<artifactItem>
 									<groupId>com.github.nbauma109</groupId>
 									<artifactId>jd-core</artifactId>
 									<overWrite>true</overWrite>
-									<outputDirectory>lib</outputDirectory>
+									<destFileName>jd-core.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>

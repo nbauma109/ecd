@@ -33,6 +33,7 @@
 									<groupId>commons-io</groupId>
 									<artifactId>commons-io</artifactId>
 									<overWrite>true</overWrite>
+									<destFileName>commons-io.jar</destFileName>
 								</artifactItem>
 							</artifactItems>
 						</configuration>
@@ -41,7 +42,6 @@
 			</plugin>
 		</plugins>
 	</build>
-
 
 	<dependencies>
 		<dependency>
