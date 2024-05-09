@@ -6,4 +6,5 @@
 # Example: ./build.sh
 
 
-mvn clean verify -Dsigning.disabled=true --no-transfer-progress
+mvn wrapper:wrapper -Dmaven=3.9.6
+./mvnw clean verify -Dsigning.disabled=true --no-transfer-progress
