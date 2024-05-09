@@ -2,10 +2,6 @@ Manifest-Version: 1.0
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: target/lib/fernflower.jar,
  target/lib/json.jar,
- lib/com.drgarbage.asm_5.0.3.jar,
- lib/com.drgarbage.asm.util_5.0.3.jar,
- lib/com.drgarbage.bytecodevisualizer.plugin_4.4.1.201408050542.jar,
- lib/com.drgarbage.core.plugin_4.4.1.201408050542.jar,
  target/lib/asm.jar,
  .
 Bundle-Name: Enhanced Class Decompiler

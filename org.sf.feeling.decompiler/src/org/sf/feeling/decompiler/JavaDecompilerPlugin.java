@@ -23,11 +23,9 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
@@ -58,15 +56,6 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 	public static final String EXPORT_ENCODING = "org.sf.feeling.decompiler.export.encoding"; //$NON-NLS-1$ ;
 	public static final String ATTACH_SOURCE = "org.sf.feeling.decompiler.attach_source"; //$NON-NLS-1$ ;
 	public static final String WAIT_FOR_SOURCES = "org.sf.feeling.decompiler.wait_for_sources"; //$NON-NLS-1$ ;
-
-	public static final String bytecodeMnemonicPreferencesPrefix = "BYTECODEMNEMONIC_"; //$NON-NLS-1$
-	public static final String BYTECODE_MNEMONIC = bytecodeMnemonicPreferencesPrefix + "bytecodeMnemonic"; //$NON-NLS-1$
-	public static final String BYTECODE_MNEMONIC_BOLD = bytecodeMnemonicPreferencesPrefix + "bytecodeMnemonic_bold"; //$NON-NLS-1$
-	public static final String BYTECODE_MNEMONIC_ITALIC = bytecodeMnemonicPreferencesPrefix + "bytecodeMnemonic_italic"; //$NON-NLS-1$
-	public static final String BYTECODE_MNEMONIC_STRIKETHROUGH = bytecodeMnemonicPreferencesPrefix
-			+ "bytecodeMnemonic_strikethrough"; //$NON-NLS-1$
-	public static final String BYTECODE_MNEMONIC_UNDERLINE = bytecodeMnemonicPreferencesPrefix
-			+ "bytecodeMnemonic_underline"; //$NON-NLS-1$
 
 	public static final String classFileAttributePreferencesPrefix = "CLASS_FILE_ATTR_"; //$NON-NLS-1$
 	public static final String CLASS_FILE_ATTR_SHOW_CONSTANT_POOL = classFileAttributePreferencesPrefix
@@ -106,12 +95,6 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 	private TreeMap<String, IDecompilerDescriptor> decompilerDescriptorMap = new TreeMap<>();
 
 	private boolean isDebugMode = false;
-
-	public static final int SOURCE_MODE = 0;
-	public static final int BYTE_CODE_MODE = 1;
-	public static final int DISASSEMBLER_MODE = 2;
-
-	private int sourceMode = 0;
 
 	public Map<String, IDecompilerDescriptor> getDecompilerDescriptorMap() {
 		return decompilerDescriptorMap;
@@ -177,12 +160,6 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 		store.setDefault(ATTACH_SOURCE, true);
 		store.setDefault(WAIT_FOR_SOURCES, true);
 		store.setDefault(EXPORT_ENCODING, StandardCharsets.UTF_8.name());
-
-		PreferenceConverter.setDefault(store, BYTECODE_MNEMONIC, new RGB(0, 0, 0));
-		store.setDefault(BYTECODE_MNEMONIC_BOLD, true);
-		store.setDefault(BYTECODE_MNEMONIC_ITALIC, false);
-		store.setDefault(BYTECODE_MNEMONIC_STRIKETHROUGH, false);
-		store.setDefault(BYTECODE_MNEMONIC_UNDERLINE, false);
 
 		store.setDefault(CLASS_FILE_ATTR_SHOW_CONSTANT_POOL, false);
 		store.setDefault(CLASS_FILE_ATTR_SHOW_LINE_NUMBER_TABLE, false);
@@ -340,14 +317,6 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
 	public void setDebugMode(boolean isDebugMode) {
 		this.isDebugMode = isDebugMode;
-	}
-
-	public int getSourceMode() {
-		return sourceMode;
-	}
-
-	public void setSourceMode(int sourceMode) {
-		this.sourceMode = sourceMode;
 	}
 
 	public String getDefaultExportEncoding() {

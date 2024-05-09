@@ -321,15 +321,6 @@ public class UIUtil {
 		return false;
 	}
 
-	public static boolean requestFromDisassemblerSelection() {
-		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
-		for (int i = 0; i < stacks.length && i < 10; i++) {
-			if (stacks[i].getMethodName().equals("doHandleCursorPositionChanged")) //$NON-NLS-1$
-				return true;
-		}
-		return false;
-	}
-
 	public static boolean requestCreateBuffer() {
 		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
 		for (int i = 0; i < stacks.length && i < 12; i++) {

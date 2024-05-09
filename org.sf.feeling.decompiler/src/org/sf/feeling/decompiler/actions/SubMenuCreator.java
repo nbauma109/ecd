@@ -126,10 +126,6 @@ public class SubMenuCreator implements IMenuCreator {
 
 			dropDownMenuMgr.add(new SourceCodeAction());
 
-			dropDownMenuMgr.add(new ByteCodeAction());
-
-			dropDownMenuMgr.add(new DisassemblerAction());
-
 			dropDownMenuMgr.add(new Separator());
 
 			dropDownMenuMgr.add(new DebugModeAction());

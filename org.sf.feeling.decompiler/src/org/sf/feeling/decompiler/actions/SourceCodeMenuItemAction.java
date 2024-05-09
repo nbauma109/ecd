@@ -15,7 +15,6 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowPulldownDelegate;
 import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
-import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class SourceCodeMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
@@ -48,6 +47,5 @@ public class SourceCodeMenuItemAction implements IWorkbenchWindowPulldownDelegat
 
 	@Override
 	public void selectionChanged(IAction action, ISelection selection) {
-		action.setChecked(JavaDecompilerPlugin.getDefault().getSourceMode() == JavaDecompilerPlugin.SOURCE_MODE);
 	}
 }

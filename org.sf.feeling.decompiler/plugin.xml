@@ -26,15 +26,6 @@
             /> 
       </editor>
    </extension>
-   <extension
-         point="org.eclipse.jdt.ui.javaEditorTextHovers">
-      <hover
-            label="%Opcode.Hover.Lable"
-            description="%Opcode.Hover.Description"
-            class="org.sf.feeling.decompiler.editor.DisassemblerJavadocHover"
-            id="org.sf.feeling.decompiler.editor.DisassemblerJavadocHover">
-      </hover>
-   </extension>
    <extension         
          point="org.eclipse.ui.editorActions">
       <editorContribution
@@ -55,12 +46,6 @@
             category="org.eclipse.jdt.ui.preferences.JavaBasePreferencePage"
             class="org.sf.feeling.decompiler.preferences.JavaDecompilerPreferencePage"
             id="org.sf.feeling.decompiler.Main">
-      </page>
-      <page
-            name="%Disassembler"
-            category="org.sf.feeling.decompiler.Main"
-            class="org.sf.feeling.decompiler.preferences.DisassemblerPreferencePage"
-            id="org.sf.feeling.decompiler.Disassembler">
       </page>
       <page
             name="%Nexus"
@@ -132,16 +117,6 @@
             id="org.sf.feeling.decompiler.sourcecode">  
       </command>
       <command  
-            name="Show Byte Code"  
-            categoryId="org.sf.feeling.decompiler"  
-            id="org.sf.feeling.decompiler.bytecode">  
-      </command>
-      <command  
-            name="Show Disassembler"  
-            categoryId="org.sf.feeling.decompiler"  
-            id="org.sf.feeling.decompiler.disassembler">  
-      </command>
-      <command  
             name="Decompile"  
             categoryId="org.sf.feeling.decompiler"  
             id="org.sf.feeling.decompiler.decompile">  
@@ -170,14 +145,6 @@
       <handler  
             commandId="org.sf.feeling.decompiler.decompile"  
             class="org.sf.feeling.decompiler.actions.DecompileHandler">  
-      </handler>
-      <handler  
-            commandId="org.sf.feeling.decompiler.disassembler"  
-            class="org.sf.feeling.decompiler.actions.DisassemblerHandler">  
-      </handler> 
-      <handler  
-            commandId="org.sf.feeling.decompiler.bytecode"  
-            class="org.sf.feeling.decompiler.actions.ByteCodeHandler">  
       </handler>
       <handler  
             commandId="org.sf.feeling.decompiler.sourcecode"  
@@ -210,22 +177,6 @@
                class="org.sf.feeling.decompiler.actions.DebugModeActionDelegate"
                menubarPath="org.sf.feeling.decompiler.main"
                id="org.sf.feeling.decompiler.actions.DebugModeAction"
-               style="toggle"
-               >
-         </action>
-         <action
-               label="%ShowDisassembler"
-               class="org.sf.feeling.decompiler.actions.DisassemblerActionDelegate"
-               menubarPath="org.sf.feeling.decompiler.source"
-               id="org.sf.feeling.decompiler.actions.DisassemblerAction"
-               style="toggle"
-               >
-         </action>
-         <action
-               label="%ShowByteCode"
-               class="org.sf.feeling.decompiler.actions.ByteCodeActionDelegate"
-               menubarPath="org.sf.feeling.decompiler.source"
-               id="org.sf.feeling.decompiler.actions.ByteCodeAction"
                style="toggle"
                >
          </action>
@@ -314,22 +265,6 @@
                label="%DebugMode"
                style="toggle"
                menubarPath="decompilerMenu/debugGroup">
-         </action>
-         <action
-               class="org.sf.feeling.decompiler.actions.DisassemblerMenuItemAction"
-               enablesFor="*"
-               id="org.sf.feeling.decompiler.actions.disassemblerMenu"
-               label="%ShowDisassembler"
-               style="toggle"
-               menubarPath="decompilerMenu/sourceGroup">
-         </action>
-         <action
-               class="org.sf.feeling.decompiler.actions.ByteCodeMenuItemAction"
-               enablesFor="*"
-               id="org.sf.feeling.decompiler.actions.byteCodeMenu"
-               label="%ShowByteCode"
-               style="toggle"
-               menubarPath="decompilerMenu/sourceGroup">
          </action>
          <action
                class="org.sf.feeling.decompiler.actions.SourceCodeMenuItemAction"

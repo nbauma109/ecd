@@ -9,11 +9,9 @@
 package org.sf.feeling.decompiler.actions;
 
 import org.eclipse.jface.action.IAction;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.ui.IEditorActionDelegate;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.actions.ActionDelegate;
-import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.JavaDecompilerClassFileEditor;
 
 public class SourceCodeActionDelegate extends ActionDelegate implements IEditorActionDelegate {
@@ -24,17 +22,7 @@ public class SourceCodeActionDelegate extends ActionDelegate implements IEditorA
 	public void setActiveEditor(IAction action, IEditorPart targetEditor) {
 		if (targetEditor instanceof JavaDecompilerClassFileEditor) {
 			editor = (JavaDecompilerClassFileEditor) targetEditor;
-			action.setChecked(JavaDecompilerPlugin.getDefault().getSourceMode() == JavaDecompilerPlugin.SOURCE_MODE);
+			action.setChecked(true);
 		}
-	}
-
-	@Override
-	public void run(IAction action) {
-		new ByteCodeAction().run();
-	}
-
-	@Override
-	public void selectionChanged(IAction action, ISelection selection) {
-		action.setChecked(JavaDecompilerPlugin.getDefault().getSourceMode() == JavaDecompilerPlugin.SOURCE_MODE);
 	}
 }
