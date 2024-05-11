@@ -22,7 +22,7 @@ This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by r
 
 Download from Jitpack :
 
-[![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/897746fc-1df9-4810-b34b-27729411c501)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
+[![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
 Drag and Drop installation: 
 
