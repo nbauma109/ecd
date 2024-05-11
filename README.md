@@ -1,6 +1,6 @@
 [![](https://jitpack.io/v/nbauma109/ecd.svg)](https://jitpack.io/#nbauma109/ecd)
 [![](https://jitci.com/gh/nbauma109/ecd/svg)](https://jitci.com/gh/nbauma109/ecd)
-[![CodeQL](https://github.com/nbauma109/ecd/actions/workflows/codeql.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/codeql.yml)
+[![CodeQL](https://github.com/nbauma109/ecd/actions/workflows/codeql.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/codeql-analysis.yml)
 [![Update version](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml)
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
 [![Github Downloads (all releases)](https://img.shields.io/github/downloads/nbauma109/ecd/total.svg)]()
