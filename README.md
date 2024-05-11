@@ -3,6 +3,9 @@
 [![CodeQL](https://github.com/nbauma109/ecd/actions/workflows/codeql.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/codeql.yml)
 [![Update version](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml)
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
+[![Github Downloads (all releases)](https://img.shields.io/github/downloads/nbauma109/ecd/total.svg)]()
+[![Github Downloads (latest release)](https://img.shields.io/github/downloads/nbauma109/ecd/latest/total.svg)]()
+[![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/month.svg)](https://jitpack.io/#nbauma109/ecd)
 
 # Enhanced Class Decompiler
 Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
