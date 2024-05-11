@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-. ~/.sdkman/bin/sdkman-init.sh
+#!/bin/bash
+source ~/.sdkman/bin/sdkman-init.sh
 sdk selfupdate force
 sdk list java
 java -version
