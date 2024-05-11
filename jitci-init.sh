@@ -2,6 +2,7 @@
 . ~/.sdkman/bin/sdkman-init.sh
 sdk selfupdate force
 sdk list java
+sdk use 17.0.10-sem
 java -version
 export M3_VERSION=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/apache/maven/releases/latest | sed 's,https://github.com/apache/maven/releases/tag/maven-,,g')
 mvn wrapper:wrapper -Dmaven=${M3_VERSION} --no-transfer-progress
