@@ -12,6 +12,7 @@ jobs:
       - name: Download Jitpack Artifact
         run: |
           URL="https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/${GITHUB_REF##*/}-SNAPSHOT/enhanced-class-decompiler-${GITHUB_REF##*/}-SNAPSHOT.zip"
+          echo "Downloading URL $URL"
           curl --location --fail --connect-timeout 300 --max-time 600 "$URL" --output "enhanced-class-decompiler-${GITHUB_REF##*/}-SNAPSHOT.zip"
       - name: Check if the ZIP file is valid
         run: |
