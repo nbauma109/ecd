@@ -48,7 +48,8 @@ import org.sf.feeling.decompiler.util.Logger;
 
 public class JavaSourceAttacherHandler extends AbstractHandler {
 
-	final static Map<String, IPackageFragmentRoot> requests = new HashMap<String, IPackageFragmentRoot>();
+	private static final String PREVIOUS_ATTEMPT_FAILED = "Previous attempt failed:  ";
+	static final Map<String, IPackageFragmentRoot> requests = new HashMap<>();
 
 	@Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
@@ -57,7 +58,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 			return null;
 		}
 		final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-		final List<IPackageFragmentRoot> selections = new ArrayList<IPackageFragmentRoot>();
+		final List<IPackageFragmentRoot> selections = new ArrayList<>();
 		for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext();) {
 			IJavaElement aSelection = (IJavaElement) iterator.next();
 			if (aSelection instanceof IPackageFragmentRoot) {
@@ -144,10 +145,10 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 				Logger.debug(e);
 			}
 		}
-		final Set<String> notProcessedLibs = new HashSet<String>();
+		final Set<String> notProcessedLibs = new HashSet<>();
 		notProcessedLibs.addAll(requests.keySet());
 		final List<SourceFileResult> responses = Collections.synchronizedList(new ArrayList<SourceFileResult>());
-		final List<String> libs = new ArrayList<String>();
+		final List<String> libs = new ArrayList<>();
 		libs.addAll(requests.keySet());
 		final FinderManager mgr = new FinderManager();
 		mgr.findSources(libs, responses);
@@ -273,7 +274,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 			Logger.debug("Exception when trying InternalBasedSourceAttacherImpl36 to attach to " + sourcePath, e); //$NON-NLS-1$
 		}
 		if (!attached) {
-			Logger.debug("Previous attempt failed:  " + sourcePath, null); //$NON-NLS-1$
+			Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
 			try {
 				final SourceAttacher attacher = (SourceAttacher) Class
 						.forName("org.sf.feeling.decompiler.source.attach.attacher.InternalBasedSourceAttacherImpl35") //$NON-NLS-1$
@@ -285,7 +286,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 			}
 		}
 		if (!attached) {
-			Logger.debug("Previous attempt failed:  " + sourcePath, null); //$NON-NLS-1$
+			Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
 			try {
 				final SourceAttacher attacher = (SourceAttacher) Class
 						.forName("org.sf.feeling.decompiler.source.attach.attacher.MySourceAttacher") //$NON-NLS-1$
@@ -297,7 +298,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 			}
 		}
 		if (!attached) {
-			Logger.debug("Previous attempt failed:  " + sourcePath, null); //$NON-NLS-1$
+			Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
 			try {
 				final SourceAttacher attacher = (SourceAttacher) Class
 						.forName("org.sf.feeling.decompiler.source.attach.attacher.MySourceAttacher2") //$NON-NLS-1$

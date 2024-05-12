@@ -19,6 +19,8 @@ public class MethodUtils {
 
 	// --------------------------------------------------------- Private Methods
 
+	private static final String NO_SUCH_ACCESSIBLE_METHOD = "No such accessible method: ";
+
 	/**
 	 * Only log warning about accessibility work around once.
 	 * <p>
@@ -227,7 +229,7 @@ public class MethodUtils {
 		Method method = getMatchingAccessibleMethod(object.getClass(), methodName, parameterTypes);
 		if (method == null) {
 			throw new NoSuchMethodException(
-					"No such accessible method: " + methodName + "() on object: " + object.getClass().getName()); //$NON-NLS-1$ //$NON-NLS-2$
+					NO_SUCH_ACCESSIBLE_METHOD + methodName + "() on object: " + object.getClass().getName()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 		return method.invoke(object, args);
 	}
@@ -333,7 +335,7 @@ public class MethodUtils {
 		Method method = getAccessibleMethod(object.getClass(), methodName, parameterTypes);
 		if (method == null) {
 			throw new NoSuchMethodException(
-					"No such accessible method: " + methodName + "() on object: " + object.getClass().getName()); //$NON-NLS-1$ //$NON-NLS-2$
+					NO_SUCH_ACCESSIBLE_METHOD + methodName + "() on object: " + object.getClass().getName()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 		return method.invoke(object, args);
 
@@ -376,7 +378,7 @@ public class MethodUtils {
 		Method method = getAccessibleMethod(objectClass, methodName, parameterTypes);
 		if (method == null) {
 			throw new NoSuchMethodException(
-					"No such accessible method: " + methodName + "() on class: " + objectClass.getName()); //$NON-NLS-1$ //$NON-NLS-2$
+					NO_SUCH_ACCESSIBLE_METHOD + methodName + "() on class: " + objectClass.getName()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 		return method.invoke(null, args);
 
@@ -519,7 +521,7 @@ public class MethodUtils {
 		Method method = getMatchingAccessibleMethod(objectClass, methodName, parameterTypes);
 		if (method == null) {
 			throw new NoSuchMethodException(
-					"No such accessible method: " + methodName + "() on class: " + objectClass.getName()); //$NON-NLS-1$ //$NON-NLS-2$
+					NO_SUCH_ACCESSIBLE_METHOD + methodName + "() on class: " + objectClass.getName()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 		return method.invoke(null, args);
 	}
