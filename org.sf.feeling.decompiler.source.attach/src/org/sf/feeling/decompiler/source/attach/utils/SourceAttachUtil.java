@@ -40,6 +40,9 @@ import org.sf.feeling.decompiler.util.ReflectionUtils;
 @SuppressWarnings("restriction")
 public class SourceAttachUtil {
 
+	private static final String JAR_REGEX = "(?i)(\\-)*(\\d)*(\\.)jar";
+	private static final String ZIP_REGEX = "(?i)(\\-)*(\\d)*(\\.)zip";
+
 	public static File getBinFile(IPackageFragmentRoot root) {
 		File binFile;
 		if (!root.isExternal()) {
@@ -62,8 +65,8 @@ public class SourceAttachUtil {
 			} else {
 				String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
 				tempFile = new File(SourceConstants.getSourceTempDir(),
-						sourceFile.getName().replaceAll("(?i)(\\-)*(\\d)*(\\.)jar", suffix) //$NON-NLS-1$
-								.replaceAll("(?i)(\\-)*(\\d)*(\\.)zip", suffix)); //$NON-NLS-1$
+						sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+								.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
 			}
 
 			if (!tempFile.exists()) {
@@ -113,8 +116,8 @@ public class SourceAttachUtil {
 				} else {
 					String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
 					tempFile = new File(SourceConstants.getSourceTempDir(),
-							sourceFile.getName().replaceAll("(?i)(\\-)*(\\d)*(\\.)jar", suffix) //$NON-NLS-1$
-									.replaceAll("(?i)(\\-)*(\\d)*(\\.)zip", suffix)); //$NON-NLS-1$
+							sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+									.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
 					FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
 					JavaSourceAttacherHandler.attachSource(root, tempFile);
 					tempFile.deleteOnExit();
@@ -170,8 +173,8 @@ public class SourceAttachUtil {
 			} else {
 				String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
 				tempFile = new File(SourceConstants.getSourceTempDir(),
-						sourceFile.getName().replaceAll("(?i)(\\-)*(\\d)*(\\.)jar", suffix) //$NON-NLS-1$
-								.replaceAll("(?i)(\\-)*(\\d)*(\\.)zip", suffix)); //$NON-NLS-1$
+						sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+								.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
 				FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
 				JavaSourceAttacherHandler.attachSource(root, tempFile);
 				tempFile.deleteOnExit();

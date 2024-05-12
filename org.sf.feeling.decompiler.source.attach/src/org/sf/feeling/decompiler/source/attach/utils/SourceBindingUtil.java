@@ -20,6 +20,9 @@ import com.eclipsesource.json.JsonObject;
 
 public class SourceBindingUtil {
 
+	private static final String DOWNLOAD_URL = "downloadUrl";
+	private static final String RECORDS = "records";
+	private static final String SOURCE = "source";
 	private static final File sourceBindingJsonFile = new File(SourceConstants.SourceAttacherDir, "source.json"); //$NON-NLS-1$
 
 	private static synchronized JsonObject loadSourceBindingJson() {
@@ -50,7 +53,7 @@ public class SourceBindingUtil {
 			return null;
 		}
 
-		JsonArray records = config.get("records").asArray(); //$NON-NLS-1$
+		JsonArray records = config.get(RECORDS).asArray(); //$NON-NLS-1$
 		for (int i = 0; i < records.size(); i++) {
 			JsonObject item = records.get(i).asObject();
 			JsonArray shaArray = item.get("sha").asArray(); //$NON-NLS-1$
@@ -58,7 +61,7 @@ public class SourceBindingUtil {
 			for (int j = 0; j < shaArray.size(); j++) {
 				String shaString = shaArray.get(j).asString();
 				if (sha != null && sha.equalsIgnoreCase(shaString)) {
-					String source = item.getString("source", null); //$NON-NLS-1$
+					String source = item.getString(SOURCE, null); //$NON-NLS-1$
 					String temp = item.getString("temp", null); //$NON-NLS-1$
 					return new String[] { source, temp };
 				}
@@ -73,14 +76,14 @@ public class SourceBindingUtil {
 			return null;
 		}
 
-		JsonArray records = config.get("records").asArray(); //$NON-NLS-1$
+		JsonArray records = config.get(RECORDS).asArray(); //$NON-NLS-1$
 		for (int i = 0; i < records.size(); i++) {
 			JsonObject item = records.get(i).asObject();
-			if (item.get("downloadUrl").isNull()) //$NON-NLS-1$
+			if (item.get(DOWNLOAD_URL).isNull()) //$NON-NLS-1$
 				continue;
-			String downloadUrlValue = item.getString("downloadUrl", null); //$NON-NLS-1$
+			String downloadUrlValue = item.getString(DOWNLOAD_URL, null); //$NON-NLS-1$
 			if (downloadUrl != null && downloadUrl.equals(downloadUrlValue)) {
-				String source = item.getString("source", null); //$NON-NLS-1$
+				String source = item.getString(SOURCE, null); //$NON-NLS-1$
 				String temp = item.getString("temp", null); //$NON-NLS-1$
 				return new String[] { source, temp };
 			}
@@ -100,13 +103,13 @@ public class SourceBindingUtil {
 			return;
 		}
 
-		JsonArray records = config.get("records").asArray(); //$NON-NLS-1$
+		JsonArray records = config.get(RECORDS).asArray(); //$NON-NLS-1$
 		String sourcePath = sourceFile.getAbsolutePath();
 
 		boolean exist = false;
 		for (int i = 0; i < records.size(); i++) {
 			JsonObject item = records.get(i).asObject();
-			String source = item.getString("source", null); //$NON-NLS-1$
+			String source = item.getString(SOURCE, null); //$NON-NLS-1$
 			if (sourcePath.equals(source)) {
 				modifySourceBindingRecord(item, sha, downloadUrl, tempSourceFile);
 				exist = true;
@@ -136,7 +139,7 @@ public class SourceBindingUtil {
 			shaArray.add(sha);
 		}
 		if (downloadUrl != null) {
-			item.set("downloadUrl", downloadUrl); //$NON-NLS-1$
+			item.set(DOWNLOAD_URL, downloadUrl); //$NON-NLS-1$
 		}
 		if (tempSourceFile != null && tempSourceFile.exists()) {
 			item.set("temp", tempSourceFile.getAbsolutePath()); //$NON-NLS-1$
@@ -148,7 +151,7 @@ public class SourceBindingUtil {
 		JsonObject config = new JsonObject();
 		config.set("version", "1.0"); //$NON-NLS-1$ //$NON-NLS-2$
 		JsonArray records = new JsonArray();
-		config.set("records", records); //$NON-NLS-1$
+		config.set(RECORDS, records); //$NON-NLS-1$
 		JsonObject sourceBindingRecord = createSourceBindingRecord(sourceFile, sha, downloadUrl, tempSourceFile);
 		records.add(sourceBindingRecord);
 		return config;
@@ -157,8 +160,8 @@ public class SourceBindingUtil {
 	private static synchronized JsonObject createSourceBindingRecord(File sourceFile, String sha, String downloadUrl,
 			File tempSourceFile) {
 		JsonObject sourceBindingRecord = new JsonObject();
-		sourceBindingRecord.set("source", sourceFile.getAbsolutePath()); //$NON-NLS-1$
-		sourceBindingRecord.set("downloadUrl", downloadUrl); //$NON-NLS-1$
+		sourceBindingRecord.set(SOURCE, sourceFile.getAbsolutePath()); //$NON-NLS-1$
+		sourceBindingRecord.set(DOWNLOAD_URL, downloadUrl); //$NON-NLS-1$
 		JsonArray shaArray = new JsonArray();
 		shaArray.add(sha);
 		sourceBindingRecord.set("sha", shaArray); //$NON-NLS-1$
@@ -172,10 +175,10 @@ public class SourceBindingUtil {
 			return;
 		}
 
-		JsonArray records = config.get("records").asArray(); //$NON-NLS-1$
+		JsonArray records = config.get(RECORDS).asArray(); //$NON-NLS-1$
 		for (int i = records.size() - 1; i >= 0; i--) {
 			JsonObject item = records.get(i).asObject();
-			String source = item.getString("source", null); //$NON-NLS-1$
+			String source = item.getString(SOURCE, null); //$NON-NLS-1$
 			if (source == null || !new File(source).exists()) {
 				records.remove(i);
 			}
