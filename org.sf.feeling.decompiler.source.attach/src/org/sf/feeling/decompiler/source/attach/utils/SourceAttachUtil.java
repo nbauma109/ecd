@@ -207,7 +207,6 @@ public class SourceAttachUtil {
 							refreshLibrarySources(element, files);
 						}
 					}
-					;
 				} catch (JavaModelException e) {
 					e.printStackTrace();
 				}
@@ -237,7 +236,6 @@ public class SourceAttachUtil {
 							refreshLibrarySources(element, files);
 						}
 					}
-					;
 				} catch (JavaModelException e) {
 					e.printStackTrace();
 				}
