@@ -3,9 +3,18 @@
 [![CodeQL](https://github.com/nbauma109/ecd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/codeql-analysis.yml)
 [![Update version](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml)
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
+
+Downloads from Github releases :
+
 [![Github Downloads (all releases)](https://img.shields.io/github/downloads/nbauma109/ecd/total.svg)]()
 [![Github Downloads (latest release)](https://img.shields.io/github/downloads/nbauma109/ecd/latest/total.svg)]()
+
+Downloads from Jitpack :
+
 [![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/month.svg)](https://jitpack.io/#nbauma109/ecd)
+[![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/week.svg)](https://jitpack.io/#nbauma109/ecd)
+
+[![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
 # Enhanced Class Decompiler
 Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
@@ -19,10 +28,6 @@ Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates J
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
 
 ## How to install Enhanced Class Decompiler?
-
-Download from Jitpack :
-
-[![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
 Drag and Drop installation: 
 
