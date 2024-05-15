@@ -47,6 +47,24 @@ _If you have currently the "Eclipse" Class Decompiler installed, it is recommend
 ## How to configure Enhanced Class Decompiler?
   1. Click on _"Window > Preferences > Java > Decompiler"_
 
+Source attach:
+
+You may configure a private Nexus repository with credentials (user/password) to download and attach sources automatically :
+
+![image](https://github.com/nbauma109/ecd/assets/9403560/429eb6ba-d9bc-45be-9c49-171a3b19a866)
+
+You may select from a list of available public repositories :
+
+![image](https://github.com/nbauma109/ecd/assets/9403560/27e345af-598d-4411-83d5-43617af14d1e)
+
+You may use this option "Wait for sources to be downloaded before trying to decompile" to avoid decompiling code for which you have sources.
+
+![image](https://github.com/nbauma109/ecd/assets/9403560/83530f27-4e17-47d8-afb5-0832cd842012)
+
+Use this icon to switch decompiler while a class file is still open. Once a file is closed and re-opened, the source is cached, it is no more possible to switch decompiler.
+
+![image](https://github.com/nbauma109/ecd/assets/9403560/3a8d92ad-41c0-453e-951f-92a2a9b67ac4)
+
 ## How to uninstall Enhanced Class Decompiler?
   1. Click on _"Help > About Eclipse > Installation Details > Installation Software"_,
   2. Select _"Enhanced Class Decompiler"_,
