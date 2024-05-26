@@ -16,7 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -777,28 +776,5 @@ public class DecompilerOutputUtil {
 
 		level = "1.8"; //$NON-NLS-1$
 		return level;
-	}
-
-	private static int jslLevel = -1;
-
-	public static int getMaxJSLLevel() {
-		if (jslLevel == -1) {
-			if (ReflectionUtils.getDeclaredField(AST.class, "JLS8") != null) //$NON-NLS-1$
-			{
-				jslLevel = (Integer) ReflectionUtils.getFieldValue(AST.class, "JLS8"); //$NON-NLS-1$
-			} else if (ReflectionUtils.getDeclaredField(AST.class, "JLS4") != null) //$NON-NLS-1$
-			{
-				jslLevel = (Integer) ReflectionUtils.getFieldValue(AST.class, "JLS4"); //$NON-NLS-1$
-			} else if (ReflectionUtils.getDeclaredField(AST.class, "JLS3") != null) //$NON-NLS-1$
-			{
-				jslLevel = (Integer) ReflectionUtils.getFieldValue(AST.class, "JLS3"); //$NON-NLS-1$
-			} else if (ReflectionUtils.getDeclaredField(AST.class, "JLS2") != null) //$NON-NLS-1$
-			{
-				jslLevel = (Integer) ReflectionUtils.getFieldValue(AST.class, "JLS2"); //$NON-NLS-1$
-			} else {
-				jslLevel = 3;
-			}
-		}
-		return jslLevel;
 	}
 }

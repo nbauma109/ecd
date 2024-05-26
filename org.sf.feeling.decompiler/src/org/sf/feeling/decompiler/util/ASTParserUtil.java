@@ -2,6 +2,7 @@ package org.sf.feeling.decompiler.util;
 
 import java.util.Map;
 
+import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -12,7 +13,7 @@ public final class ASTParserUtil {
 	}
 
 	public static CompilationUnit parse(String sourceCode) {
-		ASTParser parser = ASTParser.newParser(DecompilerOutputUtil.getMaxJSLLevel());
+		ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
 		CompilerOptions option = new CompilerOptions();
 		Map<String, String> options = option.getMap();
 		options.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel()); // $NON-NLS-1$
