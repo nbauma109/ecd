@@ -21,6 +21,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
@@ -34,7 +35,6 @@ import org.eclipse.jdt.internal.core.JavaElement;
 import org.eclipse.jdt.internal.core.JavaModelManager;
 import org.eclipse.jdt.internal.core.OpenableElementInfo;
 import org.eclipse.jdt.internal.core.SourceMapper;
-import org.sf.feeling.decompiler.util.DecompilerOutputUtil;
 import org.sf.feeling.decompiler.util.Logger;
 import org.sf.feeling.decompiler.util.ReflectionUtils;
 import org.sf.feeling.decompiler.util.SourceMapperUtil;
@@ -44,8 +44,8 @@ public class ImportSourceMapper extends SourceMapper {
 	private static Map<String, String> compilerOptions = new HashMap<>();
 	static {
 		compilerOptions = new CompilerOptions().getMap();
-		compilerOptions.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel());
-		compilerOptions.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel());
+		compilerOptions.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
+		compilerOptions.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
 	}
 
 	public ImportSourceMapper(IPath sourcePath, String rootPath) {

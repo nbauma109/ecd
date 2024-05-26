@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -745,36 +744,5 @@ public class DecompilerOutputUtil {
 				processElements((AbstractTypeDeclaration) bodyDeclaration);
 			}
 		}
-	}
-
-	private static final int JAVA_VERSION_MAX = 16;
-
-	private static String level = null;
-
-	public static String getMaxDecompileLevel() {
-		if (level != null) {
-			return level;
-		}
-
-		String versionFieldName9 = "VERSION_%d"; //$NON-NLS-1$
-		String versionFieldName = "VERSION_1_%d"; //$NON-NLS-1$
-
-		for (int v = JAVA_VERSION_MAX; v >= 9; v--) {
-			String fieldName = String.format(versionFieldName9, v);
-			if (ReflectionUtils.getDeclaredField(JavaCore.class, fieldName) != null) {
-				level = (String) ReflectionUtils.getFieldValue(JavaCore.class, fieldName);
-				return level;
-			}
-		}
-		for (int v = 8; v >= 1; v--) {
-			String fieldName = String.format(versionFieldName, v);
-			if (ReflectionUtils.getDeclaredField(JavaCore.class, fieldName) != null) {
-				level = (String) ReflectionUtils.getFieldValue(JavaCore.class, fieldName);
-				return level;
-			}
-		}
-
-		level = "1.8"; //$NON-NLS-1$
-		return level;
 	}
 }

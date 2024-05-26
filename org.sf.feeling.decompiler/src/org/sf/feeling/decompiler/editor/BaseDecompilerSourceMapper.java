@@ -24,6 +24,7 @@ import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -52,8 +53,8 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 	private static Map<String, String> compilerOptions = new HashMap<>();
 	static {
 		compilerOptions = new CompilerOptions().getMap();
-		compilerOptions.put(CompilerOptions.OPTION_Compliance, DecompilerOutputUtil.getMaxDecompileLevel());
-		compilerOptions.put(CompilerOptions.OPTION_Source, DecompilerOutputUtil.getMaxDecompileLevel());
+		compilerOptions.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
+		compilerOptions.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
 	}
 
 	protected BaseDecompilerSourceMapper(IPath sourcePath, String rootPath) {
