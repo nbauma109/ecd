@@ -18,25 +18,14 @@ import java.util.regex.Pattern;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
-import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.Document;
-import org.eclipse.text.edits.DeleteEdit;
-import org.eclipse.text.edits.MalformedTreeException;
-import org.eclipse.text.edits.TextEdit;
 import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtil {
@@ -154,62 +143,6 @@ public class DecompilerOutputUtil {
 
 		// Create aligned source
 		return toString();
-	}
-
-	public static String prepareOutput(String source) {
-		// Parse source code into AST
-		CompilationUnit cu = ASTParserUtil.parse(source);
-		ASTRewrite astRewrite = ASTRewrite.create(cu.getAST());
-		Document document = new Document(source);
-		TextEdit textEdit = astRewrite.rewriteAST(document, null);
-		cu.accept(new ASTVisitor() {
-			@Override
-			public boolean visit(IfStatement node) {
-				processBrackets(textEdit, node.getThenStatement());
-				processBrackets(textEdit, node.getElseStatement());
-				return super.visit(node);
-			}
-
-			private void processBrackets(TextEdit textEdit, Statement statements) {
-				if (statements instanceof Block) {
-					Block block = (Block) statements;
-					List<Statement> stmts = block.statements();
-					if (stmts.size() == 1) {
-						int closingBracketPosition = block.getStartPosition() + block.getLength();
-						textEdit.addChild(new DeleteEdit(block.getStartPosition(), 1));
-						textEdit.addChild(new DeleteEdit(closingBracketPosition - 1, 1));
-					}
-				}
-			}
-		});
-		try {
-			textEdit.apply(document);
-		} catch (MalformedTreeException | BadLocationException e) {
-			Logger.error(e);
-		}
-		return document.get();
-	}
-
-	public static int getMaxLineNumber(String source, CompilationUnit cu, ASTNode node) {
-		int maxLineNumber = Integer.MIN_VALUE;
-		List<Comment> comments = CommentUtil.getContainedComments(cu, node);
-		for (Comment comment : comments) {
-			String commentText = getCommentText(source, comment);
-			int lineNumber = DecompilerOutputUtil.parseJavaLineNumber(commentText);
-			maxLineNumber = Math.max(maxLineNumber, lineNumber);
-		}
-		return maxLineNumber;
-	}
-
-	private static String getCommentText(String source, Comment comment) {
-		int commStart = comment.getStartPosition();
-		return source.substring(commStart, commStart + comment.getLength());
-	}
-
-	public static boolean containsLineNumber(CompilationUnit cu, String source, int lineNumber) {
-		List<Comment> commentList = cu.getCommentList();
-		return commentList.stream()
-				.anyMatch(comment -> lineNumber == parseJavaLineNumber(getCommentText(source, comment)));
 	}
 
 	public static boolean isEmpty(String str) {
