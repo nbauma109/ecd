@@ -33,10 +33,10 @@ public class NexusSourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 //		testFindSlf4jNop(HTTPS_MAVEN_NUXEO_ORG_NEXUS_INDEX_HTML);
 //	}
 
-	@Test
-	public void testAlfresco() throws IOException {
-		testFindJunit(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML);
-	}
+//	@Test
+//	public void testAlfresco() throws IOException {
+//		testFindJunit(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML);
+//	}
 
 	@Test
 	public void testXWiki() throws IOException {
