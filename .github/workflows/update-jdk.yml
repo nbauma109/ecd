@@ -17,14 +17,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install SDKMAN! (CI-friendly, no JDK install)
+      - name: Install SDKMAN! (CI-friendly; do not install JDK)
         shell: bash
         run: |
           set -eo pipefail
           export SDKMAN_DIR="$HOME/.sdkman"
           export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
           curl -s https://get.sdkman.io | bash
-          # Ne pas activer 'set -u' ici : sdkman-init accède à des variables non définies au départ
+          # Ne PAS activer set -u ici : sdkman-init lit des variables non encore définies
           source "$SDKMAN_DIR/bin/sdkman-init.sh"
           mkdir -p "$SDKMAN_DIR/etc"
           {
@@ -33,8 +33,8 @@ jobs:
           } >> "$SDKMAN_DIR/etc/config"
           sdk version
 
-      - name: Resolve latest Java 21 candidates (temurin & oracle)
-        id: jdks
+      - name: Resolve latest Java 21 candidates (Temurin & Oracle)
+        id: resolve
         shell: bash
         run: |
           set -eo pipefail
@@ -42,87 +42,127 @@ jobs:
           export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
           source "$SDKMAN_DIR/bin/sdkman-init.sh"
 
-          # Dernière 21-tem
+          # Cherche la dernière 21 pour Temurin
           CAND_TEM=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-tem[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
             | sort -V | tail -n1)
 
-          # Dernière 21-oracle (si dispo)
+          # Cherche la dernière 21 pour Oracle (si disponible)
           CAND_ORA=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-oracle[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
             | sort -V | tail -n1)
 
           if [[ -z "${CAND_TEM:-}" ]]; then
-            echo "Aucun candidat 21-tem trouvé via SDKMAN." >&2
+            echo "Aucun candidat 21-tem détecté via SDKMAN." >&2
             sdk list java | sed -n '1,200p' || true
             exit 1
           fi
 
-          echo "tem=$CAND_TEM" >> "$GITHUB_OUTPUT"
-          echo "oracle=${CAND_ORA:-}" >> "$GITHUB_OUTPUT"
+          # Fallback Oracle → Temurin si Oracle introuvable
+          : "${CAND_ORA:=$CAND_TEM}"
 
-      - name: Update references from 17 to 21 (XML/YML/SH, includes workflows)
+          # Exporte pour l'étape suivante et pour le body de PR
+          {
+            echo "JAVA21_TEM=$CAND_TEM"
+            echo "JAVA21_ORACLE=$CAND_ORA"
+          } > candidates.env
+
+          {
+            echo "tem=$CAND_TEM"
+            echo "oracle=$CAND_ORA"
+          } | paste -sd ', ' - | sed 's/^/Latest 21 candidates → /' > summary.txt
+
+          echo "tem=$CAND_TEM" >> "$GITHUB_OUTPUT"
+          echo "oracle=$CAND_ORA" >> "$GITHUB_OUTPUT"
+          echo "summary=$(cat summary.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Update references from 17 to 21 (code + workflows + OSGi/Tycho)
         shell: bash
-        env:
-          JAVA21_TEM: ${{ steps.jdks.outputs.tem }}
-          JAVA21_ORACLE: ${{ steps.jdks.outputs.oracle }}
         run: |
           set -euo pipefail
           shopt -s nullglob
 
-          # Fallback : si Oracle indisponible, on bascule sur Temurin
-          JAVA21_ORACLE="${JAVA21_ORACLE:-$JAVA21_TEM}"
+          # Charge les candidats détectés
+          source candidates.env
 
-          # Tous les fichiers suivis par git
-          mapfile -d '' FILES < <(git ls-files -z '*.xml' '*.yml' '*.yaml' '*.sh')
+          # Liste étendue : code, workflows, OSGi/Tycho, properties
+          mapfile -d '' FILES < <(git ls-files -z \
+            '*.xml' '*.yml' '*.yaml' '*.sh' '*.properties' \
+            '*/MANIFEST.MF' '*.target' '*.tpd' '*.product' '*.bnd' \
+            'feature.xml' 'category.xml')
+
           echo "Fichiers trouvés: ${#FILES[@]}"
 
           for f in "${FILES[@]}"; do
-            # XML (Maven/Toolchains/Release)
+            # --- Maven/Gradle ---
             sed -E -i \
-              -e "s#(<java\.version>\s*)17(\s*</java\.version>)#\\121\\2#g" \
-              -e "s#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\\121\\2#g" \
-              -e "s#(<maven\.compiler\.target>\s*)17(\s*</maven\.compiler\.target>)#\\121\\2#g" \
-              -e "s#(<source>\s*)17(\s*</source>)#\\121\\2#g" \
-              -e "s#(<target>\s*)17(\s*</target>)#\\121\\2#g" \
-              -e "s#(<release>\s*)17(\s*</release>)#\\121\\2#g" \
-              -e "s#(<maven\.toolchain\.java\.version>\s*)17(\s*</maven\.toolchain\.java\.version>)#\\121\\2#g" \
-              "$f"
+              -e 's#(<java\.version>\s*)17(\s*</java\.version>)#\121\2#g' \
+              -e 's#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\121\2#g' \
+              -e 's#(<maven\.compiler\.target>\s*)17(\s*</maven\.compiler\.target>)#\121\2#g' \
+              -e 's#(<source>\s*)17(\s*</source>)#\121\2#g' \
+              -e 's#(<target>\s*)17(\s*</target>)#\121\2#g' \
+              -e 's#(<release>\s*)17(\s*</release>)#\121\2#g' \
+              "$f" || true
 
-            # YAML/YML (setup-java, matrices, variables) — éviter quotes imbriquées
             sed -E -i \
-              -e "s#(java[_-]?version:\s*['\"]?)17(['\"]?)#\\121\\2#gI" \
-              -e "s#(java-version:\s*\[)([^]]*?)17([^]]*?\])#\\121\\3#gI" \
-              -e "s#(matrix:\s*[^{]*\\{[^}]*java-version[^}]*:\s*\[)([^]]*?)17([^]]*?\])#\\1\\221\\3#gI" \
-              -e "s#(JAVA_VERSION:\s*['\"]?)17(['\"]?)#\\121\\2#g" \
-              -e "s#(JDK_VERSION:\s*['\"]?)17(['\"]?)#\\121\\2#g" \
-              "$f"
+              -e 's#(sourceCompatibility\s*=\s*)17\b#\121#g' \
+              -e 's#(targetCompatibility\s*=\s*)17\b#\121#g' \
+              -e 's#(java\.toolchain\.languageVersion\s*=\s*JavaLanguageVersion\.of\()\s*17(\))#\121\2#g' \
+              "$f" || true
 
-            # Scripts shell : corriger intelligemment les commandes SDKMAN
-            # 1) sdk ... java 17...-tem    -> dernière 21-tem
-            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-tem\\b#\\1${JAVA21_TEM}#g" "$f"
-            # 2) sdk ... java 17...-oracle -> dernière 21-oracle
-            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-oracle\\b#\\1${JAVA21_ORACLE}#g" "$f"
-            # 3) sdk ... java 17 / 17.x (sans suffixe) -> dernière 21-tem
-            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17(\\.[^[:space:]]+)?\\b#\\1${JAVA21_TEM}#g" "$f"
+            # --- YAML (setup-java, variables, matrices simples) ---
+            sed -E -i \
+              -e 's#(java[_-]?version:\s*["'\'']?)17(["'\'']?)#\121\2#gI' \
+              -e 's#(java-version:\s*\[)([^]]*?)17([^]]*?\])#\121\3#gI' \
+              -e 's#(JAVA_VERSION:\s*["'\'']?)17(["'\'']?)#\121\2#g' \
+              -e 's#(JDK_VERSION:\s*["'\'']?)17(["'\'']?)#\121\2#g' \
+              "$f" || true
+
+            # --- .properties (Eclipse/Compiler) ---
+            sed -E -i \
+              -e 's#(org\.eclipse\.jdt\.core\.compiler\.compliance\s*=\s*)17(\.0)?\b#\121#g' \
+              -e 's#(org\.eclipse\.jdt\.core\.compiler\.source\s*=\s*)17(\.0)?\b#\121#g' \
+              -e 's#(org\.eclipse\.jdt\.core\.compiler\.targetPlatform\s*=\s*)17(\.0)?\b#\121#g' \
+              "$f" || true
+
+            # --- OSGi / Tycho ---
+            sed -E -i \
+              -e 's#(Bundle-RequiredExecutionEnvironment:\s*)JavaSE-17\b#\1JavaSE-21#g' \
+              "$f" || true
+
+            sed -E -i \
+              -e 's#(<executionEnvironment>\s*)JavaSE-17(\s*</executionEnvironment>)#\1JavaSE-21\2#g' \
+              "$f" || true
+
+            # Filtres LDAP OSGi: (&(osgi.ee=JavaSE)(version=17)) -> 21
+            sed -E -i \
+              -e 's#(\(version=)17(\))#\121\2#g' \
+              "$f" || true
+
+            # Plateforme P2 : a.jre.javase 17.0.0 -> 21.0.0
+            sed -E -i \
+              -e 's#(a\.jre\.javase[[:space:]]+)17\.0\.0\b#\121.0.0#g' \
+              -e 's#(id="a\.jre\.javase"[[:space:]]+version=")17\.0\.0(")#\121.0.0\2#g' \
+              "$f" || true
+
+            # --- Scripts shell : SDKMAN (remplacement intelligent) ---
+            # 1) 17...-tem → dernière 21-tem
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-tem\\b#\\1${JAVA21_TEM}#g" "$f" || true
+            # 2) 17...-oracle → dernière 21-oracle (fallback tem)
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-oracle\\b#\\1${JAVA21_ORACLE}#g" "$f" || true
+            # 3) 17 / 17.x (sans suffixe) → dernière 21-tem
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17(\\.[^[:space:]]+)?\\b#\\1${JAVA21_TEM}#g" "$f" || true
 
             # Variables usuelles dans .sh
             sed -E -i \
-              -e "s#(JAVA_VERSION=)17\\b#\\121#g" \
-              -e "s#(JDK_VERSION=)17\\b#\\121#g" \
-              "$f"
-
-            # Gradle (snippets possibles dans divers fichiers)
-            sed -E -i \
-              -e "s#(sourceCompatibility\\s*=\\s*)17\\b#\\121#g" \
-              -e "s#(targetCompatibility\\s*=\\s*)17\\b#\\121#g" \
-              -e "s#(java\\.toolchain\\.languageVersion\\s*=\\s*JavaLanguageVersion\\.of\\()\\s*17(\\))#\\121\\2#g" \
-              "$f"
+              -e 's#(JAVA_VERSION=)17\b#\121#g' \
+              -e 's#(JDK_VERSION=)17\b#\121#g' \
+              "$f" || true
           done
 
-          echo "Diff:"
+          echo "Aperçu des changements:"
           git status --porcelain || true
 
       - name: Create Pull Request (with PAT)
@@ -133,9 +173,10 @@ jobs:
           branch: chore/java-21-upgrade
           title: "Upgrade Java 17 → 21"
           body: |
-            - Met à jour les références Java **17 → 21** dans les fichiers *.xml*, *.yml*/*.yaml* et *.sh* (y compris **.github/workflows/**).
-            - Résout dynamiquement la dernière **Java 21** pour **Temurin** et **Oracle** dans les commandes `sdk install/use java`.
-            - Versions détectées — Temurin : `${{ steps.jdks.outputs.tem }}` ; Oracle : `${{ steps.jdks.outputs.oracle || 'n/a' }}`.
+            - Met à jour les références Java **17 → 21** dans les fichiers *.xml*, *.yml*/*.yaml*, *.properties*, *.sh* et artefacts **OSGi/Tycho** (MANIFEST.MF, *.target, *.tpd, *.product, *.bnd, feature.xml, category.xml).
+            - N’altère pas le runtime: **aucun JDK n’est installé**. SDKMAN est utilisé uniquement pour **résoudre les dernières versions 21**.
+            - Remplace intelligemment `sdk install/use java 17…-<vendor>` par la **dernière 21** correspondante (Temurin/Oracle).
+            - Candidats détectés via SDKMAN: ${{ steps.resolve.outputs.summary }}
           author: GitHub Actions <actions@github.com>
           committer: GitHub Actions <actions@github.com>
           signoff: false
