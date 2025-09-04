@@ -18,19 +18,33 @@ jobs:
       - name: Install SDKMAN!
         shell: bash
         run: |
-          set -euo pipefail
+          # Pas de -u ici (nounset casse l'init SDKMAN)
+          set -eo pipefail
+          export SDKMAN_DIR="$HOME/.sdkman"
+          export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
+
           curl -s https://get.sdkman.io | bash
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          source "$SDKMAN_DIR/bin/sdkman-init.sh"
+
+          # Rendre SDKMAN non-interactif en CI
+          mkdir -p "$SDKMAN_DIR/etc"
+          {
+            echo "sdkman_auto_answer=true"
+            echo "sdkman_selfupdate_enable=false"
+          } >> "$SDKMAN_DIR/etc/config"
+
           sdk version
 
       - name: Install latest Java 21 (Temurin) via SDKMAN
         id: jdk
         shell: bash
         run: |
-          set -euo pipefail
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          set -eo pipefail
+          export SDKMAN_DIR="$HOME/.sdkman"
+          export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
+          source "$SDKMAN_DIR/bin/sdkman-init.sh"
 
-          # Récupère l’identifiant Temurin 21 le plus récent
+          # Récupère l’identifiant Temurin 21 le plus récent (ex: 21.0.x-tem)
           CANDIDATE=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-tem[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
@@ -38,7 +52,7 @@ jobs:
 
           if [[ -z "${CANDIDATE:-}" ]]; then
             echo "Impossible de trouver un candidat Java 21 Temurin via SDKMAN." >&2
-            sdk list java | sed -n '1,200p'
+            sdk list java | sed -n '1,200p' || true
             exit 1
           fi
 
@@ -55,12 +69,12 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          # Sélection des fichiers suivis par git
+          # Fichiers suivis par git
           mapfile -d '' FILES < <(git ls-files -z '*.xml' '*.yml' '*.yaml' '*.sh')
           echo "Fichiers trouvés: ${#FILES[@]}"
 
           for f in "${FILES[@]}"; do
-            # XML (Maven/Toolchains/Release)
+            # XML (Maven / Toolchains / Release)
             sed -E -i \
               -e 's#(<java\.version>\s*)17(\s*</java\.version>)#\121\2#g' \
               -e 's#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\121\2#g' \
@@ -79,7 +93,7 @@ jobs:
               -e 's#(JDK_VERSION:\s*["'\''"]?)17(["'\''"]?)#\121\2#g' \
               "$f"
 
-            # Scripts shell (variables et SDKMAN)
+            # Scripts shell (variables et commandes SDKMAN)
             sed -E -i \
               -e 's#(JAVA_VERSION=)17\b#\121#g' \
               -e 's#(JDK_VERSION=)17\b#\121#g' \
@@ -87,7 +101,7 @@ jobs:
               -e 's#(sdk\s+use\s+java\s+)17(\S*)#\121\2#g' \
               "$f"
 
-            # Gradle (souvent dans .sh/.yml/.xml)
+            # Gradle (souvent présent dans .sh/.yml/.xml)
             sed -E -i \
               -e 's#(sourceCompatibility\s*=\s*)17\b#\121#g' \
               -e 's#(targetCompatibility\s*=\s*)17\b#\121#g' \
@@ -109,3 +123,4 @@ jobs:
             - Met à jour les références Java **17 → 21** dans les fichiers *.xml*, *.yml*/*.yaml* et *.sh*.
             - Installe une version **Java 21 Temurin valide via SDKMAN** (détectée automatiquement).
             - Candidate installé : `${{ steps.jdk.outputs.candidate }}`.
+            
