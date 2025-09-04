@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 export SDKMAN_DIR="$HOME/.sdkman"
 export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
+export SDKMAN_OFFLINE_MODE="${SDKMAN_OFFLINE_MODE:-false}"
 
 if [[ ! -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]]; then
   curl -s https://get.sdkman.io | bash
 fi
 
-set +u
 source "$SDKMAN_DIR/bin/sdkman-init.sh"
-set -u
 
 mkdir -p "$SDKMAN_DIR/etc"
 { echo "sdkman_auto_answer=true"; echo "sdkman_selfupdate_enable=false"; } >> "$SDKMAN_DIR/etc/config"
