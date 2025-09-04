@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
       - name: Install SDKMAN!
         shell: bash
@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-          # Récupère l’identifiant Temurin 21 le plus récent (ex: 21.0.x-tem)
+          # Récupère l’identifiant Temurin 21 le plus récent
           CANDIDATE=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-tem[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
@@ -55,12 +55,12 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          # Sélection des fichiers suivis par git (évite node_modules, etc.)
+          # Sélection des fichiers suivis par git
           mapfile -d '' FILES < <(git ls-files -z '*.xml' '*.yml' '*.yaml' '*.sh')
           echo "Fichiers trouvés: ${#FILES[@]}"
 
           for f in "${FILES[@]}"; do
-            # XML (Maven / Toolchains / Release)
+            # XML (Maven/Toolchains/Release)
             sed -E -i \
               -e 's#(<java\.version>\s*)17(\s*</java\.version>)#\121\2#g' \
               -e 's#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\121\2#g' \
@@ -79,7 +79,7 @@ jobs:
               -e 's#(JDK_VERSION:\s*["'\''"]?)17(["'\''"]?)#\121\2#g' \
               "$f"
 
-            # Scripts shell (variables et commandes SDKMAN)
+            # Scripts shell (variables et SDKMAN)
             sed -E -i \
               -e 's#(JAVA_VERSION=)17\b#\121#g' \
               -e 's#(JDK_VERSION=)17\b#\121#g' \
@@ -87,7 +87,7 @@ jobs:
               -e 's#(sdk\s+use\s+java\s+)17(\S*)#\121\2#g' \
               "$f"
 
-            # Gradle (parfois présent dans .sh/.yml/.xml)
+            # Gradle (souvent dans .sh/.yml/.xml)
             sed -E -i \
               -e 's#(sourceCompatibility\s*=\s*)17\b#\121#g' \
               -e 's#(targetCompatibility\s*=\s*)17\b#\121#g' \
