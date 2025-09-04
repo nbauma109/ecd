@@ -136,12 +136,12 @@ jobs:
               -e 's#(<executionEnvironment>\s*)JavaSE-17(\s*</executionEnvironment>)#\1JavaSE-21\2#g' \
               "$f" || true
 
-            # Filtres LDAP OSGi: (&(osgi.ee=JavaSE)(version=17)) -> 21
+            # Filtres LDAP OSGi: (&(osgi.ee=JavaSE)(version=21)) -> 21
             sed -E -i \
               -e 's#(\(version=)17(\))#\121\2#g' \
               "$f" || true
 
-            # Plateforme P2 : a.jre.javase 17.0.0 -> 21.0.0
+            # Plateforme P2 : a.jre.javase 21.0.0 -> 21.0.0
             sed -E -i \
               -e 's#(a\.jre\.javase[[:space:]]+)17\.0\.0\b#\121.0.0#g' \
               -e 's#(id="a\.jre\.javase"[[:space:]]+version=")17\.0\.0(")#\121.0.0\2#g' \
