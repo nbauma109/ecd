@@ -23,7 +23,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.junit.core,
  org.eclipse.jdt.junit.runtime,
  org.sf.feeling.decompiler.source.attach
-Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Bundle-ClassPath: target/lib/commons-io.jar,

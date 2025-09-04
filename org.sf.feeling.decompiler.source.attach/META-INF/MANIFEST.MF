@@ -19,7 +19,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jgit;resolution:=optional,
  com.jcraft.jsch;resolution:=optional,
  org.eclipse.m2e.jdt;resolution:=optional
-Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Bundle-ClassPath: target/lib/commons-io.jar,

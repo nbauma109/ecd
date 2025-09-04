@@ -21,7 +21,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui.navigator,
  org.eclipse.ui.ide;resolution:=optional,
  org.eclipse.core.filesystem
-Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.cfr.actions,
