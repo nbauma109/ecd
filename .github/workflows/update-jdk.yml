@@ -1,4 +1,4 @@
-name: Upgrade Java 17 → 21 (with PAT)
+name: Upgrade Java 17 → 21 (with PAT, no JDK install)
 
 on:
   workflow_dispatch:
@@ -17,15 +17,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install SDKMAN!
+      - name: Install SDKMAN! (CI-friendly, no JDK install)
         shell: bash
         run: |
           set -eo pipefail
           export SDKMAN_DIR="$HOME/.sdkman"
           export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
           curl -s https://get.sdkman.io | bash
+          # Ne pas activer 'set -u' ici : sdkman-init accède à des variables non définies au départ
           source "$SDKMAN_DIR/bin/sdkman-init.sh"
-          # Mode CI non-interactif
           mkdir -p "$SDKMAN_DIR/etc"
           {
             echo "sdkman_auto_answer=true"
@@ -33,7 +33,7 @@ jobs:
           } >> "$SDKMAN_DIR/etc/config"
           sdk version
 
-      - name: Resolve latest Java 21 candidates (temurin & oracle) and install temurin
+      - name: Resolve latest Java 21 candidates (temurin & oracle)
         id: jdks
         shell: bash
         run: |
@@ -42,20 +42,20 @@ jobs:
           export SDKMAN_CANDIDATES_API="${SDKMAN_CANDIDATES_API:-https://api.sdkman.io/2}"
           source "$SDKMAN_DIR/bin/sdkman-init.sh"
 
-          # Trouve la dernière 21-tem
+          # Dernière 21-tem
           CAND_TEM=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-tem[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
             | sort -V | tail -n1)
 
-          # Trouve la dernière 21-oracle (si dispo)
+          # Dernière 21-oracle (si dispo)
           CAND_ORA=$(sdk list java \
             | awk '/[[:space:]]21(\.[0-9]+)*-oracle[[:space:]]/ {print $NF}' \
             | sed 's/[^[:alnum:].-]//g' \
             | sort -V | tail -n1)
 
           if [[ -z "${CAND_TEM:-}" ]]; then
-            echo "Aucun candidat 21-tem trouvé." >&2
+            echo "Aucun candidat 21-tem trouvé via SDKMAN." >&2
             sdk list java | sed -n '1,200p' || true
             exit 1
           fi
@@ -63,12 +63,7 @@ jobs:
           echo "tem=$CAND_TEM" >> "$GITHUB_OUTPUT"
           echo "oracle=${CAND_ORA:-}" >> "$GITHUB_OUTPUT"
 
-          echo "Installing Java ${CAND_TEM} (temurin)"
-          sdk install java "$CAND_TEM"
-          sdk default java "$CAND_TEM"
-          java -version
-
-      - name: Update references from 17 to 21 in XML/YML/SH (including workflows)
+      - name: Update references from 17 to 21 (XML/YML/SH, includes workflows)
         shell: bash
         env:
           JAVA21_TEM: ${{ steps.jdks.outputs.tem }}
@@ -77,7 +72,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          # Fallback oracle -> tem si pas dispo
+          # Fallback : si Oracle indisponible, on bascule sur Temurin
           JAVA21_ORACLE="${JAVA21_ORACLE:-$JAVA21_TEM}"
 
           # Tous les fichiers suivis par git
@@ -85,45 +80,45 @@ jobs:
           echo "Fichiers trouvés: ${#FILES[@]}"
 
           for f in "${FILES[@]}"; do
-            # XML (Maven / Toolchains / Release)
+            # XML (Maven/Toolchains/Release)
             sed -E -i \
-              -e 's#(<java\.version>\s*)17(\s*</java\.version>)#\121\2#g' \
-              -e 's#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\121\2#g' \
-              -e 's#(<maven\.compiler\.target>\s*)17(\s*</maven\.compiler\.target>)#\121\2#g' \
-              -e 's#(<source>\s*)17(\s*</source>)#\121\2#g' \
-              -e 's#(<target>\s*)17(\s*</target>)#\121\2#g' \
-              -e 's#(<release>\s*)17(\s*</release>)#\121\2#g' \
-              -e 's#(<maven\.toolchain\.java\.version>\s*)17(\s*</maven\.toolchain\.java\.version>)#\121\2#g' \
+              -e "s#(<java\.version>\s*)17(\s*</java\.version>)#\\121\\2#g" \
+              -e "s#(<maven\.compiler\.source>\s*)17(\s*</maven\.compiler\.source>)#\\121\\2#g" \
+              -e "s#(<maven\.compiler\.target>\s*)17(\s*</maven\.compiler\.target>)#\\121\\2#g" \
+              -e "s#(<source>\s*)17(\s*</source>)#\\121\\2#g" \
+              -e "s#(<target>\s*)17(\s*</target>)#\\121\\2#g" \
+              -e "s#(<release>\s*)17(\s*</release>)#\\121\\2#g" \
+              -e "s#(<maven\.toolchain\.java\.version>\s*)17(\s*</maven\.toolchain\.java\.version>)#\\121\\2#g" \
               "$f"
 
-            # YAML/YML (setup-java, matrices, variables)
+            # YAML/YML (setup-java, matrices, variables) — éviter quotes imbriquées
             sed -E -i \
-              -e 's#(java[_-]?version:\s*["'"'""]?)17(["'"'""]?)#\121\2#gI' \
-              -e 's#(java-version:\s*\[)([^]]*?)17([^]]*?\])#\121\3#gI' \
-              -e 's#(matrix:\s*[^{]*\{[^}]*java-version[^}]*:\s*\[)([^]]*?)17([^]]*?\])#\1\2 21\3#gI' \
-              -e 's#(JAVA_VERSION:\s*["'"'""]?)17(["'"'""]?)#\121\2#g' \
-              -e 's#(JDK_VERSION:\s*["'"'""]?)17(["'"'""]?)#\121\2#g' \
+              -e "s#(java[_-]?version:\s*['\"]?)17(['\"]?)#\\121\\2#gI" \
+              -e "s#(java-version:\s*\[)([^]]*?)17([^]]*?\])#\\121\\3#gI" \
+              -e "s#(matrix:\s*[^{]*\\{[^}]*java-version[^}]*:\s*\[)([^]]*?)17([^]]*?\])#\\1\\221\\3#gI" \
+              -e "s#(JAVA_VERSION:\s*['\"]?)17(['\"]?)#\\121\\2#g" \
+              -e "s#(JDK_VERSION:\s*['\"]?)17(['\"]?)#\\121\\2#g" \
               "$f"
 
-            # Scripts shell : remplacer intelligemment les commandes SDKMAN
-            # 1) sdk ... java 17...-tem   -> dernière 21-tem
-            sed -E -i "s#(sdk\s+(install|use)\s+java\s+)17[^[:space:]]*-tem\b#\1${JAVA21_TEM}#g" "$f"
+            # Scripts shell : corriger intelligemment les commandes SDKMAN
+            # 1) sdk ... java 17...-tem    -> dernière 21-tem
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-tem\\b#\\1${JAVA21_TEM}#g" "$f"
             # 2) sdk ... java 17...-oracle -> dernière 21-oracle
-            sed -E -i "s#(sdk\s+(install|use)\s+java\s+)17[^[:space:]]*-oracle\b#\1${JAVA21_ORACLE}#g" "$f"
-            # 3) sdk ... java 17 ou 17.x (sans suffixe) -> dernière 21-tem
-            sed -E -i "s#(sdk\s+(install|use)\s+java\s+)17(\.[^[:space:]]+)?\b#\1${JAVA21_TEM}#g" "$f"
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17[^[:space:]]*-oracle\\b#\\1${JAVA21_ORACLE}#g" "$f"
+            # 3) sdk ... java 17 / 17.x (sans suffixe) -> dernière 21-tem
+            sed -E -i "s#(sdk[[:space:]]+(install|use)[[:space:]]+java[[:space:]]+)17(\\.[^[:space:]]+)?\\b#\\1${JAVA21_TEM}#g" "$f"
 
-            # Variables et configurations usuelles dans .sh
+            # Variables usuelles dans .sh
             sed -E -i \
-              -e 's#(JAVA_VERSION=)17\b#\121#g' \
-              -e 's#(JDK_VERSION=)17\b#\121#g' \
+              -e "s#(JAVA_VERSION=)17\\b#\\121#g" \
+              -e "s#(JDK_VERSION=)17\\b#\\121#g" \
               "$f"
 
-            # Gradle (souvent mentionné dans .sh/.yml/.xml via snippets)
+            # Gradle (snippets possibles dans divers fichiers)
             sed -E -i \
-              -e 's#(sourceCompatibility\s*=\s*)17\b#\121#g' \
-              -e 's#(targetCompatibility\s*=\s*)17\b#\121#g' \
-              -e 's#(java\.toolchain\.languageVersion\s*=\s*JavaLanguageVersion\.of\()\s*17(\))#\121\2#g' \
+              -e "s#(sourceCompatibility\\s*=\\s*)17\\b#\\121#g" \
+              -e "s#(targetCompatibility\\s*=\\s*)17\\b#\\121#g" \
+              -e "s#(java\\.toolchain\\.languageVersion\\s*=\\s*JavaLanguageVersion\\.of\\()\\s*17(\\))#\\121\\2#g" \
               "$f"
           done
 
@@ -140,7 +135,7 @@ jobs:
           body: |
             - Met à jour les références Java **17 → 21** dans les fichiers *.xml*, *.yml*/*.yaml* et *.sh* (y compris **.github/workflows/**).
             - Résout dynamiquement la dernière **Java 21** pour **Temurin** et **Oracle** dans les commandes `sdk install/use java`.
-            - Candidate Temurin installé : `${{ steps.jdks.outputs.tem }}` ; Oracle : `${{ steps.jdks.outputs.oracle || 'n/a' }}`.
+            - Versions détectées — Temurin : `${{ steps.jdks.outputs.tem }}` ; Oracle : `${{ steps.jdks.outputs.oracle || 'n/a' }}`.
           author: GitHub Actions <actions@github.com>
           committer: GitHub Actions <actions@github.com>
           signoff: false
