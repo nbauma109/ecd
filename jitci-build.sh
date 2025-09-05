@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-set -eo pipefail
-
-export JAVA_HOME="/home/jitpack/tools/jdk21"
-export PATH="$JAVA_HOME/bin:$PATH"
-
-java -version
-mvn -version
-
-mvn -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
+export JAVA_HOME=/home/jitpack/tools/jdk21
+export M3_VERSION=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/apache/maven/releases/latest | sed 's,https://github.com/apache/maven/releases/tag/maven-,,g')
+mvn wrapper:wrapper -Dmaven=${M3_VERSION} --no-transfer-progress
+./mvnw -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
