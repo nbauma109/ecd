@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
-export JAVA_HOME="$HOME/.sdkman/candidates/java/current"
+export JAVA_HOME="/home/jitpack/tools/jdk21"
+export PATH="$JAVA_HOME/bin:$PATH"
 
-mvn -B deploy -DskipTests -Dfindbugs.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dsigning.disabled=true -DaltDeploymentRepository=jitci::default::file:///home/jitpack/deploy --no-transfer-progress
+java -version
+mvn -version
+
+mvn -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
