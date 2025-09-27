@@ -1,0 +1,160 @@
+name: Update Eclipse release (p2 URL + project version)
+
+on:
+  schedule:
+    - cron: "7 5 * * *"   # daily at 05:07 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  POM_PATH: pom.xml
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Determine latest Eclipse release and update pom.xml if needed
+        id: update
+        run: |
+          set -euo pipefail
+
+          POM="$POM_PATH"
+          if [ ! -f "$POM" ]; then
+            echo "❌ Can't find $POM" >&2
+            exit 1
+          fi
+
+          # Get list of available SimRel directories like 2024-03/, 2024-06/, etc.
+          # Pick the lexicographically largest yyyy-mm (works because yyyy and mm are zero-padded).
+          latest=$(curl -sL https://download.eclipse.org/releases/ \
+                   | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' \
+                   | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' \
+                   | sort -u | sort -r | head -n1)
+
+          if [ -z "${latest:-}" ]; then
+            echo "❌ Could not determine latest Eclipse release from download.eclipse.org" >&2
+            exit 1
+          fi
+
+          latest_url="https://download.eclipse.org/releases/${latest}/"
+          latest_year="${latest%-*}"
+          latest_month="${latest#*-}"          # already zero-padded (e.g. 09)
+          new_project_version="${latest_year}.${latest_month}.0"
+
+          echo "Latest Eclipse release: $latest"
+          echo "Latest URL: $latest_url"
+          echo "Proposed project version: $new_project_version"
+
+          # Extract current URL from the pom (anything like releases/yyyy-mm/)
+          current_url=$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" | head -n1 || true)
+          echo "Current URL in POM: ${current_url:-<none>}"
+
+          # Read current project version from the root <project>/<version> (not parent)
+          python << 'PY'
+import sys, xml.etree.ElementTree as ET
+pom_path = sys.argv[1]
+ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+ET.register_namespace('', ns['m'])
+tree = ET.parse(pom_path)
+root = tree.getroot()
+
+# Try to get direct child <version> under <project>
+ver_elem = root.find('m:version', ns)
+if ver_elem is None:
+    # Some projects only set version in a parent; we'll still proceed (we'll add/override).
+    print("", end="")
+else:
+    print(ver_elem.text or "", end="")
+PY
+          "$POM" > .current_version.txt
+          current_version=$(cat .current_version.txt)
+          echo "Current project version: ${current_version:-<none>}"
+
+          changed=0
+
+          # Update the URL if needed
+          if [ "${current_url:-}" != "$latest_url" ]; then
+            # Replace any existing releases/yyyy-mm/ URL with the latest
+            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${latest_url//\//\\/}#g" "$POM"
+            echo "Updated p2 repository URL to ${latest_url}"
+            changed=1
+          fi
+
+          # Update the project version to YYYY.MM.0 if different
+          if [ "${current_version:-}" != "$new_project_version" ]; then
+            # Safely update (or insert) <version> in the root project element using Python (handles namespaces)
+            python << 'PY'
+import sys, xml.etree.ElementTree as ET
+pom_path, new_ver = sys.argv[1], sys.argv[2]
+ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+ET.register_namespace('', ns['m'])
+tree = ET.parse(pom_path)
+root = tree.getroot()
+
+# Find direct child <version> under <project>
+ver_elem = root.find('m:version', ns)
+if ver_elem is None:
+    # Insert version right after <modelVersion> or at top if absent
+    mv = root.find('m:modelVersion', ns)
+    ver_elem = ET.Element('{%s}version' % ns['m'])
+    if mv is not None:
+        idx = list(root).index(mv)
+        root.insert(idx+1, ver_elem)
+    else:
+        root.insert(0, ver_elem)
+ver_elem.text = new_ver
+tree.write(pom_path, xml_declaration=True, encoding='utf-8')
+PY
+            "$POM" "$new_project_version"
+            echo "Updated project version to ${new_project_version}"
+            changed=1
+          fi
+
+          if [ $changed -eq 1 ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "branch_name=update-eclipse-${latest}" >> $GITHUB_OUTPUT
+            echo "latest=${latest}" >> $GITHUB_OUTPUT
+            echo "new_version=${new_project_version}" >> $GITHUB_OUTPUT
+            echo "new_url=${latest_url}" >> $GITHUB_OUTPUT
+          else
+            echo "No changes required."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update Eclipse SimRel to ${{ steps.update.outputs.latest }} (p2 URL + version ${{ steps.update.outputs.new_version }})"
+          title: "Update Eclipse SimRel to ${{ steps.update.outputs.latest }}"
+          body: |
+            This PR updates the Eclipse p2 repository and project version.
+
+            - **p2 URL:** `${{ steps.update.outputs.new_url }}`
+            - **version:** `${{ steps.update.outputs.new_version }}`
+
+            Generated automatically by the scheduled workflow.
+          branch: ${{ steps.update.outputs.branch_name }}
+          delete-branch: true
+          signoff: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.update.outputs.changed }}" = "true" ]; then
+            echo "✅ Changes detected; PR created on branch ${{ steps.update.outputs.branch_name }}."
+          else
+            echo "ℹ️ Already up to date; no PR created."
+          fi
