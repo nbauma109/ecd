@@ -6,11 +6,11 @@
 # Strategy
 # - Detect latest SimRel (YYYY-MM):
 #     A) eclipseide.org banner  ->  B) downloads page
-#   Validate via p2 metadata JARs; if not live, fall back ONCE to previous quarter.
+#   Validate via p2 metadata JARs; if not live, fall back once to previous quarter.
 # - For each POM:
 #     * replace p2 URL -> https://download.eclipse.org/releases/YYYY-MM/
 #     * replace repository id -> <id>eclipse-YYYY-MM</id>
-# - Then delegate version bump to ./update-version.sh with UNPADDED month: YYYY.m.0
+# - Then delegate version bump to ./update-version.sh with unpadded month: YYYY.m.0
 
 set -euo pipefail
 
@@ -122,7 +122,7 @@ update_one_pom_url_and_id() {
   if [[ "${current_url:-}" != "$latest_url" ]]; then
     local esc_url; esc_url="$(printf '%s' "$latest_url" | sed 's/[\/&]/\\&/g')"
     sedi "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${esc_url}#g" "$file"
-    echo "✅ [$file] p2 URL -> $latest_url"
+    echo "[$file] p2 URL updated -> $latest_url"
     file_changed=1
   fi
 
@@ -133,7 +133,7 @@ update_one_pom_url_and_id() {
   if [[ "${current_id:-}" != "$new_id" ]]; then
     local esc_id; esc_id="$(printf '%s' "$new_id" | sed 's/[\/&]/\\&/g')"
     sedi "s#<id>eclipse-[0-9]{4}-[0-9]{2}</id>#${esc_id}#g" "$file"
-    echo "✅ [$file] repository id -> eclipse-${latest}"
+    echo "[$file] repository id updated -> eclipse-${latest}"
     file_changed=1
   fi
 
@@ -142,20 +142,17 @@ update_one_pom_url_and_id() {
 
 # ==================== main ====================
 
-# Detect latest (with logs)
 page_cand="$(detect_from_pages || true)"
 latest="$(pick_release "$page_cand" || true)"
 if [[ -z "${latest:-}" ]]; then
   log "RESULT: latest=<none>"
   echo "WARN: Could not determine latest Eclipse release; skipping updates."
-  # Succeed (do not fail CI)
   [[ -n "${GITHUB_OUTPUT:-}" ]] && echo "changed=false" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
 year="${latest%-*}"
 month="${latest#*-}"
-# Unpadded month for OSGi/Maven sync: e.g., 2025.9.0
 month_unpadded="$((10#$month))"
 new_version="${year}.${month_unpadded}.0"
 
@@ -163,7 +160,6 @@ log "RESULT: latest=${latest}"
 echo "New p2 URL     : ${BASE}/${latest}/"
 echo "New version    : ${new_version}"
 
-# Collect POM list
 declare -a files
 if [[ $# -ge 1 && -f "${1:-}" ]]; then
   files=("$1")
@@ -176,22 +172,20 @@ else
 fi
 
 if [[ ${#files[@]} -eq 0 ]]; then
-  echo "ℹ️ No pom.xml files found to update."
+  echo "No pom.xml files found to update."
 else
   for f in "${files[@]}"; do
     update_one_pom_url_and_id "$f" "$latest"
   done
 fi
 
-# Delegate version bump to your repo script
 if [[ ! -x ./update-version.sh ]]; then
-  echo "ERROR: ./update-version.sh not found or not executable. Please ensure it exists at repo root and is +x." >&2
+  echo "ERROR: ./update-version.sh not found or not executable." >&2
   exit 1
 fi
-echo "➡️  Running ./update-version.sh ${new_version}"
+echo "Running ./update-version.sh ${new_version}"
 ./update-version.sh "${new_version}"
 
-# GitHub Actions outputs
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "changed=true"
