@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Usage:
-#   ./update-eclipse-p2.sh            # updates all pom.xml files' p2 URL + repo id, then calls ./update-version.sh YYYY.MM.0
-#   ./update-eclipse-p2.sh path/pom.xml  # limit URL/id updates to that POM (version still set via update-version.sh)
+#   ./update-eclipse-p2.sh                 # update URL/id in all pom.xml, then run ./update-version.sh YYYY.m.0
+#   ./update-eclipse-p2.sh path/to/pom.xml # limit URL/id updates to that POM (version still updated repo-wide)
 #
-# Strategy:
+# Strategy
 # - Detect latest SimRel (YYYY-MM):
-#     A) eclipseide.org banner -> B) downloads page; validate by checking known p2 JARs
-#     If candidate not yet published, fall back ONCE to the previous quarter.
-# - For each POM found:
+#     A) eclipseide.org banner  ->  B) downloads page
+#   Validate via p2 metadata JARs; if not live, fall back ONCE to previous quarter.
+# - For each POM:
 #     * replace p2 URL -> https://download.eclipse.org/releases/YYYY-MM/
 #     * replace repository id -> <id>eclipse-YYYY-MM</id>
-# - Then call ./update-version.sh YYYY.MM.0 (your existing script) to bump versions everywhere.
+# - Then delegate version bump to ./update-version.sh with UNPADDED month: YYYY.m.0
 
 set -euo pipefail
 
@@ -148,21 +148,24 @@ latest="$(pick_release "$page_cand" || true)"
 if [[ -z "${latest:-}" ]]; then
   log "RESULT: latest=<none>"
   echo "WARN: Could not determine latest Eclipse release; skipping updates."
-  # Still succeed (so CI job doesn't fail)
+  # Succeed (do not fail CI)
   [[ -n "${GITHUB_OUTPUT:-}" ]] && echo "changed=false" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
 year="${latest%-*}"
 month="${latest#*-}"
-new_version="${year}.${month}.0"
+# Unpadded month for OSGi/Maven sync: e.g., 2025.9.0
+month_unpadded="$((10#$month))"
+new_version="${year}.${month_unpadded}.0"
+
 log "RESULT: latest=${latest}"
 echo "New p2 URL     : ${BASE}/${latest}/"
 echo "New version    : ${new_version}"
 
 # Collect POM list
 declare -a files
-if [[ $# -ge 1 && -f "$1" ]]; then
+if [[ $# -ge 1 && -f "${1:-}" ]]; then
   files=("$1")
 else
   if command -v git >/dev/null 2>&1; then
@@ -180,7 +183,7 @@ else
   done
 fi
 
-# Call your repo's version updater (required by you)
+# Delegate version bump to your repo script
 if [[ ! -x ./update-version.sh ]]; then
   echo "ERROR: ./update-version.sh not found or not executable. Please ensure it exists at repo root and is +x." >&2
   exit 1
@@ -191,7 +194,6 @@ echo "➡️  Running ./update-version.sh ${new_version}"
 # GitHub Actions outputs
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
-    # If update-version.sh made changes, we still mark changed=true.
     echo "changed=true"
     echo "branch=update-eclipse-${latest}"
     echo "latest=${latest}"
