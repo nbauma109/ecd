@@ -31,9 +31,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          POM="$POM_PATH"
-          if [[ ! -f "$POM" ]]; then
-            echo "Cannot find $POM" >&2
+          if [[ ! -f "$POM_PATH" ]]; then
+            echo "Cannot find $POM_PATH" >&2
             exit 1
           fi
 
@@ -58,13 +57,13 @@ jobs:
           echo "New project version: $new_project_version"
 
           # Current p2 URL (first match)
-          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" | head -n1 || true)"
+          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM_PATH" | head -n1 || true)"
           echo "Current URL in POM: ${current_url:-<none>}"
 
-          # Read current <version> (direct child of <project>)
-          python - "$POM" <<'PY' > .current_version.txt
-import sys, xml.etree.ElementTree as ET
-pom_path = sys.argv[1]
+          # Read current <version> (direct child of <project>) via Python
+          python <<'PY' > .current_version.txt
+import os, xml.etree.ElementTree as ET
+pom_path = os.environ["POM_PATH"]
 ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
 ET.register_namespace('', ns['m'])
 tree = ET.parse(pom_path)
@@ -72,6 +71,7 @@ root = tree.getroot()
 ver = root.find('m:version', ns)
 print((ver.text if ver is not None else "") or "", end="")
 PY
+
           current_version="$(cat .current_version.txt || true)"
           echo "Current project version: ${current_version:-<none>}"
 
@@ -79,17 +79,19 @@ PY
 
           # Update p2 URL if needed
           if [[ "${current_url:-}" != "$latest_url" ]]; then
-            # Replace any releases/YYYY-MM/ in the POM with the latest URL
-            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${latest_url//\//\\/}#g" "$POM"
+            # Escape slashes for sed replacement
+            repl=$(printf '%s\n' "$latest_url" | sed 's/[\/&]/\\&/g')
+            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${repl}#g" "$POM_PATH"
             echo "Updated p2 URL -> $latest_url"
             changed=1
           fi
 
           # Update <version> to YYYY.MM.0 if needed
           if [[ "${current_version:-}" != "$new_project_version" ]]; then
-            python - "$POM" "$new_project_version" <<'PY'
-import sys, xml.etree.ElementTree as ET
-pom_path, new_ver = sys.argv[1], sys.argv[2]
+            VERSION_TO_SET="$new_project_version" python <<'PY'
+import os, xml.etree.ElementTree as ET
+pom_path = os.environ["POM_PATH"]
+new_ver = os.environ["VERSION_TO_SET"]
 ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
 ET.register_namespace('', ns['m'])
 tree = ET.parse(pom_path)
