@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-# Usage:
-#   ./update-eclipse-p2.sh                 # update URL/id in all pom.xml, then run ./update-version.sh YYYY.m.0
-#   ./update-eclipse-p2.sh path/to/pom.xml # limit URL/id updates to that POM (version still updated repo-wide)
+# -----------------------------------------------------------------------------
+# update-eclipse-p2.sh
 #
-# Strategy
-# - Detect latest SimRel (YYYY-MM):
-#     A) eclipseide.org banner  ->  B) downloads page
-#   Validate via p2 metadata JARs; if not live, fall back once to previous quarter.
-# - For each POM:
-#     * replace p2 URL -> https://download.eclipse.org/releases/YYYY-MM/
-#     * replace repository id -> <id>eclipse-YYYY-MM</id>
-# - Then delegate version bump to ./update-version.sh with unpadded month: YYYY.m.0
+# Updates all Maven POM files in the repository to point to the latest
+# Eclipse SimRel update site. The script:
+#   1. Detects the latest SimRel release (YYYY-MM) by checking
+#      eclipseide.org and the Eclipse downloads page.
+#   2. Validates that the p2 repository actually exists.
+#   3. Falls back once to the previous quarter if the release is not yet live.
+#   4. Updates in all pom.xml files:
+#        - p2 repository URL
+#        - repository id (<id>eclipse-YYYY-MM</id>)
+#   5. Delegates version bumping to ./update-version.sh with a version number
+#      formatted as YYYY.m.0 (month without leading zero).
+#
+# Usage:
+#   ./update-eclipse-p2.sh                 # update all pom.xml files
+#   ./update-eclipse-p2.sh path/to/pom.xml # update a single POM only
+# -----------------------------------------------------------------------------
 
 set -euo pipefail
 
@@ -20,10 +27,10 @@ changed_urls_or_ids=0
 
 log() { printf '%s\n' "$*" >&2; }
 
-# ----- portable sed -i (GNU/BSD) -----
+# Portable sed -i (works on GNU and BSD)
 sedi() { if sed --version >/dev/null 2>&1; then sed -i -E "$@"; else sed -i '' -E "$@"; fi; }
 
-# ----- validate SimRel exists (any metadata JAR returning 200) -----
+# Returns 0 if the given release has any of the standard p2 metadata JARs
 exists_release() {
   local rel="$1" url code
   for path in "compositeContent.jar" "compositeArtifacts.jar" "content.jar"; do
@@ -35,7 +42,7 @@ exists_release() {
   return 1
 }
 
-# ----- previous quarter (one step only) -----
+# Returns the previous SimRel quarter (one step only)
 prev_quarter() {
   local y="${1%-*}" m="${1#*-}"
   case "$m" in
@@ -43,8 +50,7 @@ prev_quarter() {
     06) printf '%s-%s\n' "$y" "03" ;;
     09) printf '%s-%s\n' "$y" "06" ;;
     12) printf '%s-%s\n' "$y" "09" ;;
-    *)  # map to nearest quarter then step back once
-        if   ((10#$m <= 03)); then printf '%s-%s\n' "$((10#$y-1))" "12"
+    *)  if   ((10#$m <= 03)); then printf '%s-%s\n' "$((10#$y-1))" "12"
         elif ((10#$m <= 06)); then printf '%s-%s\n' "$y" "03"
         elif ((10#$m <= 09)); then printf '%s-%s\n' "$y" "06"
         else                     printf '%s-%s\n' "$y" "09"
@@ -53,21 +59,19 @@ prev_quarter() {
   esac
 }
 
-# ----- detect candidate from pages -----
+# Scrapes candidate release identifier from public pages
 detect_from_pages() {
   local cand html
-  log "probe A: GET https://eclipseide.org/ (banner 'Download YYYY-MM')"
+  log "probe A: eclipseide.org"
   html="$(curl -fsSL -A "$UA" https://eclipseide.org/ 2>/dev/null || true)"
   if [[ -n "$html" ]]; then
     cand="$(printf '%s' "$html" | grep -Eo 'Download[[:space:]]+[0-9]{4}-[0-9]{2}' \
                          | grep -Eo '[0-9]{4}-[0-9]{2}' | head -n1 || true)"
     log "probe A: parsed -> '${cand:-<none>}'"
     [[ -n "$cand" ]] && echo "$cand" && return 0
-  else
-    log "probe A: empty response"
   fi
 
-  log "probe B: GET https://www.eclipse.org/downloads/packages/release/"
+  log "probe B: eclipse.org/downloads/packages/release/"
   cand="$(
     curl -fsSL -A "$UA" https://www.eclipse.org/downloads/packages/release/ 2>/dev/null \
       | grep -Eo 'release/[0-9]{4}-[0-9]{2}' \
@@ -80,7 +84,7 @@ detect_from_pages() {
   return 1
 }
 
-# ----- choose final release with single-quarter fallback -----
+# Chooses the final release to use with a single-quarter fallback
 pick_release() {
   local cand="$1"
   if [[ -n "$cand" ]]; then
@@ -91,6 +95,7 @@ pick_release() {
     if exists_release "$prev"; then echo "$prev"; return 0; fi
   fi
 
+  # If no candidate was found, derive from current quarter
   local now_y now_m q cur prev
   now_y="$(date +%Y)"; now_m="$(date +%m)"
   if   ((10#$now_m <= 03)); then q="03"
@@ -108,14 +113,14 @@ pick_release() {
   return 1
 }
 
-# ----- mutate a single POM: URL + repo id -----
+# Updates URL and repository id in one POM file
 update_one_pom_url_and_id() {
   local file="$1" latest="$2"
   local latest_url="${BASE}/${latest}/"
   local file_changed=0
 
   log "---- updating: $file"
-  # URL
+  # Update URL
   local current_url
   current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$file" | head -n1 || true)"
   log "p2 in POM      : ${current_url:-<none>}"
@@ -126,7 +131,7 @@ update_one_pom_url_and_id() {
     file_changed=1
   fi
 
-  # repository id
+  # Update repository id
   local current_id new_id
   current_id="$(grep -Eo '<id>eclipse-[0-9]{4}-[0-9]{2}</id>' "$file" | head -n1 || true)"
   new_id="<id>eclipse-${latest}</id>"
@@ -140,7 +145,7 @@ update_one_pom_url_and_id() {
   if [[ $file_changed -eq 1 ]]; then changed_urls_or_ids=1; fi
 }
 
-# ==================== main ====================
+# -------------------- Main --------------------
 
 page_cand="$(detect_from_pages || true)"
 latest="$(pick_release "$page_cand" || true)"
@@ -160,6 +165,7 @@ log "RESULT: latest=${latest}"
 echo "New p2 URL     : ${BASE}/${latest}/"
 echo "New version    : ${new_version}"
 
+# Collect POM files
 declare -a files
 if [[ $# -ge 1 && -f "${1:-}" ]]; then
   files=("$1")
@@ -171,6 +177,7 @@ else
   fi
 fi
 
+# Update URLs and ids
 if [[ ${#files[@]} -eq 0 ]]; then
   echo "No pom.xml files found to update."
 else
@@ -179,6 +186,7 @@ else
   done
 fi
 
+# Run version updater script
 if [[ ! -x ./update-version.sh ]]; then
   echo "ERROR: ./update-version.sh not found or not executable." >&2
   exit 1
@@ -186,6 +194,7 @@ fi
 echo "Running ./update-version.sh ${new_version}"
 ./update-version.sh "${new_version}"
 
+# Outputs for GitHub Actions
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "changed=true"
