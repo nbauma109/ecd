@@ -1,8 +1,8 @@
-name: Update Eclipse release (p2 URL + project version)
+name: Update Eclipse p2 (URL + version)
 
 on:
   schedule:
-    - cron: "7 5 * * *"   # daily at 05:07 UTC
+    - cron: "7 5 * * *"   # daily
   workflow_dispatch:
 
 permissions:
@@ -13,139 +13,84 @@ env:
   POM_PATH: pom.xml
 
 jobs:
-  check-and-update:
+  update:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Determine latest Eclipse release and update pom.xml if needed
-        id: update
+      - name: Find latest Eclipse SimRel and update pom.xml
+        id: do_update
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ ! -f "$POM_PATH" ]]; then
-            echo "Cannot find $POM_PATH" >&2
-            exit 1
-          fi
+          POM="$POM_PATH"
+          [[ -f "$POM" ]] || { echo "Cannot find $POM" >&2; exit 1; }
 
-          # Find latest SimRel like 2025-09
+          # Find latest directory like 2025-09 from the Eclipse releases index
           latest="$(curl -sL https://download.eclipse.org/releases/ \
             | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' \
             | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' \
             | sort -u | sort -r | head -n1)"
 
-          if [[ -z "${latest:-}" ]]; then
-            echo "Could not determine latest Eclipse release." >&2
-            exit 1
-          fi
+          [[ -n "${latest:-}" ]] || { echo "Could not determine latest Eclipse release." >&2; exit 1; }
 
           latest_url="https://download.eclipse.org/releases/${latest}/"
-          latest_year="${latest%-*}"
-          latest_month="${latest#*-}"
-          new_project_version="${latest_year}.${latest_month}.0"
+          y="${latest%-*}"
+          m="${latest#*-}"
+          new_version="${y}.${m}.0"
 
           echo "Latest: $latest"
-          echo "Latest URL: $latest_url"
-          echo "New project version: $new_project_version"
-
-          # Current p2 URL (first match)
-          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM_PATH" | head -n1 || true)"
-          echo "Current URL in POM: ${current_url:-<none>}"
-
-          # Read current <version> (direct child of <project>) via Python
-          python <<'PY' > .current_version.txt
-import os, xml.etree.ElementTree as ET
-pom_path = os.environ["POM_PATH"]
-ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
-ET.register_namespace('', ns['m'])
-tree = ET.parse(pom_path)
-root = tree.getroot()
-ver = root.find('m:version', ns)
-print((ver.text if ver is not None else "") or "", end="")
-PY
-
-          current_version="$(cat .current_version.txt || true)"
-          echo "Current project version: ${current_version:-<none>}"
+          echo "New URL: $latest_url"
+          echo "New version: $new_version"
 
           changed=0
 
-          # Update p2 URL if needed
+          # 1) Update p2 URL everywhere (safe to do)
+          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" | head -n1 || true)"
           if [[ "${current_url:-}" != "$latest_url" ]]; then
-            # Escape slashes for sed replacement
-            repl=$(printf '%s\n' "$latest_url" | sed 's/[\/&]/\\&/g')
-            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${repl}#g" "$POM_PATH"
+            esc_url="$(printf '%s' "$latest_url" | sed 's/[\/&]/\\&/g')"
+            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${esc_url}#g" "$POM"
             echo "Updated p2 URL -> $latest_url"
             changed=1
           fi
 
-          # Update <version> to YYYY.MM.0 if needed
-          if [[ "${current_version:-}" != "$new_project_version" ]]; then
-            VERSION_TO_SET="$new_project_version" python <<'PY'
-import os, xml.etree.ElementTree as ET
-pom_path = os.environ["POM_PATH"]
-new_ver = os.environ["VERSION_TO_SET"]
-ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
-ET.register_namespace('', ns['m'])
-tree = ET.parse(pom_path)
-root = tree.getroot()
-ver_elem = root.find('m:version', ns)
-if ver_elem is None:
-    mv = root.find('m:modelVersion', ns)
-    ver_elem = ET.Element('{%s}version' % ns['m'])
-    if mv is not None:
-        idx = list(root).index(mv)
-        root.insert(idx+1, ver_elem)
-    else:
-        root.insert(0, ver_elem)
-ver_elem.text = new_ver
-tree.write(pom_path, xml_declaration=True, encoding='utf-8')
-PY
-            echo "Updated project version -> $new_project_version"
+          # 2) Update ONLY the first <version>YYYY.MM.X</version> to YYYY.MM.0
+          current_ver="$(grep -Eo '<version>[0-9]{4}\.[0-9]{2}\.[0-9]+</version>' "$POM" | head -n1 | sed -E 's#</?version>##g' || true)"
+          if [[ -z "${current_ver:-}" ]]; then
+            echo "No matching YYYY.MM.X <version> found in $POM (skipping version bump)."
+          elif [[ "$current_ver" != "$new_version" ]]; then
+            # Replace only the first occurrence using GNU sed's 0,/<pattern>/ range
+            sed -i -E "0,/<version>[0-9]{4}\.[0-9]{2}\.[0-9]+<\/version>/{s//<version>${new_version}<\/version>/}" "$POM"
+            echo "Updated project version -> $new_version"
             changed=1
+          else
+            echo "Version already up to date."
           fi
 
           if [[ $changed -eq 1 ]]; then
             {
               echo "changed=true"
-              echo "branch_name=update-eclipse-${latest}"
+              echo "branch=update-eclipse-${latest}"
               echo "latest=${latest}"
-              echo "new_version=${new_project_version}"
               echo "new_url=${latest_url}"
+              echo "new_version=${new_version}"
             } >> "$GITHUB_OUTPUT"
           else
-            echo "No changes required."
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes necessary."
           fi
 
       - name: Create Pull Request
-        if: steps.update.outputs.changed == 'true'
+        if: steps.do_update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore: update Eclipse SimRel to ${{ steps.update.outputs.latest }} (p2 URL + version ${{ steps.update.outputs.new_version }})"
-          title: "Update Eclipse SimRel to ${{ steps.update.outputs.latest }}"
+          commit-message: "chore: update Eclipse SimRel to ${{ steps.do_update.outputs.latest }} (p2 URL + version ${{ steps.do_update.outputs.new_version }})"
+          title: "Update Eclipse SimRel to ${{ steps.do_update.outputs.latest }}"
           body: |
-            This PR updates the Eclipse p2 repository and project version.
-
-            - **p2 URL:** `${{ steps.update.outputs.new_url }}`
-            - **version:** `${{ steps.update.outputs.new_version }}`
-
-            Generated automatically by the scheduled workflow.
-          branch: ${{ steps.update.outputs.branch_name }}
+            - **p2 URL:** `${{ steps.do_update.outputs.new_url }}`
+            - **version:** `${{ steps.do_update.outputs.new_version }}`
+          branch: ${{ steps.do_update.outputs.branch }}
           delete-branch: true
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Summary
-        run: |
-          if [[ "${{ steps.update.outputs.changed }}" == "true" ]]; then
-            echo "✅ Changes detected; PR created on branch ${{ steps.update.outputs.branch_name }}."
-          else
-            echo "ℹ️ Already up to date; no PR created."
-          fi
