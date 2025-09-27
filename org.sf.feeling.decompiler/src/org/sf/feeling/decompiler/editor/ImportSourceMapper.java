@@ -179,8 +179,8 @@ public class ImportSourceMapper extends SourceMapper {
 			addToChildren(parentInfo, this.importContainer);
 		}
 
-		String elementName = JavaModelManager.getJavaModelManager()
-				.intern(new String(CharOperation.concatWith(tokens, '.')));
+		String elementName = String.valueOf(CharOperation.concatWith(tokens, '.')).intern();
+
 		ImportDeclaration handle = createImportDeclaration(this.importContainer, elementName, onDemand);
 
 		ImportDeclarationElementInfo info = new ImportDeclarationElementInfo();
