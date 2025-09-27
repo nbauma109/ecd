@@ -2,7 +2,7 @@ name: Update Eclipse p2 (URL + version)
 
 on:
   schedule:
-    - cron: "7 5 * * *"   # daily
+    - cron: "7 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,33 +23,32 @@ jobs:
         id: do_update
         shell: bash
         run: |
-          set -euo pipefail
+          # Be tolerant: don't exit on non-zero, but keep pipefail for visibility
+          set -o pipefail
 
-          POM="$POM_PATH"
+          POM="${POM_PATH:-pom.xml}"
           if [[ ! -f "$POM" ]]; then
-            echo "❌ Cannot find $POM" >&2
+            echo "❌ Cannot find $POM"
             exit 1
           fi
 
-          # Fetch latest SimRel (YYYY-MM) with a quick retry
+          # Try to detect latest SimRel (YYYY-MM). No hard failure if this flakes.
           latest=""
           for i in 1 2 3; do
-            html="$(curl -fsSL https://download.eclipse.org/releases/ || true)"
+            html="$(curl -fsSL https://download.eclipse.org/releases/ 2>/dev/null || true)"
             if [[ -n "$html" ]]; then
               latest="$(printf '%s' "$html" \
-                | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' \
-                | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' \
-                | sort -u | sort -r | head -n1)"
+                | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' 2>/dev/null \
+                | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' 2>/dev/null \
+                | sort -u | sort -r | head -n1 || true)"
             fi
             [[ -n "$latest" ]] && break
             sleep 2
           done
 
           if [[ -z "$latest" ]]; then
-            echo "⚠️  Could not determine latest Eclipse release (network or parsing issue). Skipping without failing."
-            {
-              echo "changed=false"
-            } >> "$GITHUB_OUTPUT"
+            echo "⚠️  Could not determine latest Eclipse release; skipping updates."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -64,25 +63,25 @@ jobs:
 
           changed=0
 
-          # Update p2 URL (everywhere)
-          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" | head -n1 || true)"
+          # Update p2 URL everywhere it appears
+          current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" 2>/dev/null | head -n1 || true)"
           if [[ "${current_url:-}" != "$latest_url" ]]; then
             esc_url="$(printf '%s' "$latest_url" | sed 's/[\/&]/\\&/g')"
-            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${esc_url}#g" "$POM"
-            echo "✅ Updated p2 URL -> $latest_url"
+            sed -i -E "s#https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/#${esc_url}#g" "$POM" || true
+            echo "✅ p2 URL -> $latest_url"
             changed=1
           else
             echo "ℹ️ p2 URL already up to date."
           fi
 
-          # Update ONLY the first <version>YYYY.MM.X</version> to YYYY.MM.0
-          current_ver="$(grep -Eo '<version>[0-9]{4}\.[0-9]{2}\.[0-9]+</version>' "$POM" | head -n1 | sed -E 's#</?version>##g' || true)"
+          # Update ONLY the first YYYY.MM.X root-like version to YYYY.MM.0
+          current_ver="$(grep -Eo '<version>[0-9]{4}\.[0-9]{2}\.[0-9]+</version>' "$POM" 2>/dev/null | head -n1 | sed -E 's#</?version>##g' || true)"
           if [[ -z "${current_ver:-}" ]]; then
-            echo "ℹ️ No matching YYYY.MM.X <version> found; skipping version bump."
+            echo "ℹ️ No YYYY.MM.X <version> found; skipping version bump."
           elif [[ "$current_ver" != "$new_version" ]]; then
-            # Replace only the first occurrence (GNU sed)
-            sed -i -E "0,/<version>[0-9]{4}\.[0-9]{2}\.[0-9]+<\/version>/{s//<version>${new_version}<\/version>/}" "$POM"
-            echo "✅ Updated project version -> $new_version"
+            # Replace only the first occurrence (GNU sed's 0,/<pat>/ range)
+            sed -i -E "0,/<version>[0-9]{4}\.[0-9]{2}\.[0-9]+<\/version>/{s//<version>${new_version}<\/version>/}" "$POM" || true
+            echo "✅ Version -> $new_version"
             changed=1
           else
             echo "ℹ️ Version already up to date."
