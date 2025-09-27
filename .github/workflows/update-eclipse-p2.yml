@@ -2,7 +2,7 @@ name: Update Eclipse p2 (URL + version)
 
 on:
   schedule:
-    - cron: "7 5 * * *"
+    - cron: "7 5 * * *"   # daily
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,6 @@ jobs:
         id: do_update
         shell: bash
         run: |
-          # Be tolerant: don't exit on non-zero, but keep pipefail for visibility
           set -o pipefail
 
           POM="${POM_PATH:-pom.xml}"
@@ -32,19 +31,32 @@ jobs:
             exit 1
           fi
 
-          # Try to detect latest SimRel (YYYY-MM). No hard failure if this flakes.
+          # --- Get latest SimRel (YYYY-MM) via redirect first, then fallback to HTML parse ---
           latest=""
+          # Try via redirect from .../releases/latest/
           for i in 1 2 3; do
-            html="$(curl -fsSL https://download.eclipse.org/releases/ 2>/dev/null || true)"
-            if [[ -n "$html" ]]; then
-              latest="$(printf '%s' "$html" \
-                | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' 2>/dev/null \
-                | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' 2>/dev/null \
-                | sort -u | sort -r | head -n1 || true)"
+            redirected="$(curl -fsSLI -A 'Mozilla/5.0 (Actions)' -o /dev/null -w '%{url_effective}' https://download.eclipse.org/releases/latest/ 2>/dev/null || true)"
+            if [[ -n "$redirected" ]]; then
+              cand="$(printf '%s' "$redirected" | grep -Eo '[0-9]{4}-[0-9]{2}/?$' | tr -d '/' || true)"
+              if [[ -n "$cand" ]]; then latest="$cand"; break; fi
             fi
-            [[ -n "$latest" ]] && break
             sleep 2
           done
+
+          # Fallback: parse directory index if redirect didn’t work
+          if [[ -z "$latest" ]]; then
+            for i in 1 2 3; do
+              html="$(curl -fsSL -A 'Mozilla/5.0 (Actions)' https://download.eclipse.org/releases/ 2>/dev/null || true)"
+              if [[ -n "$html" ]]; then
+                latest="$(printf '%s' "$html" \
+                  | grep -Eo 'href="[0-9]{4}-[0-9]{2}/"' \
+                  | sed -E 's/^href="([0-9]{4}-[0-9]{2})\/"$/\1/' \
+                  | sort -u | sort -r | head -n1 || true)"
+              fi
+              [[ -n "$latest" ]] && break
+              sleep 2
+            done
+          fi
 
           if [[ -z "$latest" ]]; then
             echo "⚠️  Could not determine latest Eclipse release; skipping updates."
@@ -63,7 +75,7 @@ jobs:
 
           changed=0
 
-          # Update p2 URL everywhere it appears
+          # Update p2 URL everywhere
           current_url="$(grep -Eo 'https://download\.eclipse\.org/releases/[0-9]{4}-[0-9]{2}/' "$POM" 2>/dev/null | head -n1 || true)"
           if [[ "${current_url:-}" != "$latest_url" ]]; then
             esc_url="$(printf '%s' "$latest_url" | sed 's/[\/&]/\\&/g')"
@@ -74,14 +86,13 @@ jobs:
             echo "ℹ️ p2 URL already up to date."
           fi
 
-          # Update ONLY the first YYYY.MM.X root-like version to YYYY.MM.0
-          current_ver="$(grep -Eo '<version>[0-9]{4}\.[0-9]{2}\.[0-9]+</version>' "$POM" 2>/dev/null | head -n1 | sed -E 's#</?version>##g' || true)"
+          # Replace ONLY the first <version>…</version> with the new YYYY.MM.0
+          current_ver="$(grep -Eo '<version>[^<]+</version>' "$POM" 2>/dev/null | head -n1 | sed -E 's#</?version>##g' || true)"
           if [[ -z "${current_ver:-}" ]]; then
-            echo "ℹ️ No YYYY.MM.X <version> found; skipping version bump."
+            echo "ℹ️ No <version> tag found; skipping version bump."
           elif [[ "$current_ver" != "$new_version" ]]; then
-            # Replace only the first occurrence (GNU sed's 0,/<pat>/ range)
-            sed -i -E "0,/<version>[0-9]{4}\.[0-9]{2}\.[0-9]+<\/version>/{s//<version>${new_version}<\/version>/}" "$POM" || true
-            echo "✅ Version -> $new_version"
+            sed -i -E "0,/<version>[^<]+<\/version>/{s//<version>${new_version}<\/version>/}" "$POM" || true
+            echo "✅ Version -> $new_version (from ${current_ver})"
             changed=1
           else
             echo "ℹ️ Version already up to date."
