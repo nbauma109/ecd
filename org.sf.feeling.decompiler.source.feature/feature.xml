@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.source"
       label="%featureName"
-      version="2025.9.1"
+      version="2025.9.2"
       provider-name="%providerName">
 
    <description url="%aboutURL">
@@ -40,7 +40,7 @@
          id="org.sf.feeling.decompiler.source.attach"
          download-size="0"
          install-size="0"
-         version="2025.9.1"
+         version="2025.9.2"
          unpack="false"/>
 
 </feature>
