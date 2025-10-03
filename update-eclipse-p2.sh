@@ -37,7 +37,6 @@ sedi() { if sed --version >/dev/null 2>&1; then sed -i -E "$@"; else sed -i '' -
 
 # ---- version compare: returns 0 if a<b, 1 if a==b, 2 if a>b ----------------
 vercmp3() {
-  # numeric compare of A.B.C where missing parts default to 0
   local A="${1:-0}" B="${2:-0}"
   IFS='.' read -r a1 a2 a3 <<<"$A"
   IFS='.' read -r b1 b2 b3 <<<"$B"
@@ -55,7 +54,6 @@ vercmp3() {
 
 # ---- p2 repo existence check ----------------------------------------------
 exists_release() {
-  # success if any standard p2 metadata JAR is present (HTTP 200)
   local rel="$1" url code
   for path in "compositeContent.jar" "compositeArtifacts.jar" "content.jar"; do
     url="${BASE}/${rel}/${path}"
@@ -187,7 +185,7 @@ log "RESULT: latest=${latest}"
 echo "New p2 URL     : ${BASE}/${latest}/"
 echo "New version    : ${new_version}"
 
-# Establish baseline POM to read current version
+# Determine current project version
 baseline_pom=""
 if [[ $# -ge 1 && -f "${1:-}" ]]; then
   baseline_pom="$1"
@@ -201,7 +199,6 @@ if [[ -n "$baseline_pom" ]]; then
   log "Current version: ${current_version:-<none>} (from $baseline_pom)"
 fi
 
-# If current version is detectable and new_version is not strictly newer, exit
 if [[ -n "${current_version:-}" ]]; then
   case "$(vercmp3 "$new_version" "$current_version")" in
     0|1)
@@ -209,11 +206,13 @@ if [[ -n "${current_version:-}" ]]; then
       [[ -n "${GITHUB_OUTPUT:-}" ]] && echo "changed=false" >> "$GITHUB_OUTPUT"
       exit 0
       ;;
-    2) : ;; # proceed
-  endesac
+    2)
+      : # proceed
+      ;;
+  esac
 fi
 
-# Collect POM files to update URL/id
+# Update all pom.xml files for URL/id
 declare -a files
 if [[ $# -ge 1 && -f "${1:-}" ]]; then
   files=("$1")
@@ -233,7 +232,6 @@ else
   done
 fi
 
-# Run version updater (must exist and be executable)
 if [[ ! -x ./update-version.sh ]]; then
   echo "ERROR: ./update-version.sh not found or not executable." >&2
   exit 1
@@ -241,7 +239,6 @@ fi
 echo "Running ./update-version.sh ${new_version}"
 ./update-version.sh "${new_version}"
 
-# Outputs for GitHub Actions
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "changed=true"
