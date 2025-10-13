@@ -167,7 +167,7 @@
 			<dependency>
 				<groupId>com.github.nbauma109</groupId>
 				<artifactId>jd-core</artifactId>
-				<version>1.2.26</version>
+				<version>1.2.27</version>
 			</dependency>
 			<dependency>
 				<groupId>org.vineflower</groupId>
