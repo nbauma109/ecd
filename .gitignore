@@ -1,13 +1,14 @@
-/**/bin/**/*
-/./**/bin/**/*
-./**/bin/**/*
-**/bin/**/*
-*/bin/**/*
-bin/**/*
-/**/bin/*
-/bin/
-*/target
+# Eclipse and Maven project build directories
+**/bin/
+**/target/
+
+# Local libraries
 lib/
-/mvnw
-/mvnw.cmd
-/.mvn/
+
+# Maven wrapper files and directories
+mvnw
+mvnw.cmd
+.mvn/
+
+# Eclipse IDE settings
+.settings/
