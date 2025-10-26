@@ -1,14 +1,23 @@
-# Eclipse and Maven project build directories
+# Build directories
 **/bin/
 **/target/
 
 # Local libraries
 lib/
 
-# Maven wrapper files and directories
+# Maven wrapper files
 mvnw
 mvnw.cmd
 .mvn/
 
-# Eclipse IDE settings
+# Eclipse IDE files
+.classpath
+.project
 .settings/
+
+# IntelliJ IDEA files
+.idea/
+*.iml
+
+# VS Code settings
+.vscode/
