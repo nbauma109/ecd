@@ -1,7 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Schema file written by PDE -->
-<schema targetNamespace="org.sf.feeling.decompiler" xmlns="http://www.w3.org/2001/XMLSchema">
-<annotation>
+<schema
+   targetNamespace="org.sf.feeling.decompiler"
+   xmlns="http://www.w3.org/2001/XMLSchema"
+   xmlns:org.eclipse.core.expressions="org.eclipse.core.expressions">
+
+   <annotation>
       <appinfo>
          <meta.schema plugin="org.sf.feeling.decompiler" id="decompilerAdapters" name="Decompiler Adapters Extension"/>
       </appinfo>
@@ -81,7 +85,7 @@
    <element name="adapter">
       <annotation>
          <appinfo>
-            <meta.element labelAttribute="ID"/>
+            <meta.element labelAttribute="id"/>
          </appinfo>
          <documentation>
             (no description available)
@@ -159,6 +163,15 @@
       </complexType>
    </element>
 
+   <!-- Local wrapper using the Expressions type; keeps placeholder documentation -->
+   <element name="enablement" type="org.eclipse.core.expressions:Expression">
+      <annotation>
+         <documentation>
+            (no description available)
+         </documentation>
+      </annotation>
+   </element>
+
    <annotation>
       <appinfo>
          <meta.section type="since"/>
@@ -194,6 +207,5 @@
          [Enter information about supplied implementation of this extension point.]
       </documentation>
    </annotation>
-
 
 </schema>
