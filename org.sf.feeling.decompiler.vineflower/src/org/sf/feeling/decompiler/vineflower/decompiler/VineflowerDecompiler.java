@@ -9,6 +9,7 @@
 package org.sf.feeling.decompiler.vineflower.decompiler;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -99,7 +100,9 @@ public class VineflowerDecompiler implements IDecompiler {
 		}
 		final String classNameFilter = classNameFilterTmp;
 
-		try (ConsoleDecompiler decompiler = new EmbeddedConsoleDecompiler()) {
+		EmbeddedConsoleDecompiler decompiler = null;
+		try {
+			decompiler = new EmbeddedConsoleDecompiler();
 			File[] files = workingDir.listFiles((dir, name) -> {
 				name = name.toLowerCase();
 				return name.startsWith(classNameFilter) && name.endsWith(".class");
@@ -111,8 +114,10 @@ public class VineflowerDecompiler implements IDecompiler {
 			}
 
 			decompiler.decompileContext();
-		} catch (IOException ex) {
+		} catch (Exception ex) {
 			Logger.error(ex);
+		} finally {
+			closeQuietly(decompiler); // will close if possible
 		}
 
 		File classFile = new File(tmpDir, className.replaceAll("(?i)\\.class", ".java")); //$NON-NLS-1$ //$NON-NLS-2$
@@ -135,6 +140,22 @@ public class VineflowerDecompiler implements IDecompiler {
 		}
 
 		time = System.currentTimeMillis() - start;
+	}
+
+	private void closeQuietly(Object obj) {
+        if (obj instanceof AutoCloseable) {
+            try {
+                ((AutoCloseable) obj).close();
+            } catch (Exception ex) {
+                // ignore exception
+            }
+        } else if (obj instanceof Closeable) {
+        	try {
+        		((Closeable) obj).close();
+        	} catch (Exception ex) {
+        		// ignore exception
+        	}
+        }
 	}
 
 	/**
