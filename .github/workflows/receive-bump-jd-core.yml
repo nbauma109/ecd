@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf target && mkdir -p target
-          mvn -B -q dependency:list \
+          mvn --no-transfer-progress -B -q dependency:list \
             -DincludeGroupIds=com.github.nbauma109 \
             -DincludeArtifactIds=jd-core \
             -DexcludeTransitive=true \
@@ -60,7 +60,7 @@ jobs:
       - name: Bump com.github.nbauma109:jd-core across dependencyManagement and modules
         run: |
           set -euo pipefail
-          mvn -B versions:use-dep-version \
+          mvn --no-transfer-progress -B versions:use-dep-version \
             -Dincludes='com.github.nbauma109:jd-core' \
             -DdepVersion='${{ github.event.client_payload.version }}' \
             -DforceVersion=true \
