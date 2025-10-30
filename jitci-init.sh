@@ -2,6 +2,7 @@
 set -eo pipefail
 
 export JAVA_HOME="/home/jitpack/tools/jdk21"
+echo "JAVA_HOME=$JAVA_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 
