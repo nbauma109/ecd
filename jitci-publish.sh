@@ -14,4 +14,4 @@ fi
 export PATH="$MVN_DIR/bin:$PATH"
 mvn -version
 
-mvn -B deploy -DskipTests -Dfindbugs.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dsigning.disabled=true -DaltDeploymentRepository=jitci::default::file:///home/jitpack/deploy --no-transfer-progress
+mvn -B deploy -DskipTests -Dfindbugs.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dsigning.disabled=true -DaltDeploymentRepository=jitci::file:///home/jitpack/deploy --no-transfer-progress
