@@ -12,6 +12,5 @@ if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
   curl -sL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${M3_VERSION}/apache-maven-${M3_VERSION}-bin.tar.gz" | tar xz --strip-components=1 -C "$MVN_DIR"
 fi
 export PATH="$MVN_DIR/bin:$PATH"
-mvn -version
 
-mvn -B -ntp de.qaware.maven:go-offline-maven-plugin:resolve-dependencies --no-transfer-progress
+mvn -V -B -ntp de.qaware.maven:go-offline-maven-plugin:resolve-dependencies --no-transfer-progress
