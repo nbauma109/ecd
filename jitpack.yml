@@ -1,4 +1,3 @@
-before_install:
-  - ./jitci_init.sh
 install:
+  - ./jitci_init.sh
   - ./jitci_build.sh
