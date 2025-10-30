@@ -13,5 +13,5 @@ if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
 fi
 export PATH="$MVN_DIR/bin:$PATH"
 mvn -version
-
+export XZ_OPT="-9e -T0"
 mvn -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
