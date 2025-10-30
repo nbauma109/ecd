@@ -27,4 +27,4 @@ jobs:
         repo_token: "${{ secrets.PAT_TOKEN }}"
         prerelease: false
         files: |
-          **/*.zip
+          **/*.tar.xz
