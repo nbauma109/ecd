@@ -1,3 +1,5 @@
 install:
+  - pwd
+  - ls -ltr
   - ./jitci_init.sh
   - ./jitci_build.sh
