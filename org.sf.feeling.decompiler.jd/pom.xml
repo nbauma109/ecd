@@ -34,6 +34,7 @@
               <overWriteReleases>true</overWriteReleases>
               <overWriteSnapshots>true</overWriteSnapshots>
               <stripVersion>true</stripVersion>
+              <includeArtifactIds>jd-core,jd-util,bcel,commons-lang3,commons-io</includeArtifactIds>
             </configuration>
           </execution>
         </executions>
