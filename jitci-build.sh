@@ -12,5 +12,4 @@ if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
   curl -sL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${M3_VERSION}/apache-maven-${M3_VERSION}-bin.tar.gz" | tar xz --strip-components=1 -C "$MVN_DIR"
 fi
 export PATH="$MVN_DIR/bin:$PATH"
-export XZ_OPT="-9e -T0"
 mvn -V -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
