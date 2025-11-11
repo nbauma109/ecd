@@ -2,7 +2,7 @@
 <feature
       id="org.sf.feeling.decompiler.cfr"
       label="%featureName"
-      version="2025.9.8"
+      version="2025.9.9"
       provider-name="%providerName"
       plugin="org.sf.feeling.decompiler.cfr">
 
@@ -46,7 +46,7 @@
          id="org.sf.feeling.decompiler.cfr"
          download-size="0"
          install-size="0"
-         version="2025.9.8"
+         version="2025.9.9"
          unpack="false"/>
 
 </feature>
