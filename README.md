@@ -51,7 +51,7 @@ Source attach:
 
 You may configure a private Nexus repository with credentials (user/password) to download and attach sources automatically :
 
-<img width="710" height="399" alt="image" src="https://github.com/user-attachments/assets/7a9d9eba-8f70-4ab5-ab02-1fc52b40fc8c" />
+![image](https://github.com/user-attachments/assets/01dcaeec-59dd-40df-a837-53fcf25250ad)
 
 You may select from a list of available public repositories :
 
