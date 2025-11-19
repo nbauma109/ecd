@@ -28,7 +28,7 @@ Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates J
   * Compatibility with latest version of Eclipse over backward compatibility : upstream project aims at supporting all versions of Eclipse which is not maintainable from my point of view
   * Usage of forked versions of decompilers : I need this freedom to bring bug fixes as some of the decompilers are not maintained anymore, or rarely maintained
   * Source attach plugin comes with some enhancements (see below) but it was removed in upstream project
-  * Broken functions "Show Byte Code" and "Show Disassembler" are removed (yagni)
+  * Broken functions "Show Byte Code" and "Show Disassembler" are removed (yagni) but still present in upstream project
   * Some significant refactorings in upstream project made rebasing next to impossible without risk of regression
 
 ## Why is this plug-in "enhanced"?
