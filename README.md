@@ -24,6 +24,13 @@ Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Vineflower**, **C
 ## Description
 Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, FernFlower, Vineflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
+## Why a fork?
+  * Compatibility with latest version of Eclipse over backward compatibility : upstream project aims at supporting all versions of Eclipse which is not maintainable from my point of view
+  * Usage of forked versions of decompilers : I need this freedom to bring bug fixes as some of the decompilers are not maintained anymore, or rarely maintained
+  * Source attach plugin comes with some enhancements (see below) but it was removed in upstream project
+  * Broken functions "Show Byte Code" and "Show Disassembler" are removed (yagni)
+  * Some significant refactorings in upstream project made rebasing next to impossible without risk of regression
+
 ## Why is this plug-in "enhanced"?
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
 
@@ -94,14 +101,11 @@ Code partially based on:
   * Java Source Attacher: Copyright Thai Ha, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 Used libraries:
-  * Dr. Garbage Tools: Copyright (c) Dr. Garbage Ltd. & Co KG, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Apache commons: Copyright (c) Apache Software Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Fernflower: Copyright (c) JetBrains, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Minimal JSON: Copyright (c) 2013, 2014 EclipseSource, [MIT License](https://opensource.org/licenses/MIT)
   * CFR: Copyright Lee Benfield, [MIT License](https://opensource.org/licenses/MIT)
   * Procyon: Copyright Mike Strobel, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
-  * Netbeans CVSClient: Copyright (c) NetBeans Community, [Eclipse Public License v1.0](https://www.eclipse.org/legal/epl-v10.html) and [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
-  * Maven SCM: Copyright (c) Apache Software Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Nexus Indexer: [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
   * Nexus Restlet1x Model: [Eclipse Public License v1.0](https://www.eclipse.org/legal/epl-v10.html)
   * Plexus Utils: Copyright The Codehaus Foundation, [Apache License V2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
@@ -115,3 +119,4 @@ Used libraries:
 * Pascal Bihler
 * Nick Lombard
 * Jan Peter Stotz
+* Nicolas Baumann (@nbauma109)
