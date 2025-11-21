@@ -28,8 +28,7 @@ public class BaseDecompilerHandler extends DecompileHandler {
 			if (editorDescriptor == null) {
 				JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
 				if (editor != null) {
-					if (editor != null)
-						editor.doSetInput(decompilerType, true);
+					editor.doSetInput(decompilerType, true);
 				}
 			} else {
 				new OpenClassesAction(editorDescriptor, classes, decompilerType).run();
@@ -37,8 +36,7 @@ public class BaseDecompilerHandler extends DecompileHandler {
 		} else {
 			JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
 			if (editor != null) {
-				if (editor != null)
-					editor.doSetInput(decompilerType, true);
+				editor.doSetInput(decompilerType, true);
 			}
 		}
 		return null;

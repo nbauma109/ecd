@@ -36,8 +36,7 @@ public class DecompileHandler extends AbstractHandler {
 		} else {
 			JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
 			if (editor != null) {
-				if (editor != null)
-					editor.doSetInput(true);
+				editor.doSetInput(true);
 			}
 		}
 		return null;
