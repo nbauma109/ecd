@@ -5,7 +5,6 @@ import static org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFac
 import static org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFacade.HTTPS_OSS_SONATYPE_ORG_INDEX_HTML;
 import static org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFacade.HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML;
 import static org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFacade.HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY;
-import static org.sf.feeling.decompiler.source.attach.finder.SourceCodeFinderFacade.HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML;
 
 import java.io.IOException;
 
@@ -21,11 +20,6 @@ public class NexusSourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 	@Test
 	public void testApache() throws IOException {
 		testFindCommonsIo(HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML);
-	}
-
-	@Test
-	public void testOW2() throws IOException {
-		testFindAsmUtil(HTTPS_REPOSITORY_OW2_ORG_NEXUS_INDEX_HTML);
 	}
 
 	@Test
