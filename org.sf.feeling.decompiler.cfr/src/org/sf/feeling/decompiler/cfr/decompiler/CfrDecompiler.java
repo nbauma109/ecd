@@ -44,10 +44,10 @@ public class CfrDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
-	public void decompile(String root, String packege, String className) {
+	public void decompile(String root, String package, String className) {
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
-		File workingDir = new File(root, packege); // $NON-NLS-1$
+		File workingDir = new File(root, package); // $NON-NLS-1$
 
 		try {
 			IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
@@ -67,14 +67,14 @@ public class CfrDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
-	public void decompileFromArchive(String archivePath, String packege, String className) {
+	public void decompileFromArchive(String archivePath, String package, String className) {
 		long start = System.nanoTime();
 		String tempDir = JavaDecompilerPlugin.getDefault().getPreferenceStore()
 				.getString(JavaDecompilerPlugin.TEMP_DIR);
 		File workingDir = new File(tempDir + "/ecd_cfr_" + System.currentTimeMillis()); //$NON-NLS-1$
 		try {
 			workingDir.mkdirs();
-			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
+			JarClassExtractor.extract(archivePath, package, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
 			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {

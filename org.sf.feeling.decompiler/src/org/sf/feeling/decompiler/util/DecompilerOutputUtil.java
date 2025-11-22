@@ -105,7 +105,7 @@ public class DecompilerOutputUtil {
 			}
 		}
 
-		// Iterate over types (ignorning enums and annotations)
+		// Iterate over types (ignoring enums and annotations)
 		int firstTypeLine = Integer.MAX_VALUE;
 		int lastTypeLine = Integer.MIN_VALUE;
 		for (int i = 0; i < types.size(); i++) {

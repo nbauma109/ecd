@@ -54,11 +54,11 @@ public class ProcyonDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
-	public void decompile(String root, String packege, String className) {
+	public void decompile(String root, String package, String className) {
 		long start = System.nanoTime();
 		log = ""; //$NON-NLS-1$
 		source = ""; //$NON-NLS-1$
-		File workingDir = new File(root, packege); // $NON-NLS-1$
+		File workingDir = new File(root, package); // $NON-NLS-1$
 
 		final String classPathStr = new File(workingDir, className).getAbsolutePath();
 
@@ -146,7 +146,7 @@ public class ProcyonDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
-	public void decompileFromArchive(String archivePath, String packege, String className) {
+	public void decompileFromArchive(String archivePath, String package, String className) {
 		long start = System.nanoTime();
 		File workingDir = new File(
 				JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
@@ -154,7 +154,7 @@ public class ProcyonDecompiler implements IDecompiler {
 
 		try {
 			workingDir.mkdirs();
-			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
+			JarClassExtractor.extract(archivePath, package, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
 			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 		} catch (Exception e) {

@@ -122,7 +122,7 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 		addField(eclipseFormatter);
 
 		eclipseSorter = new CheckFieldEditor(JavaDecompilerPlugin.USE_ECLIPSE_SORTER,
-				Messages.getString("JavaDecompilerPreferencePage.Lable.UseEclipseSorter"), //$NON-NLS-1$
+				Messages.getString("JavaDecompilerPreferencePage.Label.UseEclipseSorter"), //$NON-NLS-1$
 				formatGroup);
 		addField(eclipseSorter);
 

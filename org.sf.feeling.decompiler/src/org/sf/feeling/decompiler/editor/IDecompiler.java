@@ -15,7 +15,7 @@ import java.util.List;
  * methods take file path-like parameters as opposed to Java style package and
  * class names. For instance, if a class com.acme.Foo that is be found under
  * directory /bar needs to be decompiled then the following should be passed to
- * a <code>IDecompiler</code> instance: root = /bar packege = com/acme className
+ * a <code>IDecompiler</code> instance: root = /bar package = com/acme className
  * = Foo.class
  */
 public interface IDecompiler {
@@ -25,19 +25,19 @@ public interface IDecompiler {
 	 * 
 	 * @param root      path to the directory which is root for this class package
 	 *                  hierarchy
-	 * @param packege   file path like package name
+	 * @param package   file path like package name
 	 * @param className file name of the class file
 	 */
-	public void decompile(String root, String packege, String className);
+	public void decompile(String root, String package, String className);
 
 	/**
 	 * Decompiles a class file located in archive.
 	 * 
 	 * @param archivePath path to archive that contains the class to be decompiled
-	 * @param packege     file path like package name
+	 * @param package     file path like package name
 	 * @param className   file name of the class file
 	 */
-	public void decompileFromArchive(String archivePath, String packege, String className);
+	public void decompileFromArchive(String archivePath, String package, String className);
 
 	/**
 	 * @return time taken by decompilation

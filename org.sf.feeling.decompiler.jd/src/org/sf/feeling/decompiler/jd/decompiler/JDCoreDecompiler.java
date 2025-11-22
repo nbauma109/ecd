@@ -47,7 +47,7 @@ public class JDCoreDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
-	public void decompileFromArchive(String archivePath, String packege, String className) {
+	public void decompileFromArchive(String archivePath, String package, String className) {
 		long start = System.nanoTime();
 		Boolean displayNumber = null;
 
@@ -58,8 +58,8 @@ public class JDCoreDecompiler implements IDecompiler {
 			}
 
 			StringBuilder decompileClassName = new StringBuilder();
-			if (packege != null && !packege.isEmpty()) {
-				decompileClassName.append(packege);
+			if (package != null && !package.isEmpty()) {
+				decompileClassName.append(package);
 				decompileClassName.append('/');
 			}
 			decompileClassName.append(ClassUtil.getInternalName(className));

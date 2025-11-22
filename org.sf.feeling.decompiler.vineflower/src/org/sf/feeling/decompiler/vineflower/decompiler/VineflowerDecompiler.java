@@ -50,8 +50,8 @@ public class VineflowerDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
-	public void decompile(String root, String packege, final String className) {
-		if (root == null || packege == null || className == null) {
+	public void decompile(String root, String package, final String className) {
+		if (root == null || package == null || className == null) {
 			return;
 		}
 
@@ -61,7 +61,7 @@ public class VineflowerDecompiler implements IDecompiler {
 
 		loggerStream = new ByteArrayOutputStream();
 
-		File workingDir = new File(root, packege); // $NON-NLS-1$
+		File workingDir = new File(root, package); // $NON-NLS-1$
 
 		final Map<String, Object> mapOptions = new HashMap<>();
 
@@ -162,7 +162,7 @@ public class VineflowerDecompiler implements IDecompiler {
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override
-	public void decompileFromArchive(String archivePath, String packege, String className) {
+	public void decompileFromArchive(String archivePath, String package, String className) {
 		start = System.currentTimeMillis();
 		File workingDir = new File(
 				JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
@@ -170,7 +170,7 @@ public class VineflowerDecompiler implements IDecompiler {
 
 		try {
 			workingDir.mkdirs();
-			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
+			JarClassExtractor.extract(archivePath, package, className, true, workingDir.getAbsolutePath());
 			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
 		} catch (Exception e) {
 			JavaDecompilerPlugin.logError(e, e.getMessage());

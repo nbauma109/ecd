@@ -140,7 +140,7 @@ public class SubMenuCreator implements IMenuCreator {
 			}
 
 			dropDownMenuMgr.add(new Separator());
-			dropDownMenuMgr.add(new PreferenceActionContributionItem(new DecompilerPeferenceAction()));
+			dropDownMenuMgr.add(new PreferenceActionContributionItem(new DecompilerPreferenceAction()));
 		}
 	}
 }

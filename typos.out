@@ -1,0 +1,20 @@
+error: `Lable` should be `Label`, `Ladle`, `Labile`, `Able`
+   ╭▸ ./org.sf.feeling.decompiler/plugin.properties:19:14
+   │
+19 │ Opcode.Hover.Lable=JVM Opcode Doc
+   ╰╴             ━━━━━
+error: `Lable` should be `Label`, `Ladle`, `Labile`, `Able`
+    ╭▸ ./org.sf.feeling.decompiler/src/org/sf/feeling/decompiler/preferences/JavaDecompilerPreferencePage.java:125:54
+    │
+125 │                 Messages.getString("JavaDecompilerPreferencePage.Lable.UseEclipseSorter"), //$NON-NLS-1$
+    ╰╴                                                                 ━━━━━
+error: `Lable` should be `Label`, `Ladle`, `Labile`, `Able`
+   ╭▸ ./org.sf.feeling.decompiler/src/org/sf/feeling/decompiler/i18n/messages.properties:57:30
+   │
+57 │ JavaDecompilerPreferencePage.Lable.UseEclipseSorter=Use &Eclipse member sorter
+   ╰╴                             ━━━━━
+error: `overwrited` should be `overwritten`, `overwrote`
+    ╭▸ ./org.sf.feeling.decompiler/src/org/sf/feeling/decompiler/extension/DecompilerAdapterManager.java:318:14
+    │
+318 │             // cached overwrited adapters
+    ╰╴                      ━━━━━━━━━━

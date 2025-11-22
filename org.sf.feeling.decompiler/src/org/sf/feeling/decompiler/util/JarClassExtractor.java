@@ -27,10 +27,10 @@ public class JarClassExtractor {
 	 * extracts class files from jar/zip archive to specified path. See
 	 * <code>IDecompiler</code> documentation for the format of parameters.
 	 */
-	public static void extract(String archivePath, String packege, String className, boolean inner, String to)
+	public static void extract(String archivePath, String package, String className, boolean inner, String to)
 			throws IOException {
 		try (ZipFile archive = new ZipFile(archivePath)) {
-			List<ZipEntry> entries = findRelevant(archive, packege, className, inner);
+			List<ZipEntry> entries = findRelevant(archive, package, className, inner);
 			byte[] buffer = new byte[1024 * 16];
 			String outFile;
 			int lastSep;
@@ -58,9 +58,9 @@ public class JarClassExtractor {
 		}
 	}
 
-	private static List<ZipEntry> findRelevant(ZipFile archive, String packege, String className, boolean inner) {
-		String entryName = (packege.length() == 0) ? className
-				: packege + "/" //$NON-NLS-1$
+	private static List<ZipEntry> findRelevant(ZipFile archive, String package, String className, boolean inner) {
+		String entryName = (package.length() == 0) ? className
+				: package + "/" //$NON-NLS-1$
 						+ className;
 		String innerPrefix = entryName.substring(0, entryName.length() - 6) + "$"; //$NON-NLS-1$
 		// strip .class + $

@@ -210,7 +210,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 			if (!DecompilerType.FernFlower.equals(decompilerType)) {
 				IDecompilerDescriptor descriptor = getDecompilerDescriptor(decompilerType);
 				if (descriptor == null) {
-					preferenceStore.setDefault(DECOMPILER_TYPE, getDefalutDecompilerType());
+					preferenceStore.setDefault(DECOMPILER_TYPE, getDefaultDecompilerType());
 				}
 			}
 
@@ -296,7 +296,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 		return getPreferenceStore().getBoolean(ATTACH_SOURCE);
 	}
 
-	public String getDefalutDecompilerType() {
+	public String getDefaultDecompilerType() {
 		Collection<IDecompilerDescriptor> descriptors = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorMap()
 				.values();
 		if (descriptors != null) {
