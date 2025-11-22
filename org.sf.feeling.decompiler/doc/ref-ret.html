@@ -47,7 +47,7 @@ PrintMe:
     invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V
     ret 1               ; return to the return-address in local variable 1
 .end method
-</pre></dd><dt>Notes</dt><dd>The assymetry between jsr (which pushes a returnAddress onto
+</pre></dd><dt>Notes</dt><dd>The asymmetry between jsr (which pushes a returnAddress onto
 the stack) and ret (which gets the returnAddress from a local
 variable) is intentional - the bytecode verifier relies on this structure (see
 Chapter 5) .</dd><dt>See also</dt><dd><a href="ref-jsr.html">jsr</a> <a href="ref-.html"></a> <a href="ref-jsr_w.html">jsr_w</a> <a href="ref-.html"></a> <a href="ref-goto.html">goto</a> <a href="ref-.html"></a> <a href="ref-goto_w.html">goto_w</a> <a href="ref-.html"></a> <a href="ref-wide.html">wide</a> </dd><dt>Stack</dt><dd><table xmlns="">
