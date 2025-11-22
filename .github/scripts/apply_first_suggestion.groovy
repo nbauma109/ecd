@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.util.regex.Pattern
 
 final class Issue {
     final String path
