@@ -20,6 +20,7 @@ jobs:
 
       - name: Pass 1 — Apply typos fixes
         uses: crate-ci/typos@v1
+        continue-on-error: true
         with:
           files: .
           write_changes: true
@@ -37,7 +38,7 @@ jobs:
           title: "Fix typos"
           body: |
             Automated typo fixes.
-            Pass 1: crate-ci/typos-action (write mode)
+            Pass 1: typos (write mode, non-blocking)
             Pass 2: codespell (write mode)
           branch: "ci/typo-fixes"
           delete-branch: true
