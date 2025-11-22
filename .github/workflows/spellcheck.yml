@@ -138,7 +138,10 @@ jobs:
             echo "Applying first suggestion: $typo -> $fix at $file:$line:$col"
             apply_issue "$file" "$line" "$col" "$typo" "$fix"
           done < issues.sorted.tsv
+      - name: Clean up files
+        run: |
           rm -f issues.sorted.tsv issues.tsv typos typos.out
+
       - name: Show final diff
         run: |
           git diff --stat || true
