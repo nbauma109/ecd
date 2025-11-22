@@ -1,0 +1,43 @@
+name: Spellcheck Autofix Multi Pass
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Pass 1 — Apply typos fixes
+        uses: crate-ci/typos@v1
+        with:
+          files: .
+          write_changes: true
+
+      - name: Install codespell
+        run: pipx install codespell
+
+      - name: Pass 2 — Apply codespell fixes
+        run: codespell -w .
+
+      - name: Pass 3 — Create pull request if changes exist
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "fix typos"
+          title: "Fix typos"
+          body: |
+            Automated typo fixes.
+            Pass 1: crate-ci/typos-action (write mode)
+            Pass 2: codespell (write mode)
+          branch: "ci/typo-fixes"
+          delete-branch: true
