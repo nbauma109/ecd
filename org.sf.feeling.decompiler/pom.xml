@@ -16,7 +16,7 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<fernflower.version>252.27397.103</fernflower.version>
+		<fernflower.version>252.28238.7</fernflower.version>
 	</properties>
 
 	<build>
