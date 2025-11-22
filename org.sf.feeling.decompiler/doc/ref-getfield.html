@@ -38,7 +38,7 @@ assuming p is an instance of the class Point, writing the Java expression:<br></
 </pre>
 generates
 a call to getfield like:<br></br><pre>
-    aload_1                      ; push object in local varable 1 (i.e. p) onto the stack
+    aload_1                      ; push object in local variable 1 (i.e. p) onto the stack
     getfield xyz/Point/xCoord I  ; get the value of p.xCoord, which is an int
     istore_2                     ; store the int value in local variable 2 (x)
 </pre>
@@ -58,7 +58,7 @@ data. The type of the field must match &lt;descriptor&gt;. See Chapter 7 for
 more on how fields are resolved<br></br>To retrieve the value for the field, getfield obtains the bytes
 starting at <i xmlns="">offset</i> and extending for <i xmlns="">width</i> bytes from the start
 of <i xmlns="">objectref</i>'s instance data, expands it to either a 4-byte or 8-byte
-value, and pushes the value onto the operand stack.</dd><dt>Exceptions</dt><dd>NullPointerException - <i xmlns="">objectref</i> is null</dd><dt>Notes</dt><dd>Fields cannot be overriden, although they can be 'shadowed'. For
+value, and pushes the value onto the operand stack.</dd><dt>Exceptions</dt><dd>NullPointerException - <i xmlns="">objectref</i> is null</dd><dt>Notes</dt><dd>Fields cannot be overridden, although they can be 'shadowed'. For
 example, with the two classes:<br></br><pre>
     class A { int x; }
 and

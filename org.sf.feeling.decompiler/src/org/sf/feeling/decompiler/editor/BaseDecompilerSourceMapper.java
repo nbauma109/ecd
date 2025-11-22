@@ -47,7 +47,7 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
-	protected IDecompiler origionalDecompiler;
+	protected IDecompiler originalDecompiler;
 	private String classLocation;
 
 	private static Map<String, String> compilerOptions = new HashMap<>();
@@ -286,10 +286,10 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 				if (result == null) {
 					try {
-						result = ClassUtil.checkAvailableDecompiler(origionalDecompiler,
+						result = ClassUtil.checkAvailableDecompiler(originalDecompiler,
 								new ByteArrayInputStream(type.getClassFile().getBytes()));
 					} catch (JavaModelException e) {
-						result = origionalDecompiler;
+						result = originalDecompiler;
 					}
 				}
 				result.decompileFromArchive(archivePath, pkg, className);
@@ -314,7 +314,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 					}
 
 					if (result == null) {
-						result = ClassUtil.checkAvailableDecompiler(origionalDecompiler, new File(classLocation));
+						result = ClassUtil.checkAvailableDecompiler(originalDecompiler, new File(classLocation));
 					}
 					result.decompile(rootLocation, pkg, className);
 				} catch (JavaModelException e) {
@@ -341,7 +341,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 			JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
 		}
 
-		IDecompiler currentDecompiler = ClassUtil.checkAvailableDecompiler(origionalDecompiler, file);
+		IDecompiler currentDecompiler = ClassUtil.checkAvailableDecompiler(originalDecompiler, file);
 
 		currentDecompiler.decompile(file.getParentFile().getAbsolutePath(), "", //$NON-NLS-1$
 				file.getName());

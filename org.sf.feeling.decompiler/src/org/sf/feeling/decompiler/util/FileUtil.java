@@ -415,7 +415,7 @@ public class FileUtil {
 		return getContent(file, Charset.defaultCharset().name());
 	}
 
-	public static String getContent(File file, String enconding) {
+	public static String getContent(File file, String encoding) {
 		if (file == null || !file.exists()) {
 			return null;
 		}
@@ -434,7 +434,7 @@ public class FileUtil {
 				out.write(tmp, 0, r);
 			}
 			byte[] bytes = out.toByteArray();
-			String content = new String(bytes, enconding);
+			String content = new String(bytes, encoding);
 			return content.trim();
 		} catch (Exception e) {
 			e.printStackTrace();

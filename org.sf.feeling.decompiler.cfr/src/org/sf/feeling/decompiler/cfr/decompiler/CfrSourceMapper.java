@@ -18,13 +18,13 @@ public class CfrSourceMapper extends BaseDecompilerSourceMapper {
 
 	public CfrSourceMapper() {
 		super(new Path("."), ""); //$NON-NLS-1$ //$NON-NLS-2$
-		origionalDecompiler = new CfrDecompiler();
+		originalDecompiler = new CfrDecompiler();
 	}
 
 	@Override
 	protected void printDecompileReport(StringBuffer source, String fileLocation, Collection<Exception> exceptions,
 			long decompilationTime) {
-		String logMsg = origionalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+		String logMsg = originalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 				.replaceAll("\n\\s*", "\n\t"); //$NON-NLS-1$ //$NON-NLS-2$
 		source.append("\n\n/*"); //$NON-NLS-1$
 		source.append("\n\tDECOMPILATION REPORT\n"); //$NON-NLS-1$
@@ -34,7 +34,7 @@ public class CfrSourceMapper extends BaseDecompilerSourceMapper {
 		source.append(decompilationTime);
 		source.append(" ms\n\t"); //$NON-NLS-1$
 		source.append(logMsg);
-		exceptions.addAll(origionalDecompiler.getExceptions());
+		exceptions.addAll(originalDecompiler.getExceptions());
 		logExceptions(exceptions, source);
 		source.append("\n\tDecompiled with "); //$NON-NLS-1$
 		source.append(CfrDecompilerPlugin.decompilerType);

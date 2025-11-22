@@ -928,12 +928,12 @@ public class MethodUtils {
 			//
 			// Unfortunately, using reflection to invoke these methods
 			// seems to (wrongly) to prevent access even when the method
-			// modifer is public.
+			// modifier is public.
 			//
 			// The following workaround solves the problem but will only
-			// work from sufficiently privilages code.
+			// work from sufficiently privileges code.
 			//
-			// Better workarounds would be greatfully accepted.
+			// Better workarounds would be gratefully accepted.
 			//
 			method.setAccessible(true);
 
@@ -1036,7 +1036,7 @@ public class MethodUtils {
 	 * @param parameterType    the type of parameter accepted by the method
 	 * @param parameterization the type of parameter being tested
 	 * 
-	 * @return true if the assignement is compatible.
+	 * @return true if the assignment is compatible.
 	 */
 	public static final boolean isAssignmentCompatible(Class parameterType, Class parameterization) {
 		// try plain assignment
@@ -1189,7 +1189,7 @@ public class MethodUtils {
 		 * 
 		 * @param cls        the class to reflect, must not be null
 		 * @param methodName the method name to obtain
-		 * @param paramTypes the array of classes representing the paramater types
+		 * @param paramTypes the array of classes representing the parameter types
 		 * @param exact      whether the match has to be exact.
 		 */
 		public MethodDescriptor(Class cls, String methodName, Class[] paramTypes, boolean exact) {

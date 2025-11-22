@@ -21,7 +21,7 @@ public class JDCoreSourceMapper extends JDSourceMapper {
 
 	public JDCoreSourceMapper() {
 		super(new File("."), new Path("."), "", Collections.<String, String>emptyMap()); //$NON-NLS-1$ //$NON-NLS-2$
-		origionalDecompiler = new JDCoreDecompiler(this);
+		originalDecompiler = new JDCoreDecompiler(this);
 	}
 
 	@Override
@@ -35,9 +35,9 @@ public class JDCoreSourceMapper extends JDSourceMapper {
 		source.append("\tTotal time: ") //$NON-NLS-1$
 				.append(decompilationTime).append(" ms\n"); //$NON-NLS-1$
 		source.append("\t" //$NON-NLS-1$
-				+ origionalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ originalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
-		exceptions.addAll(origionalDecompiler.getExceptions());
+		exceptions.addAll(originalDecompiler.getExceptions());
 		try {
 			source.append("\n\tDecompiled with JD-Core " + printer.getVersion()); //$NON-NLS-1$
 		} catch (IOException e) {

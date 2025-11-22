@@ -155,7 +155,7 @@ public class DecompilerAdapterManager {
 		}
 	}
 
-	private static Class<?> classForName(String className, Object adapterInstance, IAdapterFactory adapterFacotry)
+	private static Class<?> classForName(String className, Object adapterInstance, IAdapterFactory adapterFactory)
 			throws ClassNotFoundException {
 		Class<?> clazz = null;
 
@@ -167,14 +167,14 @@ public class DecompilerAdapterManager {
 			}
 		}
 
-		if (clazz == null && adapterFacotry != null) {
+		if (clazz == null && adapterFactory != null) {
 			try {
-				clazz = adapterFacotry.getClass().getClassLoader().loadClass(className);
+				clazz = adapterFactory.getClass().getClassLoader().loadClass(className);
 			} catch (ClassNotFoundException ex) {
 				// it is possible that the default bundle classloader is unaware
 				// of this class, but the adaptor factory can load it in some
 				// other way. See bug 200068.
-				Class[] adapterList = adapterFacotry.getAdapterList();
+				Class[] adapterList = adapterFactory.getAdapterList();
 				if (adapterList != null && adapterList.length > 0) {
 					for (int i = 0; i < adapterList.length; i++) {
 						if (className.equals(adapterList[i].getName())) {
@@ -210,26 +210,26 @@ public class DecompilerAdapterManager {
 		}
 	}
 
-	public static Object[] getAdapters(Object adaptableObject, Class adatperType) {
-		List adapterObjects = getAdapterList(adaptableObject, adatperType);
+	public static Object[] getAdapters(Object adaptableObject, Class adapterType) {
+		List adapterObjects = getAdapterList(adaptableObject, adapterType);
 
 		return (adapterObjects != null && adapterObjects.size() > 0)
 				? adapterObjects.toArray(new Object[adapterObjects.size()])
 				: null;
 	}
 
-	public static Object getAdapter(Object adaptableObject, Class adatperType) {
-		List adapterObjects = getAdapterList(adaptableObject, adatperType);
+	public static Object getAdapter(Object adaptableObject, Class adapterType) {
+		List adapterObjects = getAdapterList(adaptableObject, adapterType);
 		if (adapterObjects == null || adapterObjects.size() == 0)
 			return null;
 		else if (adapterObjects.size() == 1)
 			return adapterObjects.get(0);
 		else
-			return Proxy.newProxyInstance(adatperType.getClassLoader(), new Class[] { adatperType },
+			return Proxy.newProxyInstance(adapterType.getClassLoader(), new Class[] { adapterType },
 					new DecompilerAdapterInvocationHandler(adapterObjects));
 	}
 
-	private static List getAdapterList(Object adaptableObject, Class adatperType) {
+	private static List getAdapterList(Object adaptableObject, Class adapterType) {
 		Set adapters = getAdapters(adaptableObject);
 		if (adapters == null)
 			return null;
@@ -247,7 +247,7 @@ public class DecompilerAdapterManager {
 				}
 			}
 			Object obj = adapter.getAdater(adaptableObject);
-			if (obj != null && adatperType.isAssignableFrom(obj.getClass())) {
+			if (obj != null && adapterType.isAssignableFrom(obj.getClass())) {
 				adapterObjects.add(obj);
 			}
 		}
@@ -315,7 +315,7 @@ class ElementAdapterSet extends TreeSet {
 	@Override
 	public boolean add(Object o) {
 		if (o instanceof DecompilerAdapter) {
-			// cached overwrited adapters
+			// cached overwritten adapters
 			DecompilerAdapter adapter = (DecompilerAdapter) o;
 			String[] overwriteIds = adapter.getOverwrite();
 			if (overwriteIds != null && overwriteIds.length > 0) {

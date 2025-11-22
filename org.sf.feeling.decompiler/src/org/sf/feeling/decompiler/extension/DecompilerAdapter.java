@@ -28,7 +28,7 @@ public class DecompilerAdapter {
 	 */
 	private int priority = 2;
 	/**
-	 * A id array of DecompilerAdapters to overwite (hide).
+	 * A id array of DecompilerAdapters to overwrite (hide).
 	 */
 	private String[] overwrite;
 	/**
@@ -59,7 +59,7 @@ public class DecompilerAdapter {
 	 */
 	private boolean isSingleton;
 	/**
-	 * Adatper object instance.
+	 * Adapter object instance.
 	 */
 	private Object cachedAdapter;
 

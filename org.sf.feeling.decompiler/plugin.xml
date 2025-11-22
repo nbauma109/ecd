@@ -163,7 +163,7 @@
          point="org.eclipse.ui.popupMenus">
       <viewerContribution
             targetID="#ClassFileEditorContext"
-            id="org.sf.feeling.decompiler.ExportSouceMenuAction">
+            id="org.sf.feeling.decompiler.ExportSourceMenuAction">
          <action
                label="%ExportSource"
                class="org.sf.feeling.decompiler.actions.ExportSourceActionDelegate"
