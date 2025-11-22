@@ -43,7 +43,7 @@ public class PreferenceMenuItemAction implements IWorkbenchWindowPulldownDelegat
 
 	@Override
 	public void run(IAction action) {
-		new DecompilerPeferenceAction().run();
+		new DecompilerPreferenceAction().run();
 
 	}
 

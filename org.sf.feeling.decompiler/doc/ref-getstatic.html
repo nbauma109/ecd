@@ -50,7 +50,7 @@ static data. The type of the field must match &lt;descriptor&gt;. See Chapter 7
 for more on how fields are resolved<br></br>To retrieve the value for the field, getstatic obtains the bytes
 starting at <i xmlns="">offset</i> and extending for <i xmlns="">width</i> bytes from the start
 of the class's static  data, expands it to either a 4-byte or 8-byte value, and
-pushes the value onto the operand stack.</dd><dt>Notes</dt><dd>Fields cannot be overriden, although they can be 'shadowed'. For
+pushes the value onto the operand stack.</dd><dt>Notes</dt><dd>Fields cannot be overridden, although they can be 'shadowed'. For
 example, with the two classes:<br></br><pre>
     class A { static int x; }
 and

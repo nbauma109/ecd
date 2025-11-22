@@ -149,7 +149,7 @@
          <attribute name="overwrite" type="string">
             <annotation>
                <documentation>
-                  Semicolon seperated id list that this adapter want to overwrite
+                  Semicolon separated id list that this adapter want to overwrite
                </documentation>
             </annotation>
          </attribute>
