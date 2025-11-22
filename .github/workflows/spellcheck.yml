@@ -149,7 +149,7 @@ jobs:
       - name: Pass 3 — Create pull request if changes exist
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           commit-message: "Fix typos"
           title: "Fix typos"
           body: |
