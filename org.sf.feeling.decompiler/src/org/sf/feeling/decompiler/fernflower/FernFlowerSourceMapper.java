@@ -17,7 +17,7 @@ public class FernFlowerSourceMapper extends BaseDecompilerSourceMapper {
 
 	public FernFlowerSourceMapper() {
 		super(new Path("."), ""); //$NON-NLS-1$ //$NON-NLS-2$
-		origionalDecompiler = new FernFlowerDecompiler();
+		originalDecompiler = new FernFlowerDecompiler();
 	}
 
 	@Override
@@ -31,9 +31,9 @@ public class FernFlowerSourceMapper extends BaseDecompilerSourceMapper {
 		source.append("\tTotal time: ") //$NON-NLS-1$
 				.append(decompilationTime).append(" ms\n"); //$NON-NLS-1$
 		source.append("\t" //$NON-NLS-1$
-				+ origionalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ originalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
 						.replaceAll("\n\\s*", "\n\t")); //$NON-NLS-1$ //$NON-NLS-2$
-		exceptions.addAll(origionalDecompiler.getExceptions());
+		exceptions.addAll(originalDecompiler.getExceptions());
 		logExceptions(exceptions, source);
 		source.append("\n\tDecompiled with FernFlower."); //$NON-NLS-1$
 		source.append("\n*/"); //$NON-NLS-1$
