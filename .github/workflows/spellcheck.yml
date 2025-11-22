@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Pass 1: apply all unambiguous fixes
       - name: Pass 1 — Apply typos safe fixes
@@ -145,6 +146,7 @@ jobs:
       - name: Pass 3 — Create pull request if changes exist
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Fix typos"
           title: "Fix typos"
           body: |
