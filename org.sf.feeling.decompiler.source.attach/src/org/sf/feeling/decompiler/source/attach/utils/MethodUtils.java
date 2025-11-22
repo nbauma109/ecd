@@ -102,7 +102,7 @@ public class MethodUtils {
 	 * <p>
 	 * The behaviour of this method is less deterministic than
 	 * <code>invokeExactMethod()</code>. It loops through all methods with names
-	 * that match and then executes the first it finds with compatable parameters.
+	 * that match and then executes the first it finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
@@ -144,7 +144,7 @@ public class MethodUtils {
 	 * The behaviour of this method is less deterministic than
 	 * {@link #invokeExactMethod(Object object,String methodName,Object [] args)} .
 	 * It loops through all methods with names that match and then executes the
-	 * first it finds with compatable parameters.
+	 * first it finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
@@ -194,7 +194,7 @@ public class MethodUtils {
 	 * The behaviour of this method is less deterministic than
 	 * {@link #invokeExactMethod(Object object,String methodName,Object [] args,Class[] parameterTypes)}
 	 * . It loops through all methods with names that match and then executes the
-	 * first it finds with compatable parameters.
+	 * first it finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
@@ -393,7 +393,7 @@ public class MethodUtils {
 	 * The behaviour of this method is less deterministic than
 	 * {@link #invokeExactMethod(Object, String, Object[], Class[])}. It loops
 	 * through all methods with names that match and then executes the first it
-	 * finds with compatable parameters.
+	 * finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
@@ -436,7 +436,7 @@ public class MethodUtils {
 	 * The behaviour of this method is less deterministic than
 	 * {@link #invokeExactMethod(Object object,String methodName,Object [] args)} .
 	 * It loops through all methods with names that match and then executes the
-	 * first it finds with compatable parameters.
+	 * first it finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
@@ -486,7 +486,7 @@ public class MethodUtils {
 	 * The behaviour of this method is less deterministic than
 	 * {@link #invokeExactStaticMethod(Class objectClass,String methodName,Object [] args,Class[] parameterTypes)}
 	 * . It loops through all methods with names that match and then executes the
-	 * first it finds with compatable parameters.
+	 * first it finds with compatible parameters.
 	 * </p>
 	 * 
 	 * <p>
