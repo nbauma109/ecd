@@ -372,23 +372,6 @@ public class DecompilerOutputUtil {
 		return -1;
 	}
 
-	public static int parseJavaLineNumber(String line) {
-		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
-		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		Matcher matcher = pattern.matcher(line.trim());
-		if (matcher.find()) {
-			return Integer.parseInt(matcher.group().replaceAll("[^0-9]", "")); //$NON-NLS-1$ //$NON-NLS-2$
-		} else {
-			regex = "//\\s+\\d+"; //$NON-NLS-1$
-		}
-		pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		matcher = pattern.matcher(line.trim());
-		if (matcher.find()) {
-			return Integer.parseInt(matcher.group().replaceAll("[^0-9]", "")); //$NON-NLS-1$ //$NON-NLS-2$
-		}
-		return -1;
-	}
-
 	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace) {
 		String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
 		boolean fernFlowerBased = DecompilerType.isFernFlowerBased(decompilerType);
