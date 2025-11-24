@@ -20,6 +20,7 @@
 
   <modules>
     <module>org.sf.feeling.decompiler</module>
+    <module>org.sf.feeling.decompiler.tests</module>
     <module>org.sf.feeling.decompiler.feature</module>
     <module>org.sf.feeling.decompiler.cfr</module>
     <module>org.sf.feeling.decompiler.cfr.feature</module>
