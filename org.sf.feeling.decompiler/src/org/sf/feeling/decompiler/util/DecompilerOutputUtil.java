@@ -147,29 +147,6 @@ public class DecompilerOutputUtil {
 		return str == null || str.length() == 0;
 	}
 
-	public static String replace(String text, String searchString, String replacement) {
-		if (isEmpty(text) || isEmpty(searchString) || replacement == null) {
-			return text;
-		}
-		int start = 0;
-		int end = text.indexOf(searchString, start);
-		if (end == -1) {
-			return text;
-		}
-		int replLength = searchString.length();
-		int increase = replacement.length() - replLength;
-		increase = (increase < 0 ? 0 : increase);
-		increase *= 16;
-		StringBuffer buf = new StringBuffer(text.length() + increase);
-		while (end != -1) {
-			buf.append(text.substring(start, end)).append(replacement);
-			start = end + replLength;
-			end = text.indexOf(searchString, 2);
-		}
-		buf.append(text.substring(start));
-		return buf.toString();
-	}
-
 	@Override
 	public String toString() {
 		String line;
