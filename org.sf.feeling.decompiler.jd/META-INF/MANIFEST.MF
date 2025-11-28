@@ -25,7 +25,8 @@ Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
 Export-Package: org.sf.feeling.decompiler.jd.actions,
- org.sf.feeling.decompiler.jd.decompiler
+ org.sf.feeling.decompiler.jd.decompiler,
+ jd.ide.eclipse.editors
 Bundle-ClassPath: .,
  target/lib/bcel.jar,
  target/lib/commons-lang3.jar,

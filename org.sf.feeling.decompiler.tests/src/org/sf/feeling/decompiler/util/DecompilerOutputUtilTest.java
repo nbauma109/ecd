@@ -117,9 +117,9 @@ public class ExampleFour {
 		assertEquivalent("""
 /*   */
 /*   */ public class ExampleFour {
-/*   */   public void run() {
-/* 4 */      System.out.println("No package and no import");
-/*   */   }
+/*   */    public void run() {
+/* 4 */       System.out.println("No package and no import");
+/*   */    }
 /*   */ }
 """, output);
 	}
@@ -236,11 +236,11 @@ public class ExampleFour {
 		String output = decompilerOutputUtil.toString();
 		assertEquivalent("""
 
-/*   */     public class ExampleFour    {
-/*   */         public void run() {
-/* 4 */             System.out.println("No package and no import");
-/*   */         }
+/*   */ public class ExampleFour{
+/*   */     public void run() {
+/* 4 */         System.out.println("No package and no import");
 /*   */     }
+/*   */ }
 """, output);
 	}
 

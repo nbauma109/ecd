@@ -23,12 +23,16 @@
     <module>org.sf.feeling.decompiler.tests</module>
     <module>org.sf.feeling.decompiler.feature</module>
     <module>org.sf.feeling.decompiler.cfr</module>
+    <module>org.sf.feeling.decompiler.cfr.tests</module>
     <module>org.sf.feeling.decompiler.cfr.feature</module>
     <module>org.sf.feeling.decompiler.jd</module>
+    <module>org.sf.feeling.decompiler.jd.tests</module>
     <module>org.sf.feeling.decompiler.jd.feature</module>
     <module>org.sf.feeling.decompiler.procyon</module>
+    <module>org.sf.feeling.decompiler.procyon.tests</module>
     <module>org.sf.feeling.decompiler.procyon.feature</module>
     <module>org.sf.feeling.decompiler.vineflower</module>
+    <module>org.sf.feeling.decompiler.vineflower.tests</module>
     <module>org.sf.feeling.decompiler.vineflower.feature</module>
     <module>org.sf.feeling.decompiler.source.attach</module>
     <module>org.sf.feeling.decompiler.source.attach.tests</module>

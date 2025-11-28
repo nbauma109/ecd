@@ -64,6 +64,7 @@ public class FernFlowerDecompiler implements IDecompiler {
 
 		final Map<String, Object> mapOptions = new HashMap<>();
 
+		mapOptions.put(IFernflowerPreferences.INDENT_STRING, "  "); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.REMOVE_SYNTHETIC, "1"); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES, "1"); //$NON-NLS-1$
 		mapOptions.put(IFernflowerPreferences.DECOMPILE_INNER, "1"); //$NON-NLS-1$

@@ -1,0 +1,73 @@
+/*    */ package test;
+/*    */ 
+/*    */ public class Test
+/*    */ {
+/*    */   public void method1() {
+/*  6 */     System.out.println("Test.method1");
+/*    */   }
+/*    */   
+/*    */   public void method2() {
+/* 10 */     System.out.println("Test.method2");
+/*    */   }
+/*    */   
+/*    */   class Inner1
+/*    */   {
+/*    */     public Inner1() {
+/* 16 */       System.out.println("Inner1 constructor");
+/*    */     }
+/*    */     
+/*    */     public void method1() {
+/* 20 */       System.out.println("Inner1.method1");
+/*    */     }
+/*    */     
+/*    */     public void method2() {
+/* 24 */       System.out.println("Inner1.method2");
+/*    */     }
+/*    */   }
+/*    */   
+/*    */   public void method3() {
+/* 29 */     System.out.println("Test.method3");
+/*    */   }
+/*    */   
+/*    */   public void method4() {
+/* 33 */     System.out.println("Test.method4");
+/*    */   }
+/*    */   
+/*    */   class Inner3
+/*    */   {
+/*    */     public Inner3() {
+/* 39 */       System.out.println("Inner3 constructor");
+/*    */     }
+/*    */     
+/*    */     public void method1() {
+/* 43 */       System.out.println("Inner3.method1");
+/*    */     }
+/*    */     
+/*    */     public void method2() {
+/* 47 */       System.out.println("Inner3.method2");
+/*    */     }
+/*    */   }
+/*    */   
+/*    */   class Inner4
+/*    */   {
+/*    */     public Inner4() {
+/* 54 */       System.out.println("Inner4 constructor");
+/*    */     }
+/*    */     
+/*    */     public void method1() {
+/* 58 */       System.out.println("Inner4.method1");
+/*    */     }
+/*    */     
+/*    */     public void method2() {
+/* 62 */       System.out.println("Inner4.method2");
+/*    */     }
+/*    */   }
+/*    */   
+/*    */   public void method5() {
+/* 67 */     System.out.println("Test.method5");
+/*    */   }
+/*    */   
+/*    */   public void method6() {
+/* 71 */     System.out.println("Test.method6");
+/*    */   }
+/*    */ }

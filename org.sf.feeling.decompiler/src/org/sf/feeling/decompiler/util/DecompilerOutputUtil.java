@@ -158,27 +158,63 @@ public class DecompilerOutputUtil {
 		boolean generateEmptyString = true;
 		int leftTrimSpace = 0;
 
-		Pattern pattern = Pattern.compile("/\\*\\s+\\*/", //$NON-NLS-1$
-				Pattern.CASE_INSENSITIVE);
-		Matcher matcher = pattern.matcher(input);
-		if (matcher.find()) {
-			generateEmptyString = false;
+		CompilationUnit cu = ASTParserUtil.parse(input);
 
-			pattern = Pattern.compile("([ ]+)(package|import)", //$NON-NLS-1$
-					Pattern.CASE_INSENSITIVE);
-			matcher = pattern.matcher(input);
-			if (matcher.find()) {
-				leftTrimSpace = matcher.group(1).length();
-			}
-		} else {
-			pattern = Pattern.compile("([ ]+)(package|import)", //$NON-NLS-1$
-					Pattern.CASE_INSENSITIVE);
-			matcher = pattern.matcher(input);
-			if (matcher.find()) {
-				leftTrimSpace = matcher.group(1).length();
-				generateEmptyString = true;
-			}
+		// 1) detect empty block comment
+		boolean hasEmptyBlockComment = false;
+		for (Object obj : cu.getCommentList()) {
+		    if (obj instanceof org.eclipse.jdt.core.dom.BlockComment) {
+		        org.eclipse.jdt.core.dom.BlockComment bc = (org.eclipse.jdt.core.dom.BlockComment) obj;
+		        int start = bc.getStartPosition();
+		        int end = start + bc.getLength();
+		        String content = input.substring(start, end);
+		        String stripped = content
+		                .replaceFirst("/\\*", "")
+		                .replaceFirst("\\*/", "")
+		                .trim();
+		        if (stripped.isEmpty()) {
+		            hasEmptyBlockComment = true;
+		            break;
+		        }
+		    }
 		}
+
+		// 2) detect first declaration position
+		int firstDeclPos = -1;
+
+		// package first
+		if (cu.getPackage() != null) {
+		    firstDeclPos = cu.getPackage().getStartPosition();
+		}
+		// else import
+		else if (!cu.imports().isEmpty()) {
+		    org.eclipse.jdt.core.dom.ImportDeclaration id =
+		            (org.eclipse.jdt.core.dom.ImportDeclaration) cu.imports().get(0);
+		    firstDeclPos = id.getStartPosition();
+		}
+		// else type / member
+		else if (!cu.types().isEmpty()) {
+		    ASTNode type = (ASTNode) cu.types().get(0);
+		    firstDeclPos = type.getStartPosition();
+		}
+
+		// 3) measure indentation when the first declaration exists
+		if (firstDeclPos >= 0) {
+		    String before = input.substring(0, firstDeclPos);
+		    int lastNewline = before.lastIndexOf('\n');
+		    int count = 0;
+		    for (int i = lastNewline + 1; i < before.length(); i++) {
+		        if (before.charAt(i) == ' ') {
+		            count++;
+		        } else {
+		            break;
+		        }
+		    }
+		    leftTrimSpace = count;
+		}
+
+		// 4) empty block comment controls generateEmptyString
+		generateEmptyString = !hasEmptyBlockComment;
 
 		int lastBracketIndex = input.lastIndexOf('}');
 		if (lastBracketIndex != -1) {
