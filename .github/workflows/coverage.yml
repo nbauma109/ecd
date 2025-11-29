@@ -36,12 +36,6 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: >-
-            org.sf.feeling.decompiler.cfr.tests/target/jacoco-report/jacoco.xml,
-            org.sf.feeling.decompiler.jd.tests/target/jacoco-report/jacoco.xml,
-            org.sf.feeling.decompiler.procyon.tests/target/jacoco-report/jacoco.xml,
-            org.sf.feeling.decompiler.source.attach.tests/target/jacoco-report/jacoco.xml,
-            org.sf.feeling.decompiler.tests/target/jacoco-report/jacoco.xml,
-            org.sf.feeling.decompiler.vineflower.tests/target/jacoco-report/jacoco.xml
+          files: "org.sf.feeling.decompiler.cfr.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.jd.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.procyon.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.source.attach.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.vineflower.tests/target/jacoco-report/jacoco.xml"
           verbose: true
           fail_ci_if_error: true
