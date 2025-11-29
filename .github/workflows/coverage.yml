@@ -33,9 +33,39 @@ jobs:
           .\install_certs.bat
           .\build.bat
 
+      # -----------------------------------
+      # Collect all jacoco.xml files (Windows)
+      # -----------------------------------
+      - name: Collect jacoco XML reports
+        id: collect
+        shell: cmd /V:ON
+        run: |
+          echo Searching for jacoco.xml files...
+          set "FILES="
+          for /f "delims=" %%F in ('dir /s /b jacoco.xml') do (
+              echo Found: %%F
+              set "FILES=!FILES! %%F"
+          )
+          rem Trim leading space and convert \ to /
+          set "FILES=!FILES:~1!"
+          set "FILES=!FILES:\=/%!"
+          echo files=!FILES!>>"%GITHUB_OUTPUT%"
+          echo Final file list:
+          echo !FILES!
+
+      - name: Fail if no jacoco reports found
+        if: steps.collect.outputs.files == ''
+        shell: cmd
+        run: |
+          echo ERROR: No jacoco.xml files found!
+          exit 1
+
+      # -----------------------------------
+      # Upload to Codecov
+      # -----------------------------------
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: "org.sf.feeling.decompiler.cfr.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.jd.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.procyon.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.source.attach.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.tests/target/jacoco-report/jacoco.xml,org.sf.feeling.decompiler.vineflower.tests/target/jacoco-report/jacoco.xml"
+          files: ${{ steps.collect.outputs.files }}
           verbose: true
           fail_ci_if_error: true
