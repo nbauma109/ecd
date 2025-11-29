@@ -1,7 +1,7 @@
 package org.sf.feeling.decompiler.jd.decompiler;
 
+import static org.sf.feeling.decompiler.util.TextAssert.assertEquivalent;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -26,7 +26,7 @@ public class JDCoreDecompilerTest {
 		decompiler.decompileFromArchive("resources/test.jar", "test", "Test.class");
 		String output = decompiler.getSource();
 		String expected = toString(getClass().getResource("/Test.txt"));
-	    assertEquals(expected, output);
+		assertEquivalent(expected, output);
 	}
 
 	private String toString(URL resource) throws IOException, URISyntaxException {
