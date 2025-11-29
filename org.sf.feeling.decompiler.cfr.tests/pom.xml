@@ -1,16 +1,35 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>com.github.ecd-plugin</groupId>
-		<artifactId>com.github.ecd-plugin.ecd</artifactId>
-		<version>2025.9.9</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
+  <parent>
+    <groupId>com.github.ecd-plugin</groupId>
+    <artifactId>com.github.ecd-plugin.ecd</artifactId>
+    <version>2025.9.9</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
 
-	<artifactId>org.sf.feeling.decompiler.cfr.tests</artifactId>
-	<packaging>eclipse-test-plugin</packaging>
+  <artifactId>org.sf.feeling.decompiler.cfr.tests</artifactId>
+  <packaging>eclipse-test-plugin</packaging>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <destFile>${project.build.directory}/jacoco.exec</destFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
