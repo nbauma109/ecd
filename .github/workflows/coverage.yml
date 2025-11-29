@@ -33,17 +33,18 @@ jobs:
           .\install_certs.bat
           .\build.bat
 
-      # ------------------------------------------------
-      # Collect all jacoco.xml REPORT FILES on Windows
-      # ------------------------------------------------
+      - name: List coverage files
+        shell: bash
+        run: |
+          echo "Searching for JaCoCo files..."
+          find . -name "*jacoco*"
+
       - name: Collect jacoco XML reports
         id: collect
         shell: cmd
         run: |
           setlocal EnableDelayedExpansion
-
           cd /d "%GITHUB_WORKSPACE%"
-
           echo Searching for jacoco.xml files...
           set "FILES="
 
@@ -52,10 +53,7 @@ jobs:
               set "FILES=!FILES! %%F"
           )
 
-          rem Trim leading space
           set "FILES=!FILES:~1!"
-
-          rem Convert backslashes to forward slashes
           set "FILES=!FILES:\=/%!"
 
           echo files=!FILES!>>"%GITHUB_OUTPUT%"
