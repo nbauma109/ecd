@@ -9,7 +9,6 @@
 package org.sf.feeling.decompiler.source.attach.attacher;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -27,8 +26,6 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
 import org.eclipse.jdt.internal.ui.wizards.buildpaths.BuildPathSupport;
 import org.eclipse.jdt.internal.ui.wizards.buildpaths.CPListElement;
-import org.eclipse.swt.widgets.Shell;
-import org.sf.feeling.decompiler.source.attach.utils.MethodUtils;
 import org.sf.feeling.decompiler.util.Logger;
 
 @SuppressWarnings("restriction")
@@ -88,20 +85,8 @@ public class InternalBasedSourceAttacherImpl35 implements SourceAttacher {
 			final IClasspathEntry newEntry = entry2;
 			final String[] changedAttributes = { "sourcepath" //$NON-NLS-1$
 			};
-			try {
-				MethodUtils.invokeExactStaticMethod(BuildPathSupport.class, "modifyClasspathEntry", //$NON-NLS-1$
-						new Object[] { null, newEntry, changedAttributes, jproject, fContainerPath,
-								new NullProgressMonitor() },
-						new Class[] { Shell.class, IClasspathEntry.class, String[].class, IJavaProject.class,
-								IPath.class, IProgressMonitor.class });
-			} catch (NoSuchMethodException e) {
-				throw new RuntimeException(e);
-			} catch (IllegalAccessException e2) {
-				throw new RuntimeException(e2);
-			}
-		} catch (InvocationTargetException e3) {
-			Logger.debug("error", e3); //$NON-NLS-1$
-			return false;
+			final boolean isReferencedEntry = fEntry.getReferencingEntry() != null;
+			BuildPathSupport.modifyClasspathEntry(null, newEntry, changedAttributes, jproject, fContainerPath, isReferencedEntry, new NullProgressMonitor());
 		} catch (CoreException e4) {
 			Logger.debug("error", e4); //$NON-NLS-1$
 			return false;
