@@ -52,7 +52,7 @@ public class JDCoreDecompiler implements IDecompiler {
 		Boolean displayNumber = null;
 
 		try {
-			if (UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode()) {
+			if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective()) {
 				displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
 				JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
 			}

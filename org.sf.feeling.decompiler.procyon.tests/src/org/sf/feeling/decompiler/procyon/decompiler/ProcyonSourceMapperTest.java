@@ -27,26 +27,20 @@ public class ProcyonSourceMapperTest {
 		prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
 		JavaDecompilerPlugin.getDefault().setDebugMode(true);
 
-	    File jarFile = File.createTempFile("ecd-test-", ".jar");
-	    try (InputStream in = getClass().getResource("/test.jar").openStream()) {
-	        Files.copy(in, jarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-	    }
+		File jarFile = File.createTempFile("ecd-test-", ".jar");
+		try (InputStream in = getClass().getResource("/test.jar").openStream()) {
+			Files.copy(in, jarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
 
-        FileUtils.forceMkdir(new File("target/test"));
+		FileUtils.forceMkdir(new File("target/test"));
 
-	    JarClassExtractor.extract(
-	        jarFile.getAbsolutePath(),
-	        "test",
-	        "Test.class",
-	        true,
-	        "target/test"
-	    );
+		JarClassExtractor.extract(jarFile.getAbsolutePath(), "test", "Test.class", true, "target/test");
 
-	    ProcyonSourceMapper procyonSourceMapper = new ProcyonSourceMapper();
-	    File file = new File("target/test/Test.class");
+		ProcyonSourceMapper procyonSourceMapper = new ProcyonSourceMapper();
+		File file = new File("target/test/Test.class");
 		String expected = toString(getClass().getResource("/Test.txt"));
-	    String output = procyonSourceMapper.decompile("Procyon", file);
-	    assertEquals(expected, output);
+		String output = procyonSourceMapper.decompile("Procyon", file);
+		assertEquals(expected, output);
 	}
 
 	private String toString(URL resource) throws IOException, URISyntaxException {

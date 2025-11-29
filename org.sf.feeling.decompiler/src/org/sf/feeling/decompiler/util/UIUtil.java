@@ -139,9 +139,9 @@ public class UIUtil {
 		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
 		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-		boolean debug = (showLineNumber && align) || UIUtil.isDebugPerspective()
-				|| JavaDecompilerPlugin.getDefault().isDebugMode();
-		return debug;
+		return (showLineNumber && align)
+				|| JavaDecompilerPlugin.getDefault().isDebugMode()
+				|| UIUtil.isDebugPerspective();
 	}
 
 	public static boolean isDebugPerspective() {

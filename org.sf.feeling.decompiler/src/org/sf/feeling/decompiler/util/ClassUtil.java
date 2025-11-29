@@ -68,8 +68,9 @@ public class ClassUtil {
 	}
 
 	public static boolean isDebug() {
-		return JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective()
-				|| JavaDecompilerPlugin.getDefault().isDebugMode();
+		return JavaDecompilerPlugin.getDefault().isDebug()
+				|| JavaDecompilerPlugin.getDefault().isDebugMode()
+				|| UIUtil.isDebugPerspective();
 	}
 
 	public static int getLevel(InputStream is) {

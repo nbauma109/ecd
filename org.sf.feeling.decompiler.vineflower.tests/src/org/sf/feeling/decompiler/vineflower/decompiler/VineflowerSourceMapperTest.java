@@ -29,26 +29,20 @@ public class VineflowerSourceMapperTest {
 
 		URL resource = getClass().getResource("/test.jar");
 
-	    File jarFile = File.createTempFile("ecd-test-", ".jar");
-	    try (InputStream in = resource.openStream()) {
-	        Files.copy(in, jarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-	    }
+		File jarFile = File.createTempFile("ecd-test-", ".jar");
+		try (InputStream in = resource.openStream()) {
+			Files.copy(in, jarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
 
-        FileUtils.forceMkdir(new File("target/test"));
+		FileUtils.forceMkdir(new File("target/test"));
 
-	    JarClassExtractor.extract(
-	        jarFile.getAbsolutePath(),
-	        "test",
-	        "Test.class",
-	        true,
-	        "target/test"
-	    );
+		JarClassExtractor.extract(jarFile.getAbsolutePath(), "test", "Test.class", true, "target/test");
 
-	    VineflowerSourceMapper vineflowerSourceMapper = new VineflowerSourceMapper();
-	    File file = new File("target/test/Test.class");
+		VineflowerSourceMapper vineflowerSourceMapper = new VineflowerSourceMapper();
+		File file = new File("target/test/Test.class");
 		String expected = toString(getClass().getResource("/Test.txt"));
-	    String output = vineflowerSourceMapper.decompile("Vineflower", file);
-	    assertEquals(expected, output);
+		String output = vineflowerSourceMapper.decompile("Vineflower", file);
+		assertEquals(expected, output);
 	}
 
 	private String toString(URL resource) throws IOException, URISyntaxException {

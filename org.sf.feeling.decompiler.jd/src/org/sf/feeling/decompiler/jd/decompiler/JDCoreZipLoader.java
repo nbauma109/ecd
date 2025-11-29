@@ -49,7 +49,11 @@ public class JDCoreZipLoader implements Loader, Closeable {
 		if (entriesCache != null && !entriesCache.zipFilePath.equals(zipFilePath)) {
 			throw new IllegalArgumentException("entriesCache is for the wrong zipFilePath");
 		}
-		zipFile = new ZipFile(zipFilePath.toFile());
+		if (Files.exists(zipFilePath)) {
+			zipFile = new ZipFile(zipFilePath.toFile());
+		} else {
+			throw new IOException("Could not find " + zipFilePath.toAbsolutePath());
+		}
 
 		if (entriesCache == null) {
 			entriesCache = new EntriesCache(zipFilePath);

@@ -105,7 +105,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
 	private boolean doOpenBuffer(IEditorInput input, String type, boolean force, boolean reuseBuf, boolean always)
 			throws JavaModelException {
-		if (UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode())
+		if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())
 			reuseBuf = false;
 
 		if (input instanceof IClassFileEditorInput) {

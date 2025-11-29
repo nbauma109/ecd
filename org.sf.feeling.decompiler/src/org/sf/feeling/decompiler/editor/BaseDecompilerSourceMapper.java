@@ -202,8 +202,8 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
 		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-		if ((showLineNumber && align) || UIUtil.isDebugPerspective()
-				|| JavaDecompilerPlugin.getDefault().isDebugMode()) {
+		if ((showLineNumber && align) || JavaDecompilerPlugin.getDefault().isDebugMode()
+				|| UIUtil.isDebugPerspective()) {
 			if (showReport)
 				code = usedDecompiler.removeComment(code);
 			DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(usedDecompiler.getDecompilerType(),
@@ -213,7 +213,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		StringBuffer source = new StringBuffer();
 
-		if (!(UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode())) {
+		if (!(JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())) {
 			boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
 			if (useSorter) {
 				className = new String(info.getName());
@@ -274,7 +274,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		String pkg = type.getPackageFragment().getElementName().replace('.', '/');
 
 		Boolean displayNumber = null;
-		if (UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode()) {
+		if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective()) {
 			displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
 			JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
 		}
@@ -336,7 +336,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 
 		Boolean displayNumber = null;
-		if (UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode()) {
+		if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective()) {
 			displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
 			JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
 		}
@@ -362,8 +362,8 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
 		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-		if ((showLineNumber && align) || UIUtil.isDebugPerspective()
-				|| JavaDecompilerPlugin.getDefault().isDebugMode()) {
+		if ((showLineNumber && align) || JavaDecompilerPlugin.getDefault().isDebugMode()
+				|| UIUtil.isDebugPerspective()) {
 			if (showReport)
 				code = currentDecompiler.removeComment(code);
 			DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(currentDecompiler.getDecompilerType(),
@@ -373,7 +373,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		StringBuffer source = new StringBuffer();
 
-		if (!(UIUtil.isDebugPerspective() || JavaDecompilerPlugin.getDefault().isDebugMode())) {
+		if (!(JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())) {
 			source.append(formatSource(code));
 
 			if (showReport) {
