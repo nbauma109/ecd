@@ -40,7 +40,6 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -50,13 +49,15 @@
             <goals>
               <goal>prepare-agent</goal>
             </goals>
-            <configuration>
-              <destFile>${project.build.directory}/jacoco.exec</destFile>
-            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
-
     </plugins>
   </build>
 

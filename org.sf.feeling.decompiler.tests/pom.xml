@@ -24,9 +24,12 @@
             <goals>
               <goal>prepare-agent</goal>
             </goals>
-            <configuration>
-              <destFile>${project.build.directory}/jacoco.exec</destFile>
-            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

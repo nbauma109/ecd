@@ -33,37 +33,9 @@ jobs:
           .\install_certs.bat
           .\build.bat
 
-      - name: List coverage files
-        shell: bash
-        run: |
-          echo "Searching for JaCoCo files..."
-          find . -name "*jacoco*"
-
-      - name: Collect jacoco XML reports
-        id: collect
-        shell: cmd
-        run: |
-          setlocal EnableDelayedExpansion
-          cd /d "%GITHUB_WORKSPACE%"
-          echo Searching for jacoco.xml files...
-          set "FILES="
-
-          for /f "delims=" %%F in ('dir /s /b jacoco.xml 2^>nul') do (
-              echo Found: %%F
-              set "FILES=!FILES! %%F"
-          )
-
-          set "FILES=!FILES:~1!"
-          set "FILES=!FILES:\=/%!"
-
-          echo files=!FILES!>>"%GITHUB_OUTPUT%"
-
-          echo Final file list:
-          echo !FILES!
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: ${{ steps.collect.outputs.files }}
+          files: "**/jacoco.xml"
           verbose: true
           fail_ci_if_error: true
