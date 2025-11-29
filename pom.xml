@@ -132,6 +132,32 @@
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
           <version>0.8.14</version>
+          <executions>
+            <execution>
+              <id>merge-all</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>merge</goal>
+              </goals>
+              <configuration>
+                <fileSets>
+                  <fileSet>
+                    <directory>${project.basedir}</directory>
+                    <includes>
+                      <include>**/*.exec</include>
+                    </includes>
+                  </fileSet>
+                </fileSets>
+              </configuration>
+            </execution>
+            <execution>
+              <id>report-aggregate</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>report-aggregate</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
     </plugins>
   </build>
