@@ -15,11 +15,13 @@ import java.util.Map;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.BlockComment;
 import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -161,20 +163,17 @@ public class DecompilerOutputUtil {
 		// 1) detect empty block comment
 		boolean hasEmptyBlockComment = false;
 		for (Object obj : cu.getCommentList()) {
-		    if (obj instanceof org.eclipse.jdt.core.dom.BlockComment) {
-		        org.eclipse.jdt.core.dom.BlockComment bc = (org.eclipse.jdt.core.dom.BlockComment) obj;
-		        int start = bc.getStartPosition();
-		        int end = start + bc.getLength();
-		        String content = input.substring(start, end);
-		        String stripped = content
-		                .replaceFirst("/\\*", "")
-		                .replaceFirst("\\*/", "")
-		                .trim();
-		        if (stripped.isEmpty()) {
-		            hasEmptyBlockComment = true;
-		            break;
-		        }
-		    }
+			if (obj instanceof BlockComment) {
+				BlockComment bc = (BlockComment) obj;
+				int start = bc.getStartPosition();
+				int end = start + bc.getLength();
+				String content = input.substring(start, end);
+				String stripped = content.replaceFirst("/\\*", "").replaceFirst("\\*/", "").trim();
+				if (stripped.isEmpty()) {
+					hasEmptyBlockComment = true;
+					break;
+				}
+			}
 		}
 
 		// 2) detect first declaration position
@@ -182,33 +181,32 @@ public class DecompilerOutputUtil {
 
 		// package first
 		if (cu.getPackage() != null) {
-		    firstDeclPos = cu.getPackage().getStartPosition();
+			firstDeclPos = cu.getPackage().getStartPosition();
 		}
 		// else import
 		else if (!cu.imports().isEmpty()) {
-		    org.eclipse.jdt.core.dom.ImportDeclaration id =
-		            (org.eclipse.jdt.core.dom.ImportDeclaration) cu.imports().get(0);
-		    firstDeclPos = id.getStartPosition();
+			ImportDeclaration id = (ImportDeclaration) cu.imports().get(0);
+			firstDeclPos = id.getStartPosition();
 		}
 		// else type / member
 		else if (!cu.types().isEmpty()) {
-		    ASTNode type = (ASTNode) cu.types().get(0);
-		    firstDeclPos = type.getStartPosition();
+			ASTNode type = (ASTNode) cu.types().get(0);
+			firstDeclPos = type.getStartPosition();
 		}
 
 		// 3) measure indentation when the first declaration exists
 		if (firstDeclPos >= 0) {
-		    String before = input.substring(0, firstDeclPos);
-		    int lastNewline = before.lastIndexOf('\n');
-		    int count = 0;
-		    for (int i = lastNewline + 1; i < before.length(); i++) {
-		        if (before.charAt(i) == ' ') {
-		            count++;
-		        } else {
-		            break;
-		        }
-		    }
-		    leftTrimSpace = count;
+			String before = input.substring(0, firstDeclPos);
+			int lastNewline = before.lastIndexOf('\n');
+			int count = 0;
+			for (int i = lastNewline + 1; i < before.length(); i++) {
+				if (before.charAt(i) == ' ') {
+					count++;
+				} else {
+					break;
+				}
+			}
+			leftTrimSpace = count;
 		}
 
 		// 4) empty block comment controls generateEmptyString
@@ -368,114 +366,110 @@ public class DecompilerOutputUtil {
 	}
 
 	public static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
-	    String trimmed = line.trim();
+		String trimmed = line.trim();
 
-	    // Ignore closing braces with bogus line numbers
-	    if (trimmed.startsWith("}")) {
-	        int idx1 = trimmed.indexOf("//");
-	        int idx2 = trimmed.indexOf("/*");
-	        int pos = Math.min(idx1 == -1 ? Integer.MAX_VALUE : idx1,
-	                           idx2 == -1 ? Integer.MAX_VALUE : idx2);
-	        if (pos != Integer.MAX_VALUE) {
-	            String tail = trimmed.substring(pos);
-	            for (char c : tail.toCharArray()) {
-	                if (Character.isDigit(c)) {
-	                    return -1;
-	                }
-	            }
-	        }
-	    }
+		// Ignore closing braces with bogus line numbers
+		if (trimmed.startsWith("}")) {
+			int idx1 = trimmed.indexOf("//");
+			int idx2 = trimmed.indexOf("/*");
+			int pos = Math.min(idx1 == -1 ? Integer.MAX_VALUE : idx1, idx2 == -1 ? Integer.MAX_VALUE : idx2);
+			if (pos != Integer.MAX_VALUE) {
+				String tail = trimmed.substring(pos);
+				for (char c : tail.toCharArray()) {
+					if (Character.isDigit(c)) {
+						return -1;
+					}
+				}
+			}
+		}
 
-	    @SuppressWarnings("unchecked")
-	    List<Comment> comments = unit.getCommentList();
+		@SuppressWarnings("unchecked")
+		List<Comment> comments = unit.getCommentList();
 
-	    int targetLine = unit.getLineNumber(absLineStart);
+		int targetLine = unit.getLineNumber(absLineStart);
 
-	    for (Comment c : comments) {
-	        int cs = c.getStartPosition();
-	        int ce = cs + c.getLength() - 1;
+		for (Comment c : comments) {
+			int cs = c.getStartPosition();
+			int ce = cs + c.getLength() - 1;
 
-	        int cLine = unit.getLineNumber(cs);
+			int cLine = unit.getLineNumber(cs);
 
-	        if (cLine != targetLine) {
-	            continue;
-	        }
+			if (cLine != targetLine) {
+				continue;
+			}
 
-	        String text = fullSource.substring(cs, ce + 1);
-	        String body = extractCommentBody(c, text);
+			String text = fullSource.substring(cs, ce + 1);
+			String body = extractCommentBody(c, text);
 
-	        StringBuilder digits = new StringBuilder();
-	        for (char ch : body.toCharArray()) {
-	            if (Character.isDigit(ch)) {
-	                digits.append(ch);
-	            } else {
-	            	break;
-	            }
-	        }
-	        if (!digits.isEmpty()) {
-	            try {
-	                return Integer.parseInt(digits.toString());
-	            } catch (NumberFormatException e) {
-	                return -1;
-	            }
-	        }
-	    }
+			StringBuilder digits = new StringBuilder();
+			for (char ch : body.toCharArray()) {
+				if (Character.isDigit(ch)) {
+					digits.append(ch);
+				} else {
+					break;
+				}
+			}
+			if (!digits.isEmpty()) {
+				return Integer.parseInt(digits.toString());
+			}
+		}
 
-	    return -1;
+		return -1;
 	}
 
-	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace, int inputLineIndex) {
+	private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace,
+			int inputLineIndex) {
 
-	    int absStart = getAbsoluteOffsetOfLine(inputLineIndex);
+		int absStart = getAbsoluteOffsetOfLine(inputLineIndex);
 
-	    @SuppressWarnings("unchecked")
-	    List<Comment> comments = unit.getCommentList();
+		@SuppressWarnings("unchecked")
+		List<Comment> comments = unit.getCommentList();
 
-	    Comment best = null;
-	    int bestStart = -1;
-	    int bestEnd = -1;
+		Comment best = null;
+		int bestStart = -1;
+		int bestEnd = -1;
 
-	    int absEnd = absStart + line.length() - 1;
+		int absEnd = absStart + line.length() - 1;
 
-	    for (Comment c : comments) {
-	        int cs = c.getStartPosition();
-	        int ce = cs + c.getLength() - 1;
+		for (Comment c : comments) {
+			int cs = c.getStartPosition();
+			int ce = cs + c.getLength() - 1;
 
-	        if (cs >= absStart && ce <= absEnd && (best == null || cs < bestStart)) {
-                best = c;
-                bestStart = cs;
-                bestEnd = ce;
-            }
-	        
-	    }
+			if (cs >= absStart && ce <= absEnd && (best == null || cs < bestStart)) {
+				best = c;
+				bestStart = cs;
+				bestEnd = ce;
+			}
 
-	    if (best == null) {
-	        return applyLeftTrim(line, leftTrimSpace);
-	    }
+		}
 
-	    int relStart = bestStart - absStart;
-	    int relEnd = bestEnd - absStart + 1;
-	    String commentText = line.substring(relStart, relEnd);
+		if (best == null) {
+			return applyLeftTrim(line, leftTrimSpace);
+		}
 
-	    boolean beginsLine = isCommentBeginningLine(line, commentText);
+		int relStart = bestStart - absStart;
+		int relEnd = bestEnd - absStart + 1;
+		String commentText = line.substring(relStart, relEnd);
 
-	    StringBuilder out = new StringBuilder();
+		boolean beginsLine = isCommentBeginningLine(line, commentText);
 
-	    if (beginsLine && generateEmptyString) {
-	        for (int i = 0; i < commentText.length(); i++) {
-	            out.append(' ');
-	        }
-	    }
+		StringBuilder out = new StringBuilder();
 
-	    if (relStart > 0 && !beginsLine) {
-	        out.append(line, 0, relStart);
-	    }
+		if (beginsLine && generateEmptyString) {
+			for (int i = 0; i < commentText.length(); i++) {
+				out.append(' ');
+			}
+		}
 
-	    if (relEnd < line.length()) {
-	        out.append(line.substring(relEnd));
-	    }
+		if (relStart > 0 && !beginsLine) {
+			out.append(line, 0, relStart);
+		}
 
-	    return applyLeftTrim(out.toString(), leftTrimSpace);
+		if (relEnd < line.length()) {
+			out.append(line.substring(relEnd));
+		}
+
+		return applyLeftTrim(out.toString(), leftTrimSpace);
 	}
 
 	private int getAbsoluteOffsetOfLine(int inputLineIndex) {
@@ -515,18 +509,18 @@ public class DecompilerOutputUtil {
 	}
 
 	private static String extractCommentBody(Comment c, String raw) {
-	    if (c.isLineComment()) {
-	        int idx = raw.indexOf("//");
-	        return idx != -1 ? raw.substring(idx + 2).trim() : "";
-	    }
-	    if (c.isBlockComment()) {
-	        int s = raw.indexOf("/*");
-	        int e = raw.lastIndexOf("*/");
-	        if (s != -1 && e > s) {
-	            return raw.substring(s + 2, e).trim();
-	        }
-	    }
-	    return "";
+		if (c.isLineComment()) {
+			int idx = raw.indexOf("//");
+			return idx != -1 ? raw.substring(idx + 2).trim() : "";
+		}
+		if (c.isBlockComment()) {
+			int s = raw.indexOf("/*");
+			int e = raw.lastIndexOf("*/");
+			if (s != -1 && e > s) {
+				return raw.substring(s + 2, e).trim();
+			}
+		}
+		return "";
 	}
 
 	/**
