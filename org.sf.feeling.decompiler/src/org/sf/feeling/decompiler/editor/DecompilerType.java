@@ -22,8 +22,4 @@ public class DecompilerType {
 		}
 		return decompilerTypes;
 	}
-
-	public static boolean isFernFlowerBased(String decompilerType) {
-		return FernFlower.equals(decompilerType) || "Vineflower".equals(decompilerType);
-	}
 }

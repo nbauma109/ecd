@@ -491,9 +491,6 @@ public class DecompilerOutputUtil {
 	}
 
 	private boolean isCommentBeginningLine(String line, String commentText) {
-		if (line == null || commentText == null) {
-			return false;
-		}
 		int idx = line.indexOf(commentText);
 		if (idx < 0) {
 			return false;
@@ -507,9 +504,6 @@ public class DecompilerOutputUtil {
 	}
 
 	private String applyLeftTrim(String line, int leftTrimSpace) {
-		if (line == null) {
-			return null;
-		}
 		if (leftTrimSpace <= 0) {
 			return line;
 		}
