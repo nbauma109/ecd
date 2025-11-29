@@ -15,19 +15,7 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class ReflectionUtils {
 
-	public static Method getDeclaredMethod(Class clazz, String methodName, Class[] parameterTypes) {
-		if (clazz == null || methodName == null)
-			return null;
-
-		for (; clazz != Object.class; clazz = clazz.getSuperclass()) {
-			try {
-				return clazz.getDeclaredMethod(methodName, parameterTypes);
-			} catch (Exception e) {
-
-			}
-		}
-
-		return null;
+	private ReflectionUtils() {
 	}
 
 	public static Method getDeclaredMethod(Object object, String methodName, Class[] parameterTypes) {
@@ -83,43 +71,11 @@ public class ReflectionUtils {
 		return null;
 	}
 
-	public static Object invokeMethod(Class clazz, String methodName, Class[] parameterTypes, Object[] parameters) {
-		if (clazz == null || methodName == null)
-			return null;
-
-		Method method = getDeclaredMethod(clazz, methodName, parameterTypes);
-		try {
-			if (null != method) {
-				method.setAccessible(true);
-				return method.invoke(null, parameters);
-			}
-		} catch (Exception e) {
-			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-		}
-
-		return null;
-	}
-
-	public static Field getDeclaredField(Object object, String fieldName) {
+	private static Field getDeclaredField(Object object, String fieldName) {
 		if (object == null || fieldName == null)
 			return null;
 
 		Class clazz = object.getClass();
-
-		for (; clazz != Object.class; clazz = clazz.getSuperclass()) {
-			try {
-				return clazz.getDeclaredField(fieldName);
-			} catch (Exception e) {
-
-			}
-		}
-
-		return null;
-	}
-
-	public static Field getDeclaredField(Class clazz, String fieldName) {
-		if (clazz == null || fieldName == null)
-			return null;
 
 		for (; clazz != Object.class; clazz = clazz.getSuperclass()) {
 			try {
@@ -159,25 +115,6 @@ public class ReflectionUtils {
 			if (field != null) {
 				field.setAccessible(true);
 				return field.get(object);
-			}
-
-		} catch (Exception e) {
-			JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-		}
-
-		return null;
-	}
-
-	public static Object getFieldValue(Class clazz, String fieldName) {
-		if (clazz == null || fieldName == null)
-			return null;
-
-		Field field = getDeclaredField(clazz, fieldName);
-
-		try {
-			if (field != null) {
-				field.setAccessible(true);
-				return field.get(null);
 			}
 
 		} catch (Exception e) {
