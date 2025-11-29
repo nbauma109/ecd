@@ -22,12 +22,10 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.IOUtils;
@@ -35,6 +33,9 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class FileUtil {
+
+	private FileUtil() {
+	}
 
 	public static void writeToFile(File file, String string) {
 		try {
@@ -56,7 +57,7 @@ public class FileUtil {
 		}
 	}
 
-	public static void writeToBinarayFile(File file, InputStream source, boolean close) {
+	private static void writeToBinarayFile(File file, InputStream source, boolean close) {
 		BufferedInputStream bis = null;
 		try {
 			bis = new BufferedInputStream(source);
@@ -102,108 +103,13 @@ public class FileUtil {
 		return false;
 	}
 
-	public static boolean copyDirectory(File srcDirectory, File desDirectory) {
-		if (srcDirectory == null || desDirectory == null) {
-			return false;
-		}
-
-		return copyDirectory(srcDirectory.getAbsolutePath(), desDirectory.getAbsolutePath(), null);
-	}
-
-	public static boolean copyDirectory(String srcDirectory, String desDirectory) {
-		return copyDirectory(srcDirectory, desDirectory, null);
-	}
-
-	public static boolean copyDirectory(String srcDirectory, String desDirectory, FileFilter filter) {
-		try {
-			File des = new File(desDirectory);
-			if (!des.exists()) {
-				des.mkdirs();
-			}
-			File src = new File(srcDirectory);
-			File[] allFile = src.listFiles();
-			int totalNum = allFile.length;
-			String srcName = ""; //$NON-NLS-1$
-			String desName = ""; //$NON-NLS-1$
-			int currentFile = 0;
-			for (currentFile = 0; currentFile < totalNum; currentFile++) {
-				if (!allFile[currentFile].isDirectory()) {
-					srcName = allFile[currentFile].toString();
-					desName = desDirectory + File.separator + allFile[currentFile].getName();
-					if (filter == null || filter.accept(new File(srcName)))
-						copyFile(srcName, desName);
-				} else {
-					if (!copyDirectory(allFile[currentFile].getPath(),
-							desDirectory + File.separator + allFile[currentFile].getName(), filter)) {
-						Logger.getLogger(FileUtil.class.getName()).log(Level.WARNING, "Copy sub directory {0} failed.", //$NON-NLS-1$
-								srcDirectory);
-					}
-				}
-			}
-			return true;
-		} catch (Exception e) {
-			Logger.getLogger(FileUtil.class.getName()).log(Level.WARNING, "Copy directory failed.", //$NON-NLS-1$ //$NON-NLS-2$
-					e);
-			return false;
-		}
-	}
-
-	public static void copyDirectoryToDirectory(File srcDir, File destDir) {
-		copyDirectoryToDirectory(srcDir, destDir, null);
-	}
-
-	public static void copyDirectoryToDirectory(File srcDir, File destDir, FileFilter filter) {
-		if (srcDir == null) {
-			throw new NullPointerException("Source must not be null"); //$NON-NLS-1$
-		}
-		if (srcDir.exists() && !srcDir.isDirectory()) {
-			throw new IllegalArgumentException("Source '" //$NON-NLS-1$
-					+ destDir + "' is not a directory"); //$NON-NLS-1$
-		}
-		if (destDir == null) {
-			throw new NullPointerException("Destination must not be null"); //$NON-NLS-1$
-		}
-		if (destDir.exists() && !destDir.isDirectory()) {
-			throw new IllegalArgumentException("Destination '" //$NON-NLS-1$
-					+ destDir + "' is not a directory"); //$NON-NLS-1$
-		}
-		copyDirectory(srcDir.getAbsolutePath(), new File(destDir, srcDir.getName()).getAbsolutePath(), filter);
-	}
-
-	public static long sizeOfDirectory(File directory) {
-		if (!directory.exists()) {
-			String message = directory + " does not exist"; //$NON-NLS-1$
-			throw new IllegalArgumentException(message);
-		}
-		if (!directory.isDirectory()) {
-			String message = directory + " is not a directory"; //$NON-NLS-1$
-			throw new IllegalArgumentException(message);
-		}
-		long size = 0;
-		File[] files = directory.listFiles();
-		if (files == null) { // null if security restricted
-			return 0L;
-		}
-		for (int i = 0; i < files.length; i++) {
-			File file = files[i];
-			if (file.isDirectory()) {
-				size += sizeOfDirectory(file);
-			} else {
-				size += file.length();
-			}
-		}
-
-		return size;
-
-	}
-
 	/**
 	 * Recursively delete a directory.
 	 * 
 	 * @param directory directory to delete
 	 * @throws IOException in case deletion is unsuccessful
 	 */
-	public static void deleteDirectory(IProgressMonitor monitor, File directory, File base, int step)
+	private static void deleteDirectory(IProgressMonitor monitor, File directory, File base, int step)
 			throws IOException {
 		if (!directory.exists()) {
 			return;
@@ -220,7 +126,7 @@ public class FileUtil {
 		deleteDirectory(monitor, directory, directory, step);
 	}
 
-	public static void cleanDirectory(IProgressMonitor monitor, File directory, File base, int step)
+	private static void cleanDirectory(IProgressMonitor monitor, File directory, File base, int step)
 			throws IOException {
 		if (!directory.exists()) {
 			String message = directory + " does not exist"; //$NON-NLS-1$
@@ -260,7 +166,7 @@ public class FileUtil {
 		}
 	}
 
-	public static void forceDelete(IProgressMonitor monitor, File file, File base, int step) throws IOException {
+	private static void forceDelete(IProgressMonitor monitor, File file, File base, int step) throws IOException {
 		if (file.isDirectory()) {
 			deleteDirectory(monitor, file, base, step);
 		} else {
@@ -310,95 +216,6 @@ public class FileUtil {
 		}
 	}
 
-	public static void zipFile(File file, String zipFile) throws IOException {
-		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile))) {
-			ZipEntry ze = null;
-			byte[] buf = new byte[1024];
-			int readLen = 0;
-			ze = new ZipEntry(file.getName());
-			ze.setSize(file.length());
-			ze.setTime(file.lastModified());
-			zos.putNextEntry(ze);
-			try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
-				while ((readLen = is.read(buf, 0, 1024)) != -1) {
-					zos.write(buf, 0, readLen);
-				}
-			}
-		}
-	}
-
-	public static interface Filter {
-
-		public boolean accept(String fileName);
-	}
-
-	public static void filterZipFile(String filePath, Filter filter) throws IOException {
-		if (isZipFile(filePath) && filter != null) {
-			File file = new File(filePath);
-			try (ZipFile zipFile = new ZipFile(file);
-					ZipInputStream zis = new ZipInputStream(new FileInputStream(file))) {
-				ZipEntry entry = null;
-				InputStream input = null;
-
-				File tmpFile = new File(file + ".tmp"); //$NON-NLS-1$
-				try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(tmpFile))) {
-					zos.setLevel(1);
-					while ((entry = zis.getNextEntry()) != null) {
-						if (filter.accept(entry.getName())) {
-							input = zipFile.getInputStream(entry);
-							ZipEntry ze = new ZipEntry(entry.getName());
-							ze.setSize(entry.getSize());
-							ze.setTime(entry.getTime());
-							zos.putNextEntry(ze);
-							IOUtils.copy(zis, zos);
-							input.close();
-						}
-					}
-				}
-				try {
-					Files.delete(file.toPath());
-				} catch (Exception e) {
-					Logger.getLogger(FileUtil.class.getName()).log(Level.WARNING, "Delete failed.", e); //$NON-NLS-1$
-				}
-				if (!tmpFile.renameTo(file)) {
-					Logger.getLogger(FileUtil.class.getName()).log(Level.WARNING, "Rename {0} failed.", file); //$NON-NLS-1$
-				}
-			}
-		}
-	}
-
-	public static void zipDir(File dir, String classPackage, String zipFile) throws IOException {
-		File[] files = null;
-		if (new File(dir, classPackage).exists()) {
-			files = new File(dir, classPackage).listFiles();
-		} else if (dir.exists()) {
-			files = dir.listFiles();
-		}
-		if (files != null) {
-			try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile))) {
-				ZipEntry ze = null;
-				byte[] buf = new byte[1024];
-				int readLen = 0;
-				for (int i = 0; i < files.length; i++) {
-					File file = files[i];
-					if (file.isDirectory()) {
-						continue;
-					}
-					ze = new ZipEntry((classPackage.length() > 0 ? (classPackage + "/") //$NON-NLS-1$
-							: "") + file.getName()); //$NON-NLS-1$
-					ze.setSize(file.length());
-					ze.setTime(file.lastModified());
-					zos.putNextEntry(ze);
-					try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
-						while ((readLen = is.read(buf, 0, 1024)) != -1) {
-							zos.write(buf, 0, readLen);
-						}
-					}
-				}
-			}
-		}
-	}
-
 	public static boolean isZipFile(String path) {
 		if (path == null)
 			return false;
@@ -415,7 +232,7 @@ public class FileUtil {
 		return getContent(file, Charset.defaultCharset().name());
 	}
 
-	public static String getContent(File file, String encoding) {
+	private static String getContent(File file, String encoding) {
 		if (file == null || !file.exists()) {
 			return null;
 		}
@@ -436,48 +253,6 @@ public class FileUtil {
 			byte[] bytes = out.toByteArray();
 			String content = new String(bytes, encoding);
 			return content.trim();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	public static String getContent(InputStream is) {
-		if (is == null)
-			return null;
-
-		try (InputStream in = is; ByteArrayOutputStream out = new ByteArrayOutputStream(4096)) {
-			byte[] tmp = new byte[4096];
-			while (true) {
-				int r = in.read(tmp);
-				if (r == -1)
-					break;
-				out.write(tmp, 0, r);
-			}
-			byte[] bytes = out.toByteArray();
-			String content = new String(bytes);
-			return content.trim();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	public static byte[] getBytes(File file) {
-		if (file == null || !file.exists())
-			return null;
-
-		try (ByteArrayOutputStream out = new ByteArrayOutputStream(4096)) {
-			byte[] tmp = new byte[4096];
-			try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
-				while (true) {
-					int r = is.read(tmp);
-					if (r == -1)
-						break;
-					out.write(tmp, 0, r);
-				}
-				return out.toByteArray();
-			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
