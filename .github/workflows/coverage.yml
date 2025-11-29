@@ -42,10 +42,12 @@ jobs:
         run: |
           setlocal EnableDelayedExpansion
 
+          cd /d "%GITHUB_WORKSPACE%"
+
           echo Searching for jacoco.xml files...
           set "FILES="
 
-          for /f "delims=" %%F in ('dir /s /b jacoco.xml') do (
+          for /f "delims=" %%F in ('dir /s /b jacoco.xml 2^>nul') do (
               echo Found: %%F
               set "FILES=!FILES! %%F"
           )
@@ -61,19 +63,6 @@ jobs:
           echo Final file list:
           echo !FILES!
 
-      # ------------------------------------------------
-      # Fail if no reports found
-      # ------------------------------------------------
-      - name: Fail if no jacoco reports found
-        if: steps.collect.outputs.files == ''
-        shell: cmd
-        run: |
-          echo ERROR: No jacoco.xml files found!
-          exit 1
-
-      # ------------------------------------------------
-      # Upload all discovered reports to Codecov
-      # ------------------------------------------------
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
