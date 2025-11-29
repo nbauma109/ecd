@@ -53,8 +53,6 @@ public class DecompilerOutputUtil {
 	public static final String line_separator = System.getProperty("line.separator", //$NON-NLS-1$
 			"\r\n"); //$NON-NLS-1$
 
-	private String decompilerType;
-
 	private class InputLine {
 
 		String line;
@@ -77,9 +75,8 @@ public class DecompilerOutputUtil {
 		}
 	}
 
-	public DecompilerOutputUtil(String decompilerType, String input) {
+	public DecompilerOutputUtil(String input) {
 		this.input = input + line_separator;
-		this.decompilerType = decompilerType;
 	}
 
 	public String realign() {

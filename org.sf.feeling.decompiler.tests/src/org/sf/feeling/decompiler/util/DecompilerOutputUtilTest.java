@@ -3,13 +3,12 @@ package org.sf.feeling.decompiler.util;
 import static org.sf.feeling.decompiler.util.TextAssert.assertEquivalent;
 
 import org.junit.Test;
-import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtilTest {
 
 	@Test
 	public void testToStringExampleOneFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
 package sample.one;
 
 import java.util.Arrays;
@@ -43,7 +42,7 @@ public class ExampleOne {
 	
 	@Test
 	public void testToStringExampleTwoFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
 package sample.two;
 
 public class ExampleTwo {
@@ -68,7 +67,7 @@ public class ExampleTwo {
 	
 	@Test
 	public void testToStringExampleThreeFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
 import java.util.*;
 
 public class ExampleThree {
@@ -104,7 +103,7 @@ public class ExampleThree {
 	
 	@Test
 	public void testToStringExampleFourFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
 
 public class ExampleFour {
    public void run() {
@@ -126,7 +125,7 @@ public class ExampleFour {
 
 	@Test
 	public void testToStringExampleOneProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
       package sample.one;
       
       import java.util.*;
@@ -162,7 +161,7 @@ public class ExampleFour {
 	
 	@Test
 	public void testToStringExampleTwoProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
      package sample.two;
      
      public class ExampleTwo
@@ -188,7 +187,7 @@ public class ExampleFour {
 	
 	@Test
 	public void testToStringExampleThreeProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
       import java.util.*;
       
       public class ExampleThree
@@ -224,7 +223,7 @@ public class ExampleFour {
 	
 	@Test
 	public void testToStringExampleFourProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("""
      public class ExampleFour
      {
          public void run() {
