@@ -158,7 +158,7 @@ public class DecompilerOutputUtil {
 		boolean generateEmptyString = true;
 		int leftTrimSpace = 0;
 
-		CompilationUnit cu = ASTParserUtil.parse(input);
+		CompilationUnit cu = unit;
 
 		// 1) detect empty block comment
 		boolean hasEmptyBlockComment = false;
