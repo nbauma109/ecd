@@ -243,4 +243,42 @@ public class ExampleFour {
 """, output);
 	}
 
+	@Test
+	public void testTryCatchFernFlower() {
+	    DecompilerOutputUtil util = new DecompilerOutputUtil("""
+package test;
+
+public class ExempleTry {
+  public static void main(String[] args) {
+    try {
+      Thread.sleep(100L);// 7
+    } catch (InterruptedException e) {// 8
+      e.printStackTrace();// 9
+    }
+
+  }// 11
+}
+"""
+	    );
+
+	    util.realign();
+	    String output = util.toString();
+
+	    assertEquivalent("""
+/*    */ package test;
+/*    */
+/*    */
+/*    */ public class ExempleTry {
+/*    */   public static void main(String[] args) {
+/*    */     try {
+/*  7 */       Thread.sleep(100L);
+/*  8 */     } catch (InterruptedException e) {
+/*  9 */       e.printStackTrace();
+/*    */     }
+/*    */
+/*    */   }
+/*    */ }
+""", output);
+	}
+
 }

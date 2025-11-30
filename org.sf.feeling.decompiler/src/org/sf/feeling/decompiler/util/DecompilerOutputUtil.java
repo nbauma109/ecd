@@ -365,19 +365,22 @@ public class DecompilerOutputUtil {
 	public static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
 		String trimmed = line.trim();
 
-		// Ignore closing braces with bogus line numbers
-		if (trimmed.startsWith("}")) {
-			int idx1 = trimmed.indexOf("//");
-			int idx2 = trimmed.indexOf("/*");
-			int pos = Math.min(idx1 == -1 ? Integer.MAX_VALUE : idx1, idx2 == -1 ? Integer.MAX_VALUE : idx2);
-			if (pos != Integer.MAX_VALUE) {
-				String tail = trimmed.substring(pos);
-				for (char c : tail.toCharArray()) {
-					if (Character.isDigit(c)) {
-						return -1;
-					}
-				}
-			}
+		if (trimmed.startsWith("}//")) {
+		    String tail = trimmed.substring(3);
+		    tail = tail.trim();
+		    if (!tail.isEmpty()) {
+		        boolean onlyDigitsAndSpaces = true;
+		        for (int i = 0; i < tail.length(); i++) {
+		            char ch = tail.charAt(i);
+		            if (!Character.isDigit(ch) && !Character.isWhitespace(ch)) {
+		                onlyDigitsAndSpaces = false;
+		                break;
+		            }
+		        }
+		        if (onlyDigitsAndSpaces) {
+		            return -1; // line number on closing bracket cannot be known
+		        }
+		    }
 		}
 
 		@SuppressWarnings("unchecked")
