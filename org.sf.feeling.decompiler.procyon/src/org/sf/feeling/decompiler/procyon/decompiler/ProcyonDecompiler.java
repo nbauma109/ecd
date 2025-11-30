@@ -62,7 +62,9 @@ public class ProcyonDecompiler implements IDecompiler {
 
 		final String classPathStr = new File(workingDir, className).getAbsolutePath();
 
-		final boolean includeLineNumbers = ClassUtil.isDebug();
+		final IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+		final boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+		final boolean includeLineNumbers = showLineNumber || ClassUtil.isDebug();
 
 		DecompilationOptions decompilationOptions = new DecompilationOptions();
 
@@ -114,8 +116,6 @@ public class ProcyonDecompiler implements IDecompiler {
 				LineNumberFormatter lineFormatter = new LineNumberFormatter(classFile, lineNumberPositions,
 						lineNumberOptions);
 
-				IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-				boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
 				boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
 				if (showLineNumber) {
 					source = lineFormatter.reformatFile();
