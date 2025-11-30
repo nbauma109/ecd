@@ -18,17 +18,13 @@ import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.internal.ui.navigator.IExtensionStateConstants.Values;
 import org.eclipse.jdt.internal.ui.packageview.PackageExplorerPart;
-import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IPerspectiveDescriptor;
@@ -43,10 +39,12 @@ import org.eclipse.ui.navigator.CommonNavigatorManager;
 import org.eclipse.ui.navigator.IExtensionStateModel;
 import org.eclipse.ui.navigator.INavigatorContentService;
 import org.eclipse.ui.views.contentoutline.ContentOutline;
-import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.JavaDecompilerClassFileEditor;
 
 public class UIUtil {
+
+	private UIUtil() {
+	}
 
 	public static JavaDecompilerClassFileEditor getActiveEditor() {
 		final JavaDecompilerClassFileEditor[] editors = new JavaDecompilerClassFileEditor[1];
@@ -100,7 +98,7 @@ public class UIUtil {
 		return null;
 	}
 
-	public static String getActivePerspectiveId() {
+	private static String getActivePerspectiveId() {
 		final String[] ids = new String[1];
 		Display.getDefault().syncExec(new Runnable() {
 
@@ -135,21 +133,12 @@ public class UIUtil {
 		return ids[0];
 	}
 
-	public static boolean isDebug() {
-		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-		boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
-		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-		return (showLineNumber && align)
-				|| JavaDecompilerPlugin.getDefault().isDebugMode()
-				|| UIUtil.isDebugPerspective();
-	}
-
 	public static boolean isDebugPerspective() {
 		return "org.eclipse.debug.ui.DebugPerspective" //$NON-NLS-1$
 				.equals(getActivePerspectiveId());
 	}
 
-	public static List getSelectedElements(ISelectionService selService, Class eleClass) {
+	private static List getSelectedElements(ISelectionService selService, Class eleClass) {
 
 		Iterator selections = getSelections(selService);
 		List elements = new ArrayList();
@@ -164,7 +153,7 @@ public class UIUtil {
 		return elements;
 	}
 
-	public static Iterator getSelections(ISelectionService selService) {
+	private static Iterator getSelections(ISelectionService selService) {
 		ISelection selection = selService.getSelection();
 
 		if (selection != null) {
@@ -177,7 +166,7 @@ public class UIUtil {
 		return null;
 	}
 
-	public static IWorkbenchPart getActiveEditor(boolean activePageOnly) {
+	private static IWorkbenchPart getActiveEditor(boolean activePageOnly) {
 		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 
 		if (window != null) {
@@ -209,32 +198,6 @@ public class UIUtil {
 		}
 
 		return null;
-	}
-
-	public static boolean isOpenClassEditor() {
-		IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();
-
-		if (windows != null) {
-			for (int i = 0; i < windows.length; i++) {
-				IWorkbenchWindow window = windows[i];
-				for (IWorkbenchPage pg : window.getPages()) {
-					if (pg == null) {
-						continue;
-					}
-					// Deprecated since ?? use getEditorReferences() instead
-					IEditorPart[] editorParts = pg.getEditors();
-					if (editorParts == null) {
-						continue;
-					}
-					for (IEditorPart part : editorParts) {
-						if (part instanceof JavaDecompilerClassFileEditor) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-		return false;
 	}
 
 	public static List getExportSelections() {
@@ -287,14 +250,6 @@ public class UIUtil {
 		} catch (Exception e) {
 		}
 		return isFlat;
-	}
-
-	public static boolean isWin32() {
-		return Platform.OS_WIN32.equalsIgnoreCase(Platform.getOS());
-	}
-
-	public static boolean isMacOS() {
-		return Platform.OS_MACOSX.equalsIgnoreCase(Platform.getOS());
 	}
 
 	public static String getPathLocation(IPath path) {
@@ -352,46 +307,6 @@ public class UIUtil {
 			// && stacks[i].getMethodName( )
 			// .equals( "computeProjectionRanges" ) ) //$NON-NLS-1$
 			// return true;
-		}
-		return false;
-	}
-
-	public static boolean requestFromShowMatch() {
-		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
-		for (int i = 0; i < stacks.length; i++) {
-			if (stacks[i].getClassName().indexOf("JavaSearchResultPage") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("showMatch")) //$NON-NLS-1$
-				return true;
-		}
-		return false;
-	}
-
-	public static boolean isDark(Control textWidget) {
-		if (textWidget != null && !textWidget.isDisposed()) {
-			Color color = textWidget.getBackground();
-			int red = color.getRed();
-			int blue = color.getBlue();
-			int green = color.getGreen();
-			return red < 127 || blue < 127 || green < 127;
-		}
-		return false;
-	}
-
-	public static boolean requestFromLinkToSelection() {
-		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
-		for (int i = 0; i < stacks.length && i < 10; i++) {
-			if (stacks[i].getMethodName().equals("linkToEditor") //$NON-NLS-1$
-					|| stacks[i].getMethodName().equals("showSource")) //$NON-NLS-1$
-				return true;
-		}
-		return false;
-	}
-
-	public static boolean requestFromCopyOperation() {
-		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
-		for (int i = 0; i < stacks.length && i < 10; i++) {
-			if (stacks[i].getMethodName().equals("doCutCopyWithImportsOperation")) //$NON-NLS-1$
-				return true;
 		}
 		return false;
 	}
