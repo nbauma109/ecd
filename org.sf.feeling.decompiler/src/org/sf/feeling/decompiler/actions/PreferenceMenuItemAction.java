@@ -18,10 +18,6 @@ import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
 public class PreferenceMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	public PreferenceMenuItemAction() {
-		super();
-	}
-
 	@Override
 	public Menu getMenu(Control parent) {
 		return null;

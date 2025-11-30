@@ -45,7 +45,6 @@ public class JDCoreZipLoader implements Loader, Closeable {
 	private final Set<String> loadedEntries = new TreeSet<>();
 
 	public JDCoreZipLoader(Path zipFilePath, EntriesCache entriesCache) throws IOException {
-		super();
 		if (entriesCache != null && !entriesCache.zipFilePath.equals(zipFilePath)) {
 			throw new IllegalArgumentException("entriesCache is for the wrong zipFilePath");
 		}
@@ -138,7 +137,6 @@ public class JDCoreZipLoader implements Loader, Closeable {
 		private final Map<String, String> entriesMap = new TreeMap<>();
 
 		public EntriesCache(Path zipFilePath) throws IOException {
-			super();
 			this.zipFilePath = zipFilePath;
 			this.zipFileLastModified = Files.getLastModifiedTime(zipFilePath);
 		}

@@ -19,10 +19,6 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class DebugModeMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	public DebugModeMenuItemAction() {
-		super();
-	}
-
 	@Override
 	public Menu getMenu(Control parent) {
 		return null;

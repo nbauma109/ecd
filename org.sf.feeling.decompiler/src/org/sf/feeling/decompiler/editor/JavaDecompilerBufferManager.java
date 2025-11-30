@@ -39,7 +39,6 @@ public class JavaDecompilerBufferManager extends BufferManager {
 	}
 
 	public JavaDecompilerBufferManager(BufferManager manager) {
-		super();
 		synchronized (BufferManager.class) {
 			Enumeration enumeration = manager.getOpenBuffers();
 			while (enumeration.hasMoreElements()) {

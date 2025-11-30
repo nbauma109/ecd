@@ -16,14 +16,12 @@ import org.eclipse.ui.ide.dialogs.AbstractEncodingFieldEditor;
 public final class EncodingFieldEditor extends AbstractEncodingFieldEditor {
 
 	public EncodingFieldEditor(String name, String labelText, String groupTitle, Composite parent) {
-		super();
 		init(name, labelText);
 		setGroupTitle(groupTitle);
 		createControl(parent);
 	}
 
 	public EncodingFieldEditor(String name, String labelText, Composite parent) {
-		super();
 		init(name, labelText);
 		createControl(parent);
 	}

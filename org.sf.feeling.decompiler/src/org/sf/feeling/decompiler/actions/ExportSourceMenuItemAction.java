@@ -21,10 +21,6 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class ExportSourceMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	public ExportSourceMenuItemAction() {
-		super();
-	}
-
 	@Override
 	public Menu getMenu(Control parent) {
 		return null;
