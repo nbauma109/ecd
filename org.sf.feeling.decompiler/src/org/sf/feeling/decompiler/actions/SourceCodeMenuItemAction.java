@@ -18,10 +18,6 @@ import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
 public class SourceCodeMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	public SourceCodeMenuItemAction() {
-		super();
-	}
-
 	@Override
 	public Menu getMenu(Control parent) {
 		return null;

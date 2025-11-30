@@ -18,10 +18,6 @@ import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
 public class DecompilerMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	public DecompilerMenuItemAction() {
-		super();
-	}
-
 	@Override
 	public Menu getMenu(Control parent) {
 		return new SubMenuCreator().getMenu(parent);
