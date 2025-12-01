@@ -18,30 +18,30 @@ import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
 public class SourceCodeMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
-	@Override
-	public Menu getMenu(Control parent) {
-		return null;
-	}
+    @Override
+    public Menu getMenu(Control parent) {
+        return null;
+    }
 
-	@Override
-	public Menu getMenu(Menu parent) {
-		return null;
-	}
+    @Override
+    public Menu getMenu(Menu parent) {
+        return null;
+    }
 
-	@Override
-	public void init(IWorkbenchWindow window) {
-	}
+    @Override
+    public void init(IWorkbenchWindow window) {
+    }
 
-	@Override
-	public void dispose() {
-	}
+    @Override
+    public void dispose() {
+    }
 
-	@Override
-	public void run(IAction action) {
-		new SourceCodeAction().run();
-	}
+    @Override
+    public void run(IAction action) {
+        new SourceCodeAction().run();
+    }
 
-	@Override
-	public void selectionChanged(IAction action, ISelection selection) {
-	}
+    @Override
+    public void selectionChanged(IAction action, ISelection selection) {
+    }
 }

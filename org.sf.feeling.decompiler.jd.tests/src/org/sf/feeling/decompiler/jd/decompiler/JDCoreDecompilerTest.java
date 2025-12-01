@@ -14,22 +14,22 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class JDCoreDecompilerTest {
 
-	@Test
-	public void testDecompileFromArchive() throws IOException, URISyntaxException {
-		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-		prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS, true);
-		prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
-		JavaDecompilerPlugin.getDefault().setDebugMode(true);
+    @Test
+    public void testDecompileFromArchive() throws IOException, URISyntaxException {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS, true);
+        prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
+        JavaDecompilerPlugin.getDefault().setDebugMode(true);
 
-		JDCoreSourceMapper sourceMapper = new JDCoreSourceMapper();
-		JDCoreDecompiler decompiler = new JDCoreDecompiler(sourceMapper);
-		decompiler.decompileFromArchive("resources/test.jar", "test", "Test.class");
-		String output = decompiler.getSource();
-		String expected = toString(getClass().getResource("/Test.txt"));
-		assertEquivalent(expected, output);
-	}
+        JDCoreSourceMapper sourceMapper = new JDCoreSourceMapper();
+        JDCoreDecompiler decompiler = new JDCoreDecompiler(sourceMapper);
+        decompiler.decompileFromArchive("resources/test.jar", "test", "Test.class");
+        String output = decompiler.getSource();
+        String expected = toString(getClass().getResource("/Test.txt"));
+        assertEquivalent(expected, output);
+    }
 
-	private String toString(URL resource) throws IOException, URISyntaxException {
-		return IOUtils.toString(resource.toURI(), UTF_8);
-	}
+    private String toString(URL resource) throws IOException, URISyntaxException {
+        return IOUtils.toString(resource.toURI(), UTF_8);
+    }
 }

@@ -14,10 +14,10 @@ import org.eclipse.core.commands.ExecutionException;
 
 public class SourceCodeHandler extends AbstractHandler {
 
-	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
-		new SourceCodeAction().run();
-		return null;
-	}
+    @Override
+    public Object execute(ExecutionEvent event) throws ExecutionException {
+        new SourceCodeAction().run();
+        return null;
+    }
 
 }

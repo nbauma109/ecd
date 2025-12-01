@@ -13,15 +13,15 @@ import java.util.regex.Pattern;
 
 public class UnicodeUtil {
 
-	static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-zA-Z]{4})"); //$NON-NLS-1$
+    static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-zA-Z]{4})"); //$NON-NLS-1$
 
-	public static String decode(String s) {
-		Matcher m = unicodePattern.matcher(s);
-		StringBuffer sb = new StringBuffer(s.length());
-		while (m.find()) {
-			m.appendReplacement(sb, Character.toString((char) Integer.parseInt(m.group(1), 16)));
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
+    public static String decode(String s) {
+        Matcher m = unicodePattern.matcher(s);
+        StringBuffer sb = new StringBuffer(s.length());
+        while (m.find()) {
+            m.appendReplacement(sb, Character.toString((char) Integer.parseInt(m.group(1), 16)));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
 }

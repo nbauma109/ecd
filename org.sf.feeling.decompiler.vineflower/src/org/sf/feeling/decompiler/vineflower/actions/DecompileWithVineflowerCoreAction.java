@@ -16,21 +16,21 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class DecompileWithVineflowerCoreAction extends Action {
 
-	public DecompileWithVineflowerCoreAction() {
-		super(Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithVineflower")); //$NON-NLS-1$
-		this.setImageDescriptor(VineflowerDecompilerPlugin.getImageDescriptor("icons/vineflower_16.png")); //$NON-NLS-1$
-	}
+    public DecompileWithVineflowerCoreAction() {
+        super(Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithVineflower")); //$NON-NLS-1$
+        this.setImageDescriptor(VineflowerDecompilerPlugin.getImageDescriptor("icons/vineflower_16.png")); //$NON-NLS-1$
+    }
 
-	@Override
-	public void run() {
-		try {
-			new DecompileWithVineflowerCoreHandler().execute(null);
-		} catch (ExecutionException e) {
-		}
-	}
+    @Override
+    public void run() {
+        try {
+            new DecompileWithVineflowerCoreHandler().execute(null);
+        } catch (ExecutionException e) {
+        }
+    }
 
-	@Override
-	public boolean isEnabled() {
-		return UIUtil.getActiveEditor() != null || UIUtil.getActiveSelection() != null;
-	}
+    @Override
+    public boolean isEnabled() {
+        return UIUtil.getActiveEditor() != null || UIUtil.getActiveSelection() != null;
+    }
 }
