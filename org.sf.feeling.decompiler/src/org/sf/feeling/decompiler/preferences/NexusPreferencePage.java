@@ -22,52 +22,52 @@ import org.sf.feeling.decompiler.i18n.Messages;
 
 public class NexusPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-	public NexusPreferencePage() {
-		super(FieldEditorPreferencePage.GRID);
-		setPreferenceStore(JavaDecompilerPlugin.getDefault().getPreferenceStore());
-	}
+    public NexusPreferencePage() {
+        super(FieldEditorPreferencePage.GRID);
+        setPreferenceStore(JavaDecompilerPlugin.getDefault().getPreferenceStore());
+    }
 
-	@Override
-	protected void createFieldEditors() {
-		Group basicGroup = new Group(getFieldEditorParent(), SWT.NONE);
-		basicGroup.setText(Messages.getString("NexusPreferencePage.Label.NexusSettings")); //$NON-NLS-1$
-		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
-		basicGroup.setLayoutData(gd);
+    @Override
+    protected void createFieldEditors() {
+        Group basicGroup = new Group(getFieldEditorParent(), SWT.NONE);
+        basicGroup.setText(Messages.getString("NexusPreferencePage.Label.NexusSettings")); //$NON-NLS-1$
+        GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+        basicGroup.setLayoutData(gd);
 
-		StringFieldEditor nexusUrl = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_URL,
-				Messages.getString("NexusPreferencePage.Label.NexusUrl"), //$NON-NLS-1$
-				basicGroup);
+        StringFieldEditor nexusUrl = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_URL,
+                Messages.getString("NexusPreferencePage.Label.NexusUrl"), //$NON-NLS-1$
+                basicGroup);
 
-		StringFieldEditor nexusUser = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_USER,
-				Messages.getString("NexusPreferencePage.Label.NexusUser"), //$NON-NLS-1$
-				basicGroup);
+        StringFieldEditor nexusUser = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_USER,
+                Messages.getString("NexusPreferencePage.Label.NexusUser"), //$NON-NLS-1$
+                basicGroup);
 
-		StringFieldEditor nexusPassword = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_PASSWORD,
-				Messages.getString("NexusPreferencePage.Label.NexusPassword"), //$NON-NLS-1$
-				basicGroup) {
+        StringFieldEditor nexusPassword = new StringFieldEditor(JavaDecompilerPlugin.NEXUS_PASSWORD,
+                Messages.getString("NexusPreferencePage.Label.NexusPassword"), //$NON-NLS-1$
+                basicGroup) {
 
-			@Override
-			protected void doFillIntoGrid(Composite parent, int numColumns) {
-				super.doFillIntoGrid(parent, numColumns);
+            @Override
+            protected void doFillIntoGrid(Composite parent, int numColumns) {
+                super.doFillIntoGrid(parent, numColumns);
 
-				getTextControl().setEchoChar('*');
-			}
+                getTextControl().setEchoChar('*');
+            }
 
-		};
+        };
 
-		addField(nexusUrl);
-		addField(nexusUser);
-		addField(nexusPassword);
+        addField(nexusUrl);
+        addField(nexusUser);
+        addField(nexusPassword);
 
-		GridLayout layout = (GridLayout) basicGroup.getLayout();
-		layout.marginWidth = layout.marginHeight = 5;
-		basicGroup.layout();
+        GridLayout layout = (GridLayout) basicGroup.getLayout();
+        layout.marginWidth = layout.marginHeight = 5;
+        basicGroup.layout();
 
-		getFieldEditorParent().layout();
-	}
+        getFieldEditorParent().layout();
+    }
 
-	@Override
-	public void init(IWorkbench arg0) {
-		// TODO document why this method is empty
-	}
+    @Override
+    public void init(IWorkbench arg0) {
+        // TODO document why this method is empty
+    }
 }

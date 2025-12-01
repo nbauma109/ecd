@@ -27,115 +27,115 @@ import org.sf.feeling.decompiler.util.UIUtil;
  */
 public class JavaDecompilerBufferManager extends BufferManager {
 
-	public static void closeDecompilerBuffers(boolean all) {
-		BufferManager manager = BufferManager.getDefaultBufferManager();
-		if (manager instanceof JavaDecompilerBufferManager) {
-			Enumeration enumeration = manager.getOpenBuffers();
-			while (enumeration.hasMoreElements()) {
-				IBuffer buffer = (IBuffer) enumeration.nextElement();
-				((JavaDecompilerBufferManager) manager).removeBuffer(buffer);
-			}
-		}
-	}
+    public static void closeDecompilerBuffers(boolean all) {
+        BufferManager manager = BufferManager.getDefaultBufferManager();
+        if (manager instanceof JavaDecompilerBufferManager) {
+            Enumeration enumeration = manager.getOpenBuffers();
+            while (enumeration.hasMoreElements()) {
+                IBuffer buffer = (IBuffer) enumeration.nextElement();
+                ((JavaDecompilerBufferManager) manager).removeBuffer(buffer);
+            }
+        }
+    }
 
-	public JavaDecompilerBufferManager(BufferManager manager) {
-		synchronized (BufferManager.class) {
-			Enumeration enumeration = manager.getOpenBuffers();
-			while (enumeration.hasMoreElements()) {
-				IBuffer buffer = (IBuffer) enumeration.nextElement();
-				addBuffer(buffer);
-			}
-			BufferManager.DEFAULT_BUFFER_MANAGER = this;
-		}
-	}
+    public JavaDecompilerBufferManager(BufferManager manager) {
+        synchronized (BufferManager.class) {
+            Enumeration enumeration = manager.getOpenBuffers();
+            while (enumeration.hasMoreElements()) {
+                IBuffer buffer = (IBuffer) enumeration.nextElement();
+                addBuffer(buffer);
+            }
+            BufferManager.DEFAULT_BUFFER_MANAGER = this;
+        }
+    }
 
-	@Override
-	public void addBuffer(final IBuffer buffer) {
-		if (buffer == null || buffer.getContents() == null) {
-			if (buffer != null) {
-				delayAddBuffer(buffer);
-			}
-			return;
-		}
-		super.addBuffer(buffer);
-	}
+    @Override
+    public void addBuffer(final IBuffer buffer) {
+        if (buffer == null || buffer.getContents() == null) {
+            if (buffer != null) {
+                delayAddBuffer(buffer);
+            }
+            return;
+        }
+        super.addBuffer(buffer);
+    }
 
-	private void delayAddBuffer(final IBuffer buffer) {
-		new Thread() {
+    private void delayAddBuffer(final IBuffer buffer) {
+        new Thread() {
 
-			@Override
-			public void run() {
-				if (buffer.getContents() != null) {
-					try {
-						Thread.sleep(1);
-					} catch (InterruptedException e) {
-						Logger.debug(e);
-					}
-					addBuffer(buffer);
-				}
-			}
-		}.start();
-	}
+            @Override
+            public void run() {
+                if (buffer.getContents() != null) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        Logger.debug(e);
+                    }
+                    addBuffer(buffer);
+                }
+            }
+        }.start();
+    }
 
-	@Override
-	public void removeBuffer(IBuffer buffer) {
-		super.removeBuffer(buffer);
-	}
+    @Override
+    public void removeBuffer(IBuffer buffer) {
+        super.removeBuffer(buffer);
+    }
 
-	@Override
-	public IBuffer getBuffer(final IOpenable owner) {
-		IBuffer buffer = super.getBuffer(owner);
-		final IBuffer[] buffers = new IBuffer[] { buffer };
+    @Override
+    public IBuffer getBuffer(final IOpenable owner) {
+        IBuffer buffer = super.getBuffer(owner);
+        final IBuffer[] buffers = new IBuffer[] { buffer };
 
-		if (UIUtil.requestFromJavadocHover()) {
+        if (UIUtil.requestFromJavadocHover()) {
 
-			if (buffers[0] == null || buffers[0].getContents() == null) {
-				buffers[0] = null;
+            if (buffers[0] == null || buffers[0].getContents() == null) {
+                buffers[0] = null;
 
-				Display.getDefault().asyncExec(new Runnable() {
+                Display.getDefault().asyncExec(new Runnable() {
 
-					@Override
-					public void run() {
-						JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-						if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
-							IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
-							if (owner.equals(input)) {
-								buffers[0] = editor.getClassBuffer();
-								JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
-							}
-						}
-					}
-				});
-			}
-		} else if (UIUtil.requestCreateBuffer()) {
+                    @Override
+                    public void run() {
+                        JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+                        if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
+                            IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
+                            if (owner.equals(input)) {
+                                buffers[0] = editor.getClassBuffer();
+                                JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
+                            }
+                        }
+                    }
+                });
+            }
+        } else if (UIUtil.requestCreateBuffer()) {
 
-			JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-			if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
-				IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
-				if (owner.equals(input)) {
-					String content = editor.getDocumentProvider().getDocument(editor.getEditorInput()).get();
-					if (buffers[0] != null) {
-						if (!content.equals(buffers[0].getContents()))
-							buffers[0].setContents(content);
-					} else {
-						ClassFile cf = (ClassFile) input;
-						IBuffer classBuffer = BufferManager.createBuffer(cf);
-						classBuffer.setContents(content);
-						editor.getBufferManager().addBuffer(classBuffer);
+            JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+            if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
+                IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
+                if (owner.equals(input)) {
+                    String content = editor.getDocumentProvider().getDocument(editor.getEditorInput()).get();
+                    if (buffers[0] != null) {
+                        if (!content.equals(buffers[0].getContents()))
+                            buffers[0].setContents(content);
+                    } else {
+                        ClassFile cf = (ClassFile) input;
+                        IBuffer classBuffer = BufferManager.createBuffer(cf);
+                        classBuffer.setContents(content);
+                        editor.getBufferManager().addBuffer(classBuffer);
 
-						try {
-							ClassFileSourceMap.updateSource(editor.getBufferManager(), cf, content.toCharArray());
-						} catch (JavaModelException e) {
-							Logger.debug(e);
-						}
+                        try {
+                            ClassFileSourceMap.updateSource(editor.getBufferManager(), cf, content.toCharArray());
+                        } catch (JavaModelException e) {
+                            Logger.debug(e);
+                        }
 
-						buffers[0] = classBuffer;
-						JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
-					}
-				}
-			}
-		}
+                        buffers[0] = classBuffer;
+                        JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
+                    }
+                }
+            }
+        }
 
-		return buffers[0];
-	}
+        return buffers[0];
+    }
 }

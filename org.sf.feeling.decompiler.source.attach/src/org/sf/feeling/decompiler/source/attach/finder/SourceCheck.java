@@ -18,25 +18,25 @@ import java.util.zip.ZipFile;
 
 public class SourceCheck {
 
-	public static boolean isWrongSource(final File srcFile, final File binFile) throws IOException {
-		final List<String> classnames = getJavaFileNames(binFile, ".class"); //$NON-NLS-1$
-		final List<String> javanames = getJavaFileNames(srcFile, ".java"); //$NON-NLS-1$
-		final boolean isWrongSource = !classnames.isEmpty() && javanames.isEmpty();
-		return isWrongSource;
-	}
+    public static boolean isWrongSource(final File srcFile, final File binFile) throws IOException {
+        final List<String> classnames = getJavaFileNames(binFile, ".class"); //$NON-NLS-1$
+        final List<String> javanames = getJavaFileNames(srcFile, ".java"); //$NON-NLS-1$
+        final boolean isWrongSource = !classnames.isEmpty() && javanames.isEmpty();
+        return isWrongSource;
+    }
 
-	private static List<String> getJavaFileNames(final File file, final String ext) throws IOException {
-		final List<String> classnames = new ArrayList<String>();
-		try (final ZipFile zf = new ZipFile(file)) {
-			final Enumeration<? extends ZipEntry> entries = zf.entries();
-			while (entries.hasMoreElements()) {
-				final ZipEntry entry = entries.nextElement();
-				final String entryName = entry.getName();
-				if (entryName.endsWith(ext)) {
-					classnames.add(entryName);
-				}
-			}
-		}
-		return classnames;
-	}
+    private static List<String> getJavaFileNames(final File file, final String ext) throws IOException {
+        final List<String> classnames = new ArrayList<String>();
+        try (final ZipFile zf = new ZipFile(file)) {
+            final Enumeration<? extends ZipEntry> entries = zf.entries();
+            while (entries.hasMoreElements()) {
+                final ZipEntry entry = entries.nextElement();
+                final String entryName = entry.getName();
+                if (entryName.endsWith(ext)) {
+                    classnames.add(entryName);
+                }
+            }
+        }
+        return classnames;
+    }
 }

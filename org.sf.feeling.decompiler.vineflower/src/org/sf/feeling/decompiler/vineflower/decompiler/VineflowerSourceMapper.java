@@ -17,32 +17,32 @@ import org.sf.feeling.decompiler.vineflower.VineflowerDecompilerPlugin;
 
 public class VineflowerSourceMapper extends BaseDecompilerSourceMapper {
 
-	public VineflowerSourceMapper() {
-		super(new Path("."), ""); //$NON-NLS-1$ //$NON-NLS-2$
-		originalDecompiler = new VineflowerDecompiler();
-	}
+    public VineflowerSourceMapper() {
+        super(new Path("."), ""); //$NON-NLS-1$ //$NON-NLS-2$
+        originalDecompiler = new VineflowerDecompiler();
+    }
 
-	@Override
-	protected void printDecompileReport(StringBuffer source, String fileLocation, Collection<Exception> exceptions,
-			long decompilationTime) {
-		String logMsg = originalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
-				.replaceAll("\n\\s*", "\n\t"); //$NON-NLS-1$ //$NON-NLS-2$
+    @Override
+    protected void printDecompileReport(StringBuffer source, String fileLocation, Collection<Exception> exceptions,
+            long decompilationTime) {
+        String logMsg = originalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+                .replaceAll("\n\\s*", "\n\t"); //$NON-NLS-1$ //$NON-NLS-2$
 
-		source.append("\n\n/*"); //$NON-NLS-1$
-		source.append("\n\tDECOMPILATION REPORT\n"); //$NON-NLS-1$
-		source.append("\n\tDecompiled from: "); //$NON-NLS-1$
-		source.append(fileLocation);
-		source.append("\n\tTotal time: "); //$NON-NLS-1$
-		source.append(decompilationTime);
-		source.append(" ms\n\t"); //$NON-NLS-1$
-		source.append(logMsg);
-		exceptions.addAll(originalDecompiler.getExceptions());
-		logExceptions(exceptions, source);
-		source.append("\n\tDecompiled with "); //$NON-NLS-1$
-		source.append(VineflowerDecompilerPlugin.decompilerType);
-		source.append(" version "); //$NON-NLS-1$
-		source.append(ConsoleDecompiler.class.getPackage().getImplementationVersion());
-		source.append(".\n*/"); //$NON-NLS-1$
-	}
+        source.append("\n\n/*"); //$NON-NLS-1$
+        source.append("\n\tDECOMPILATION REPORT\n"); //$NON-NLS-1$
+        source.append("\n\tDecompiled from: "); //$NON-NLS-1$
+        source.append(fileLocation);
+        source.append("\n\tTotal time: "); //$NON-NLS-1$
+        source.append(decompilationTime);
+        source.append(" ms\n\t"); //$NON-NLS-1$
+        source.append(logMsg);
+        exceptions.addAll(originalDecompiler.getExceptions());
+        logExceptions(exceptions, source);
+        source.append("\n\tDecompiled with "); //$NON-NLS-1$
+        source.append(VineflowerDecompilerPlugin.decompilerType);
+        source.append(" version "); //$NON-NLS-1$
+        source.append(ConsoleDecompiler.class.getPackage().getImplementationVersion());
+        source.append(".\n*/"); //$NON-NLS-1$
+    }
 
 }

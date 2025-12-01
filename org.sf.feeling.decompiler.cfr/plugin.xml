@@ -16,7 +16,7 @@
             id="org.sf.feeling.decompiler.decompile.cfr">  
       </command>  
    </extension> 
- 	<extension  
+   <extension  
          point="org.eclipse.ui.handlers">  
       <handler  
             commandId="org.sf.feeling.decompiler.decompile.cfr"  

@@ -19,193 +19,193 @@ import org.eclipse.core.runtime.Platform;
  */
 public class DecompilerAdapter {
 
-	/**
-	 * Comment for <code>id</code>
-	 */
-	private String id;
-	/**
-	 * Priority for this DecompilerAdapter.
-	 */
-	private int priority = 2;
-	/**
-	 * A id array of DecompilerAdapters to overwrite (hide).
-	 */
-	private String[] overwrite;
-	/**
-	 * Does this DecompilerAdapter look for workbench adapter chain.
-	 */
-	private boolean includeWorkbenchContribute;
-	/**
-	 * Adapterabe type.
-	 */
-	private Class adaptableType;
-	/**
-	 * Target adapter type.
-	 */
-	private Class adapterType;
+    /**
+     * Comment for <code>id</code>
+     */
+    private String id;
+    /**
+     * Priority for this DecompilerAdapter.
+     */
+    private int priority = 2;
+    /**
+     * A id array of DecompilerAdapters to overwrite (hide).
+     */
+    private String[] overwrite;
+    /**
+     * Does this DecompilerAdapter look for workbench adapter chain.
+     */
+    private boolean includeWorkbenchContribute;
+    /**
+     * Adapterabe type.
+     */
+    private Class adaptableType;
+    /**
+     * Target adapter type.
+     */
+    private Class adapterType;
 
-	private IConfigurationElement adapterConfig;
+    private IConfigurationElement adapterConfig;
 
-	/**
-	 * Comment for <code>adapterInstance</code>
-	 */
-	private Object adapterInstance;
-	/**
-	 * Comment for <code>factory</code>
-	 */
-	private IAdapterFactory factory;
-	/**
-	 * Comment for <code>isSingleton</code>
-	 */
-	private boolean isSingleton;
-	/**
-	 * Adapter object instance.
-	 */
-	private Object cachedAdapter;
+    /**
+     * Comment for <code>adapterInstance</code>
+     */
+    private Object adapterInstance;
+    /**
+     * Comment for <code>factory</code>
+     */
+    private IAdapterFactory factory;
+    /**
+     * Comment for <code>isSingleton</code>
+     */
+    private boolean isSingleton;
+    /**
+     * Adapter object instance.
+     */
+    private Object cachedAdapter;
 
-	private Expression expression;
+    private Expression expression;
 
-	// getters and setters
-	public Class getAdaptableType() {
-		return adaptableType;
-	}
+    // getters and setters
+    public Class getAdaptableType() {
+        return adaptableType;
+    }
 
-	public void setAdaptableType(Class adaptableType) {
-		this.adaptableType = adaptableType;
-	}
+    public void setAdaptableType(Class adaptableType) {
+        this.adaptableType = adaptableType;
+    }
 
-	public IAdapterFactory getFactory() {
-		return factory;
-	}
+    public IAdapterFactory getFactory() {
+        return factory;
+    }
 
-	public void setFactory(IAdapterFactory factory) {
-		this.factory = factory;
-	}
+    public void setFactory(IAdapterFactory factory) {
+        this.factory = factory;
+    }
 
-	public boolean isIncludeWorkbenchContribute() {
-		return includeWorkbenchContribute;
-	}
+    public boolean isIncludeWorkbenchContribute() {
+        return includeWorkbenchContribute;
+    }
 
-	public void setIncludeWorkbenchContribute(boolean includeWorkbenchContribute) {
-		this.includeWorkbenchContribute = includeWorkbenchContribute;
-	}
+    public void setIncludeWorkbenchContribute(boolean includeWorkbenchContribute) {
+        this.includeWorkbenchContribute = includeWorkbenchContribute;
+    }
 
-	public String[] getOverwrite() {
-		return overwrite;
-	}
+    public String[] getOverwrite() {
+        return overwrite;
+    }
 
-	public void setOverwrite(String[] overwrite) {
-		this.overwrite = overwrite;
-	}
+    public void setOverwrite(String[] overwrite) {
+        this.overwrite = overwrite;
+    }
 
-	public int getPriority() {
-		return priority;
-	}
+    public int getPriority() {
+        return priority;
+    }
 
-	public void setPriority(int priority) {
-		this.priority = priority;
-	}
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
 
-	public Class getAdapterType() {
-		return adapterType;
-	}
+    public Class getAdapterType() {
+        return adapterType;
+    }
 
-	public void setAdapterType(Class type) {
-		this.adapterType = type;
-	}
+    public void setAdapterType(Class type) {
+        this.adapterType = type;
+    }
 
-	public String getId() {
-		return id;
-	}
+    public String getId() {
+        return id;
+    }
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    public void setId(String id) {
+        this.id = id;
+    }
 
-	public Object getAdapterInstance() {
-		return adapterInstance;
-	}
+    public Object getAdapterInstance() {
+        return adapterInstance;
+    }
 
-	public void setAdapterInstance(Object adapterInstance) {
-		this.adapterInstance = adapterInstance;
-	}
+    public void setAdapterInstance(Object adapterInstance) {
+        this.adapterInstance = adapterInstance;
+    }
 
-	public void setAdapterConfig(IConfigurationElement config) {
-		this.adapterConfig = config;
-	}
+    public void setAdapterConfig(IConfigurationElement config) {
+        this.adapterConfig = config;
+    }
 
-	public boolean isSingleton() {
-		return isSingleton;
-	}
+    public boolean isSingleton() {
+        return isSingleton;
+    }
 
-	public void setSingleton(boolean isSingleton) {
-		this.isSingleton = isSingleton;
-	}
+    public void setSingleton(boolean isSingleton) {
+        this.isSingleton = isSingleton;
+    }
 
-	public Expression getExpression() {
-		return expression;
-	}
+    public Expression getExpression() {
+        return expression;
+    }
 
-	public void setExpression(Expression expression) {
-		this.expression = expression;
-	}
+    public void setExpression(Expression expression) {
+        this.expression = expression;
+    }
 
-	// public methods
-	// FIXME singleton, factory
-	public Object getAdater(Object adaptableObject) {
-		if (this.cachedAdapter != null && this.isSingleton) {
-			return this.cachedAdapter;
-		}
+    // public methods
+    // FIXME singleton, factory
+    public Object getAdater(Object adaptableObject) {
+        if (this.cachedAdapter != null && this.isSingleton) {
+            return this.cachedAdapter;
+        }
 
-		if (this.adapterInstance != null) {
-			if (!isSingleton && adapterConfig != null) {
-				try {
-					return adapterConfig.createExecutableExtension("class"); //$NON-NLS-1$
-				} catch (CoreException e) {
-					e.printStackTrace();
-				}
-			}
+        if (this.adapterInstance != null) {
+            if (!isSingleton && adapterConfig != null) {
+                try {
+                    return adapterConfig.createExecutableExtension("class"); //$NON-NLS-1$
+                } catch (CoreException e) {
+                    e.printStackTrace();
+                }
+            }
 
-			return this.adapterInstance;
-		}
+            return this.adapterInstance;
+        }
 
-		Object apt = null;
+        Object apt = null;
 
-		if (this.factory != null) {
-			apt = this.factory.getAdapter(adaptableObject, this.adapterType);
-		}
-		if (apt == null && this.includeWorkbenchContribute) {
-			apt = Platform.getAdapterManager().getAdapter(adaptableObject, this.adapterType);
-		}
+        if (this.factory != null) {
+            apt = this.factory.getAdapter(adaptableObject, this.adapterType);
+        }
+        if (apt == null && this.includeWorkbenchContribute) {
+            apt = Platform.getAdapterManager().getAdapter(adaptableObject, this.adapterType);
+        }
 
-		if (this.isSingleton) {
-			// only when is singleton, we cache the instance
-			this.cachedAdapter = apt;
-		}
+        if (this.isSingleton) {
+            // only when is singleton, we cache the instance
+            this.cachedAdapter = apt;
+        }
 
-		return apt;
-	}
+        return apt;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == this) {
-			return true;
-		}
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
 
-		if (!(obj instanceof DecompilerAdapter)) {
-			return false;
-		}
+        if (!(obj instanceof DecompilerAdapter)) {
+            return false;
+        }
 
-		return this.getId().equals(((DecompilerAdapter) obj).getId());
-	}
+        return this.getId().equals(((DecompilerAdapter) obj).getId());
+    }
 
-	@Override
-	public int hashCode() {
-		return this.getId().hashCode();
-	}
+    @Override
+    public int hashCode() {
+        return this.getId().hashCode();
+    }
 
-	@Override
-	public String toString() {
-		return this.getId();
-	}
+    @Override
+    public String toString() {
+        return this.getId();
+    }
 }

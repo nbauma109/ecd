@@ -50,217 +50,217 @@ import org.sf.feeling.decompiler.i18n.Messages;
 
 public class OpenClassWithContributionFactory extends ExtensionContributionFactory {
 
-	public static final class OpenClassesAction extends Action {
+    public static final class OpenClassesAction extends Action {
 
-		private final IEditorDescriptor classEditor;
-		private final List classes;
-		private String decompilerType;
+        private final IEditorDescriptor classEditor;
+        private final List classes;
+        private String decompilerType;
 
-		public OpenClassesAction(IEditorDescriptor classEditor, List classes, String decompilerType) {
-			this.classEditor = classEditor;
-			this.classes = classes;
-			this.decompilerType = decompilerType;
-		}
+        public OpenClassesAction(IEditorDescriptor classEditor, List classes, String decompilerType) {
+            this.classEditor = classEditor;
+            this.classes = classes;
+            this.decompilerType = decompilerType;
+        }
 
-		@Override
-		public String getText() {
-			if (DecompilerType.FernFlower.equals(decompilerType))
-				return Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithFernFlower"); //$NON-NLS-1$
-			else {
-				IDecompilerDescriptor decompilerDescriptor = JavaDecompilerPlugin.getDefault()
-						.getDecompilerDescriptor(decompilerType);
-				if (decompilerDescriptor != null)
-					return decompilerDescriptor.getDecompileAction().getText();
+        @Override
+        public String getText() {
+            if (DecompilerType.FernFlower.equals(decompilerType))
+                return Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithFernFlower"); //$NON-NLS-1$
+            else {
+                IDecompilerDescriptor decompilerDescriptor = JavaDecompilerPlugin.getDefault()
+                        .getDecompilerDescriptor(decompilerType);
+                if (decompilerDescriptor != null)
+                    return decompilerDescriptor.getDecompileAction().getText();
 
-			}
-			return classEditor.getLabel();
-		}
+            }
+            return classEditor.getLabel();
+        }
 
-		@Override
-		public ImageDescriptor getImageDescriptor() {
-			if (DecompilerType.FernFlower.equals(decompilerType)) {
-				return JavaDecompilerPlugin.getImageDescriptor("icons/fernflower_16.png"); //$NON-NLS-1$
-			} else
-				return JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompilerType).getDecompilerIcon();
-		}
+        @Override
+        public ImageDescriptor getImageDescriptor() {
+            if (DecompilerType.FernFlower.equals(decompilerType)) {
+                return JavaDecompilerPlugin.getImageDescriptor("icons/fernflower_16.png"); //$NON-NLS-1$
+            } else
+                return JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompilerType).getDecompilerIcon();
+        }
 
-		@Override
-		public void run() {
-			// Get UI refs
-			IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-			if (window == null)
-				return;
-			IWorkbenchPage page = window.getActivePage();
-			if (page == null)
-				return;
+        @Override
+        public void run() {
+            // Get UI refs
+            IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+            if (window == null)
+                return;
+            IWorkbenchPage page = window.getActivePage();
+            if (page == null)
+                return;
 
-			// Load each IClassFile into the selected editor
-			for (int i = 0; i < classes.size(); i++) {
-				IClassFile classfile = (IClassFile) classes.get(i);
-				// Convert the IClassFile to an IEditorInput
-				IEditorInput input = EditorUtility.getEditorInput(classfile);
+            // Load each IClassFile into the selected editor
+            for (int i = 0; i < classes.size(); i++) {
+                IClassFile classfile = (IClassFile) classes.get(i);
+                // Convert the IClassFile to an IEditorInput
+                IEditorInput input = EditorUtility.getEditorInput(classfile);
 
-				try {
-					IEditorPart openEditor = page.openEditor(input, classEditor.getId(), true);
+                try {
+                    IEditorPart openEditor = page.openEditor(input, classEditor.getId(), true);
 
-					if ((openEditor != null) && (!classEditor.getId().equals(openEditor.getEditorSite().getId()))) {
-						// An existing editor already has this class open. Close
-						// it
-						// and re-open in the correct editor
-						if (!openEditor.isDirty()) {
-							openEditor.getSite().getPage().closeEditor(openEditor, false);
-							page.openEditor(input, classEditor.getId(), true);
-						}
-					}
-					if (openEditor instanceof JavaDecompilerClassFileEditor) {
-						JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openEditor;
-						editor.doSetInput(decompilerType, true);
-					}
-				} catch (PartInitException e) {
-					JavaDecompilerPlugin.getDefault().getLog()
-							.log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
-				}
-			}
-		}
-	}
+                    if ((openEditor != null) && (!classEditor.getId().equals(openEditor.getEditorSite().getId()))) {
+                        // An existing editor already has this class open. Close
+                        // it
+                        // and re-open in the correct editor
+                        if (!openEditor.isDirty()) {
+                            openEditor.getSite().getPage().closeEditor(openEditor, false);
+                            page.openEditor(input, classEditor.getId(), true);
+                        }
+                    }
+                    if (openEditor instanceof JavaDecompilerClassFileEditor) {
+                        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openEditor;
+                        editor.doSetInput(decompilerType, true);
+                    }
+                } catch (PartInitException e) {
+                    JavaDecompilerPlugin.getDefault().getLog()
+                            .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
+                }
+            }
+        }
+    }
 
-	@Override
-	public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
+    @Override
+    public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
 
-		final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+        final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
 
-		// Define a dynamic set of submenu entries
-		String dynamicMenuId = "org.sf.feeling.decompiler.openwith.items"; //$NON-NLS-1$
-		IContributionItem dynamicItems = new CompoundContributionItem(dynamicMenuId) {
+        // Define a dynamic set of submenu entries
+        String dynamicMenuId = "org.sf.feeling.decompiler.openwith.items"; //$NON-NLS-1$
+        IContributionItem dynamicItems = new CompoundContributionItem(dynamicMenuId) {
 
-			@Override
-			protected IContributionItem[] getContributionItems() {
+            @Override
+            protected IContributionItem[] getContributionItems() {
 
-				// Get the list of editors that can open a class file
-				IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
+                // Get the list of editors that can open a class file
+                IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
 
-				// Get the current selections and return if nothing is selected
-				Iterator<Object> selections = getSelections(selService);
-				if (selections == null)
-					return new IContributionItem[0];
+                // Get the current selections and return if nothing is selected
+                Iterator<Object> selections = getSelections(selService);
+                if (selections == null)
+                    return new IContributionItem[0];
 
-				final List<Object> classes = getSelectedElements(selService, IClassFile.class);
+                final List<Object> classes = getSelectedElements(selService, IClassFile.class);
 
-				// List of menu items
-				List<ActionContributionItem> list = new ArrayList<>();
+                // List of menu items
+                List<ActionContributionItem> list = new ArrayList<>();
 
-				if (classes.size() == 1) {
-					IEditorDescriptor editor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);
+                if (classes.size() == 1) {
+                    IEditorDescriptor editor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);
 
-					boolean isAddFernFlower = false;
+                    boolean isAddFernFlower = false;
 
-					for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
-						if (DecompilerType.getDecompilerTypes()[i].compareToIgnoreCase(DecompilerType.FernFlower) > 0
-								&& !isAddFernFlower) {
-							list.add(new ActionContributionItem(
-									new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
-							isAddFernFlower = true;
-						}
+                    for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
+                        if (DecompilerType.getDecompilerTypes()[i].compareToIgnoreCase(DecompilerType.FernFlower) > 0
+                                && !isAddFernFlower) {
+                            list.add(new ActionContributionItem(
+                                    new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
+                            isAddFernFlower = true;
+                        }
 
-						list.add(new ActionContributionItem(
-								new OpenClassesAction(editor, classes, DecompilerType.getDecompilerTypes()[i])));
-					}
+                        list.add(new ActionContributionItem(
+                                new OpenClassesAction(editor, classes, DecompilerType.getDecompilerTypes()[i])));
+                    }
 
-					if (!isAddFernFlower) {
-						list.add(new ActionContributionItem(
-								new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
-					}
-				}
+                    if (!isAddFernFlower) {
+                        list.add(new ActionContributionItem(
+                                new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
+                    }
+                }
 
-				return (IContributionItem[]) list.toArray(new IContributionItem[list.size()]);
-			}
-		};
+                return (IContributionItem[]) list.toArray(new IContributionItem[list.size()]);
+            }
+        };
 
-		// Determine menu name
-		List selectedClasses = getSelectedElements(selService, IClassFile.class);
-		boolean openClassWith = (selectedClasses.size() == 1);
-		if (openClassWith) {
+        // Determine menu name
+        List selectedClasses = getSelectedElements(selService, IClassFile.class);
+        boolean openClassWith = (selectedClasses.size() == 1);
+        if (openClassWith) {
 
-			// Define dynamic submenu
-			MenuManager submenu = new MenuManager(
-					Messages.getString("JavaDecompilerActionBarContributor.Menu.OpenClassWith"), //$NON-NLS-1$
-					dynamicMenuId);
-			submenu.add(dynamicItems);
+            // Define dynamic submenu
+            MenuManager submenu = new MenuManager(
+                    Messages.getString("JavaDecompilerActionBarContributor.Menu.OpenClassWith"), //$NON-NLS-1$
+                    dynamicMenuId);
+            submenu.add(dynamicItems);
 
-			// Add the submenu and show it when classes are selected
-			additions.addContributionItem(submenu, new Expression() {
+            // Add the submenu and show it when classes are selected
+            additions.addContributionItem(submenu, new Expression() {
 
-				@Override
-				public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
-					boolean menuVisible = isMenuVisible(selService);
+                @Override
+                public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
+                    boolean menuVisible = isMenuVisible(selService);
 
-					if (menuVisible)
-						return EvaluationResult.TRUE;
+                    if (menuVisible)
+                        return EvaluationResult.TRUE;
 
-					return EvaluationResult.FALSE;
-				}
-			});
-		}
-	}
+                    return EvaluationResult.FALSE;
+                }
+            });
+        }
+    }
 
-	private boolean isMenuVisible(ISelectionService selService) {
+    private boolean isMenuVisible(ISelectionService selService) {
 
-		Iterator selections = getSelections(selService);
+        Iterator selections = getSelections(selService);
 
-		boolean atLeastOneSelection = false;
-		boolean allClasses = true;
-		boolean singlePackageOrRoot = false;
+        boolean atLeastOneSelection = false;
+        boolean allClasses = true;
+        boolean singlePackageOrRoot = false;
 
-		while ((selections != null) && selections.hasNext()) {
-			atLeastOneSelection = true;
+        while ((selections != null) && selections.hasNext()) {
+            atLeastOneSelection = true;
 
-			Object select = selections.next();
+            Object select = selections.next();
 
-			if (!(select instanceof IClassFile)) {
-				allClasses = false;
-			}
+            if (!(select instanceof IClassFile)) {
+                allClasses = false;
+            }
 
-			if (((select instanceof IPackageFragment)
-					|| (select instanceof IPackageFragmentRoot) && (!selections.hasNext()))) {
-				singlePackageOrRoot = true;
-			}
-		}
+            if (((select instanceof IPackageFragment)
+                    || (select instanceof IPackageFragmentRoot) && (!selections.hasNext()))) {
+                singlePackageOrRoot = true;
+            }
+        }
 
-		if (atLeastOneSelection) {
-			if (allClasses || singlePackageOrRoot) {
-				return true;
-			}
-		}
+        if (atLeastOneSelection) {
+            if (allClasses || singlePackageOrRoot) {
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	private List getSelectedElements(ISelectionService selService, Class eleClass) {
+    private List getSelectedElements(ISelectionService selService, Class eleClass) {
 
-		Iterator selections = getSelections(selService);
-		List elements = new ArrayList();
+        Iterator selections = getSelections(selService);
+        List elements = new ArrayList();
 
-		while ((selections != null) && selections.hasNext()) {
-			Object select = selections.next();
+        while ((selections != null) && selections.hasNext()) {
+            Object select = selections.next();
 
-			if (eleClass.isInstance(select))
-				elements.add(select);
-		}
+            if (eleClass.isInstance(select))
+                elements.add(select);
+        }
 
-		return elements;
-	}
+        return elements;
+    }
 
-	private Iterator getSelections(ISelectionService selService) {
-		ISelection selection = selService.getSelection();
+    private Iterator getSelections(ISelectionService selService) {
+        ISelection selection = selService.getSelection();
 
-		if (selection != null) {
-			if (selection instanceof IStructuredSelection) {
-				IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-				return structuredSelection.iterator();
-			}
-		}
+        if (selection != null) {
+            if (selection instanceof IStructuredSelection) {
+                IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+                return structuredSelection.iterator();
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
 }
