@@ -146,8 +146,9 @@ public class UIUtil {
 		while ((selections != null) && selections.hasNext()) {
 			Object select = selections.next();
 
-			if (eleClass.isInstance(select))
-				elements.add(select);
+			if (eleClass.isInstance(select)) {
+                elements.add(select);
+            }
 		}
 
 		return elements;
@@ -156,12 +157,10 @@ public class UIUtil {
 	private static Iterator getSelections(ISelectionService selService) {
 		ISelection selection = selService.getSelection();
 
-		if (selection != null) {
-			if (selection instanceof IStructuredSelection) {
-				IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-				return structuredSelection.iterator();
-			}
-		}
+		if ((selection != null) && (selection instanceof IStructuredSelection)) {
+        	IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+        	return structuredSelection.iterator();
+        }
 
 		return null;
 	}
@@ -175,15 +174,15 @@ public class UIUtil {
 
 				if (pg != null) {
 					IWorkbenchPart activePart = pg.getActivePart();
-					if (activePart instanceof ContentOutline) {
-						ContentOutline outline = (ContentOutline) activePart;
-						IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
-								"getCurrentContributingPart"); //$NON-NLS-1$
-						if (part == null) {
-							return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
-						}
-					} else
-						return activePart;
+					if (!(activePart instanceof ContentOutline)) {
+                        return activePart;
+                    }
+                    ContentOutline outline = (ContentOutline) activePart;
+                    IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
+                    		"getCurrentContributingPart"); //$NON-NLS-1$
+                    if (part == null) {
+                    	return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
+                    }
 				}
 			} else {
 				for (IWorkbenchPage pg : window.getPages()) {
@@ -207,8 +206,9 @@ public class UIUtil {
 			return selectedJars;
 		}
 
-		if (selectedJars.size() > 1)
-			return null;
+		if (selectedJars.size() > 1) {
+            return null;
+        }
 
 		final List selectedPackages = getSelectedElements(window.getSelectionService(), IPackageFragment.class);
 		final List selectedClasses = getSelectedElements(window.getSelectionService(), IClassFile.class);
@@ -266,12 +266,14 @@ public class UIUtil {
 		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
 		for (int i = 0; i < stacks.length && i < 12; i++) {
 			if (stacks[i].getClassName().indexOf("BinaryType") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getJavadocRange")) //$NON-NLS-1$
-				return false;
+					&& "getJavadocRange".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return false;
+            }
 
 			if (stacks[i].getClassName().indexOf("JavadocHover") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getHoverInfo")) //$NON-NLS-1$
-				return true;
+					&& "getHoverInfo".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return true;
+            }
 		}
 		return false;
 	}
@@ -280,20 +282,24 @@ public class UIUtil {
 		StackTraceElement[] stacks = Thread.currentThread().getStackTrace();
 		for (int i = 0; i < stacks.length && i < 12; i++) {
 			if (stacks[i].getClassName().indexOf("BinaryType") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getJavadocRange")) //$NON-NLS-1$
-				return false;
+					&& "getJavadocRange".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return false;
+            }
 
 			if (stacks[i].getClassName().indexOf("JavadocHover") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getHoverInfo2")) //$NON-NLS-1$
-				return true;
+					&& "getHoverInfo2".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return true;
+            }
 
 			if (stacks[i].getClassName().indexOf("JavaSourceHover") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getHoverInfo")) //$NON-NLS-1$
-				return true;
+					&& "getHoverInfo".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return true;
+            }
 
 			if (stacks[i].getClassName().indexOf("FindOccurrencesInFileAction") != -1 //$NON-NLS-1$
-					&& stacks[i].getMethodName().equals("getMember")) //$NON-NLS-1$
-				return true;
+					&& "getMember".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            	return true;
+            }
 
 			// if ( stacks[i].getClassName( ).indexOf( "HyperlinkManager" ) !=
 			// -1 //$NON-NLS-1$

@@ -39,8 +39,9 @@ public class FileUtil {
 
 	public static void writeToFile(File file, String string) {
 		try {
-			if (!file.getParentFile().exists())
-				file.getParentFile().mkdirs();
+			if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
 			String encoding = null;
 			try {
 				encoding = JavaDecompilerPlugin.getDefault().getExportEncoding();
@@ -105,7 +106,7 @@ public class FileUtil {
 
 	/**
 	 * Recursively delete a directory.
-	 * 
+	 *
 	 * @param directory directory to delete
 	 * @throws IOException in case deletion is unsuccessful
 	 */
@@ -143,8 +144,7 @@ public class FileUtil {
 		boolean isPackage = false;
 
 		File[] files = directory.listFiles();
-		for (int i = 0; i < files.length; i++) {
-			File file = files[i];
+		for (File file : files) {
 			if (!isPackage && file.isFile()) {
 				isPackage = true;
 			}
@@ -155,11 +155,9 @@ public class FileUtil {
 			}
 		}
 
-		if (isPackage) {
-			if (monitor != null) {
-				monitor.worked(step);
-			}
-		}
+		if (isPackage && (monitor != null)) {
+        	monitor.worked(step);
+        }
 
 		if (null != exception) {
 			throw exception;
@@ -190,9 +188,9 @@ public class FileUtil {
 		if (file.isDirectory()) {
 			File[] files = file.listFiles(filter);
 			if (files != null) {
-				for (int i = 0; i < files.length; i++) {
-					recursiveZip(monitor, zos, files[i], (path.length() > 0 ? (path + "/") : path) //$NON-NLS-1$
-							+ files[i].getName(), filter, step);
+				for (File file2 : files) {
+					recursiveZip(monitor, zos, file2, (path.length() > 0 ? (path + "/") : path) //$NON-NLS-1$
+							+ file2.getName(), filter, step);
 				}
 			}
 			if (monitor != null) {
@@ -217,8 +215,9 @@ public class FileUtil {
 	}
 
 	public static boolean isZipFile(String path) {
-		if (path == null)
-			return false;
+		if (path == null) {
+            return false;
+        }
 		try {
 			try (ZipFile zipFile = new ZipFile(path)) {
 				return true;
@@ -246,8 +245,9 @@ public class FileUtil {
 			byte[] tmp = new byte[4096];
 			while (true) {
 				int r = is.read(tmp);
-				if (r == -1)
-					break;
+				if (r == -1) {
+                    break;
+                }
 				out.write(tmp, 0, r);
 			}
 			byte[] bytes = out.toByteArray();
@@ -261,8 +261,9 @@ public class FileUtil {
 
 	public static void writeToFile(File file, String string, String encoding) {
 		try {
-			if (!file.getParentFile().exists())
-				file.getParentFile().mkdirs();
+			if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
 			try (PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), encoding))) {
 				out.print(string);
 			}
@@ -283,8 +284,8 @@ public class FileUtil {
 
 		File[] children = root.listFiles();
 		if (children != null) {
-			for (int i = 0; i < children.length; i++) {
-				deltree(children[i]);
+			for (File child : children) {
+				deltree(child);
 			}
 		}
 

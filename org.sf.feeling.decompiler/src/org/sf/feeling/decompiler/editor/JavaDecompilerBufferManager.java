@@ -115,8 +115,9 @@ public class JavaDecompilerBufferManager extends BufferManager {
 				if (owner.equals(input)) {
 					String content = editor.getDocumentProvider().getDocument(editor.getEditorInput()).get();
 					if (buffers[0] != null) {
-						if (!content.equals(buffers[0].getContents()))
-							buffers[0].setContents(content);
+						if (!content.equals(buffers[0].getContents())) {
+                            buffers[0].setContents(content);
+                        }
 					} else {
 						ClassFile cf = (ClassFile) input;
 						IBuffer classBuffer = BufferManager.createBuffer(cf);

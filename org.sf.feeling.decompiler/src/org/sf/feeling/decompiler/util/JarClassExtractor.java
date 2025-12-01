@@ -38,20 +38,24 @@ public class JarClassExtractor {
 
 			for (ZipEntry entry : entries) {
 				outFile = entry.getName();
-				if ((lastSep = outFile.lastIndexOf('/')) != -1)
-					outFile = outFile.substring(lastSep);
+				lastSep = outFile.lastIndexOf('/');
+                if (lastSep != -1) {
+                    outFile = outFile.substring(lastSep);
+                }
 
 				try (InputStream in = archive.getInputStream(entry)) {
-					if (in == null)
-						throw new IOException("Zip file entry <" //$NON-NLS-1$
+					if (in == null) {
+                        throw new IOException("Zip file entry <" //$NON-NLS-1$
 								+ entry.getName() + "> not found"); //$NON-NLS-1$
+                    }
 					Path outPath = Paths.get(to + File.separator + outFile);
 					if (!outPath.normalize().startsWith(Paths.get(to))) {
 						throw new IOException("Bad zip entry");
 					}
 					try (OutputStream out = Files.newOutputStream(outPath)) {
-						while ((amountRead = in.read(buffer)) != -1)
-							out.write(buffer, 0, amountRead);
+						while ((amountRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, amountRead);
+                        }
 					}
 				}
 			}
@@ -72,8 +76,9 @@ public class JarClassExtractor {
 		while (entries.hasMoreElements()) {
 			entry = entries.nextElement();
 			name = entry.getName();
-			if (name.equals(entryName) || (name.startsWith(innerPrefix) && inner))
-				relevant.add(entry);
+			if (name.equals(entryName) || (name.startsWith(innerPrefix) && inner)) {
+                relevant.add(entry);
+            }
 		}
 		return relevant;
 	}

@@ -217,8 +217,9 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
 		encodingEditor.setPreferenceStore(getPreferenceStore());
 		encodingEditor.load();
 
-		if (encoding == null || encoding.equals(defaultEncoding) || encoding.length() == 0)
-			encodingEditor.loadDefault();
+		if (encoding == null || encoding.equals(defaultEncoding) || encoding.length() == 0) {
+            encodingEditor.loadDefault();
+        }
 	}
 
 	@Override

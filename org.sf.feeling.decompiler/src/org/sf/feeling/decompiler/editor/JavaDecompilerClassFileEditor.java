@@ -101,8 +101,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
 	private boolean doOpenBuffer(IEditorInput input, String type, boolean force, boolean reuseBuf, boolean always)
 			throws JavaModelException {
-		if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())
-			reuseBuf = false;
+		if (JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective()) {
+            reuseBuf = false;
+        }
 
 		if (input instanceof IClassFileEditorInput) {
 
@@ -175,8 +176,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	public void setHighlightRange(int offset, int length, boolean moveCursor) {
 		super.setHighlightRange(offset, length, moveCursor);
 
-		if (selectionChange)
-			return;
+		if (selectionChange) {
+            return;
+        }
 
 		IClassFileEditorInput classFileEditorInput = (IClassFileEditorInput) getEditorInput();
 		final IClassFile file = classFileEditorInput.getClassFile();
@@ -198,19 +200,17 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
 			@Override
 			public void run() {
-				if (!widget.isDisposed()) {
-					if (widget.getVerticalBar() != null) {
-						int selection = widget.getVerticalBar().getSelection();
+				if (!widget.isDisposed() && (widget.getVerticalBar() != null)) {
+                	int selection = widget.getVerticalBar().getSelection();
 
-						if (selection > 0 && selection < widget.getBounds().height / 2
-								&& widget.getLocationAtOffset(widget.getSelection().x).y + selection
-										+ widget.getLineHeight() * 2 < widget.getBounds().height) {
-							ReflectionUtils.invokeMethod(widget, "scrollVertical", new Class[] { //$NON-NLS-1$
-									int.class, boolean.class }, new Object[] { -selection, true });
-						}
-					}
-				}
-			};
+                	if (selection > 0 && selection < widget.getBounds().height / 2
+                			&& widget.getLocationAtOffset(widget.getSelection().x).y + selection
+                					+ widget.getLineHeight() * 2 < widget.getBounds().height) {
+                		ReflectionUtils.invokeMethod(widget, "scrollVertical", new Class[] { //$NON-NLS-1$
+                				int.class, boolean.class }, new Object[] { -selection, true });
+                	}
+                }
+			}
 		});
 	}
 
@@ -219,8 +219,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	}
 
 	public static boolean isDebug(String source) {
-		if (source == null)
-			return false;
+		if (source == null) {
+            return false;
+        }
 		Pattern pattern = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
 		Matcher matcher = pattern.matcher(source);
 		return matcher.find() || source.indexOf(DecompilerOutputUtil.NO_LINE_NUMBER) != -1;
@@ -232,7 +233,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
 	/**
 	 * Sets editor input only if buffer was actually opened.
-	 * 
+	 *
 	 * @param force if <code>true</code> initialize no matter what
 	 */
 	public void doSetInput(boolean force) {
@@ -327,7 +328,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 				} else {
 					IPath relativePath = classInput.getClassFile().getParent().getPath();
 					String location = UIUtil.getPathLocation(relativePath);
-					if (!(FileUtil.isZipFile(location) || FileUtil.isZipFile(relativePath.toOSString()))) {
+					if ((!FileUtil.isZipFile(location) && !FileUtil.isZipFile(relativePath.toOSString()))) {
 						String filePath = UIUtil.getPathLocation(classInput.getClassFile().getPath());
 						if (filePath != null) {
 							DecompilerClassEditorInput editorInput = new DecompilerClassEditorInput(
@@ -347,27 +348,26 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 				IClassFileEditorInput classFileEditorInput = (IClassFileEditorInput) input;
 				IClassFile file = classFileEditorInput.getClassFile();
 
-				if (file.getSourceRange() == null && file.getBytes() != null) {
-					if (ClassUtil.isClassFile(file.getBytes())) {
-						File classFile = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
-								.getString(JavaDecompilerPlugin.TEMP_DIR), file.getElementName());
-						try {
-							try (FileOutputStream fos = new FileOutputStream(classFile)) {
-								fos.write(file.getBytes());
-							}
+				if ((file.getSourceRange() == null && file.getBytes() != null) && ClassUtil.isClassFile(file.getBytes())) {
+                	File classFile = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
+                			.getString(JavaDecompilerPlugin.TEMP_DIR), file.getElementName());
+                	try {
+                		try (FileOutputStream fos = new FileOutputStream(classFile)) {
+                			fos.write(file.getBytes());
+                		}
 
-							doSetInput(new DecompilerClassEditorInput(
-									EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
-							classFile.delete();
-							return;
-						} catch (IOException e1) {
-							JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-						} finally {
-							if (classFile != null && classFile.exists())
-								classFile.delete();
-						}
-					}
-				}
+                		doSetInput(new DecompilerClassEditorInput(
+                				EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
+                		classFile.delete();
+                		return;
+                	} catch (IOException e1) {
+                		JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
+                	} finally {
+                		if (classFile != null && classFile.exists()) {
+                            classFile.delete();
+                        }
+                	}
+                }
 			}
 
 			super.doSetInput(input);
@@ -396,10 +396,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 	protected JavaDecompilerBufferManager getBufferManager() {
 		JavaDecompilerBufferManager manager;
 		BufferManager defManager = BufferManager.getDefaultBufferManager();
-		if (defManager instanceof JavaDecompilerBufferManager)
-			manager = (JavaDecompilerBufferManager) defManager;
-		else
-			manager = new JavaDecompilerBufferManager(defManager);
+		if (defManager instanceof JavaDecompilerBufferManager) {
+            manager = (JavaDecompilerBufferManager) defManager;
+        } else {
+            manager = new JavaDecompilerBufferManager(defManager);
+        }
 		return manager;
 	}
 

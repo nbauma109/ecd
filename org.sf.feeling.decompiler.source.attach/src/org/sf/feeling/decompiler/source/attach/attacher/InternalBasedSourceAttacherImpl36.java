@@ -35,7 +35,6 @@ public class InternalBasedSourceAttacherImpl36 implements SourceAttacher {
 	public boolean attachSource(final IPackageFragmentRoot fRoot, final File newSourcePath) throws CoreException {
 		try {
 			IPath fContainerPath = null;
-			IClasspathEntry fEntry = null;
 			if (fRoot == null || fRoot.getKind() != IPackageFragmentRoot.K_BINARY) {
 				Logger.debug("error(!=K_BINARY)", null); //$NON-NLS-1$
 				return false;
@@ -64,7 +63,7 @@ public class InternalBasedSourceAttacherImpl36 implements SourceAttacher {
 				entry0 = JavaModelUtil.findEntryInContainer(container, fRoot.getPath());
 			}
 			fContainerPath = containerPath;
-			fEntry = entry0;
+			IClasspathEntry fEntry = entry0;
 			final CPListElement elem = CPListElement.createFromExisting(fEntry, (IJavaProject) null);
 			IPath srcAttPath = Path.fromOSString(newSourcePath.getAbsolutePath()).makeAbsolute();
 			if (fEntry.getEntryKind() == IClasspathEntry.CPE_VARIABLE) {
@@ -89,13 +88,12 @@ public class InternalBasedSourceAttacherImpl36 implements SourceAttacher {
 						fContainerPath, isReferencedEntry, new NullProgressMonitor());
 				if (fRoot.getSourceAttachmentPath() != null && fRoot.getSourceAttachmentPath().toFile().exists()) {
 					break;
-				} else {
-					count++;
-					try {
-						Thread.sleep(200);
-					} catch (InterruptedException e) {
-					}
 				}
+                count++;
+                try {
+                	Thread.sleep(200);
+                } catch (InterruptedException e) {
+                }
 			}
 		} catch (CoreException e) {
 			Logger.debug("error", e); //$NON-NLS-1$

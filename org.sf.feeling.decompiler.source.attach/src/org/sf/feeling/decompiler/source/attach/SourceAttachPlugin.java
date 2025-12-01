@@ -34,7 +34,7 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.
 	 * BundleContext)
 	 */
@@ -51,8 +51,8 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 		if (dir.exists()) {
 			File[] children = dir.listFiles();
 			if (children != null) {
-				for (int i = 0; i < children.length; i++) {
-					children[i].deleteOnExit();
+				for (File child : children) {
+					child.deleteOnExit();
 				}
 			}
 		}
@@ -60,7 +60,7 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.
 	 * BundleContext)
 	 */

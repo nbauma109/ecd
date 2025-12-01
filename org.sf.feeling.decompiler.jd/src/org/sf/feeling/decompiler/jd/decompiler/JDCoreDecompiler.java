@@ -43,7 +43,7 @@ public class JDCoreDecompiler implements IDecompiler {
 	/**
 	 * Our {@link JDCoreZipLoader} supports direct decompilation from within a JAR
 	 * archive
-	 * 
+	 *
 	 * @see IDecompiler#decompileFromArchive(String, String, String)
 	 */
 	@Override

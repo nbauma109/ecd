@@ -45,7 +45,7 @@ public class FernFlowerDecompiler implements IDecompiler {
 	/**
 	 * Performs a <code>Runtime.exec()</code> on FernFlower executable with selected
 	 * options.
-	 * 
+	 *
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
@@ -82,8 +82,9 @@ public class FernFlowerDecompiler implements IDecompiler {
 		final File tmpDir = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
 				String.valueOf(System.currentTimeMillis()));
 
-		if (!tmpDir.exists())
-			tmpDir.mkdirs();
+		if (!tmpDir.exists()) {
+            tmpDir.mkdirs();
+        }
 
 		// Work around protected constructor
 		class EmbeddedConsoleDecompiler extends ConsoleDecompiler {

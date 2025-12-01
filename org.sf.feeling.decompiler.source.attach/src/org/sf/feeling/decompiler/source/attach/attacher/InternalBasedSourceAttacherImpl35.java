@@ -35,7 +35,6 @@ public class InternalBasedSourceAttacherImpl35 implements SourceAttacher {
 	public boolean attachSource(final IPackageFragmentRoot fRoot, final File newSourcePath) throws CoreException {
 		try {
 			IPath fContainerPath = null;
-			IClasspathEntry fEntry = null;
 			if (fRoot == null || fRoot.getKind() != IPackageFragmentRoot.K_BINARY) {
 				Logger.debug("error(!=K_BINARY)", null); //$NON-NLS-1$
 				return false;
@@ -67,7 +66,7 @@ public class InternalBasedSourceAttacherImpl35 implements SourceAttacher {
 				Assert.isNotNull(entry);
 			}
 			fContainerPath = containerPath;
-			fEntry = entry;
+			IClasspathEntry fEntry = entry;
 			final CPListElement elem = CPListElement.createFromExisting(fEntry, (IJavaProject) null);
 			IPath srcAttPath = Path.fromOSString(newSourcePath.getAbsolutePath()).makeAbsolute();
 			if (fEntry.getEntryKind() == IClasspathEntry.CPE_VARIABLE) {

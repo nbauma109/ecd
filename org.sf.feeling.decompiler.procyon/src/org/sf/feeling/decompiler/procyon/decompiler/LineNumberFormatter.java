@@ -2,9 +2,9 @@
  * Apache License
  * Version 2.0, January 2004
  * https://www.apache.org/licenses/
- * 
+ *
  * Copied from package com.strobel.decompiler;
- * 
+ *
  * Modified by Jan Peter Stotz
  */
 
@@ -29,7 +29,7 @@ import com.strobel.decompiler.languages.LineNumberPosition;
  * A <code>LineNumberFormatter</code> is used to rewrite an existing .java file,
  * introducing line number information. It can handle either, or both, of the
  * following jobs:
- * 
+ *
  * <ul>
  * <li>Introduce line numbers as leading comments.
  * <li>Stretch the file so that the line number comments match the physical
@@ -47,7 +47,7 @@ public class LineNumberFormatter {
 
 	/**
 	 * Constructs an instance.
-	 * 
+	 *
 	 * @param file                the file whose line numbers should be fixed
 	 * @param lineNumberPositions a recipe for how to fix the line numbers in
 	 *                            'file'.
@@ -63,7 +63,7 @@ public class LineNumberFormatter {
 	/**
 	 * Rewrites the file passed to 'this' constructor so that the actual line
 	 * numbers match the recipe passed to 'this' constructor.
-	 * 
+	 *
 	 * @return The formatted source code
 	 */
 	public String reformatFile() throws IOException {
@@ -78,7 +78,7 @@ public class LineNumberFormatter {
 	/**
 	 * Processes {@link #_file}, breaking apart any lines on which multiple
 	 * line-number markers appear in different columns.
-	 * 
+	 *
 	 * @return the list of broken lines
 	 */
 	private List<String> breakLines(List<LineNumberPosition> o_LineBrokenPositions) throws IOException {
@@ -119,7 +119,7 @@ public class LineNumberFormatter {
 						prevPartLen += firstPart.length();
 						indent = new char[prevPartLen];
 						Arrays.fill(indent, ' ');
-						line = line.substring(firstPart.length(), line.length());
+						line = line.substring(firstPart.length());
 
 						// Alter the position while adding it.
 						o_LineBrokenPositions.add(new LineNumberPosition(nextPos.getOriginalLine(),
@@ -216,11 +216,8 @@ public class LineNumberFormatter {
 								requiredAdjustment--;
 								globalOffset++;
 							} while (isLast && requiredAdjustment > 0);
-							w.println(lineNoToPrint, line);
-						} else {
-							// No tweaks needed-- we are on the ball.
-							w.println(lineNoToPrint, line);
 						}
+                        w.println(lineNoToPrint, line);
 					}
 				}
 			}

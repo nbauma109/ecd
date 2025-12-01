@@ -29,8 +29,9 @@ public class AttachSourceAction extends Action {
 
 	@Override
 	public void run() {
-		if (selection == null || selection.isEmpty())
-			return;
+		if (selection == null || selection.isEmpty()) {
+            return;
+        }
 
 		Object firstElement = selection.get(0);
 		if (selection.size() == 1 && firstElement instanceof IClassFile) {
@@ -47,8 +48,9 @@ public class AttachSourceAction extends Action {
 			} else if (firstElement instanceof IPackageFragment) {
 				root = (IPackageFragmentRoot) ((IPackageFragment) firstElement).getParent();
 			}
-			if (root == null)
-				return;
+			if (root == null) {
+                return;
+            }
 			JavaDecompilerPlugin.getDefault().attachSource(root, true);
 		}
 	}

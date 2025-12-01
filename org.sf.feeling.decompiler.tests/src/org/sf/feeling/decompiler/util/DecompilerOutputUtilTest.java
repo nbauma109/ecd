@@ -40,7 +40,7 @@ public class ExampleOne {
 /*    */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleTwoFernFlower() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
@@ -65,7 +65,7 @@ public class ExampleTwo {
 /*   */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleThreeFernFlower() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
@@ -101,7 +101,7 @@ public class ExampleThree {
 /*    */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleFourFernFlower() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
@@ -128,9 +128,9 @@ public class ExampleFour {
 	public void testToStringExampleOneProcyon() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
       package sample.one;
-      
+
       import java.util.*;
-      
+
       public class ExampleOne
       {
           public void run() {
@@ -159,12 +159,12 @@ public class ExampleFour {
 /*    */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleTwoProcyon() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
      package sample.two;
-     
+
      public class ExampleTwo
      {
          public void run() {
@@ -185,12 +185,12 @@ public class ExampleFour {
 /*   */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleThreeProcyon() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
       import java.util.*;
-      
+
       public class ExampleThree
       {
           public void run() {
@@ -221,7 +221,7 @@ public class ExampleFour {
 /*    */ }
 """, output);
 	}
-	
+
 	@Test
 	public void testToStringExampleFourProcyon() {
 		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """

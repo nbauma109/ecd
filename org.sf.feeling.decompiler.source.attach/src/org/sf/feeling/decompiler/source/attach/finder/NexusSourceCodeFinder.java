@@ -97,7 +97,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // ---------------------------------------------------------------------------------
     @Override
     public void find(String binFile, String sha1, List<SourceFileResult> results) {
-        if (canceled) return;
+        if (canceled) {
+            return;
+        }
 
         // If SHA-1 is not provided, compute it from the binary file
         String targetSha1 = sha1;
@@ -108,11 +110,15 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 Logger.debug(t);
             }
         }
-        if (targetSha1 == null) return;
+        if (targetSha1 == null) {
+            return;
+        }
 
         // Detect Nexus family
         Detection d = detectFamily();
-        if (canceled) return;
+        if (canceled) {
+            return;
+        }
 
         // Collect candidate download URLs, keyed by GAV; prefer sources when available
         Map<GAV, String> candidates = new LinkedHashMap<>();
@@ -144,7 +150,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             Logger.debug(t);
         }
 
-        if (canceled || candidates.isEmpty()) return;
+        if (canceled || candidates.isEmpty()) {
+            return;
+        }
 
         // Download and verify each candidate. The first verified match wins.
         UrlDownloader downloader = new UrlDownloader();
@@ -154,7 +162,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         String repoNameForUi = serviceUrl.substring(serviceUrl.lastIndexOf('/') + 1);
 
         for (Map.Entry<GAV, String> e : candidates.entrySet()) {
-            if (canceled) return;
+            if (canceled) {
+                return;
+            }
             String downloadUrl = normalizeSchemeByPort(e.getValue()); // normalize odd http://...:443/... links
             try {
                 String tmp = downloader.download(downloadUrl);
@@ -181,30 +191,44 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private Detection detectFamily() {
-        if (canceled) return new Detection(NexusFamily.UNKNOWN, serviceUrl);
+        if (canceled) {
+            return new Detection(NexusFamily.UNKNOWN, serviceUrl);
+        }
 
         // Try as provided
         NexusFamily fam = probeFamily(serviceUrl);
-        if (fam != NexusFamily.UNKNOWN) return new Detection(fam, serviceUrl);
+        if (fam != NexusFamily.UNKNOWN) {
+            return new Detection(fam, serviceUrl);
+        }
 
         // Try with /nexus appended
         String withNexus = ensureWithNexus(serviceUrl);
         fam = probeFamily(withNexus);
-        if (fam != NexusFamily.UNKNOWN) return new Detection(fam, withNexus);
+        if (fam != NexusFamily.UNKNOWN) {
+            return new Detection(fam, withNexus);
+        }
 
         return new Detection(NexusFamily.UNKNOWN, serviceUrl);
     }
 
     private NexusFamily probeFamily(String base) {
-        if (canceled) return NexusFamily.UNKNOWN;
+        if (canceled) {
+            return NexusFamily.UNKNOWN;
+        }
         try {
             int c3 = httpStatusCode(base + "/service/rest/v1/status");
-            if (c3 == 200) return NexusFamily.NXRM3;
+            if (c3 == 200) {
+                return NexusFamily.NXRM3;
+            }
         } catch (Throwable ignored) {}
-        if (canceled) return NexusFamily.UNKNOWN;
+        if (canceled) {
+            return NexusFamily.UNKNOWN;
+        }
         try {
             int c2 = httpStatusCode(base + "/service/local/status");
-            if (c2 == 200) return NexusFamily.NXRM2;
+            if (c2 == 200) {
+                return NexusFamily.NXRM2;
+            }
         } catch (Throwable ignored) {}
         return NexusFamily.UNKNOWN;
     }
@@ -218,7 +242,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
      */
     private Map<GAV, String> nx3SearchBySha1(String base, String sha1) {
         Map<GAV, String> out = new LinkedHashMap<>();
-        if (canceled) return out;
+        if (canceled) {
+            return out;
+        }
 
         // 1) Asset search: /service/rest/v1/search/assets?sha1=...
         boolean any = nx3SearchAssets(base, sha1, out);
@@ -253,22 +279,30 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             StringBuilder u = new StringBuilder(base)
                     .append("/service/rest/v1/search/assets?sha1=")
                     .append(urlenc(sha1));
-            if (next != null) u.append("&continuationToken=").append(urlenc(next));
+            if (next != null) {
+                u.append("&continuationToken=").append(urlenc(next));
+            }
 
             JsonObject root = getJson(u.toString());
-            if (root == null) break;
+            if (root == null) {
+                break;
+            }
 
             JsonArray items = jsonArray(root, "items");
             for (JsonValue v : items) {
-                if (canceled) return any;
+                if (canceled) {
+                    return any;
+                }
                 JsonObject it = v.asObject();
                 String download = jsonString(it, "downloadUrl");
                 download = normalizeSchemeByPort(download); // normalize if the server returned http on port 443
                 String path = jsonString(it, "path");
-                if (download == null || path == null) continue;
+                if (download == null || path == null) {
+                    continue;
+                }
 
                 Optional<GAV> gavOpt = parseMavenPathToGav(path);
-                GAV gav = gavOpt.orElseGet(() -> new GAV());
+                GAV gav = gavOpt.orElseGet(GAV::new);
                 if (!gavOpt.isPresent()) {
                     // Best effort if the path is not Maven-like: keep empty GAV but allow dedup by link
                     gav.setArtifactLink(download);
@@ -295,14 +329,20 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             StringBuilder u = new StringBuilder(base)
                     .append("/service/rest/v1/search?sha1=")
                     .append(urlenc(sha1));
-            if (next != null) u.append("&continuationToken=").append(urlenc(next));
+            if (next != null) {
+                u.append("&continuationToken=").append(urlenc(next));
+            }
 
             JsonObject root = getJson(u.toString());
-            if (root == null) break;
+            if (root == null) {
+                break;
+            }
 
             JsonArray items = jsonArray(root, "items");
             for (JsonValue v : items) {
-                if (canceled) return;
+                if (canceled) {
+                    return;
+                }
                 JsonObject comp = v.asObject();
                 String group = jsonString(comp, "group");
                 String name = jsonString(comp, "name");
@@ -350,7 +390,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
      */
     private Map<GAV, String> nx2SearchBySha1(String base, String sha1) {
         Map<GAV, String> sink = new LinkedHashMap<>();
-        if (canceled) return sink;
+        if (canceled) {
+            return sink;
+        }
 
         // Identify endpoint (single result)
         try {
@@ -394,7 +436,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             if (root != null) {
                 JsonArray data = jsonArray(root, "data");
                 for (JsonValue v : data) {
-                    if (canceled) return sink;
+                    if (canceled) {
+                        return sink;
+                    }
                     JsonObject item = v.asObject();
                     String groupId    = jsonString(item, "groupId");
                     String artifactId = jsonString(item, "artifactId");
@@ -402,7 +446,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     // Primary field is latestReleaseRepositoryId; fallbacks are tolerated for compatibility
                     String repoId     = jsonStringAny(item, "latestReleaseRepositoryId", "repositoryId", "repoId");
 
-                    if (groupId == null || artifactId == null || version == null || repoId == null) continue;
+                    if (groupId == null || artifactId == null || version == null || repoId == null) {
+                        continue;
+                    }
 
                     String redirectBase = ensureTrailingSlash(base) + "service/local/artifact/maven/redirect";
                     String src = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, "jar", "sources");
@@ -450,7 +496,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private static String trimTrailingSlash(String s) {
-        if (s == null) return null;
+        if (s == null) {
+            return null;
+        }
         return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
     }
 
@@ -472,7 +520,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 
     private String chooseSourcesFirst(Set<String> urls) {
         for (String u : urls) {
-            if (u.endsWith("-sources.jar") || u.endsWith(".src.zip")) return u;
+            if (u.endsWith("-sources.jar") || u.endsWith(".src.zip")) {
+                return u;
+            }
         }
         return urls.iterator().next();
     }
@@ -480,21 +530,29 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     private Optional<GAV> parseMavenPathToGav(String path) {
         // Example: com/acme/lib/mylib/1.2.3/mylib-1.2.3(-classifier).jar
         try {
-            if (path == null) return Optional.empty();
+            if (path == null) {
+                return Optional.empty();
+            }
             int lastSlash = path.lastIndexOf('/');
-            if (lastSlash <= 0) return Optional.empty();
+            if (lastSlash <= 0) {
+                return Optional.empty();
+            }
 
             String fileName = path.substring(lastSlash + 1);
             String parent = path.substring(0, lastSlash);
 
             String[] parts = parent.split("/");
-            if (parts.length < 3) return Optional.empty();
+            if (parts.length < 3) {
+                return Optional.empty();
+            }
 
             String version = parts[parts.length - 1];
             String artifactId = parts[parts.length - 2];
             StringBuilder groupSb = new StringBuilder();
             for (int i = 0; i < parts.length - 2; i++) {
-                if (i > 0) groupSb.append('.');
+                if (i > 0) {
+                    groupSb.append('.');
+                }
                 groupSb.append(parts[i]);
             }
             String groupId = groupSb.toString();
@@ -502,10 +560,14 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             // fileName pattern: artifactId-version(-classifier).ext
             String base = fileName;
             int dot = base.lastIndexOf('.');
-            if (dot > 0) base = base.substring(0, dot);
+            if (dot > 0) {
+                base = base.substring(0, dot);
+            }
 
             String expectedPrefix = artifactId + "-" + version;
-            if (!base.startsWith(expectedPrefix)) return Optional.empty();
+            if (!base.startsWith(expectedPrefix)) {
+                return Optional.empty();
+            }
 
             GAV g = new GAV();
             g.setGroupId(groupId);
@@ -524,7 +586,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
      * the input is returned unchanged.
      */
     private String normalizeSchemeByPort(String url) {
-        if (url == null) return null;
+        if (url == null) {
+            return null;
+        }
         try {
             java.net.URI u = new java.net.URI(url);
             String scheme = u.getScheme();
@@ -589,7 +653,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private JsonObject getJson(String url) {
-        if (canceled) return null;
+        if (canceled) {
+            return null;
+        }
         url = normalizeSchemeByPort(url);
         HttpURLConnection c = null;
         try {
@@ -603,7 +669,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                  BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
                 StringBuilder sb = new StringBuilder(256);
                 String line;
-                while ((line = br.readLine()) != null) sb.append(line);
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
                 return Json.parse(sb.toString()).asObject();
             }
         } catch (Throwable t) {
@@ -649,24 +717,32 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // Minimal-json helpers
     // ---------------------------------------------------------------------------------
     private static JsonArray jsonArray(JsonObject obj, String name) {
-        if (obj == null) return new JsonArray();
+        if (obj == null) {
+            return new JsonArray();
+        }
         JsonValue v = obj.get(name);
         return (v == null || v.isNull()) ? new JsonArray() : v.asArray();
     }
 
     private static String jsonString(JsonObject obj, String name) {
-        if (obj == null) return null;
+        if (obj == null) {
+            return null;
+        }
         JsonValue v = obj.get(name);
         return v == null || v.isNull() ? null : v.asString();
     }
 
     private static String jsonStringAny(JsonObject obj, String... names) {
-        if (obj == null) return null;
+        if (obj == null) {
+            return null;
+        }
         for (String n : names) {
             JsonValue v = obj.get(n);
             if (v != null && !v.isNull()) {
                 String s = v.asString();
-                if (s != null && !s.isEmpty()) return s;
+                if (s != null && !s.isEmpty()) {
+                    return s;
+                }
             }
         }
         return null;

@@ -113,29 +113,28 @@ public class SourceAttachUtil {
 					}
 
 					return true;
-				} else {
-					String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
-					tempFile = new File(SourceConstants.getSourceTempDir(),
-							sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
-									.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
-					FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
-					JavaSourceAttacherHandler.attachSource(root, tempFile);
-					tempFile.deleteOnExit();
-					SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
-
-					if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
-					{
-						refreshJRELibrarySources(root);
-					}
-
-					if (sourceFile.getName().startsWith("eclipse_")) //$NON-NLS-1$
-					{
-						List<String> packages = getEclipsePlugins(sourceFile);
-						refreshEclipseLibrarySources(root, packages);
-					}
-
-					return true;
 				}
+                String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
+                tempFile = new File(SourceConstants.getSourceTempDir(),
+                		sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+                				.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
+                FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
+                JavaSourceAttacherHandler.attachSource(root, tempFile);
+                tempFile.deleteOnExit();
+                SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+
+                if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
+                {
+                	refreshJRELibrarySources(root);
+                }
+
+                if (sourceFile.getName().startsWith("eclipse_")) //$NON-NLS-1$
+                {
+                	List<String> packages = getEclipsePlugins(sourceFile);
+                	refreshEclipseLibrarySources(root, packages);
+                }
+
+                return true;
 			}
 
 		} catch (Exception e) {
@@ -148,7 +147,7 @@ public class SourceAttachUtil {
 		final Set<String> plugins = new HashSet<>();
 		try (ZipFile zf = new ZipFile(file)) {
 			for (Enumeration<? extends ZipEntry> entries = zf.entries(); entries.hasMoreElements();) {
-				String zipEntryName = ((ZipEntry) entries.nextElement()).getName();
+				String zipEntryName = entries.nextElement().getName();
 				if (zipEntryName.endsWith(".project")) {//$NON-NLS-1$
 					String[] segments = zipEntryName.replace("/.project", "").split("/"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					plugins.add(segments[segments.length - 1]);
@@ -162,25 +161,25 @@ public class SourceAttachUtil {
 		try {
 			String sha = HashUtils.sha1Hash(getBinFile(root));
 			File sourceFile = new File(files[0]);
-			if (!sourceFile.exists())
-				return false;
+			if (!sourceFile.exists()) {
+                return false;
+            }
 			File tempFile = new File(files[1]);
 			if (files[1] != null && tempFile.exists()) {
 				JavaSourceAttacherHandler.attachSource(root, tempFile);
 				tempFile.deleteOnExit();
 				SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
 				return true;
-			} else {
-				String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
-				tempFile = new File(SourceConstants.getSourceTempDir(),
-						sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
-								.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
-				FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
-				JavaSourceAttacherHandler.attachSource(root, tempFile);
-				tempFile.deleteOnExit();
-				SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
-				return true;
 			}
+            String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
+            tempFile = new File(SourceConstants.getSourceTempDir(),
+            		sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+            				.replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
+            FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
+            JavaSourceAttacherHandler.attachSource(root, tempFile);
+            tempFile.deleteOnExit();
+            SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+            return true;
 		} catch (Exception e) {
 			Logger.debug(e);
 		}
@@ -199,8 +198,9 @@ public class SourceAttachUtil {
 					IPackageFragmentRoot[] roots = pkgRoot.getJavaProject().getAllPackageFragmentRoots();
 					for (int i = 0; i < roots.length; i++) {
 						IPackageFragmentRoot element = roots[i];
-						if (element.equals(pkgRoot))
-							continue;
+						if (element.equals(pkgRoot)) {
+                            continue;
+                        }
 						List<String> paths = Arrays.asList(element.getPath().segments());
 						if (paths.contains("jre")) //$NON-NLS-1$
 						{
@@ -228,8 +228,9 @@ public class SourceAttachUtil {
 					IPackageFragmentRoot[] roots = pkgRoot.getJavaProject().getAllPackageFragmentRoots();
 					for (int i = 0; i < roots.length; i++) {
 						IPackageFragmentRoot element = roots[i];
-						if (element.equals(pkgRoot))
-							continue;
+						if (element.equals(pkgRoot)) {
+                            continue;
+                        }
 						String fileName = element.getPath().lastSegment();
 						if (plugins.contains(fileName.split("_")[0])) //$NON-NLS-1$
 						{
@@ -291,8 +292,7 @@ public class SourceAttachUtil {
 							String fileExt2 = FilenameUtils.getExtension(zipEntryName2);
 							if ("class".equals(fileExt2) && fileBaseName.equals(fileBaseName2)) //$NON-NLS-1$
 							{
-								result = true;
-								return result;
+								return true;
 							}
 						}
 					}
@@ -347,14 +347,14 @@ public class SourceAttachUtil {
 				packRoot = (IPackageFragmentRoot) classFile.getParent().getParent();
 			} else if (obj instanceof IPackageFragmentRoot) {
 				packRoot = (IPackageFragmentRoot) obj;
-			} else
-				return false;
+			} else {
+                return false;
+            }
 			if (root == null) {
 				root = packRoot;
-			} else {
-				if (root != packRoot)
-					return false;
-			}
+			} else if (root != packRoot) {
+                return false;
+            }
 		}
 		try {
 			if (root != null && root.getSourceAttachmentPath() != null

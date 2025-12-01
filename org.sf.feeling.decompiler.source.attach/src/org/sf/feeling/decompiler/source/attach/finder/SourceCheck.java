@@ -21,12 +21,11 @@ public class SourceCheck {
 	public static boolean isWrongSource(final File srcFile, final File binFile) throws IOException {
 		final List<String> classnames = getJavaFileNames(binFile, ".class"); //$NON-NLS-1$
 		final List<String> javanames = getJavaFileNames(srcFile, ".java"); //$NON-NLS-1$
-		final boolean isWrongSource = !classnames.isEmpty() && javanames.isEmpty();
-		return isWrongSource;
+		return !classnames.isEmpty() && javanames.isEmpty();
 	}
 
 	private static List<String> getJavaFileNames(final File file, final String ext) throws IOException {
-		final List<String> classnames = new ArrayList<String>();
+		final List<String> classnames = new ArrayList<>();
 		try (final ZipFile zf = new ZipFile(file)) {
 			final Enumeration<? extends ZipEntry> entries = zf.entries();
 			while (entries.hasMoreElements()) {

@@ -35,8 +35,9 @@ public class ExportEditorSourceAction extends Action {
 	public void run() {
 		JavaDecompilerClassFileEditor classEditor = null;
 		JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-		if (editor != null)
-			classEditor = editor;
+		if (editor != null) {
+            classEditor = editor;
+        }
 		if (classEditor != null) {
 			IClassFile cf = ((IClassFileEditorInput) classEditor.getEditorInput()).getClassFile();
 
@@ -46,19 +47,18 @@ public class ExportEditorSourceAction extends Action {
 			dialog.setFilterExtensions(new String[] { "*.java" //$NON-NLS-1$
 			});
 			String file = dialog.open();
-			if (file != null && file.trim().length() > 0) {
-				String projectFile = file.trim();
-				try {
-
-					FileUtil.writeToFile(new File(projectFile), cf.getSource());
-				} catch (CoreException e) {
-					ExceptionHandler.handle(e,
-							Messages.getString("JavaDecompilerActionBarContributor.ErrorDialog.Title"), //$NON-NLS-1$
-							Messages.getString("JavaDecompilerActionBarContributor.ErrorDialog.Message.ExportFailed")); //$NON-NLS-1$
-				}
-			} else {
+			if ((file == null) || (file.trim().length() <= 0)) {
 				return;
 			}
+            String projectFile = file.trim();
+            try {
+
+            	FileUtil.writeToFile(new File(projectFile), cf.getSource());
+            } catch (CoreException e) {
+            	ExceptionHandler.handle(e,
+            			Messages.getString("JavaDecompilerActionBarContributor.ErrorDialog.Title"), //$NON-NLS-1$
+            			Messages.getString("JavaDecompilerActionBarContributor.ErrorDialog.Message.ExportFailed")); //$NON-NLS-1$
+            }
 		}
 	}
 

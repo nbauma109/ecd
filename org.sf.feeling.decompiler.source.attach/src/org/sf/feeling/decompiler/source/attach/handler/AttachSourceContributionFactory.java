@@ -44,8 +44,9 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 						public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
 							boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedJars);
 
-							if (menuVisible)
-								return EvaluationResult.TRUE;
+							if (menuVisible) {
+                                return EvaluationResult.TRUE;
+                            }
 
 							return EvaluationResult.FALSE;
 						}
@@ -53,8 +54,9 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 			return;
 		}
 
-		if (selectedJars.size() > 1)
-			return;
+		if (selectedJars.size() > 1) {
+            return;
+        }
 
 		final List selectedPackages = getSelectedElements(selService, IPackageFragment.class);
 		final List selectedClasses = getSelectedElements(selService, IClassFile.class);
@@ -68,13 +70,13 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 						public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
 							boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedClasses);
 
-							if (menuVisible)
-								return EvaluationResult.TRUE;
+							if (menuVisible) {
+                                return EvaluationResult.TRUE;
+                            }
 
 							return EvaluationResult.FALSE;
 						}
 					});
-			return;
 		}
 
 	}
@@ -87,8 +89,9 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 		while ((selections != null) && selections.hasNext()) {
 			Object select = selections.next();
 
-			if (eleClass.isInstance(select))
-				elements.add(select);
+			if (eleClass.isInstance(select)) {
+                elements.add(select);
+            }
 		}
 
 		return elements;
@@ -97,12 +100,10 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 	private Iterator getSelections(ISelectionService selService) {
 		ISelection selection = selService.getSelection();
 
-		if (selection != null) {
-			if (selection instanceof IStructuredSelection) {
-				IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-				return structuredSelection.iterator();
-			}
-		}
+		if ((selection != null) && (selection instanceof IStructuredSelection)) {
+        	IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+        	return structuredSelection.iterator();
+        }
 
 		return null;
 	}

@@ -39,7 +39,7 @@ public class Messages {
 
 	/**
 	 * Gets formatted translation for current local
-	 * 
+	 *
 	 * @param key the key
 	 * @return translated value string
 	 */

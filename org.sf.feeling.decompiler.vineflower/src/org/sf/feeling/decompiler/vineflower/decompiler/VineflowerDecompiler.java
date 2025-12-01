@@ -46,7 +46,7 @@ public class VineflowerDecompiler implements IDecompiler {
 	/**
 	 * Performs a <code>Runtime.exec()</code> on Vineflower executable with selected
 	 * options.
-	 * 
+	 *
 	 * @see IDecompiler#decompile(String, String, String)
 	 */
 	@Override
@@ -83,8 +83,9 @@ public class VineflowerDecompiler implements IDecompiler {
 		final File tmpDir = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
 				String.valueOf(System.currentTimeMillis()));
 
-		if (!tmpDir.exists())
-			tmpDir.mkdirs();
+		if (!tmpDir.exists()) {
+            tmpDir.mkdirs();
+        }
 
 		// Work around protected constructor
 		class EmbeddedConsoleDecompiler extends ConsoleDecompiler {

@@ -60,8 +60,9 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
 	@Override
 	public void find(String binFilePath, String sha1, List<SourceFileResult> results) {
 		File binFile = new File(binFilePath);
-		if (!binFile.exists() || binFile.isDirectory())
-			return;
+		if (!binFile.exists() || binFile.isDirectory()) {
+            return;
+        }
 		String[] sourceFiles = SourceBindingUtil.getSourceFileBySha(sha1);
 		if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
 			File sourceFile = new File(sourceFiles[0]);

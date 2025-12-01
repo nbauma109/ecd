@@ -26,7 +26,7 @@ public class VineflowerDecompilerPlugin extends AbstractUIPlugin implements IPro
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
 	 */
@@ -38,7 +38,7 @@ public class VineflowerDecompilerPlugin extends AbstractUIPlugin implements IPro
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
 	 */

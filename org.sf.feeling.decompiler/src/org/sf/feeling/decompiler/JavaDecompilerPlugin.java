@@ -135,8 +135,9 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 			Logger.debug(e);
 		}
 		ImageDescriptor actionIcon = null;
-		if (url != null)
-			actionIcon = ImageDescriptor.createFromURL(url);
+		if (url != null) {
+            actionIcon = ImageDescriptor.createFromURL(url);
+        }
 		return actionIcon;
 	}
 
@@ -174,10 +175,8 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 		Object[] decompilerAdapters = DecompilerAdapterManager.getAdapters(this, IDecompilerDescriptor.class);
 
 		if (decompilerAdapters != null) {
-			for (int i = 0; i < decompilerAdapters.length; i++) {
-				Object adapter = decompilerAdapters[i];
-				if (adapter instanceof IDecompilerDescriptor) {
-					IDecompilerDescriptor descriptor = (IDecompilerDescriptor) adapter;
+			for (Object adapter : decompilerAdapters) {
+				if (adapter instanceof IDecompilerDescriptor descriptor) {
 					if (descriptor.isEnabled()) {
 						decompilerDescriptorMap.put(descriptor.getDecompilerType(), descriptor);
 					}
@@ -188,8 +187,9 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
 	@Override
 	public void propertyChange(PropertyChangeEvent event) {
-		if (event.getProperty().equals(IGNORE_EXISTING))
-			JavaDecompilerBufferManager.closeDecompilerBuffers(false);
+		if (event.getProperty().equals(IGNORE_EXISTING)) {
+            JavaDecompilerBufferManager.closeDecompilerBuffers(false);
+        }
 	}
 
 	@Override
@@ -258,12 +258,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
 	public Thread attachSource(IPackageFragmentRoot library, boolean force) {
 		Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
-		if (attachSourceAdapter instanceof IAttachSourceHandler) {
-			if (!libraries.contains(library.getPath().toOSString()) || force) {
-				libraries.add(library.getPath().toOSString());
-				return ((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
-			}
-		}
+		if ((attachSourceAdapter instanceof IAttachSourceHandler) && (!libraries.contains(library.getPath().toOSString()) || force)) {
+        	libraries.add(library.getPath().toOSString());
+        	return ((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
+        }
 		return null;
 	}
 

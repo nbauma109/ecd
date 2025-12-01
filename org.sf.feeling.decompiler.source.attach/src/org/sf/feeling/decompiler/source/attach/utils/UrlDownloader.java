@@ -35,7 +35,8 @@ public class UrlDownloader {
 		if (url != null && url.startsWith("scm:")) //$NON-NLS-1$
 		{
 			throw new UnsupportedOperationException("download source from scm url is not supported"); //$NON-NLS-1$
-		} else if (new File(url).exists()) {
+		}
+        if (new File(url).exists()) {
 			result = url;
 		} else {
 			result = this.downloadFromUrl(url);
@@ -84,7 +85,6 @@ public class UrlDownloader {
 		} catch (Exception ex) {
 			Logger.error(ex);
 			file.delete();
-			return file.getAbsolutePath();
 		}
 		return file.getAbsolutePath();
 	}
@@ -111,11 +111,10 @@ public class UrlDownloader {
 		int start = 0;
 		if (stripChars.isEmpty()) {
 			return str;
-		} else {
-			while (start != strLen && stripChars.indexOf(str.charAt(start)) != -1) {
-				start++;
-			}
 		}
+        while (start != strLen && stripChars.indexOf(str.charAt(start)) != -1) {
+        	start++;
+        }
 		return str.substring(start);
 	}
 
@@ -128,11 +127,10 @@ public class UrlDownloader {
 
 		if (stripChars.isEmpty()) {
 			return str;
-		} else {
-			while (end != 0 && stripChars.indexOf(str.charAt(end - 1)) != -1) {
-				end--;
-			}
 		}
+        while (end != 0 && stripChars.indexOf(str.charAt(end - 1)) != -1) {
+        	end--;
+        }
 		return str.substring(0, end);
 	}
 

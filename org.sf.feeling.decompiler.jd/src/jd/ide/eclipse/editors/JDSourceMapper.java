@@ -28,7 +28,7 @@ import jd.core.preferences.Preferences;
 
 /**
  * JDSourceMapper
- * 
+ *
  * @project Java Decompiler Eclipse Plugin
  * @version 0.1.5
  * @see org.eclipse.jdt.internal.core.SourceMapper

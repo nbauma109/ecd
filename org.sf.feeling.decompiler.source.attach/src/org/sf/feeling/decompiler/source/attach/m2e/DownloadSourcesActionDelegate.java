@@ -20,11 +20,9 @@ public class DownloadSourcesActionDelegate implements IEditorActionDelegate {
 
 	@Override
 	public void setActiveEditor(IAction action, IEditorPart part) {
-		if ((part != null) && ((part.getEditorInput() instanceof IClassFileEditorInput))) {
-			if (SourceAttachUtil.enableMavenDownload()) {
-				new MavenSourceDownloader().downloadSource(part);
-			}
-		}
+		if (((part != null) && ((part.getEditorInput() instanceof IClassFileEditorInput))) && SourceAttachUtil.enableMavenDownload()) {
+        	new MavenSourceDownloader().downloadSource(part);
+        }
 	}
 
 	@Override

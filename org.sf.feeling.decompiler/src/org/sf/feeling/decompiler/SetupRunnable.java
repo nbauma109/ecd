@@ -268,8 +268,9 @@ public class SetupRunnable implements Runnable {
 		for (int i = 0; i < classMappings.length; i++) {
 			IFileEditorMapping mapping = classMappings[i];
 			if (mapping.getDefaultEditor() != null
-					&& !mapping.getDefaultEditor().getId().equals(JavaDecompilerPlugin.EDITOR_ID))
-				return true;
+					&& !mapping.getDefaultEditor().getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
+                return true;
+            }
 		}
 		return false;
 	}

@@ -80,8 +80,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		if (UIUtil.requestFromJavadocHover() && !fromInput(type) && always) {
 			sourceRanges.remove(type);
-			attachedSource = originalSourceMapper.get(root).findSource(type, info);
-			return attachedSource;
+			return originalSourceMapper.get(root).findSource(type, info);
 		}
 
 		if (originalSourceMapper.containsKey(root)) {
@@ -97,8 +96,9 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		}
 
 		if (info == null) {
-			if (always)
-				return null;
+			if (always) {
+                return null;
+            }
 			return attachedSource;
 		}
 
@@ -204,8 +204,9 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
 		if ((showLineNumber && align) || JavaDecompilerPlugin.getDefault().isDebugMode()
 				|| UIUtil.isDebugPerspective()) {
-			if (showReport)
-				code = usedDecompiler.removeComment(code);
+			if (showReport) {
+                code = usedDecompiler.removeComment(code);
+            }
 			DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(usedDecompiler.getDecompilerType(),
 					code);
 			code = decompilerOutputUtil.realign();
@@ -213,7 +214,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		StringBuffer source = new StringBuffer();
 
-		if (!(JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())) {
+		if ((!JavaDecompilerPlugin.getDefault().isDebugMode() && !UIUtil.isDebugPerspective())) {
 			boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
 			if (useSorter) {
 				className = new String(info.getName());
@@ -298,20 +299,14 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 				try {
 					if (root.getUnderlyingResource() != null) {
 						rootLocation = root.getUnderlyingResource().getLocation().toOSString();
-						classLocation += rootLocation + "/" //$NON-NLS-1$
-								+ pkg + "/" //$NON-NLS-1$
-								+ className;
 					} else if (root instanceof ExternalPackageFragmentRoot) {
 						rootLocation = ((ExternalPackageFragmentRoot) root).getPath().toOSString();
-						classLocation += rootLocation + "/" //$NON-NLS-1$
-								+ pkg + "/" //$NON-NLS-1$
-								+ className;
 					} else {
 						rootLocation = root.getPath().toOSString();
-						classLocation += rootLocation + "/" //$NON-NLS-1$
-								+ pkg + "/" //$NON-NLS-1$
-								+ className;
 					}
+                    classLocation += rootLocation + "/" //$NON-NLS-1$
+                    		+ pkg + "/" //$NON-NLS-1$
+                    		+ className;
 
 					if (result == null) {
 						result = ClassUtil.checkAvailableDecompiler(originalDecompiler, new File(classLocation));
@@ -350,8 +345,9 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 			JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
 		}
 
-		if (currentDecompiler.getSource() == null || currentDecompiler.getSource().length() == 0)
-			return null;
+		if (currentDecompiler.getSource() == null || currentDecompiler.getSource().length() == 0) {
+            return null;
+        }
 
 		String code = currentDecompiler.getSource();
 
@@ -364,8 +360,9 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 		boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
 		if ((showLineNumber && align) || JavaDecompilerPlugin.getDefault().isDebugMode()
 				|| UIUtil.isDebugPerspective()) {
-			if (showReport)
-				code = currentDecompiler.removeComment(code);
+			if (showReport) {
+                code = currentDecompiler.removeComment(code);
+            }
 			DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(currentDecompiler.getDecompilerType(),
 					code);
 			code = decompilerOutputUtil.realign();
@@ -373,12 +370,11 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
 		StringBuffer source = new StringBuffer();
 
-		if (!(JavaDecompilerPlugin.getDefault().isDebugMode() || UIUtil.isDebugPerspective())) {
+		if ((!JavaDecompilerPlugin.getDefault().isDebugMode() && !UIUtil.isDebugPerspective())) {
 			source.append(formatSource(code));
 
 			if (showReport) {
-				Collection<Exception> exceptions = new LinkedList<>();
-				exceptions.addAll(currentDecompiler.getExceptions());
+				Collection<Exception> exceptions = new LinkedList<>(currentDecompiler.getExceptions());
 				printDecompileReport(source, file.getAbsolutePath(), exceptions,
 						currentDecompiler.getDecompilationTime());
 			}
@@ -392,8 +388,9 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 	protected void logExceptions(Collection<Exception> exceptions, StringBuffer buffer) {
 		if (!exceptions.isEmpty()) {
 			buffer.append("\n\tCaught exceptions:"); //$NON-NLS-1$
-			if (exceptions.isEmpty())
-				return; // nothing to do
+			if (exceptions.isEmpty()) {
+                return; // nothing to do
+            }
 			buffer.append("\n"); //$NON-NLS-1$
 			StringWriter stackTraces = new StringWriter();
 			try (PrintWriter stackTracesP = new PrintWriter(stackTraces)) {

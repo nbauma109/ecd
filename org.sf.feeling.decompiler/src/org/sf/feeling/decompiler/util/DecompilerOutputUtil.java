@@ -9,6 +9,7 @@
 package org.sf.feeling.decompiler.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ public class DecompilerOutputUtil {
 
 	private String decompilerType;
 
-	private class InputLine {
+	private static class InputLine {
 
 		String line;
 		int outputLineNum = -1;
@@ -67,7 +68,7 @@ public class DecompilerOutputUtil {
 		}
 	}
 
-	private class JavaSrcLine {
+	private static class JavaSrcLine {
 
 		List<Integer> inputLines = new ArrayList<>();
 
@@ -84,10 +85,12 @@ public class DecompilerOutputUtil {
 
 	public String realign() {
 		// Handle special cases
-		if (input.length() == 0)
-			return input;
-		if (input == null)
-			return null;
+		if (input.length() == 0) {
+            return input;
+        }
+		if (input == null) {
+            return null;
+        }
 
 		// Compute the string offset of every source line
 		fillOutputList();
@@ -98,10 +101,10 @@ public class DecompilerOutputUtil {
 
 		// Iterate over types (ignoring enums and annotations)
 		List types = unit.types();
-		for (int i = 0; i < types.size(); i++) {
-			if (types.get(i) instanceof AbstractTypeDeclaration) {
+		for (Object type : types) {
+			if (type instanceof AbstractTypeDeclaration) {
 				// Recursively process the elements within this type
-				processElements((AbstractTypeDeclaration) types.get(i));
+				processElements((AbstractTypeDeclaration) type);
 			}
 		}
 
@@ -109,8 +112,9 @@ public class DecompilerOutputUtil {
 		int firstTypeLine = Integer.MAX_VALUE;
 		int lastTypeLine = Integer.MIN_VALUE;
 		for (int i = 0; i < types.size(); i++) {
-			if (!(types.get(i) instanceof AbstractTypeDeclaration))
-				continue;
+			if (!(types.get(i) instanceof AbstractTypeDeclaration)) {
+                continue;
+            }
 			AbstractTypeDeclaration type = (AbstractTypeDeclaration) types.get(i);
 
 			// Recursively process the types within this type
@@ -118,11 +122,13 @@ public class DecompilerOutputUtil {
 
 			// Update firstTypeLine/lastTypeLine
 			int numLine = unit.getLineNumber(type.getStartPosition());
-			if (numLine < firstTypeLine)
-				firstTypeLine = numLine;
+			if (numLine < firstTypeLine) {
+                firstTypeLine = numLine;
+            }
 			numLine = unit.getLineNumber(type.getStartPosition() + type.getLength() - 1);
-			if (numLine > lastTypeLine)
-				lastTypeLine = numLine;
+			if (numLine > lastTypeLine) {
+                lastTypeLine = numLine;
+            }
 		}
 
 		// Special case - no source items to handle so just return our input
@@ -132,12 +138,14 @@ public class DecompilerOutputUtil {
 		}
 
 		// Add all the source lines above the first type
-		if (firstTypeLine != Integer.MAX_VALUE)
-			addBelow(firstTypeLine - 1, 0, 0);
+		if (firstTypeLine != Integer.MAX_VALUE) {
+            addBelow(firstTypeLine - 1, 0, 0);
+        }
 
 		// Add all the source lines below the last type
-		if (lastTypeLine != Integer.MIN_VALUE)
-			addBelow(inputLines.size() - 2, lastTypeLine, javaSrcLines.size() - 1);
+		if (lastTypeLine != Integer.MIN_VALUE) {
+            addBelow(inputLines.size() - 2, lastTypeLine, javaSrcLines.size() - 1);
+        }
 
 		// Create aligned source
 		return toString();
@@ -155,7 +163,6 @@ public class DecompilerOutputUtil {
 
 		int lineNumberWidth = String.valueOf(javaSrcLines.size()).length();
 
-		boolean generateEmptyString = true;
 		int leftTrimSpace = 0;
 
 		CompilationUnit cu = unit;
@@ -204,17 +211,16 @@ public class DecompilerOutputUtil {
 		    int lastNewline = before.lastIndexOf('\n');
 		    int count = 0;
 		    for (int i = lastNewline + 1; i < before.length(); i++) {
-		        if (before.charAt(i) == ' ') {
-		            count++;
-		        } else {
+		        if (before.charAt(i) != ' ') {
 		            break;
 		        }
+                count++;
 		    }
 		    leftTrimSpace = count;
 		}
 
 		// 4) empty block comment controls generateEmptyString
-		generateEmptyString = !hasEmptyBlockComment;
+		boolean generateEmptyString = !hasEmptyBlockComment;
 
 		int lastBracketIndex = input.lastIndexOf('}');
 		if (lastBracketIndex != -1) {
@@ -293,32 +299,34 @@ public class DecompilerOutputUtil {
 			InputLine line = inputLines.get(num);
 			if (line != null && line.outputLineNum != -1) {
 				break;
-			} else {
-				lineNumbers.add(num);
 			}
+            lineNumbers.add(num);
 		}
 		return lineNumbers;
 	}
 
 	private int getOutputLineNumber(JavaSrcLine javaSrcLine) {
-		for (int i = 0; i < javaSrcLine.inputLines.size(); i++) {
-			int numLine = javaSrcLine.inputLines.get(i);
+		for (Integer numLine : javaSrcLine.inputLines) {
 			InputLine inputLine = inputLines.get(numLine);
-			if (inputLine != null && inputLine.outputLineNum != -1)
-				return inputLine.outputLineNum;
+			if (inputLine != null && inputLine.outputLineNum != -1) {
+                return inputLine.outputLineNum;
+            }
 		}
 		return -1;
 	}
 
 	private int getLeftPosition(String string, int index) {
-		if (string == null || string.length() < index)
-			return -1;
+		if (string == null || string.length() < index) {
+            return -1;
+        }
 
 		for (int j = index - 1; j >= 0; j--) {
-			if (j < 0)
-				break;
-			if (string.charAt(j) == '\n')
-				return index - j;
+			if (j < 0) {
+                break;
+            }
+			if (string.charAt(j) == '\n') {
+                return index - j;
+            }
 		}
 		return -1;
 	}
@@ -341,9 +349,7 @@ public class DecompilerOutputUtil {
 
 	private String generateEmptyString(int length) {
 		char[] chs = new char[length];
-		for (int i = 0; i < chs.length; i++) {
-			chs[i] = ' ';
-		}
+		Arrays.fill(chs, ' ');
 		return new String(chs);
 	}
 
@@ -354,10 +360,11 @@ public class DecompilerOutputUtil {
 		while (lineStart < input.length()) {
 			// Compute line end
 			lineEnd = input.indexOf('\n', lineEnd);
-			if (lineEnd == -1)
-				lineEnd = input.length();
-			else
-				lineEnd++;
+			if (lineEnd == -1) {
+                lineEnd = input.length();
+            } else {
+                lineEnd++;
+            }
 
 			// Build OutputLine object
 			InputLine outputLine = new InputLine();
@@ -431,8 +438,9 @@ public class DecompilerOutputUtil {
 		// Fill in nulls for any previous output line nums which we haven't
 		// visited yet
 		if (javaSrcLines.size() <= outputLineNum) {
-			for (int a = javaSrcLines.size(); a <= outputLineNum; a++)
-				javaSrcLines.add(null);
+			for (int a = javaSrcLines.size(); a <= outputLineNum; a++) {
+                javaSrcLines.add(null);
+            }
 		}
 
 		// Create an output entry at the outputLineNum index
@@ -445,32 +453,33 @@ public class DecompilerOutputUtil {
 	}
 
 	private void addAbove(int inputBeginLineNo, int inputLineNo, int outputLineNo) {
-		if (outputLineNo == 1)
-			return;
+		if (outputLineNo == 1) {
+            return;
+        }
 
 		int offset = 1;
 		/*
 		 * Example:
-		 * 
+		 *
 		 * 19: / / public static boolean isTranslucencySupported(Translucency
 		 * paramTranslucency) 20: / / { 21: / 105 / switch
 		 * (1.$SwitchMap$com$sun$awt$AWTUtilities$Translucency[paramTranslucency
 		 * .ordinal()]) 22: / / { 23: / / case 1: 24: / 107 / return
 		 * isWindowShapingSupported();
-		 * 
+		 *
 		 * # addAbove(19, 21, 105) javaSrcLines[105] = [21] is already set when this
 		 * method is called. This method creates the following entries in javaSrcLines:
 		 * javaSrcLines[103] = [19] javaSrcLines[104] = [20]
-		 * 
+		 *
 		 * # addAbove(19, 24, 107) javaSrcLines[107] = [24] is already set when this
 		 * method is called. This method creates the following entries in javaSrcLines:
 		 * javaSrcLines[106] = [23]
-		 * 
+		 *
 		 * javaSrcLines[105] already has an entry so we add input line 22 to
 		 * javaSrcLines[106]: javaSrcLines[105] = [22,23]
-		 * 
+		 *
 		 * The result is the following folding of the code:
-		 * 
+		 *
 		 * 103: / / public static boolean isTranslucencySupported(Translucency
 		 * paramTranslucency) 104: / / { 105: / 105 / switch
 		 * (1.$SwitchMap$com$sun$awt$AWTUtilities$Translucency[paramTranslucency
@@ -484,58 +493,57 @@ public class DecompilerOutputUtil {
 			int offsetInputLine = inputLineNo - offset;
 			InputLine inputLine = inputLines.get(offsetInputLine);
 
-			if (inputLine.outputLineNum == -1) {
-				// Got an InputLine without a corresponding Java source line
-				JavaSrcLine javaSrcLine = null;
-				int offsetOutputLine = outputLineNo - offset;
-
-				if (offsetOutputLine > 0) {
-					javaSrcLine = initJavaSrcListItem(offsetOutputLine);
-				}
-
-				if (offsetOutputLine == 1 || javaSrcLine.inputLines.size() > 0) {
-					// We have reached the start of the file OR the current
-					// javaSrcLine has some output lines
-
-					int offsetOutputLineNext = offsetOutputLine + 1;
-
-					// Get the JavaSrcLine for the output line after the current
-					// one
-					JavaSrcLine javaSrcLineNext = initJavaSrcListItem(offsetOutputLineNext);
-
-					// Iterate backwards through the input lines towards
-					// inputBeginLineNo from the output offset
-					for (int innerOffset = offset; (inputLineNo - innerOffset) >= inputBeginLineNo; innerOffset++) {
-
-						int innerOffsetInputLine = inputLineNo - innerOffset;
-						inputLine = inputLines.get(innerOffsetInputLine);
-						if (inputLine.outputLineNum == -1) {
-							// Found an input line without a source line number
-							// - add it to javaSrcLineNext
-							javaSrcLineNext.inputLines.add(0, innerOffsetInputLine);
-							inputLine.calculatedNumLineJavaSrc = offsetOutputLineNext;
-						} else {
-							// Got an InputLine with a corresponding Java source
-							// line
-							// we must already have handled this line and the
-							// ones above
-							// it. Time to bail out!
-							break;
-						}
-					}
-					// Run out of lines to process - bail out
-					break;
-				}
-
-				// Add the offsetInputLine to the current javaSrcLine
-				javaSrcLine.inputLines.add(offsetInputLine);
-				inputLine.calculatedNumLineJavaSrc = offsetOutputLine;
-			} else {
+			if (inputLine.outputLineNum != -1) {
 				// Got an InputLine with a corresponding Java source line
 				// we must already have handled this line and the ones above
 				// it. Time to bail out!
 				break;
 			}
+            // Got an InputLine without a corresponding Java source line
+            JavaSrcLine javaSrcLine = null;
+            int offsetOutputLine = outputLineNo - offset;
+
+            if (offsetOutputLine > 0) {
+            	javaSrcLine = initJavaSrcListItem(offsetOutputLine);
+            }
+
+            if (offsetOutputLine == 1 || javaSrcLine.inputLines.size() > 0) {
+            	// We have reached the start of the file OR the current
+            	// javaSrcLine has some output lines
+
+            	int offsetOutputLineNext = offsetOutputLine + 1;
+
+            	// Get the JavaSrcLine for the output line after the current
+            	// one
+            	JavaSrcLine javaSrcLineNext = initJavaSrcListItem(offsetOutputLineNext);
+
+            	// Iterate backwards through the input lines towards
+            	// inputBeginLineNo from the output offset
+            	for (int innerOffset = offset; (inputLineNo - innerOffset) >= inputBeginLineNo; innerOffset++) {
+
+            		int innerOffsetInputLine = inputLineNo - innerOffset;
+            		inputLine = inputLines.get(innerOffsetInputLine);
+            		if (inputLine.outputLineNum == -1) {
+            			// Found an input line without a source line number
+            			// - add it to javaSrcLineNext
+            			javaSrcLineNext.inputLines.add(0, innerOffsetInputLine);
+            			inputLine.calculatedNumLineJavaSrc = offsetOutputLineNext;
+            		} else {
+            			// Got an InputLine with a corresponding Java source
+            			// line
+            			// we must already have handled this line and the
+            			// ones above
+            			// it. Time to bail out!
+            			break;
+            		}
+            	}
+            	// Run out of lines to process - bail out
+            	break;
+            }
+
+            // Add the offsetInputLine to the current javaSrcLine
+            javaSrcLine.inputLines.add(offsetInputLine);
+            inputLine.calculatedNumLineJavaSrc = offsetOutputLine;
 			offset++;
 		}
 	}
@@ -550,50 +558,49 @@ public class DecompilerOutputUtil {
 			int offsetInputLine = inputLineNo + offset;
 			InputLine outputLine = inputLines.get(offsetInputLine);
 
-			if (outputLine.outputLineNum == -1) {
-				// Got an InputLine without a corresponding Java source line
-				int offsetOutputLine = outputLineNo + offset;
-				JavaSrcLine javaSrcLine = initJavaSrcListItem(offsetOutputLine);
-
-				if (javaSrcLine.inputLines.size() > 0) {
-					// The current javaSrcLine has some output lines
-					int offsetOutputLinePrev = offsetOutputLine - 1;
-
-					// Get the JavaSrcLine for the output line after the current
-					// one
-					JavaSrcLine javaSrcLinePrev = initJavaSrcListItem(offsetOutputLinePrev);
-
-					// Iterate forwards through the input lines towards
-					// inputEndLineNo from the output offset
-					for (int innerOffset = offset; (inputLineNo + innerOffset) <= inputEndLineNo; innerOffset++) {
-
-						int innerOffsetInputLine = inputLineNo + innerOffset;
-						outputLine = inputLines.get(innerOffsetInputLine);
-						if (outputLine.outputLineNum == -1) {
-							// Found an input line without a source line number
-							// - add it to javaSrcLineNext
-							javaSrcLinePrev.inputLines.add(innerOffsetInputLine);
-							outputLine.calculatedNumLineJavaSrc = offsetOutputLinePrev;
-						} else {
-							// Got an InputLine with a corresponding Java source
-							// line
-							// we must already have handled this line and the
-							// ones above
-							// it. Time to bail out!
-							break;
-						}
-					}
-					// Run out of lines to process - bail out
-					break;
-				}
-				javaSrcLine.inputLines.add(offsetInputLine);
-				outputLine.calculatedNumLineJavaSrc = offsetOutputLine;
-			} else {
+			if (outputLine.outputLineNum != -1) {
 				// Got an InputLine with a corresponding Java source line
 				// we must already have handled this line and the ones above
 				// it. Time to bail out!
 				break;
 			}
+            // Got an InputLine without a corresponding Java source line
+            int offsetOutputLine = outputLineNo + offset;
+            JavaSrcLine javaSrcLine = initJavaSrcListItem(offsetOutputLine);
+
+            if (javaSrcLine.inputLines.size() > 0) {
+            	// The current javaSrcLine has some output lines
+            	int offsetOutputLinePrev = offsetOutputLine - 1;
+
+            	// Get the JavaSrcLine for the output line after the current
+            	// one
+            	JavaSrcLine javaSrcLinePrev = initJavaSrcListItem(offsetOutputLinePrev);
+
+            	// Iterate forwards through the input lines towards
+            	// inputEndLineNo from the output offset
+            	for (int innerOffset = offset; (inputLineNo + innerOffset) <= inputEndLineNo; innerOffset++) {
+
+            		int innerOffsetInputLine = inputLineNo + innerOffset;
+            		outputLine = inputLines.get(innerOffsetInputLine);
+            		if (outputLine.outputLineNum == -1) {
+            			// Found an input line without a source line number
+            			// - add it to javaSrcLineNext
+            			javaSrcLinePrev.inputLines.add(innerOffsetInputLine);
+            			outputLine.calculatedNumLineJavaSrc = offsetOutputLinePrev;
+            		} else {
+            			// Got an InputLine with a corresponding Java source
+            			// line
+            			// we must already have handled this line and the
+            			// ones above
+            			// it. Time to bail out!
+            			break;
+            		}
+            	}
+            	// Run out of lines to process - bail out
+            	break;
+            }
+            javaSrcLine.inputLines.add(offsetInputLine);
+            outputLine.calculatedNumLineJavaSrc = offsetOutputLine;
 			offset++;
 		}
 
@@ -631,21 +638,26 @@ public class DecompilerOutputUtil {
 			// Get the output line number
 			InputLine inputLine = inputLines.get(inputLineNo);
 			int numLineJavaSrc = inputLine.outputLineNum;
-			if (numLineJavaSrc == -1)
-				numLineJavaSrc = inputLine.calculatedNumLineJavaSrc;
+			if (numLineJavaSrc == -1) {
+                numLineJavaSrc = inputLine.calculatedNumLineJavaSrc;
+            }
 
 			if (numLineJavaSrc != -1) {
 				// Update the type begin/end output line numbers
-				if (beginTypeLine > numLineJavaSrc)
-					beginTypeLine = numLineJavaSrc;
-				if (endTypeLine < numLineJavaSrc)
-					endTypeLine = numLineJavaSrc;
+				if (beginTypeLine > numLineJavaSrc) {
+                    beginTypeLine = numLineJavaSrc;
+                }
+				if (endTypeLine < numLineJavaSrc) {
+                    endTypeLine = numLineJavaSrc;
+                }
 
 				// Update the type first/last method input line numbers
-				if (firstMethodLine > inputLineNo)
-					firstMethodLine = inputLineNo;
-				if (lastMethodLine < inputLineNo)
-					lastMethodLine = inputLineNo;
+				if (firstMethodLine > inputLineNo) {
+                    firstMethodLine = inputLineNo;
+                }
+				if (lastMethodLine < inputLineNo) {
+                    lastMethodLine = inputLineNo;
+                }
 			}
 		}
 
@@ -659,7 +671,7 @@ public class DecompilerOutputUtil {
 	private void processMembers(AbstractTypeDeclaration rootType) {
 
 		// Iterate over the declarations in this type
-		List<Object> bodyDeclarations = new ArrayList<Object>();
+		List<Object> bodyDeclarations = new ArrayList<>();
 		if (rootType instanceof EnumDeclaration) {
 			EnumDeclaration enumDeclaration = (EnumDeclaration) rootType;
 			List<?> enumDeclarations = enumDeclaration.enumConstants();
@@ -674,8 +686,9 @@ public class DecompilerOutputUtil {
 
 					// If this declaration is on a new line add it to the
 					// bodyDeclarations
-					if (inputBeginLine != lastInputLineNo)
-						bodyDeclarations.add(enumDeclObj);
+					if (inputBeginLine != lastInputLineNo) {
+                        bodyDeclarations.add(enumDeclObj);
+                    }
 
 					lastInputLineNo = inputBeginLine;
 				}
@@ -724,8 +737,9 @@ public class DecompilerOutputUtil {
 			}
 		}
 
-		if (lastInputLine != -1 && lastInputLine < inputEndLine)
-			addBelow(inputEndLine, lastInputLine, maxLine);
+		if (lastInputLine != -1 && lastInputLine < inputEndLine) {
+            addBelow(inputEndLine, lastInputLine, maxLine);
+        }
 	}
 
 	private void processElements(AbstractTypeDeclaration rootType) {
