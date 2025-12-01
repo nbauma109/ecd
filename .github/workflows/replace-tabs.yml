@@ -24,6 +24,10 @@ jobs:
           # JAVA files → 4 spaces per leading tab
           sed -i ':loop; s/^\(\s*\)\t/\1    /; t loop' **/*.java
 
+          # Convert to DOS line endings
+          unix2dos **/*.xml
+          unix2dos **/*.java
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
