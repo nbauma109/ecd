@@ -1,0 +1,38 @@
+name: Replace Leading Tabs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * *'
+
+jobs:
+  replace-leading-tabs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Replace leading tabs in XML and JAVA files
+        shell: bash
+        run: |
+          shopt -s globstar
+
+          # XML files → 2 spaces per leading tab
+          sed -i ':loop; s/^\(\s*\)\t/\1  /; t loop' **/*.xml
+
+          # JAVA files → 4 spaces per leading tab
+          sed -i ':loop; s/^\(\s*\)\t/\1    /; t loop' **/*.java
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: replace-leading-tabs
+          commit-message: "Normalize leading tabs: XML=2 spaces, JAVA=4 spaces"
+          title: "Replace leading tabs in XML and JAVA files"
+          body: |
+            Automated indentation normalization:
+            - XML: leading tabs → two spaces
+            - JAVA: leading tabs → four spaces
+          token: ${{ secrets.PAT_TOKEN }}
+          delete-branch: true
