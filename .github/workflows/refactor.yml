@@ -1,0 +1,272 @@
+name: Eclipse Source Clean-Ups
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 20 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run-cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout test repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run refactoring action
+        uses: nbauma109/refactoring-cleanup-action@6cb57ea52b5c8547196dadea75004c430b2a3ee0
+        with:
+          project_root: .
+          source_level: "17"
+
+          ######################################################################
+          # Code Organizing
+          ######################################################################
+
+          # Formatter
+          cleanup_format_source_code: false
+          cleanup_format_source_code_changes_only: false
+          cleanup_remove_trailing_whitespaces: true
+          cleanup_remove_trailing_whitespaces_all: true
+          cleanup_remove_trailing_whitespaces_ignore_empty: false
+          cleanup_correct_indentation: false
+
+          # Members
+          cleanup_sort_members: false
+          cleanup_sort_members_all: false
+
+          ######################################################################
+          # Code Style
+          ######################################################################
+
+          # Control statements
+          cleanup_use_blocks: true
+          cleanup_always_use_blocks: true
+          cleanup_use_blocks_only_for_return_and_throw: false
+          cleanup_never_use_blocks: false
+          cleanup_else_if: true
+          cleanup_simplify_boolean_if_else: true
+          cleanup_reduce_indentation: true
+          cleanup_switch: true
+          cleanup_add_all: true
+
+          # Expressions
+          cleanup_always_use_parentheses_in_expressions: false
+          cleanup_never_use_parentheses_in_expressions: true
+          cleanup_use_parentheses_in_expressions: false
+          cleanup_pull_up_assignment: true
+          cleanup_extract_increment: false
+          cleanup_instanceof_keyword: true
+
+          # Number literals
+          cleanup_number_suffix: true
+
+          # Variable declarations
+          cleanup_make_private_fields_final: false
+          cleanup_make_local_variable_final: false
+          cleanup_make_variable_declarations_final: false
+          cleanup_make_parameters_final: false
+
+          # Functional interface instances
+          cleanup_simplify_lambda_expression_and_method_ref: true
+
+          ######################################################################
+          # Duplicate Code
+          ######################################################################
+
+          cleanup_operand_factorization: true
+          cleanup_ternary_operator: true
+          cleanup_strictly_equal_or_different: true
+          cleanup_merge_conditional_blocks: true
+          cleanup_controlflow_merge: true
+          cleanup_one_if_rather_than_duplicate_blocks_that_fall_through: false
+          cleanup_redundant_falling_through_block_end: true
+          cleanup_if_condition: true
+          cleanup_pull_out_if_from_if_else: true
+
+          ######################################################################
+          # Java Feature
+          ######################################################################
+
+          # Java 21
+          cleanup_switch_for_instanceof_pattern: false
+  
+          # Java 16
+          cleanup_instanceof: true
+ 
+          # Java 15
+          cleanup_stringconcat_to_textblock: true
+
+          # Java 14
+          cleanup_convert_to_switch_expressions: true
+
+          # Java 10
+          cleanup_use_var: false
+
+          # Java 8
+          cleanup_convert_functional_interfaces: true
+          cleanup_use_lambda: true
+          cleanup_also_simplify_lambda: true
+          cleanup_use_anonymous_class_creation: false
+          cleanup_comparing_on_criteria: true
+          cleanup_join: true
+
+          # Java 7
+          cleanup_try_with_resource: true
+          cleanup_multi_catch: true
+          cleanup_remove_redundant_type_arguments: true
+          cleanup_hash: true
+          cleanup_objects_equals: true
+          cleanup_system_property: true
+          cleanup_system_property_file_separator: true
+          cleanup_system_property_path_separator: true
+          cleanup_system_property_file_encoding: true
+          cleanup_system_property_line_separator: true
+          cleanup_system_property_javaversion: true
+          cleanup_system_property_javaspecversion: false
+          cleanup_system_property_boolean: true
+
+          # Java 5
+          cleanup_convert_to_enhanced_for_loop: true
+          cleanup_convert_to_enhanced_for_loop_if_loop_var_used: true
+          cleanup_use_autoboxing: true
+          cleanup_use_unboxing: true
+
+          ######################################################################
+          # Member Accesses
+          ######################################################################
+
+          # Non static accesses
+          cleanup_use_this_for_non_static_field_access: false
+          cleanup_always_use_this_for_non_static_field_access: false
+          cleanup_use_this_for_non_static_field_access_only_if_necessary: true
+          cleanup_use_this_for_non_static_method_access: false
+          cleanup_always_use_this_for_non_static_method_access: false
+          cleanup_use_this_for_non_static_method_access_only_if_necessary: true
+
+          # Static accesses
+          cleanup_qualify_static_field_accesses_with_declaring_class: false
+          cleanup_qualify_static_method_accesses_with_declaring_class: false
+          cleanup_qualify_static_member_accesses_with_declaring_class: false
+          cleanup_qualify_static_member_accesses_through_subtypes_with_declaring_class: false
+          cleanup_qualify_static_member_accesses_through_instances_with_declaring_class: false
+
+          ######################################################################
+          # Missing Code
+          ######################################################################
+
+          # Annotations
+          cleanup_add_missing_annotations: true
+          cleanup_add_missing_override_annotations: false
+          cleanup_add_missing_override_annotations_interface_methods: false
+          cleanup_add_missing_deprecated_annotations: true
+
+          # Potential programming problems
+          cleanup_add_serial_version_id: true
+          cleanup_add_default_serial_version_id: true
+          cleanup_add_generated_serial_version_id: false
+
+          ######################################################################
+          # Performance
+          ######################################################################
+
+          cleanup_single_used_field: false
+          cleanup_break_loop: true
+          cleanup_static_inner_class: true
+          cleanup_stringconcat_stringbuffer_stringbuilder: true
+          cleanup_plain_replacement: true
+          cleanup_use_string_is_blank: true
+          cleanup_lazy_logical_operator: false
+          cleanup_valueof_rather_than_instantiation: true
+          cleanup_primitive_comparison: true
+          cleanup_primitive_parsing: true
+          cleanup_primitive_serialization: true
+          cleanup_primitive_rather_than_wrapper: true
+          cleanup_precompile_regex: true
+          cleanup_stringbuffer_to_stringbuilder: true
+          cleanup_stringbuilder_for_local_vars: true
+          cleanup_no_string_creation: true
+          cleanup_boolean_literal: true
+
+          ######################################################################
+          # Source Fixing
+          ######################################################################
+
+          # Code standardization
+          cleanup_invert_equals: true
+          cleanup_standard_comparison: true
+          cleanup_bitwise_conditional_expression: false
+
+          # Deprecated Methods Calls and Fields
+          cleanup_replace_deprecated_calls: true
+          cleanup_replace_deprecated_fields: false
+
+          ######################################################################
+          # Unncessary Code
+          ######################################################################
+
+          # Unused code
+          cleanup_remove_unused_imports: true
+          cleanup_remove_unused_private_members: false
+          cleanup_remove_unused_private_types: false
+          cleanup_remove_private_constructors: false
+          cleanup_remove_unused_private_fields: false
+          cleanup_remove_unused_private_methods: false
+          cleanup_remove_unused_method_parameters: false
+          cleanup_remove_unused_local_variables: false
+
+          # Unncessary code
+          cleanup_remove_unnecessary_casts: true
+          cleanup_remove_unnecessary_nls_tags: true
+          cleanup_remove_unnecessary_suppress_warnings: true
+          cleanup_substring: true
+          cleanup_arrays_fill: true
+          cleanup_evaluate_nullable: true
+          cleanup_push_down_negation: true
+          cleanup_boolean_value_rather_than_comparison: true
+          cleanup_double_negation: true
+          cleanup_comparison_statement: true
+          cleanup_no_super: true
+          cleanup_unreachable_block: true
+          cleanup_use_directly_map_method: true
+          cleanup_collection_cloning: true
+          cleanup_map_cloning: true
+          cleanup_overridden_assignment: true
+          cleanup_overridden_assignment_move_decl: true
+          cleanup_remove_redundant_modifiers: true
+          cleanup_embedded_if: true
+          cleanup_remove_redundant_semicolons: true
+          cleanup_redundant_comparator: true
+          cleanup_remove_unnecessary_array_creation: true
+          cleanup_array_with_curly: true
+          cleanup_return_expression: true
+          cleanup_useless_return: true
+          cleanup_useless_continue: true
+          cleanup_unlooped_while: true
+
+          ######################################################################
+          # Uncategorized items
+          ######################################################################
+
+          cleanup_stringbuilder: true
+          cleanup_do_while_rather_than_while: true
+          cleanup_insert_inferred_type_arguments: false
+          cleanup_add_missing_nls_tags: false
+          cleanup_make_type_abstract_if_missing_method: false
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: "Automated cleanup refactoring"
+          commit-message: "Apply Eclipse cleanup refactoring"
+          body: "This pull request contains cleanup changes generated by Eclipse headless cleanup action."
+          branch: "refactor/cleanup"
+          token: ${{ secrets.PAT_TOKEN }}
+          delete-branch: true
