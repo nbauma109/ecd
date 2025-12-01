@@ -36,7 +36,7 @@ jobs:
           cleanup_remove_trailing_whitespaces: true
           cleanup_remove_trailing_whitespaces_all: true
           cleanup_remove_trailing_whitespaces_ignore_empty: false
-          cleanup_correct_indentation: false
+          cleanup_correct_indentation: true
 
           # Members
           cleanup_sort_members: false
