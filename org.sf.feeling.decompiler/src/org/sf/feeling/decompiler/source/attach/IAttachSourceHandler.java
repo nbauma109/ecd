@@ -12,8 +12,8 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 
 public interface IAttachSourceHandler {
 
-	public Thread execute(IPackageFragmentRoot library, boolean showUI);
+    public Thread execute(IPackageFragmentRoot library, boolean showUI);
 
-	public boolean syncAttachSource(IPackageFragmentRoot root);
+    public boolean syncAttachSource(IPackageFragmentRoot root);
 
 }

@@ -15,8 +15,8 @@ import org.sf.feeling.decompiler.procyon.ProcyonDecompilerPlugin;
 
 public class DecompileWithProcyonHandler extends BaseDecompilerHandler {
 
-	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
-		return handleDecompile(ProcyonDecompilerPlugin.decompilerType);
-	}
+    @Override
+    public Object execute(ExecutionEvent event) throws ExecutionException {
+        return handleDecompile(ProcyonDecompilerPlugin.decompilerType);
+    }
 }

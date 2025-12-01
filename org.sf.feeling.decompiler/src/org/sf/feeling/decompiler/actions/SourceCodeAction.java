@@ -17,41 +17,41 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class SourceCodeAction extends Action implements IUpdate {
 
-	public static final String ID = "SourceCode"; //$NON-NLS-1$
+    public static final String ID = "SourceCode"; //$NON-NLS-1$
 
-	public SourceCodeAction() {
-		super(Messages.getString("JavaDecompilerActionBarContributor.Action.SourceCode"), AS_CHECK_BOX); //$NON-NLS-1$
-	}
+    public SourceCodeAction() {
+        super(Messages.getString("JavaDecompilerActionBarContributor.Action.SourceCode"), AS_CHECK_BOX); //$NON-NLS-1$
+    }
 
-	@Override
-	public void run() {
-		setChecked(true);
-		final JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-		if (editor != null) {
-			editor.showSource();
-			editor.notifyPropertiesChange();
-			Display.getDefault().asyncExec(new Runnable() {
+    @Override
+    public void run() {
+        setChecked(true);
+        final JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+        if (editor != null) {
+            editor.showSource();
+            editor.notifyPropertiesChange();
+            Display.getDefault().asyncExec(new Runnable() {
 
-				public void run() {
-					editor.setFocus();
-				}
-			});
-		}
-	}
+                public void run() {
+                    editor.setFocus();
+                }
+            });
+        }
+    }
 
-	@Override
-	public boolean isEnabled() {
-		JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-		return editor != null;
-	}
+    @Override
+    public boolean isEnabled() {
+        JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+        return editor != null;
+    }
 
-	@Override
-	public boolean isChecked() {
-		return true;
-	}
+    @Override
+    public boolean isChecked() {
+        return true;
+    }
 
-	@Override
-	public void update() {
-		setChecked(isChecked());
-	}
+    @Override
+    public void update() {
+        setChecked(isChecked());
+    }
 }

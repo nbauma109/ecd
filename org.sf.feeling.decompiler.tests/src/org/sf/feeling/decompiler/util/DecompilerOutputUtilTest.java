@@ -7,9 +7,9 @@ import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtilTest {
 
-	@Test
-	public void testToStringExampleOneFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+    @Test
+    public void testToStringExampleOneFernFlower() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
 package sample.one;
 
 import java.util.Arrays;
@@ -22,9 +22,9 @@ public class ExampleOne {
    }// 12
 }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*    */ package sample.one;
 /*    */
 /*    */ import java.util.Arrays;
@@ -39,11 +39,11 @@ public class ExampleOne {
 /*    */    }
 /*    */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleTwoFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+    }
+    
+    @Test
+    public void testToStringExampleTwoFernFlower() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
 package sample.two;
 
 public class ExampleTwo {
@@ -52,9 +52,9 @@ public class ExampleTwo {
    }// 7
 }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*   */ package sample.two;
 /*   */
 /*   */
@@ -64,11 +64,11 @@ public class ExampleTwo {
 /*   */    }
 /*   */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleThreeFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+    }
+    
+    @Test
+    public void testToStringExampleThreeFernFlower() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
 import java.util.*;
 
 public class ExampleThree {
@@ -83,9 +83,9 @@ public class ExampleThree {
    }// 12
 }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*    */ import java.util.*;
 /*    */
 /*    */
@@ -100,11 +100,11 @@ public class ExampleThree {
 /*    */    }
 /*    */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleFourFernFlower() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
+    }
+    
+    @Test
+    public void testToStringExampleFourFernFlower() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(DecompilerType.FernFlower, """
 
 public class ExampleFour {
    public void run() {
@@ -112,9 +112,9 @@ public class ExampleFour {
    }// 5
 }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*   */
 /*   */ public class ExampleFour {
 /*   */    public void run() {
@@ -122,11 +122,11 @@ public class ExampleFour {
 /*   */    }
 /*   */ }
 """, output);
-	}
+    }
 
-	@Test
-	public void testToStringExampleOneProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+    @Test
+    public void testToStringExampleOneProcyon() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
       package sample.one;
       
       import java.util.*;
@@ -141,9 +141,9 @@ public class ExampleFour {
           }
       }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*    */ package sample.one;
 /*    */
 /*    */ import java.util.*;
@@ -158,11 +158,11 @@ public class ExampleFour {
 /*    */     }
 /*    */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleTwoProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+    }
+    
+    @Test
+    public void testToStringExampleTwoProcyon() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
      package sample.two;
      
      public class ExampleTwo
@@ -172,9 +172,9 @@ public class ExampleFour {
          }
      }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*   */ package sample.two;
 /*   */
 /*   */ public class ExampleTwo
@@ -184,11 +184,11 @@ public class ExampleFour {
 /*   */     }
 /*   */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleThreeProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+    }
+    
+    @Test
+    public void testToStringExampleThreeProcyon() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
       import java.util.*;
       
       public class ExampleThree
@@ -203,9 +203,9 @@ public class ExampleFour {
           }
       }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 /*    */ import java.util.*;
 /*    */
 /*    */ public class ExampleThree
@@ -220,11 +220,11 @@ public class ExampleFour {
 /*    */     }
 /*    */ }
 """, output);
-	}
-	
-	@Test
-	public void testToStringExampleFourProcyon() {
-		DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
+    }
+    
+    @Test
+    public void testToStringExampleFourProcyon() {
+        DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil("Procyon", """
      public class ExampleFour
      {
          public void run() {
@@ -232,9 +232,9 @@ public class ExampleFour {
          }
      }
 """);
-		decompilerOutputUtil.realign();
-		String output = decompilerOutputUtil.toString();
-		assertEquivalent("""
+        decompilerOutputUtil.realign();
+        String output = decompilerOutputUtil.toString();
+        assertEquivalent("""
 
 /*   */ public class ExampleFour{
 /*   */     public void run() {
@@ -242,6 +242,6 @@ public class ExampleFour {
 /*   */     }
 /*   */ }
 """, output);
-	}
+    }
 
 }

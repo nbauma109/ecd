@@ -20,25 +20,25 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class BaseDecompilerHandler extends DecompileHandler {
 
-	protected Object handleDecompile(String decompilerType) {
-		final List classes = UIUtil.getActiveSelection();
-		if (classes != null && !classes.isEmpty()) {
-			IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
-			IEditorDescriptor editorDescriptor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);
-			if (editorDescriptor == null) {
-				JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-				if (editor != null) {
-					editor.doSetInput(decompilerType, true);
-				}
-			} else {
-				new OpenClassesAction(editorDescriptor, classes, decompilerType).run();
-			}
-		} else {
-			JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-			if (editor != null) {
-				editor.doSetInput(decompilerType, true);
-			}
-		}
-		return null;
-	}
+    protected Object handleDecompile(String decompilerType) {
+        final List classes = UIUtil.getActiveSelection();
+        if (classes != null && !classes.isEmpty()) {
+            IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
+            IEditorDescriptor editorDescriptor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);
+            if (editorDescriptor == null) {
+                JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+                if (editor != null) {
+                    editor.doSetInput(decompilerType, true);
+                }
+            } else {
+                new OpenClassesAction(editorDescriptor, classes, decompilerType).run();
+            }
+        } else {
+            JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
+            if (editor != null) {
+                editor.doSetInput(decompilerType, true);
+            }
+        }
+        return null;
+    }
 }

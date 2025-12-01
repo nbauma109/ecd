@@ -18,99 +18,99 @@ import org.sf.feeling.decompiler.util.Logger;
 
 public class FinderManager {
 
-	private Worker[] workers;
+    private Worker[] workers;
 
-	public FinderManager() {
-		this.workers = new Worker[10];
-	}
+    public FinderManager() {
+        this.workers = new Worker[10];
+    }
 
-	public boolean isRunning() {
-		boolean result = false;
-		for (int i = 0; i < this.workers.length; i++) {
-			if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
-				result = true;
-				break;
-			}
-		}
-		return result;
-	}
+    public boolean isRunning() {
+        boolean result = false;
+        for (int i = 0; i < this.workers.length; i++) {
+            if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
 
-	public void cancel() {
-		for (int i = 0; i < this.workers.length; i++) {
-			if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
-				this.workers[i].cancel();
-			}
-		}
-	}
+    public void cancel() {
+        for (int i = 0; i < this.workers.length; i++) {
+            if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
+                this.workers[i].cancel();
+            }
+        }
+    }
 
-	public void findSources(List<String> libs, List<SourceFileResult> results) {
-		WorkQueue queue = new WorkQueue();
+    public void findSources(List<String> libs, List<SourceFileResult> results) {
+        WorkQueue queue = new WorkQueue();
 
-		for (int i = 0; i < this.workers.length; i++) {
-			this.workers[i] = new Worker(queue, results);
-			this.workers[i].start();
-		}
+        for (int i = 0; i < this.workers.length; i++) {
+            this.workers[i] = new Worker(queue, results);
+            this.workers[i].start();
+        }
 
-		for (String lib : libs) {
-			queue.addWork(lib);
-		}
+        for (String lib : libs) {
+            queue.addWork(lib);
+        }
 
-		for (int i = 0; i < this.workers.length; i++) {
-			queue.addWork(Worker.NO_MORE_WORK);
-		}
-	}
+        for (int i = 0; i < this.workers.length; i++) {
+            queue.addWork(Worker.NO_MORE_WORK);
+        }
+    }
 
-	private static class WorkQueue {
+    private static class WorkQueue {
 
-		LinkedList<String> queue = new LinkedList<>();
+        LinkedList<String> queue = new LinkedList<>();
 
-		public synchronized void addWork(String o) {
-			this.queue.addLast(o);
-			notify();
-		}
+        public synchronized void addWork(String o) {
+            this.queue.addLast(o);
+            notify();
+        }
 
-		public synchronized String getWork() throws InterruptedException {
-			while (this.queue.isEmpty()) {
-				wait();
-			}
-			return this.queue.removeFirst();
-		}
-	}
+        public synchronized String getWork() throws InterruptedException {
+            while (this.queue.isEmpty()) {
+                wait();
+            }
+            return this.queue.removeFirst();
+        }
+    }
 
-	private static class Worker extends Thread {
+    private static class Worker extends Thread {
 
-		public static final String NO_MORE_WORK = "NO_MORE_WORK"; //$NON-NLS-1$
-		private FinderManager.WorkQueue q;
-		private List<SourceFileResult> results;
-		private boolean canceled;
-		private SourceCodeFinder finder;
+        public static final String NO_MORE_WORK = "NO_MORE_WORK"; //$NON-NLS-1$
+        private FinderManager.WorkQueue q;
+        private List<SourceFileResult> results;
+        private boolean canceled;
+        private SourceCodeFinder finder;
 
-		public Worker(FinderManager.WorkQueue q, List<SourceFileResult> results) {
-			this.q = q;
-			this.results = results;
-			this.finder = new SourceCodeFinderFacade();
-		}
+        public Worker(FinderManager.WorkQueue q, List<SourceFileResult> results) {
+            this.q = q;
+            this.results = results;
+            this.finder = new SourceCodeFinderFacade();
+        }
 
-		public void cancel() {
-			this.canceled = true;
-			this.finder.cancel();
-		}
+        public void cancel() {
+            this.canceled = true;
+            this.finder.cancel();
+        }
 
-		@Override
-		public void run() {
-			try {
-				while (!this.canceled) {
-					String binFile = this.q.getWork();
-					if (Objects.equals(binFile, NO_MORE_WORK)) {
-						break;
-					}
+        @Override
+        public void run() {
+            try {
+                while (!this.canceled) {
+                    String binFile = this.q.getWork();
+                    if (Objects.equals(binFile, NO_MORE_WORK)) {
+                        break;
+                    }
 
-					String sha1 = HashUtils.sha1Hash(new File(binFile));
-					this.finder.find(binFile, sha1, this.results);
-				}
-			} catch (InterruptedException e) {
-				Logger.debug(e);
-			}
-		}
-	}
+                    String sha1 = HashUtils.sha1Hash(new File(binFile));
+                    this.finder.find(binFile, sha1, this.results);
+                }
+            } catch (InterruptedException e) {
+                Logger.debug(e);
+            }
+        }
+    }
 }

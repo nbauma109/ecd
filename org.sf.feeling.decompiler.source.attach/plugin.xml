@@ -9,8 +9,8 @@
 ###############################################################################
 -->
 <plugin>
-	<extension point="org.eclipse.ui.menus">
-	  <menuContribution
+  <extension point="org.eclipse.ui.menus">
+    <menuContribution
             allPopups="false"
             class="org.sf.feeling.decompiler.source.attach.handler.AttachSourceContributionFactory"
             locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?before=group.edit">
@@ -20,10 +20,10 @@
             class="org.sf.feeling.decompiler.source.attach.handler.AttachSourceContributionFactory"
             locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?before=group.edit">
       </menuContribution>      
-	</extension>
-	<extension
+  </extension>
+  <extension
         point="org.sf.feeling.decompiler.decompilerAdapters">
-     	<adaptable
+       <adaptable
            class="org.sf.feeling.decompiler.JavaDecompilerPlugin">
            <adapter
                  class="org.sf.feeling.decompiler.source.attach.handler.AttachSourceHandler"
@@ -31,9 +31,9 @@
                  singleton="true"
                  type="org.sf.feeling.decompiler.source.attach.IAttachSourceHandler">
            </adapter>
-     	</adaptable>
-  	</extension>
-  	<extension point="org.eclipse.ui.editorActions">
+       </adaptable>
+    </extension>
+    <extension point="org.eclipse.ui.editorActions">
       <editorContribution id="org.sf.feeling.decompiler.source.attach.m2e.downloadSourcesContribution"
                           targetID="org.sf.feeling.decompiler.ClassFileEditor">
          <action id="org.sf.feeling.decompiler.source.attach.m2e.downloadSourcesAction"

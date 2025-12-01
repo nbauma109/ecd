@@ -38,141 +38,141 @@ import org.sf.feeling.decompiler.util.SourceMapperUtil;
 
 public abstract class DecompilerSourceMapper extends SourceMapper {
 
-	protected static Map<IPackageFragmentRoot, SourceMapper> originalSourceMapper = new ConcurrentHashMap<IPackageFragmentRoot, SourceMapper>();
+    protected static Map<IPackageFragmentRoot, SourceMapper> originalSourceMapper = new ConcurrentHashMap<IPackageFragmentRoot, SourceMapper>();
 
-	protected boolean isAttachedSource;
+    protected boolean isAttachedSource;
 
-	protected DecompilerSourceMapper(IPath sourcePath, String rootPath, Map options) {
-		super(sourcePath, rootPath, options);
-	}
+    protected DecompilerSourceMapper(IPath sourcePath, String rootPath, Map options) {
+        super(sourcePath, rootPath, options);
+    }
 
-	public char[] findSource(IType type) throws JavaModelException {
-		if (!type.isBinary()) {
-			return null;
-		}
-		BinaryType parent = (BinaryType) type.getDeclaringType();
-		BinaryType declType = (BinaryType) type;
-		while (parent != null) {
-			declType = parent;
-			parent = (BinaryType) declType.getDeclaringType();
-		}
-		IBinaryType info = null;
+    public char[] findSource(IType type) throws JavaModelException {
+        if (!type.isBinary()) {
+            return null;
+        }
+        BinaryType parent = (BinaryType) type.getDeclaringType();
+        BinaryType declType = (BinaryType) type;
+        while (parent != null) {
+            declType = parent;
+            parent = (BinaryType) declType.getDeclaringType();
+        }
+        IBinaryType info = null;
 
-		info = (IBinaryType) declType.getElementInfo(null);
+        info = (IBinaryType) declType.getElementInfo(null);
 
-		if (info == null) {
-			return null;
-		}
-		return findSource(type, info);
-	}
+        if (info == null) {
+            return null;
+        }
+        return findSource(type, info);
+    }
 
-	/**
-	 * With the time this API has changed and the original method which accepted
-	 * {@link IType} as first parameter has been superseded and replaced by the
-	 * which does accept {@link NamedParameter} as first parameter.
-	 * <p>
-	 * But we do need to support both APIs here so we will try to invoke the correct
-	 * method using reflection instead of a hard coded reference.
-	 */
-	public void mapSourceSwitch(IType type, char[] contents, boolean force) {
-		if (force) {
-			sourceRanges.remove(type);
-		}
+    /**
+     * With the time this API has changed and the original method which accepted
+     * {@link IType} as first parameter has been superseded and replaced by the
+     * which does accept {@link NamedParameter} as first parameter.
+     * <p>
+     * But we do need to support both APIs here so we will try to invoke the correct
+     * method using reflection instead of a hard coded reference.
+     */
+    public void mapSourceSwitch(IType type, char[] contents, boolean force) {
+        if (force) {
+            sourceRanges.remove(type);
+        }
 
-		try {
-			SourceMapperUtil.mapSource(this, type, contents, null);
-		} catch (Exception e) {
-			// Method was found but invocation failed, this shouldn't happen.
-		}
-	}
+        try {
+            SourceMapperUtil.mapSource(this, type, contents, null);
+        } catch (Exception e) {
+            // Method was found but invocation failed, this shouldn't happen.
+        }
+    }
 
-	/**
-	 * @return Does the source returned by {@link #findSource(IType, IBinaryType)}
-	 *         originate from a source attachment?
-	 */
-	public boolean isAttachedSource() {
-		return isAttachedSource;
-	}
+    /**
+     * @return Does the source returned by {@link #findSource(IType, IBinaryType)}
+     *         originate from a source attachment?
+     */
+    public boolean isAttachedSource() {
+        return isAttachedSource;
+    }
 
-	protected String formatSource(String source) {
-		String result = null;
+    protected String formatSource(String source) {
+        String result = null;
 
-		IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-		boolean useFormatter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_FORMATTER);
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        boolean useFormatter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_FORMATTER);
 
-		if (source != null && useFormatter) {
-			CompilerOptions option = new CompilerOptions();
-			Map<String, String> options = option.getMap();
-			options.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
-			options.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
-			CodeFormatter formatter = ToolFactory.createCodeFormatter(options);
-			TextEdit textEdit = formatter.format(CodeFormatter.K_COMPILATION_UNIT, source, 0, source.length(), 0, null);
-			if (textEdit != null) {
-				IDocument document = new Document(source);
-				try {
-					textEdit.apply(document);
-				} catch (BadLocationException e) {
-					JavaDecompilerPlugin.log(IStatus.WARNING, e, "Unable to apply text formatting."); //$NON-NLS-1$
-				}
-				result = document.get();
-			}
+        if (source != null && useFormatter) {
+            CompilerOptions option = new CompilerOptions();
+            Map<String, String> options = option.getMap();
+            options.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
+            options.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
+            CodeFormatter formatter = ToolFactory.createCodeFormatter(options);
+            TextEdit textEdit = formatter.format(CodeFormatter.K_COMPILATION_UNIT, source, 0, source.length(), 0, null);
+            if (textEdit != null) {
+                IDocument document = new Document(source);
+                try {
+                    textEdit.apply(document);
+                } catch (BadLocationException e) {
+                    JavaDecompilerPlugin.log(IStatus.WARNING, e, "Unable to apply text formatting."); //$NON-NLS-1$
+                }
+                result = document.get();
+            }
 
-			if (result == null) {
-				JavaDecompilerPlugin.log(IStatus.WARNING, null, "Could not format code, it will remain unformatted."); //$NON-NLS-1$
-				result = source;
-			}
-		} else {
-			result = source;
-		}
+            if (result == null) {
+                JavaDecompilerPlugin.log(IStatus.WARNING, null, "Could not format code, it will remain unformatted."); //$NON-NLS-1$
+                result = source;
+            }
+        } else {
+            result = source;
+        }
 
-		return result.trim();
-	}
+        return result.trim();
+    }
 
-	protected String getArchivePath(IPackageFragmentRoot root) {
-		String archivePath = null;
-		IResource resource;
+    protected String getArchivePath(IPackageFragmentRoot root) {
+        String archivePath = null;
+        IResource resource;
 
-		try {
-			if ((resource = root.getUnderlyingResource()) != null)
-				// jar in workspace
-				archivePath = resource.getLocation().toOSString();
-			else
-				// external jar
-				archivePath = root.getPath().toOSString();
-		} catch (JavaModelException e) {
-			throw new RuntimeException("Unexpected Java model exception: " //$NON-NLS-1$
-					+ e.toString());
-		}
-		return archivePath;
-	}
+        try {
+            if ((resource = root.getUnderlyingResource()) != null)
+                // jar in workspace
+                archivePath = resource.getLocation().toOSString();
+            else
+                // external jar
+                archivePath = root.getPath().toOSString();
+        } catch (JavaModelException e) {
+            throw new RuntimeException("Unexpected Java model exception: " //$NON-NLS-1$
+                    + e.toString());
+        }
+        return archivePath;
+    }
 
-	/**
-	 * Finds the deepest <code>IJavaElement</code> in the hierarchy of
-	 * <code>elt</elt>'s children (including <code>elt</code> itself) which has a
-	 * source range that encloses <code>position</code> according to
-	 * <code>mapper</code>.
-	 * 
-	 * Code mostly taken from 'org.eclipse.jdt.internal.core.ClassFile'
-	 */
-	protected IJavaElement findElement(IJavaElement elt, int position) {
-		ISourceRange range = getSourceRange(elt);
-		if (range == null || position < range.getOffset() || range.getOffset() + range.getLength() - 1 < position) {
-			return null;
-		}
-		if (elt instanceof IParent) {
-			try {
-				IJavaElement[] children = ((IParent) elt).getChildren();
-				for (int i = 0; i < children.length; i++) {
-					IJavaElement match = findElement(children[i], position);
-					if (match != null) {
-						return match;
-					}
-				}
-			} catch (JavaModelException npe) {
-			}
-		}
-		return elt;
-	}
+    /**
+     * Finds the deepest <code>IJavaElement</code> in the hierarchy of
+     * <code>elt</elt>'s children (including <code>elt</code> itself) which has a
+     * source range that encloses <code>position</code> according to
+     * <code>mapper</code>.
+     * 
+     * Code mostly taken from 'org.eclipse.jdt.internal.core.ClassFile'
+     */
+    protected IJavaElement findElement(IJavaElement elt, int position) {
+        ISourceRange range = getSourceRange(elt);
+        if (range == null || position < range.getOffset() || range.getOffset() + range.getLength() - 1 < position) {
+            return null;
+        }
+        if (elt instanceof IParent) {
+            try {
+                IJavaElement[] children = ((IParent) elt).getChildren();
+                for (int i = 0; i < children.length; i++) {
+                    IJavaElement match = findElement(children[i], position);
+                    if (match != null) {
+                        return match;
+                    }
+                }
+            } catch (JavaModelException npe) {
+            }
+        }
+        return elt;
+    }
 
-	public abstract String decompile(String decompilerType, File file);
+    public abstract String decompile(String decompilerType, File file);
 }

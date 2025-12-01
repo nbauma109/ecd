@@ -12,9 +12,9 @@ import java.util.List;
 
 public abstract interface SourceCodeFinder {
 
-	public abstract void find(String binFile, String sha1, List<SourceFileResult> resultList);
+    public abstract void find(String binFile, String sha1, List<SourceFileResult> resultList);
 
-	public abstract void cancel();
+    public abstract void cancel();
 
-	public abstract String getDownloadUrl();
+    public abstract String getDownloadUrl();
 }

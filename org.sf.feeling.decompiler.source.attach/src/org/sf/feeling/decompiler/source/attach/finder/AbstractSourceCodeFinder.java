@@ -31,87 +31,87 @@ import org.sf.feeling.decompiler.util.Logger;
 
 public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
-	private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"; //$NON-NLS-1$
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"; //$NON-NLS-1$
 
-	protected String downloadUrl;
+    protected String downloadUrl;
 
-	@Override
-	public String getDownloadUrl() {
-		return downloadUrl;
-	}
+    @Override
+    public String getDownloadUrl() {
+        return downloadUrl;
+    }
 
-	public void setDownloadUrl(String downloadUrl) {
-		this.downloadUrl = downloadUrl;
-	}
+    public void setDownloadUrl(String downloadUrl) {
+        this.downloadUrl = downloadUrl;
+    }
 
-	protected String getString(URL url) throws Exception {
-		try {
-			URLConnection con = url.openConnection();
-			con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
-			con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
-			con.setConnectTimeout(5000);
-			con.setReadTimeout(5000);
-			byte[] bytes = null;
-			try {
-				try (InputStream conIs = con.getInputStream()) {
-					bytes = IOUtils.toByteArray(conIs);
-				}
-				try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
-					return IOUtils.toString(is, StandardCharsets.UTF_8);
-				}
-			} catch (Exception e) {
-				if (bytes != null) {
-					return new String(bytes, StandardCharsets.UTF_8);
-				}
-			}
-		} catch (Exception e) {
-			Logger.debug(e);
-		}
-		return "";
-	}
+    protected String getString(URL url) throws Exception {
+        try {
+            URLConnection con = url.openConnection();
+            con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
+            con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
+            con.setConnectTimeout(5000);
+            con.setReadTimeout(5000);
+            byte[] bytes = null;
+            try {
+                try (InputStream conIs = con.getInputStream()) {
+                    bytes = IOUtils.toByteArray(conIs);
+                }
+                try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
+                    return IOUtils.toString(is, StandardCharsets.UTF_8);
+                }
+            } catch (Exception e) {
+                if (bytes != null) {
+                    return new String(bytes, StandardCharsets.UTF_8);
+                }
+            }
+        } catch (Exception e) {
+            Logger.debug(e);
+        }
+        return "";
+    }
 
-	protected Optional<GAV> findGAVFromFile(String binFile) throws Exception {
-		Set<GAV> gavs = new HashSet<>();
+    protected Optional<GAV> findGAVFromFile(String binFile) throws Exception {
+        Set<GAV> gavs = new HashSet<>();
 
-		// META-INF/maven/commons-beanutils/commons-beanutils/pom.properties
-		try (ZipFile zipFile = new ZipFile(new File(binFile))) {
-			Enumeration<? extends ZipEntry> entries = zipFile.entries();
-			while (entries.hasMoreElements()) {
-				ZipEntry entry = entries.nextElement();
-				if (entry == null) {
-					break;
-				}
+        // META-INF/maven/commons-beanutils/commons-beanutils/pom.properties
+        try (ZipFile zipFile = new ZipFile(new File(binFile))) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry == null) {
+                    break;
+                }
 
-				String zipEntryName = entry.getName();
-				if (zipEntryName.startsWith("META-INF/maven/") && zipEntryName.endsWith("/pom.properties")) //$NON-NLS-1$ //$NON-NLS-2$
-				{
-					try (InputStream in = zipFile.getInputStream(entry)) {
-						Properties props = new Properties();
-						props.load(in);
-						String version = props.getProperty("version"); //$NON-NLS-1$
-						String groupId = props.getProperty("groupId"); //$NON-NLS-1$
-						String artifactId = props.getProperty("artifactId"); //$NON-NLS-1$
-						if (version != null && groupId != null && artifactId != null) {
-							GAV gav = new GAV();
-							gav.setGroupId(groupId);
-							gav.setArtifactId(artifactId);
-							gav.setVersion(version);
-							gavs.add(gav);
-						}
-					}
-				}
-			}
-		}
+                String zipEntryName = entry.getName();
+                if (zipEntryName.startsWith("META-INF/maven/") && zipEntryName.endsWith("/pom.properties")) //$NON-NLS-1$ //$NON-NLS-2$
+                {
+                    try (InputStream in = zipFile.getInputStream(entry)) {
+                        Properties props = new Properties();
+                        props.load(in);
+                        String version = props.getProperty("version"); //$NON-NLS-1$
+                        String groupId = props.getProperty("groupId"); //$NON-NLS-1$
+                        String artifactId = props.getProperty("artifactId"); //$NON-NLS-1$
+                        if (version != null && groupId != null && artifactId != null) {
+                            GAV gav = new GAV();
+                            gav.setGroupId(groupId);
+                            gav.setArtifactId(artifactId);
+                            gav.setVersion(version);
+                            gavs.add(gav);
+                        }
+                    }
+                }
+            }
+        }
 
-		if (gavs.size() > 1)
-			gavs.clear(); // a merged file, the result will not be correct
-		return gavs.stream().findFirst();
-	}
+        if (gavs.size() > 1)
+            gavs.clear(); // a merged file, the result will not be correct
+        return gavs.stream().findFirst();
+    }
 
-	protected String getText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws BadLocationException {
-		int startOffset = iterator.getStartOffset();
-		int endOffset = iterator.getEndOffset();
-		int length = endOffset - startOffset;
-		return doc.getText(startOffset, length);
-	}
+    protected String getText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws BadLocationException {
+        int startOffset = iterator.getStartOffset();
+        int endOffset = iterator.getEndOffset();
+        int length = endOffset - startOffset;
+        return doc.getText(startOffset, length);
+    }
 }
