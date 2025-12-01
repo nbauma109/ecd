@@ -13,20 +13,20 @@ import org.sf.feeling.decompiler.fernflower.FernFlowerSourceMapper;
 
 public class SourceMapperFactory {
 
-	private static DecompilerSourceMapper fernFlowerSourceMapper;
+    private static DecompilerSourceMapper fernFlowerSourceMapper;
 
-	public static DecompilerSourceMapper getSourceMapper(String decompiler) {
+    public static DecompilerSourceMapper getSourceMapper(String decompiler) {
 
-		if (DecompilerType.FernFlower.equals(decompiler)) {
-			if (fernFlowerSourceMapper == null) {
-				fernFlowerSourceMapper = new FernFlowerSourceMapper();
-			}
-			return fernFlowerSourceMapper;
-		} else {
-			IDecompilerDescriptor descriptor = JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompiler);
-			if (descriptor != null)
-				return descriptor.getDecompilerSourceMapper();
-		}
-		return null;
-	}
+        if (DecompilerType.FernFlower.equals(decompiler)) {
+            if (fernFlowerSourceMapper == null) {
+                fernFlowerSourceMapper = new FernFlowerSourceMapper();
+            }
+            return fernFlowerSourceMapper;
+        }
+        IDecompilerDescriptor descriptor = JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompiler);
+        if (descriptor != null) {
+            return descriptor.getDecompilerSourceMapper();
+        }
+        return null;
+    }
 }

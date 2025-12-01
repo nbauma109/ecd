@@ -12,18 +12,18 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class DecompilerType {
 
-	public static final String FernFlower = "FernFlower";//$NON-NLS-1$
+    public static final String FernFlower = "FernFlower";//$NON-NLS-1$
 
-	public static String[] decompilerTypes = null;
+    public static String[] decompilerTypes = null;
 
-	public static String[] getDecompilerTypes() {
-		if (decompilerTypes == null) {
-			decompilerTypes = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorTypes();
-		}
-		return decompilerTypes;
-	}
+    public static String[] getDecompilerTypes() {
+        if (decompilerTypes == null) {
+            decompilerTypes = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorTypes();
+        }
+        return decompilerTypes;
+    }
 
-	public static boolean isFernFlowerBased(String decompilerType) {
-		return FernFlower.equals(decompilerType) || "Vineflower".equals(decompilerType);
-	}
+    public static boolean isFernFlowerBased(String decompilerType) {
+        return FernFlower.equals(decompilerType) || "Vineflower".equals(decompilerType);
+    }
 }

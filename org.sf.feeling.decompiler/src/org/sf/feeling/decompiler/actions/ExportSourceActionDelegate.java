@@ -16,18 +16,18 @@ import org.sf.feeling.decompiler.editor.JavaDecompilerClassFileEditor;
 
 public class ExportSourceActionDelegate extends ActionDelegate implements IEditorActionDelegate {
 
-	JavaDecompilerClassFileEditor editor;
+    JavaDecompilerClassFileEditor editor;
 
-	@Override
-	public void setActiveEditor(IAction action, IEditorPart targetEditor) {
-		if (targetEditor instanceof JavaDecompilerClassFileEditor) {
-			editor = (JavaDecompilerClassFileEditor) targetEditor;
-		}
-	}
+    @Override
+    public void setActiveEditor(IAction action, IEditorPart targetEditor) {
+        if (targetEditor instanceof JavaDecompilerClassFileEditor) {
+            editor = (JavaDecompilerClassFileEditor) targetEditor;
+        }
+    }
 
-	@Override
-	public void run(IAction action) {
-		new ExportEditorSourceAction().run();
-	}
+    @Override
+    public void run(IAction action) {
+        new ExportEditorSourceAction().run();
+    }
 
 }

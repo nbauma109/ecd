@@ -30,98 +30,98 @@ import org.sf.feeling.decompiler.editor.SourceMapperFactory;
 
 public class DecompileUtil {
 
-	public static String decompile(IClassFile cf, String type, boolean always, boolean reuseBuf, boolean force)
-			throws CoreException {
-		String decompilerType = type;
-		String origSrc = cf.getSource();
-		// have to check our mark since all line comments are stripped
-		// in debug align mode
-		if (origSrc == null || always || !reuseBuf || force) {
-			DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
-			char[] src = sourceMapper.findSource(cf.getType());
+    public static String decompile(IClassFile cf, String type, boolean always, boolean reuseBuf, boolean force)
+            throws CoreException {
+        String decompilerType = type;
+        String origSrc = cf.getSource();
+        // have to check our mark since all line comments are stripped
+        // in debug align mode
+        if (origSrc == null || always || !reuseBuf || force) {
+            DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
+            char[] src = sourceMapper.findSource(cf.getType());
 
-			if (src == null && !DecompilerType.FernFlower.equals(decompilerType)) {
-				src = SourceMapperFactory.getSourceMapper(DecompilerType.FernFlower).findSource(cf.getType());
-			}
-			if (src == null) {
-				return origSrc;
-			} else
-				return new String(src);
-		}
+            if (src == null && !DecompilerType.FernFlower.equals(decompilerType)) {
+                src = SourceMapperFactory.getSourceMapper(DecompilerType.FernFlower).findSource(cf.getType());
+            }
+            if (src == null) {
+                return origSrc;
+            }
+            return new String(src);
+        }
 
-		return origSrc;
-	}
+        return origSrc;
+    }
 
-	public static String decompiler(FileStoreEditorInput input, String decompilerType) {
-		DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
-		File file = new File(input.getURI());
-		return sourceMapper.decompile(decompilerType, file);
+    public static String decompiler(FileStoreEditorInput input, String decompilerType) {
+        DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
+        File file = new File(input.getURI());
+        return sourceMapper.decompile(decompilerType, file);
 
-	}
+    }
 
-	public static String getPackageName(String source) {
-		Pattern p = Pattern.compile("(?i)package\\s+\\S+"); //$NON-NLS-1$
+    public static String getPackageName(String source) {
+        Pattern p = Pattern.compile("(?i)package\\s+\\S+"); //$NON-NLS-1$
 
-		Matcher m = p.matcher(source);
-		if (m.find()) {
-			return m.group().replace("package", "") //$NON-NLS-1$ //$NON-NLS-2$
-					.replace(";", "") //$NON-NLS-1$ //$NON-NLS-2$
-					.trim();
-		}
-		return null;
-	}
+        Matcher m = p.matcher(source);
+        if (m.find()) {
+            return m.group().replace("package", "") //$NON-NLS-1$ //$NON-NLS-2$
+                    .replace(";", "") //$NON-NLS-1$ //$NON-NLS-2$
+                    .trim();
+        }
+        return null;
+    }
 
-	public static String updateBuffer(IClassFile cf, String origSrc) throws JavaModelException {
-		updateSourceRanges(cf, origSrc);
-		return origSrc;
-	}
+    public static String updateBuffer(IClassFile cf, String origSrc) throws JavaModelException {
+        updateSourceRanges(cf, origSrc);
+        return origSrc;
+    }
 
-	public static void updateSourceRanges(IClassFile cf, String contents) throws JavaModelException {
-		if (cf instanceof ClassFile) {
-			ClassFile classFile = (ClassFile) cf;
-			Object info = classFile.getElementInfo();
-			IBinaryType typeInfo = info instanceof IBinaryType ? (IBinaryType) info : null;
-			SourceMapper mapper = classFile.getSourceMapper();
-			IType type = (IType) ReflectionUtils.invokeMethod(classFile, "getOuterMostEnclosingType", //$NON-NLS-1$
-					new Class[0], new Object[0]);
-			HashMap sourceRange = (HashMap) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
-			sourceRange.remove(type);
-			SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
-		}
-	}
+    public static void updateSourceRanges(IClassFile cf, String contents) throws JavaModelException {
+        if (cf instanceof ClassFile) {
+            ClassFile classFile = (ClassFile) cf;
+            Object info = classFile.getElementInfo();
+            IBinaryType typeInfo = info instanceof IBinaryType ? (IBinaryType) info : null;
+            SourceMapper mapper = classFile.getSourceMapper();
+            IType type = (IType) ReflectionUtils.invokeMethod(classFile, "getOuterMostEnclosingType", //$NON-NLS-1$
+                    new Class[0], new Object[0]);
+            HashMap sourceRange = (HashMap) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
+            sourceRange.remove(type);
+            SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
+        }
+    }
 
-	public static String deleteOneEmptyLine(String origSrc) {
-		int index = origSrc.indexOf("{"); //$NON-NLS-1$
-		if (index == -1) {
-			return origSrc;
-		}
+    public static String deleteOneEmptyLine(String origSrc) {
+        int index = origSrc.indexOf("{"); //$NON-NLS-1$
+        if (index == -1) {
+            return origSrc;
+        }
 
-		String prefix = origSrc.substring(0, index + 1);
-		String suffix = origSrc.substring(index + 1);
+        String prefix = origSrc.substring(0, index + 1);
+        String suffix = origSrc.substring(index + 1);
 
-		List<String> splits = new ArrayList(Arrays.asList(prefix.split("\n"))); //$NON-NLS-1$
-		boolean flag = false;
-		for (int i = 0; i < splits.size(); i++) {
-			String split = splits.get(i);
-			if (split.trim().length() == 0) {
-				splits.remove(i);
-				flag = true;
-				break;
-			}
-		}
+        List<String> splits = new ArrayList(Arrays.asList(prefix.split("\n"))); //$NON-NLS-1$
+        boolean flag = false;
+        for (int i = 0; i < splits.size(); i++) {
+            String split = splits.get(i);
+            if (split.trim().length() == 0) {
+                splits.remove(i);
+                flag = true;
+                break;
+            }
+        }
 
-		if (flag) {
-			StringBuffer buffer = new StringBuffer();
-			for (int i = 0; i < splits.size(); i++) {
-				String split = splits.get(i);
-				buffer.append(split);
-				if (i < splits.size() - 1) {
-					buffer.append("\n"); //$NON-NLS-1$
-				}
-			}
-			buffer.append(suffix);
-			return buffer.toString();
-		}
-		return null;
-	}
+        if (flag) {
+            StringBuilder buffer = new StringBuilder();
+            for (int i = 0; i < splits.size(); i++) {
+                String split = splits.get(i);
+                buffer.append(split);
+                if (i < splits.size() - 1) {
+                    buffer.append("\n"); //$NON-NLS-1$
+                }
+            }
+            buffer.append(suffix);
+            return buffer.toString();
+        }
+        return null;
+    }
 }

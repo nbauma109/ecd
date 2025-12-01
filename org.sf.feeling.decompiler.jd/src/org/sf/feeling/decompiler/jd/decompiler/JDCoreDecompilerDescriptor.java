@@ -13,58 +13,58 @@ import jd.ide.eclipse.editors.JDSourceMapper;
 
 public class JDCoreDecompilerDescriptor implements IDecompilerDescriptor {
 
-	private JDCoreDecompiler decompiler = null;
+    private JDCoreDecompiler decompiler = null;
 
-	private JDSourceMapper sourceMapper = null;
+    private JDSourceMapper sourceMapper = null;
 
-	private Action decompileAction = null;
+    private Action decompileAction = null;
 
-	@Override
-	public String getDecompilerType() {
-		return JDCoreDecompilerPlugin.decompilerType;
-	}
+    @Override
+    public String getDecompilerType() {
+        return JDCoreDecompilerPlugin.decompilerType;
+    }
 
-	@Override
-	public String getDecompilerPreferenceLabel() {
-		return Messages.getString("JDCoreDecompilerDescriptor.PreferenceLabel"); //$NON-NLS-1$
-	}
+    @Override
+    public String getDecompilerPreferenceLabel() {
+        return Messages.getString("JDCoreDecompilerDescriptor.PreferenceLabel"); //$NON-NLS-1$
+    }
 
-	@Override
-	public IDecompiler getDecompiler() {
-		if (decompiler == null) {
-			decompiler = new JDCoreDecompiler(getDecompilerSourceMapper());
-		}
-		return decompiler;
-	}
+    @Override
+    public IDecompiler getDecompiler() {
+        if (decompiler == null) {
+            decompiler = new JDCoreDecompiler(getDecompilerSourceMapper());
+        }
+        return decompiler;
+    }
 
-	@Override
-	public JDSourceMapper getDecompilerSourceMapper() {
-		if (sourceMapper == null) {
-			sourceMapper = new JDCoreSourceMapper();
-		}
-		return sourceMapper;
-	}
+    @Override
+    public JDSourceMapper getDecompilerSourceMapper() {
+        if (sourceMapper == null) {
+            sourceMapper = new JDCoreSourceMapper();
+        }
+        return sourceMapper;
+    }
 
-	@Override
-	public Action getDecompileAction() {
-		if (decompileAction == null) {
-			decompileAction = new DecompileWithJDCoreAction();
-		}
-		return decompileAction;
-	}
+    @Override
+    public Action getDecompileAction() {
+        if (decompileAction == null) {
+            decompileAction = new DecompileWithJDCoreAction();
+        }
+        return decompileAction;
+    }
 
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 
-	@Override
-	public boolean isDefault() {
-		return true;
-	}
+    @Override
+    public boolean isDefault() {
+        return true;
+    }
 
-	@Override
-	public ImageDescriptor getDecompilerIcon() {
-		return JDCoreDecompilerPlugin.getImageDescriptor("icons/jd_16.png"); //$NON-NLS-1$
-	}
+    @Override
+    public ImageDescriptor getDecompilerIcon() {
+        return JDCoreDecompilerPlugin.getImageDescriptor("icons/jd_16.png"); //$NON-NLS-1$
+    }
 }

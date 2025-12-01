@@ -21,56 +21,59 @@ import java.util.List;
  */
 public class DecompilerAdapterInvocationHandler implements InvocationHandler {
 
-	private List adapters;
+    private List adapters;
 
-	public DecompilerAdapterInvocationHandler(List adapters) {
-		this.adapters = adapters;
-	}
+    public DecompilerAdapterInvocationHandler(List adapters) {
+        this.adapters = adapters;
+    }
 
-	@Override
-	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-		try {
-			if (adapters != null && adapters.size() > 0) {
-				Class returnType = method.getReturnType();
-				if (returnType.isArray()) {
-					List allResult = new ArrayList();
-					for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-						Object result = method.invoke(iter.next(), args);
-						if (result != null)
-							allResult.addAll(Arrays.asList((Object[]) result));
-					}
-					Object a = java.lang.reflect.Array.newInstance(returnType.getComponentType(), allResult.size());
-					return allResult.toArray((Object[]) a);
-				} else if (returnType == Collection.class) {
-					Collection<?> allResult = new ArrayList<>();
-					for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-						Object result = method.invoke(iter.next(), args);
-						allResult.addAll((Collection) result);
-					}
-					return allResult;
-				} else if (returnType == Boolean.class) {
-					boolean returnValue = false;
-					for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-						Boolean result = (Boolean) method.invoke(iter.next(), args);
-						if (returnValue != result.booleanValue())
-							returnValue = returnValue ^ result.booleanValue();
-					}
-					return Boolean.valueOf(returnValue);
-				} else if (returnType == Void.TYPE) {
-					for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-						method.invoke(iter.next(), args);
-					}
-				} else {
-					for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-						return method.invoke(iter.next(), args);
-						// if ( result != null )
-						// return result;
-					}
-				}
-			}
-		} catch (Exception e) {
-			throw e.getCause();
-		}
-		return null;
-	}
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        try {
+            if (adapters != null && adapters.size() > 0) {
+                Class returnType = method.getReturnType();
+                if (returnType.isArray()) {
+                    List allResult = new ArrayList();
+                    for (Iterator iter = adapters.iterator(); iter.hasNext();) {
+                        Object result = method.invoke(iter.next(), args);
+                        if (result != null) {
+                            allResult.addAll(Arrays.asList((Object[]) result));
+                        }
+                    }
+                    Object a = java.lang.reflect.Array.newInstance(returnType.getComponentType(), allResult.size());
+                    return allResult.toArray((Object[]) a);
+                }
+                if (returnType == Collection.class) {
+                    Collection<?> allResult = new ArrayList<>();
+                    for (Iterator iter = adapters.iterator(); iter.hasNext();) {
+                        Object result = method.invoke(iter.next(), args);
+                        allResult.addAll((Collection) result);
+                    }
+                    return allResult;
+                } else if (returnType == Boolean.class) {
+                    boolean returnValue = false;
+                    for (Iterator iter = adapters.iterator(); iter.hasNext();) {
+                        Boolean result = (Boolean) method.invoke(iter.next(), args);
+                        if (returnValue != result.booleanValue()) {
+                            returnValue = returnValue ^ result.booleanValue();
+                        }
+                    }
+                    return Boolean.valueOf(returnValue);
+                } else if (returnType == Void.TYPE) {
+                    for (Iterator iter = adapters.iterator(); iter.hasNext();) {
+                        method.invoke(iter.next(), args);
+                    }
+                } else {
+                    for (Iterator iter = adapters.iterator(); iter.hasNext();) {
+                        return method.invoke(iter.next(), args);
+                        // if ( result != null )
+                        // return result;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw e.getCause();
+        }
+        return null;
+    }
 }

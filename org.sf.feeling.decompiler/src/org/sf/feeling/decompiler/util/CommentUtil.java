@@ -17,45 +17,45 @@ import org.eclipse.text.edits.TextEdit;
 
 public final class CommentUtil {
 
-	public static final Pattern LINE_NUMBER_COMMENT = Pattern.compile("/\\*\\s*\\d+\\s*\\*/");
+    public static final Pattern LINE_NUMBER_COMMENT = Pattern.compile("/\\*\\s*\\d+\\s*\\*/");
 
-	private CommentUtil() {
-	}
+    private CommentUtil() {
+    }
 
-	public static String clearComments(String input) throws MalformedTreeException, BadLocationException {
-		CompilationUnit unit = ASTParserUtil.parse(input);
-		AST ast = unit.getAST();
-		ASTRewrite rewriter = ASTRewrite.create(ast);
-		Document document = new Document(input);
-		TextEdit edits = rewriter.rewriteAST(document, null);
-		List<Comment> commentList = unit.getCommentList();
-		for (Comment comment : commentList) {
-			if (comment.isBlockComment()) {
-				BlockComment blockComment = (BlockComment) comment;
-				int commentStart = blockComment.getStartPosition();
-				int commentLength = blockComment.getLength();
-				int commentEnd = commentStart + commentLength;
-				String commentText = input.substring(commentStart, commentEnd);
-				if (!LINE_NUMBER_COMMENT.matcher(commentText.trim()).matches()) {
-					edits.addChild(new DeleteEdit(commentStart, commentLength));
-				}
-			}
-		}
-		edits.apply(document);
-		return document.get();
-	}
+    public static String clearComments(String input) throws MalformedTreeException, BadLocationException {
+        CompilationUnit unit = ASTParserUtil.parse(input);
+        AST ast = unit.getAST();
+        ASTRewrite rewriter = ASTRewrite.create(ast);
+        Document document = new Document(input);
+        TextEdit edits = rewriter.rewriteAST(document, null);
+        List<Comment> commentList = unit.getCommentList();
+        for (Comment comment : commentList) {
+            if (comment.isBlockComment()) {
+                BlockComment blockComment = (BlockComment) comment;
+                int commentStart = blockComment.getStartPosition();
+                int commentLength = blockComment.getLength();
+                int commentEnd = commentStart + commentLength;
+                String commentText = input.substring(commentStart, commentEnd);
+                if (!LINE_NUMBER_COMMENT.matcher(commentText.trim()).matches()) {
+                    edits.addChild(new DeleteEdit(commentStart, commentLength));
+                }
+            }
+        }
+        edits.apply(document);
+        return document.get();
+    }
 
-	public static List<Comment> getContainedComments(CompilationUnit cu, ASTNode node) {
-		List<Comment> commentList = cu.getCommentList();
-		return commentList.stream().filter(comment -> isContained(comment, node)).toList();
-	}
+    public static List<Comment> getContainedComments(CompilationUnit cu, ASTNode node) {
+        List<Comment> commentList = cu.getCommentList();
+        return commentList.stream().filter(comment -> isContained(comment, node)).toList();
+    }
 
-	public static boolean isContained(ASTNode comment, ASTNode node) {
-		int nodeStart = node.getStartPosition();
-		int commStart = comment.getStartPosition();
-		int commEnd = commStart + comment.getLength();
-		int nodeEnd = nodeStart + node.getLength();
-		return nodeStart < commStart && commEnd < nodeEnd;
-	}
+    public static boolean isContained(ASTNode comment, ASTNode node) {
+        int nodeStart = node.getStartPosition();
+        int commStart = comment.getStartPosition();
+        int commEnd = commStart + comment.getLength();
+        int nodeEnd = nodeStart + node.getLength();
+        return nodeStart < commStart && commEnd < nodeEnd;
+    }
 
 }

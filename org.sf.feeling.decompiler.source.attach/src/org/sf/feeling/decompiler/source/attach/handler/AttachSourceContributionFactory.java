@@ -31,80 +31,81 @@ import org.sf.feeling.decompiler.source.attach.utils.SourceAttachUtil;
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class AttachSourceContributionFactory extends ExtensionContributionFactory {
 
-	@Override
-	public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
-		final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
-		final List selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
-		boolean attachRoot = (selectedJars.size() == 1);
-		if (attachRoot) {
-			additions.addContributionItem(new ActionContributionItem(new AttachSourceAction(selectedJars)),
-					new Expression() {
+    @Override
+    public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
+        final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+        final List selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
+        boolean attachRoot = (selectedJars.size() == 1);
+        if (attachRoot) {
+            additions.addContributionItem(new ActionContributionItem(new AttachSourceAction(selectedJars)),
+                    new Expression() {
 
-						@Override
-						public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
-							boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedJars);
+                @Override
+                public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
+                    boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedJars);
 
-							if (menuVisible)
-								return EvaluationResult.TRUE;
+                    if (menuVisible) {
+                        return EvaluationResult.TRUE;
+                    }
 
-							return EvaluationResult.FALSE;
-						}
-					});
-			return;
-		}
+                    return EvaluationResult.FALSE;
+                }
+            });
+            return;
+        }
 
-		if (selectedJars.size() > 1)
-			return;
+        if (selectedJars.size() > 1) {
+            return;
+        }
 
-		final List selectedPackages = getSelectedElements(selService, IPackageFragment.class);
-		final List selectedClasses = getSelectedElements(selService, IClassFile.class);
-		selectedClasses.addAll(selectedPackages);
-		boolean attachClasses = (!selectedClasses.isEmpty());
-		if (attachClasses) {
-			additions.addContributionItem(new ActionContributionItem(new AttachSourceAction(selectedClasses)),
-					new Expression() {
+        final List selectedPackages = getSelectedElements(selService, IPackageFragment.class);
+        final List selectedClasses = getSelectedElements(selService, IClassFile.class);
+        selectedClasses.addAll(selectedPackages);
+        boolean attachClasses = (!selectedClasses.isEmpty());
+        if (attachClasses) {
+            additions.addContributionItem(new ActionContributionItem(new AttachSourceAction(selectedClasses)),
+                    new Expression() {
 
-						@Override
-						public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
-							boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedClasses);
+                @Override
+                public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
+                    boolean menuVisible = SourceAttachUtil.needDownloadSource(selectedClasses);
 
-							if (menuVisible)
-								return EvaluationResult.TRUE;
+                    if (menuVisible) {
+                        return EvaluationResult.TRUE;
+                    }
 
-							return EvaluationResult.FALSE;
-						}
-					});
-			return;
-		}
+                    return EvaluationResult.FALSE;
+                }
+            });
+        }
 
-	}
+    }
 
-	private List getSelectedElements(ISelectionService selService, Class eleClass) {
+    private List getSelectedElements(ISelectionService selService, Class eleClass) {
 
-		Iterator selections = getSelections(selService);
-		List elements = new ArrayList();
+        Iterator selections = getSelections(selService);
+        List elements = new ArrayList();
 
-		while ((selections != null) && selections.hasNext()) {
-			Object select = selections.next();
+        while ((selections != null) && selections.hasNext()) {
+            Object select = selections.next();
 
-			if (eleClass.isInstance(select))
-				elements.add(select);
-		}
+            if (eleClass.isInstance(select)) {
+                elements.add(select);
+            }
+        }
 
-		return elements;
-	}
+        return elements;
+    }
 
-	private Iterator getSelections(ISelectionService selService) {
-		ISelection selection = selService.getSelection();
+    private Iterator getSelections(ISelectionService selService) {
+        ISelection selection = selService.getSelection();
 
-		if (selection != null) {
-			if (selection instanceof IStructuredSelection) {
-				IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-				return structuredSelection.iterator();
-			}
-		}
+        if ((selection != null) && (selection instanceof IStructuredSelection)) {
+            IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+            return structuredSelection.iterator();
+        }
 
-		return null;
-	}
+        return null;
+    }
 
 }

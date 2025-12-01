@@ -17,28 +17,28 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class DecompilerPreferenceAction extends Action {
 
-	public DecompilerPreferenceAction() {
-		super(Messages.getString("JavaDecompilerActionBarContributor.Action.Preferences")); //$NON-NLS-1$
-	}
+    public DecompilerPreferenceAction() {
+        super(Messages.getString("JavaDecompilerActionBarContributor.Action.Preferences")); //$NON-NLS-1$
+    }
 
-	@Override
-	public void run() {
-		JavaDecompilerClassFileEditor editor = UIUtil.getActiveDecompilerEditor();
+    @Override
+    public void run() {
+        JavaDecompilerClassFileEditor editor = UIUtil.getActiveDecompilerEditor();
 
-		String showId = "org.sf.feeling.decompiler.Main"; //$NON-NLS-1$
+        String showId = "org.sf.feeling.decompiler.Main"; //$NON-NLS-1$
 
-		if (editor != null) {
-			PreferencesUtil.createPreferenceDialogOn(Display.getDefault().getActiveShell(), showId, // $NON-NLS-1$
-					editor.collectContextMenuPreferencePages(), null).open();
-		} else {
-			PreferencesUtil.createPreferenceDialogOn(Display.getDefault().getActiveShell(), showId, // $NON-NLS-1$
-					new String[] { showId // $NON-NLS-1$
-					}, null).open();
-		}
-	}
+        if (editor != null) {
+            PreferencesUtil.createPreferenceDialogOn(Display.getDefault().getActiveShell(), showId, // $NON-NLS-1$
+                    editor.collectContextMenuPreferencePages(), null).open();
+        } else {
+            PreferencesUtil.createPreferenceDialogOn(Display.getDefault().getActiveShell(), showId, // $NON-NLS-1$
+                    new String[] { showId // $NON-NLS-1$
+            }, null).open();
+        }
+    }
 
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

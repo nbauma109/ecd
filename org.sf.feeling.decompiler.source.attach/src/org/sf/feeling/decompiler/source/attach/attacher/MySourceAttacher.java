@@ -20,59 +20,59 @@ import org.eclipse.jdt.core.JavaCore;
 
 public class MySourceAttacher implements SourceAttacher {
 
-	@Override
-	public boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) throws Exception {
-		final IJavaProject javaProject = root.getJavaProject();
-		final IClasspathEntry[] entries = javaProject.getRawClasspath().clone();
-		boolean attached = false;
-		for (int i = 0; i < entries.length; ++i) {
-			final IClasspathEntry entry = entries[i];
-			String entryPath;
-			if (entry.getEntryKind() == IClasspathEntry.CPE_VARIABLE) {
-				entryPath = JavaCore.getResolvedVariablePath(entry.getPath()).toOSString();
-			} else {
-				entryPath = entry.getPath().toOSString();
-			}
-			final String rootPath = root.getPath().toOSString();
-			if (entryPath.equals(rootPath)) {
-				entries[i] = addSourceAttachment(root, entries[i], sourcePath.getAbsolutePath(), null);
-				attached = true;
-				break;
-			}
-		}
-		if (!attached) {
-			root.attachSource(new Path(sourcePath.getAbsolutePath()), (IPath) null, (IProgressMonitor) null);
-		}
-		javaProject.setRawClasspath(entries, (IProgressMonitor) null);
-		return true;
-	}
+    @Override
+    public boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) throws Exception {
+        final IJavaProject javaProject = root.getJavaProject();
+        final IClasspathEntry[] entries = javaProject.getRawClasspath().clone();
+        boolean attached = false;
+        for (int i = 0; i < entries.length; ++i) {
+            final IClasspathEntry entry = entries[i];
+            String entryPath;
+            if (entry.getEntryKind() == IClasspathEntry.CPE_VARIABLE) {
+                entryPath = JavaCore.getResolvedVariablePath(entry.getPath()).toOSString();
+            } else {
+                entryPath = entry.getPath().toOSString();
+            }
+            final String rootPath = root.getPath().toOSString();
+            if (entryPath.equals(rootPath)) {
+                entries[i] = addSourceAttachment(root, entries[i], sourcePath.getAbsolutePath(), null);
+                attached = true;
+                break;
+            }
+        }
+        if (!attached) {
+            root.attachSource(new Path(sourcePath.getAbsolutePath()), (IPath) null, (IProgressMonitor) null);
+        }
+        javaProject.setRawClasspath(entries, (IProgressMonitor) null);
+        return true;
+    }
 
-	private static IClasspathEntry addSourceAttachment(final IPackageFragmentRoot root, final IClasspathEntry entry,
-			final String sourcePath, final String sourceRoot) throws Exception {
-		final int entryKind = entry.getEntryKind();
-		IClasspathEntry result = null;
-		switch (entryKind) {
-		case 1: {
-			result = JavaCore.newLibraryEntry(entry.getPath(), (sourcePath == null) ? null : new Path(sourcePath),
-					(sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
-					entry.getExtraAttributes(), entry.isExported());
-			break;
-		}
-		case 4: {
-			final File sourceAttacherDir = new File(sourcePath).getParentFile();
-			JavaCore.setClasspathVariable("SOURCE_ATTACHER", //$NON-NLS-1$
-					new Path(sourceAttacherDir.getAbsolutePath()), (IProgressMonitor) null);
-			final Path varAttPath = new Path("SOURCE_ATTACHER/" + new File(sourcePath).getName()); //$NON-NLS-1$
-			result = JavaCore.newVariableEntry(entry.getPath(), varAttPath,
-					(sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
-					entry.getExtraAttributes(), entry.isExported());
-			break;
-		}
-		default: {
-			result = entry;
-			break;
-		}
-		}
-		return result;
-	}
+    private static IClasspathEntry addSourceAttachment(final IPackageFragmentRoot root, final IClasspathEntry entry,
+            final String sourcePath, final String sourceRoot) throws Exception {
+        final int entryKind = entry.getEntryKind();
+        IClasspathEntry result = null;
+        switch (entryKind) {
+            case 1: {
+                result = JavaCore.newLibraryEntry(entry.getPath(), (sourcePath == null) ? null : new Path(sourcePath),
+                        (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
+                                entry.getExtraAttributes(), entry.isExported());
+                break;
+            }
+            case 4: {
+                final File sourceAttacherDir = new File(sourcePath).getParentFile();
+                JavaCore.setClasspathVariable("SOURCE_ATTACHER", //$NON-NLS-1$
+                        new Path(sourceAttacherDir.getAbsolutePath()), (IProgressMonitor) null);
+                final Path varAttPath = new Path("SOURCE_ATTACHER/" + new File(sourcePath).getName()); //$NON-NLS-1$
+                result = JavaCore.newVariableEntry(entry.getPath(), varAttPath,
+                        (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
+                                entry.getExtraAttributes(), entry.isExported());
+                break;
+            }
+            default: {
+                result = entry;
+                break;
+            }
+        }
+        return result;
+    }
 }

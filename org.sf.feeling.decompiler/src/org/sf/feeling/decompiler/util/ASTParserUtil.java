@@ -10,17 +10,17 @@ import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 
 public final class ASTParserUtil {
 
-	private ASTParserUtil() {
-	}
+    private ASTParserUtil() {
+    }
 
-	public static CompilationUnit parse(String sourceCode) {
-		ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
-		CompilerOptions option = new CompilerOptions();
-		Map<String, String> options = option.getMap();
-		options.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
-		options.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
-		parser.setCompilerOptions(options);
-		parser.setSource(sourceCode.toCharArray());
-		return (CompilationUnit) parser.createAST(null);
-	}
+    public static CompilationUnit parse(String sourceCode) {
+        ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
+        CompilerOptions option = new CompilerOptions();
+        Map<String, String> options = option.getMap();
+        options.put(CompilerOptions.OPTION_Compliance, JavaCore.latestSupportedJavaVersion());
+        options.put(CompilerOptions.OPTION_Source, JavaCore.latestSupportedJavaVersion());
+        parser.setCompilerOptions(options);
+        parser.setSource(sourceCode.toCharArray());
+        return (CompilationUnit) parser.createAST(null);
+    }
 }

@@ -10,58 +10,58 @@ import org.sf.feeling.decompiler.vineflower.actions.DecompileWithVineflowerCoreA
 import org.sf.feeling.decompiler.vineflower.i18n.Messages;
 
 public class VineflowerDecompilerDescriptor implements IDecompilerDescriptor {
-	private VineflowerDecompiler decompiler = null;
-	private VineflowerSourceMapper sourceMapper = null;
-	private Action decompileAction;
+    private VineflowerDecompiler decompiler = null;
+    private VineflowerSourceMapper sourceMapper = null;
+    private Action decompileAction;
 
-	@Override
-	public String getDecompilerType() {
-		return VineflowerDecompilerPlugin.decompilerType;
-	}
+    @Override
+    public String getDecompilerType() {
+        return VineflowerDecompilerPlugin.decompilerType;
+    }
 
-	@Override
-	public String getDecompilerPreferenceLabel() {
-		return Messages.getString("VineflowerDecompilerDescriptor.PreferenceLabel"); //$NON-NLS-1$
-	}
+    @Override
+    public String getDecompilerPreferenceLabel() {
+        return Messages.getString("VineflowerDecompilerDescriptor.PreferenceLabel"); //$NON-NLS-1$
+    }
 
-	@Override
-	public IDecompiler getDecompiler() {
-		if (decompiler == null) {
-			decompiler = new VineflowerDecompiler();
-		}
-		return decompiler;
+    @Override
+    public IDecompiler getDecompiler() {
+        if (decompiler == null) {
+            decompiler = new VineflowerDecompiler();
+        }
+        return decompiler;
 
-	}
+    }
 
-	@Override
-	public BaseDecompilerSourceMapper getDecompilerSourceMapper() {
-		if (sourceMapper == null) {
-			sourceMapper = new VineflowerSourceMapper();
-		}
-		return sourceMapper;
-	}
+    @Override
+    public BaseDecompilerSourceMapper getDecompilerSourceMapper() {
+        if (sourceMapper == null) {
+            sourceMapper = new VineflowerSourceMapper();
+        }
+        return sourceMapper;
+    }
 
-	@Override
-	public Action getDecompileAction() {
-		if (decompileAction == null) {
-			decompileAction = new DecompileWithVineflowerCoreAction();
-		}
-		return decompileAction;
-	}
+    @Override
+    public Action getDecompileAction() {
+        if (decompileAction == null) {
+            decompileAction = new DecompileWithVineflowerCoreAction();
+        }
+        return decompileAction;
+    }
 
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 
-	@Override
-	public boolean isDefault() {
-		return false;
-	}
+    @Override
+    public boolean isDefault() {
+        return false;
+    }
 
-	@Override
-	public ImageDescriptor getDecompilerIcon() {
-		return VineflowerDecompilerPlugin.getImageDescriptor("icons/vineflower_16.png"); //$NON-NLS-1$
-	}
+    @Override
+    public ImageDescriptor getDecompilerIcon() {
+        return VineflowerDecompilerPlugin.getImageDescriptor("icons/vineflower_16.png"); //$NON-NLS-1$
+    }
 
 }

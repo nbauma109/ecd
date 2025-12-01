@@ -14,75 +14,76 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
-	public static final String PLUGIN_ID = "org.sf.feeling.decompiler.jd"; //$NON-NLS-1$
+    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.jd"; //$NON-NLS-1$
 
-	public static final String CMD = "org.sf.feeling.decompiler.jd.cmd"; //$NON-NLS-1$
+    public static final String CMD = "org.sf.feeling.decompiler.jd.cmd"; //$NON-NLS-1$
 
-	public static final String decompilerType = "JD-Core"; //$NON-NLS-1$
+    public static final String decompilerType = "JD-Core"; //$NON-NLS-1$
 
-	private static JDCoreDecompilerPlugin plugin;
+    private static JDCoreDecompilerPlugin plugin;
 
-	private IPreferenceStore preferenceStore;
+    private IPreferenceStore preferenceStore;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
-	 */
-	@Override
-	public void start(BundleContext context) throws Exception {
-		super.start(context);
-		getPreferenceStore().addPropertyChangeListener(this);
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see
+     * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
+     */
+    @Override
+    public void start(BundleContext context) throws Exception {
+        super.start(context);
+        getPreferenceStore().addPropertyChangeListener(this);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
-	 */
-	@Override
-	public void stop(BundleContext context) throws Exception {
-		super.stop(context);
-		getPreferenceStore().removePropertyChangeListener(this);
-		plugin = null;
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see
+     * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
+     */
+    @Override
+    public void stop(BundleContext context) throws Exception {
+        super.stop(context);
+        getPreferenceStore().removePropertyChangeListener(this);
+        plugin = null;
+    }
 
-	@Override
-	public void propertyChange(PropertyChangeEvent event) {
+    @Override
+    public void propertyChange(PropertyChangeEvent event) {
 
-	}
+    }
 
-	@Override
-	public IPreferenceStore getPreferenceStore() {
-		if (preferenceStore == null) {
-			preferenceStore = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+    @Override
+    public IPreferenceStore getPreferenceStore() {
+        if (preferenceStore == null) {
+            preferenceStore = JavaDecompilerPlugin.getDefault().getPreferenceStore();
 
-		}
-		return preferenceStore;
-	}
+        }
+        return preferenceStore;
+    }
 
-	public static JDCoreDecompilerPlugin getDefault() {
-		return plugin;
-	}
+    public static JDCoreDecompilerPlugin getDefault() {
+        return plugin;
+    }
 
-	public JDCoreDecompilerPlugin() {
-		plugin = this;
-	}
+    public JDCoreDecompilerPlugin() {
+        plugin = this;
+    }
 
-	public static ImageDescriptor getImageDescriptor(String path) {
-		URL base = JDCoreDecompilerPlugin.getDefault().getBundle().getEntry("/"); //$NON-NLS-1$
-		URL url = null;
-		try {
-			url = new URL(base, path); // $NON-NLS-1$
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-		}
-		ImageDescriptor actionIcon = null;
-		if (url != null)
-			actionIcon = ImageDescriptor.createFromURL(url);
-		return actionIcon;
-	}
+    public static ImageDescriptor getImageDescriptor(String path) {
+        URL base = JDCoreDecompilerPlugin.getDefault().getBundle().getEntry("/"); //$NON-NLS-1$
+        URL url = null;
+        try {
+            url = new URL(base, path); // $NON-NLS-1$
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        ImageDescriptor actionIcon = null;
+        if (url != null) {
+            actionIcon = ImageDescriptor.createFromURL(url);
+        }
+        return actionIcon;
+    }
 
 }

@@ -12,72 +12,72 @@ import java.util.Objects;
 
 public class GAV {
 
-	private String groupId;
-	private String artifactId;
-	private String version;
-	private String artifactLink;
+    private String groupId;
+    private String artifactId;
+    private String version;
+    private String artifactLink;
 
-	public String getGroupId() {
-		return groupId;
-	}
+    public String getGroupId() {
+        return groupId;
+    }
 
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
-	}
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
 
-	public String getArtifactId() {
-		return artifactId;
-	}
+    public String getArtifactId() {
+        return artifactId;
+    }
 
-	public void setArtifactId(String a) {
-		this.artifactId = a;
-	}
+    public void setArtifactId(String a) {
+        this.artifactId = a;
+    }
 
-	public String getVersion() {
-		return version;
-	}
+    public String getVersion() {
+        return version;
+    }
 
-	public void setVersion(String version) {
-		this.version = version;
-	}
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
-	public String getArtifactLink() {
-		return artifactLink;
-	}
+    public String getArtifactLink() {
+        return artifactLink;
+    }
 
-	public void setArtifactLink(String artifactLink) {
-		this.artifactLink = artifactLink;
-	}
+    public void setArtifactLink(String artifactLink) {
+        this.artifactLink = artifactLink;
+    }
 
-	public boolean isValid() {
-		return groupId != null && artifactId != null && version != null;
-	}
+    public boolean isValid() {
+        return groupId != null && artifactId != null && version != null;
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(artifactId, artifactLink, groupId, version);
-	}
+    @Override
+    public int hashCode() {
+        return Objects.hash(artifactId, artifactLink, groupId, version);
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
-			return true;
-		}
-		if (obj == null) {
-			return false;
-		}
-		if (getClass() != obj.getClass()) {
-			return false;
-		}
-		GAV other = (GAV) obj;
-		return Objects.equals(artifactId, other.artifactId) && Objects.equals(artifactLink, other.artifactLink)
-				&& Objects.equals(groupId, other.groupId) && Objects.equals(version, other.version);
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        GAV other = (GAV) obj;
+        return Objects.equals(artifactId, other.artifactId) && Objects.equals(artifactLink, other.artifactLink)
+                && Objects.equals(groupId, other.groupId) && Objects.equals(version, other.version);
+    }
 
-	@Override
-	public String toString() {
-		return "GAV [groupId=" + groupId + ", artifactId=" + artifactId + ", version=" + version + ", artifactLink="
-				+ artifactLink + "]";
-	}
+    @Override
+    public String toString() {
+        return "GAV [groupId=" + groupId + ", artifactId=" + artifactId + ", version=" + version + ", artifactLink="
+                + artifactLink + "]";
+    }
 
 }

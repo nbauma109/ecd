@@ -8,13 +8,13 @@ import org.junit.Test;
 
 public class ArtifactorySourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 
-	@Test
-	public void testFindGrails() throws IOException {
-		testFindAsmUtil(HTTPS_REPO_GRAILS_ORG_GRAILS);
-	}
+    @Test
+    public void testFindGrails() throws IOException {
+        testFindAsmUtil(HTTPS_REPO_GRAILS_ORG_GRAILS);
+    }
 
-	@Override
-	protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
-		return new ArtifactorySourceCodeFinder(serviceUrl);
-	}
+    @Override
+    protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
+        return new ArtifactorySourceCodeFinder(serviceUrl);
+    }
 }

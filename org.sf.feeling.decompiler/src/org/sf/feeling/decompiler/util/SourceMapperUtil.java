@@ -17,36 +17,35 @@ import org.eclipse.jdt.internal.core.NamedMember;
 import org.eclipse.jdt.internal.core.SourceMapper;
 
 public class SourceMapperUtil {
-	private static final String MAP_SOURCE_METHOD_NAME = "mapSource"; //$NON-NLS-1$
+    private static final String MAP_SOURCE_METHOD_NAME = "mapSource"; //$NON-NLS-1$
 
-	public static void mapSource(SourceMapper sourceMapper, IType type, char[] source, IBinaryType info) {
-		mapSource(sourceMapper, type, source, info, null);
-	}
+    public static void mapSource(SourceMapper sourceMapper, IType type, char[] source, IBinaryType info) {
+        mapSource(sourceMapper, type, source, info, null);
+    }
 
-	public static void mapSource(SourceMapper sourceMapper, IType type, char[] source, IBinaryType info,
-			IJavaElement elementToFind) {
-		Method mapSourceMethod = getMapSourceMethod(sourceMapper);
+    public static void mapSource(SourceMapper sourceMapper, IType type, char[] source, IBinaryType info,
+            IJavaElement elementToFind) {
+        Method mapSourceMethod = getMapSourceMethod(sourceMapper);
 
-		// API changed with Java 9 support (#daa227e4f5b7af888572a286c4f973b7a167ff2e)
-		if (mapSourceMethod == null) {
-			mapSourceMethod = getLegacyMapSourceMethod(sourceMapper);
-		}
+        // API changed with Java 9 support (#daa227e4f5b7af888572a286c4f973b7a167ff2e)
+        if (mapSourceMethod == null) {
+            mapSourceMethod = getLegacyMapSourceMethod(sourceMapper);
+        }
 
-		if (mapSourceMethod != null) {
-			Object[] parameters = new Object[] { type, source, info, elementToFind };
-			ReflectionUtils.invokeMethod(mapSourceMethod, sourceMapper, parameters);
-		} else {
-			throw new IllegalStateException("Unable to invoke mapSource method on sourceMapper"); //$NON-NLS-1$
-		}
-	}
+        if (mapSourceMethod == null) {
+            throw new IllegalStateException("Unable to invoke mapSource method on sourceMapper"); //$NON-NLS-1$
+        }
+        Object[] parameters = { type, source, info, elementToFind };
+        ReflectionUtils.invokeMethod(mapSourceMethod, sourceMapper, parameters);
+    }
 
-	private static Method getMapSourceMethod(SourceMapper sourceMapper) {
-		return ReflectionUtils.getDeclaredMethod(sourceMapper, MAP_SOURCE_METHOD_NAME,
-				new Class[] { NamedMember.class, char[].class, IBinaryType.class, IJavaElement.class });
-	}
+    private static Method getMapSourceMethod(SourceMapper sourceMapper) {
+        return ReflectionUtils.getDeclaredMethod(sourceMapper, MAP_SOURCE_METHOD_NAME,
+                new Class[] { NamedMember.class, char[].class, IBinaryType.class, IJavaElement.class });
+    }
 
-	private static Method getLegacyMapSourceMethod(SourceMapper sourceMapper) {
-		return ReflectionUtils.getDeclaredMethod(sourceMapper, MAP_SOURCE_METHOD_NAME,
-				new Class[] { IType.class, char[].class, IBinaryType.class, IJavaElement.class });
-	}
+    private static Method getLegacyMapSourceMethod(SourceMapper sourceMapper) {
+        return ReflectionUtils.getDeclaredMethod(sourceMapper, MAP_SOURCE_METHOD_NAME,
+                new Class[] { IType.class, char[].class, IBinaryType.class, IJavaElement.class });
+    }
 }

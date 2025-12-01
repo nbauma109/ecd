@@ -46,172 +46,172 @@ import com.strobel.decompiler.languages.TypeDecompilationResults;
 
 public class ProcyonDecompiler implements IDecompiler {
 
-	private String source = ""; // $NON-NLS-1$ //$NON-NLS-1$
-	private long time;
-	private String log = ""; //$NON-NLS-1$
+    private String source = ""; // $NON-NLS-1$ //$NON-NLS-1$
+    private long time;
+    private String log = ""; //$NON-NLS-1$
 
-	/**
-	 * @see IDecompiler#decompile(String, String, String)
-	 */
-	@Override
-	public void decompile(String root, String packege, String className) {
-		long start = System.nanoTime();
-		log = ""; //$NON-NLS-1$
-		source = ""; //$NON-NLS-1$
-		File workingDir = new File(root, packege); // $NON-NLS-1$
+    /**
+     * @see IDecompiler#decompile(String, String, String)
+     */
+    @Override
+    public void decompile(String root, String packege, String className) {
+        long start = System.nanoTime();
+        log = ""; //$NON-NLS-1$
+        source = ""; //$NON-NLS-1$
+        File workingDir = new File(root, packege); // $NON-NLS-1$
 
-		final String classPathStr = new File(workingDir, className).getAbsolutePath();
+        final String classPathStr = new File(workingDir, className).getAbsolutePath();
 
-		final IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-		final boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
-		final boolean includeLineNumbers = showLineNumber || ClassUtil.isDebug();
+        final IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        final boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+        final boolean includeLineNumbers = showLineNumber || ClassUtil.isDebug();
 
-		DecompilationOptions decompilationOptions = new DecompilationOptions();
+        DecompilationOptions decompilationOptions = new DecompilationOptions();
 
-		DecompilerSettings settings = DecompilerSettings.javaDefaults();
-		settings.setTypeLoader(new InputTypeLoader((internalName, buffer) -> false));
-		settings.setForceExplicitImports(true);
+        DecompilerSettings settings = DecompilerSettings.javaDefaults();
+        settings.setTypeLoader(new InputTypeLoader((internalName, buffer) -> false));
+        settings.setForceExplicitImports(true);
 
-		decompilationOptions.setSettings(settings);
-		decompilationOptions.setFullDecompilation(true);
+        decompilationOptions.setSettings(settings);
+        decompilationOptions.setFullDecompilation(true);
 
-		MetadataSystem metadataSystem = new NoRetryMetadataSystem(decompilationOptions.getSettings().getTypeLoader());
-		metadataSystem.setEagerMethodLoadingEnabled(false);
+        MetadataSystem metadataSystem = new NoRetryMetadataSystem(decompilationOptions.getSettings().getTypeLoader());
+        metadataSystem.setEagerMethodLoadingEnabled(false);
 
-		TypeReference type = metadataSystem.lookupType(classPathStr);
+        TypeReference type = metadataSystem.lookupType(classPathStr);
 
-		TypeDefinition resolvedType;
-		if ((type == null) || ((resolvedType = type.resolve()) == null)) {
-			Logger.error("!!! ERROR: Failed to load class " //$NON-NLS-1$
-					+ classPathStr);
-			return;
-		}
+        TypeDefinition resolvedType;
+        if ((type == null) || ((resolvedType = type.resolve()) == null)) {
+            Logger.error("!!! ERROR: Failed to load class " //$NON-NLS-1$
+                    + classPathStr);
+            return;
+        }
 
-		DeobfuscationUtilities.processType(resolvedType);
+        DeobfuscationUtilities.processType(resolvedType);
 
-		String property = "java.io.tmpdir"; //$NON-NLS-1$
-		String tempDir = System.getProperty(property);
-		File classFile = new File(tempDir, System.currentTimeMillis() + className);
-		try {
-			TypeDecompilationResults results;
-			try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(classFile)))) {
+        String property = "java.io.tmpdir"; //$NON-NLS-1$
+        String tempDir = System.getProperty(property);
+        File classFile = new File(tempDir, System.currentTimeMillis() + className);
+        try {
+            TypeDecompilationResults results;
+            try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(classFile)))) {
 
-				PlainTextOutput output = new PlainTextOutput(writer);
+                PlainTextOutput output = new PlainTextOutput(writer);
 
-				output.setUnicodeOutputEnabled(decompilationOptions.getSettings().isUnicodeOutputEnabled());
+                output.setUnicodeOutputEnabled(decompilationOptions.getSettings().isUnicodeOutputEnabled());
 
-				Language lang = decompilationOptions.getSettings().getLanguage();
+                Language lang = decompilationOptions.getSettings().getLanguage();
 
-				// perform the actual decompilation
-				results = lang.decompileType(resolvedType, output, decompilationOptions);
-			}
+                // perform the actual decompilation
+                results = lang.decompileType(resolvedType, output, decompilationOptions);
+            }
 
-			List<LineNumberPosition> lineNumberPositions = results.getLineNumberPositions();
+            List<LineNumberPosition> lineNumberPositions = results.getLineNumberPositions();
 
-			if (includeLineNumbers) {
-				EnumSet<LineNumberOption> lineNumberOptions = EnumSet.noneOf(LineNumberOption.class);
+            if (includeLineNumbers) {
+                EnumSet<LineNumberOption> lineNumberOptions = EnumSet.noneOf(LineNumberOption.class);
 
-				lineNumberOptions.add(LineNumberFormatter.LineNumberOption.LEADING_COMMENTS);
+                lineNumberOptions.add(LineNumberFormatter.LineNumberOption.LEADING_COMMENTS);
 
-				LineNumberFormatter lineFormatter = new LineNumberFormatter(classFile, lineNumberPositions,
-						lineNumberOptions);
+                LineNumberFormatter lineFormatter = new LineNumberFormatter(classFile, lineNumberPositions,
+                        lineNumberOptions);
 
-				boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-				if (showLineNumber) {
-					source = lineFormatter.reformatFile();
-					if (align) {
-						source = CommentUtil.clearComments(source);
-					}
-				}
-			} else {
-				source = FileUtil.getContent(classFile);
-			}
+                boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+                if (showLineNumber) {
+                    source = lineFormatter.reformatFile();
+                    if (align) {
+                        source = CommentUtil.clearComments(source);
+                    }
+                }
+            } else {
+                source = FileUtil.getContent(classFile);
+            }
 
-		} catch (Exception e) {
-			Logger.error(e);
-		}
+        } catch (Exception e) {
+            Logger.error(e);
+        }
 
-		source = UnicodeUtil.decode(source);
+        source = UnicodeUtil.decode(source);
 
-		try {
-			Files.delete(classFile.toPath());
-		} catch (IOException e) {
-			Logger.error(e);
-		}
+        try {
+            Files.delete(classFile.toPath());
+        } catch (IOException e) {
+            Logger.error(e);
+        }
 
-		time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-	}
+        time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+    }
 
-	/**
-	 * @see IDecompiler#decompileFromArchive(String, String, String)
-	 */
-	@Override
-	public void decompileFromArchive(String archivePath, String packege, String className) {
-		long start = System.nanoTime();
-		File workingDir = new File(
-				JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
-						+ System.currentTimeMillis());
+    /**
+     * @see IDecompiler#decompileFromArchive(String, String, String)
+     */
+    @Override
+    public void decompileFromArchive(String archivePath, String packege, String className) {
+        long start = System.nanoTime();
+        File workingDir = new File(
+                JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
+                + System.currentTimeMillis());
 
-		try {
-			workingDir.mkdirs();
-			JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
-			decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
-			time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-		} catch (Exception e) {
-			JavaDecompilerPlugin.logError(e, e.getMessage());
-		} finally {
-			FileUtil.deltree(workingDir);
-		}
-	}
+        try {
+            workingDir.mkdirs();
+            JarClassExtractor.extract(archivePath, packege, className, true, workingDir.getAbsolutePath());
+            decompile(workingDir.getAbsolutePath(), "", className); //$NON-NLS-1$
+            time = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        } catch (Exception e) {
+            JavaDecompilerPlugin.logError(e, e.getMessage());
+        } finally {
+            FileUtil.deltree(workingDir);
+        }
+    }
 
-	@Override
-	public long getDecompilationTime() {
-		return time;
-	}
+    @Override
+    public long getDecompilationTime() {
+        return time;
+    }
 
-	@Override
-	public List<Exception> getExceptions() {
-		return Collections.emptyList();
-	}
+    @Override
+    public List<Exception> getExceptions() {
+        return Collections.emptyList();
+    }
 
-	/**
-	 * @see IDecompiler#getLog()
-	 */
-	@Override
-	public String getLog() {
-		return log;
-	}
+    /**
+     * @see IDecompiler#getLog()
+     */
+    @Override
+    public String getLog() {
+        return log;
+    }
 
-	/**
-	 * @see IDecompiler#getSource()
-	 */
-	@Override
-	public String getSource() {
-		return source;
-	}
+    /**
+     * @see IDecompiler#getSource()
+     */
+    @Override
+    public String getSource() {
+        return source;
+    }
 
-	@Override
-	public String getDecompilerType() {
-		return ProcyonDecompilerPlugin.decompilerType;
-	}
+    @Override
+    public String getDecompilerType() {
+        return ProcyonDecompilerPlugin.decompilerType;
+    }
 
-	@Override
-	public String removeComment(String source) {
-		return source;
-	}
+    @Override
+    public String removeComment(String source) {
+        return source;
+    }
 
-	@Override
-	public boolean supportLevel(int level) {
-		return true;
-	}
+    @Override
+    public boolean supportLevel(int level) {
+        return true;
+    }
 
-	@Override
-	public boolean supportDebugLevel(int level) {
-		return true;
-	}
+    @Override
+    public boolean supportDebugLevel(int level) {
+        return true;
+    }
 
-	@Override
-	public boolean supportDebug() {
-		return true;
-	}
+    @Override
+    public boolean supportDebug() {
+        return true;
+    }
 }

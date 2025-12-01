@@ -10,11 +10,11 @@ package org.sf.feeling.decompiler.source.attach.finder;
 
 import java.util.List;
 
-public abstract interface SourceCodeFinder {
+public interface SourceCodeFinder {
 
-	public abstract void find(String binFile, String sha1, List<SourceFileResult> resultList);
+    void find(String binFile, String sha1, List<SourceFileResult> resultList);
 
-	public abstract void cancel();
+    void cancel();
 
-	public abstract String getDownloadUrl();
+    String getDownloadUrl();
 }
