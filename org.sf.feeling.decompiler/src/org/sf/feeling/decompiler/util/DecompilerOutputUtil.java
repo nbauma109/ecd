@@ -12,19 +12,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.BlockComment;
+import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.sf.feeling.decompiler.editor.DecompilerType;
 
 public class DecompilerOutputUtil {
 
@@ -53,8 +53,6 @@ public class DecompilerOutputUtil {
     public static final String line_separator = System.getProperty("line.separator", //$NON-NLS-1$
             "\r\n"); //$NON-NLS-1$
 
-    private String decompilerType;
-
     private class InputLine {
 
         String line;
@@ -77,9 +75,8 @@ public class DecompilerOutputUtil {
         }
     }
 
-    public DecompilerOutputUtil(String decompilerType, String input) {
+    public DecompilerOutputUtil(String input) {
         this.input = input + line_separator;
-        this.decompilerType = decompilerType;
     }
 
     public String realign() {
@@ -163,8 +160,8 @@ public class DecompilerOutputUtil {
         // 1) detect empty block comment
         boolean hasEmptyBlockComment = false;
         for (Object obj : cu.getCommentList()) {
-            if (obj instanceof org.eclipse.jdt.core.dom.BlockComment) {
-                org.eclipse.jdt.core.dom.BlockComment bc = (org.eclipse.jdt.core.dom.BlockComment) obj;
+            if (obj instanceof BlockComment) {
+                BlockComment bc = (BlockComment) obj;
                 int start = bc.getStartPosition();
                 int end = start + bc.getLength();
                 String content = input.substring(start, end);
@@ -188,8 +185,7 @@ public class DecompilerOutputUtil {
         }
         // else import
         else if (!cu.imports().isEmpty()) {
-            org.eclipse.jdt.core.dom.ImportDeclaration id =
-                    (org.eclipse.jdt.core.dom.ImportDeclaration) cu.imports().get(0);
+            ImportDeclaration id = (ImportDeclaration) cu.imports().get(0);
             firstDeclPos = id.getStartPosition();
         }
         // else type / member
@@ -246,7 +242,7 @@ public class DecompilerOutputUtil {
                                 line = inputLines.get(numLine).line;
                                 line = removeJavaLineNumber(line.replace("\r\n", "\n") //$NON-NLS-1$ //$NON-NLS-2$
                                         .replace("\n", ""), //$NON-NLS-1$ //$NON-NLS-2$
-                                        j == 0 && generateEmptyString, leftTrimSpace);
+                                        j == 0 && generateEmptyString, leftTrimSpace, numLine);
                                 if (outputLineNumber == numLine) {
                                     realignOutput.append(line);
                                 } else {
@@ -270,7 +266,7 @@ public class DecompilerOutputUtil {
                     numLine = javaSrcLine.inputLines.get(j);
                     line = inputLines.get(numLine).line;
                     line = removeJavaLineNumber(line.replace("\r\n", "\n").replace("\n", ""), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                            j == 0 && generateEmptyString, leftTrimSpace);
+                            j == 0 && generateEmptyString, leftTrimSpace, numLine);
                     realignOutput.append(line);
                 }
             } else if (i > 1) {
@@ -369,53 +365,165 @@ public class DecompilerOutputUtil {
         }
     }
 
-    public static int parseJavaLineNumber(String decompilerType, String line) {
-        String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
-        if (DecompilerType.isFernFlowerBased(decompilerType)) {
-            regex = "//\\s+\\d+"; //$NON-NLS-1$
-            if (line.matches("\\s*}//[0-9 ]+\\s*")) {
-                return -1; // line number on closing bracket cannot be known
-            }
-        }
-        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(line.trim());
-        if (matcher.find()) {
-            return Integer.parseInt(matcher.group().replaceAll("[^0-9]", "")); //$NON-NLS-1$ //$NON-NLS-2$
-        }
-        return -1;
-    }
+    public static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
+        String trimmed = line.trim();
 
-    private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace) {
-        String regex = CommentUtil.LINE_NUMBER_COMMENT.pattern(); // $NON-NLS-1$
-        boolean fernFlowerBased = DecompilerType.isFernFlowerBased(decompilerType);
-        if (fernFlowerBased) {
-            regex = "//\\s+\\d+(\\s*\\d*)*"; //$NON-NLS-1$
-        }
-        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(line.trim());
-
-        if (matcher.find()) {
-            line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-            if (!fernFlowerBased && generateEmptyString) {
-                line = generateEmptyString(matcher.group().length()) + line;
-            }
-        }
-        if (!fernFlowerBased) {
-            regex = "/\\*\\s+\\*/"; //$NON-NLS-1$
-            pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-            matcher = pattern.matcher(line);
-
-            if (matcher.find()) {
-                line = line.replace(matcher.group(), ""); //$NON-NLS-1$
-                if (generateEmptyString) {
-                    line = generateEmptyString(matcher.group().length()) + line;
+        if (trimmed.startsWith("}//")) {
+            String tail = trimmed.substring(3);
+            tail = tail.trim();
+            if (!tail.isEmpty()) {
+                boolean onlyDigitsAndSpaces = true;
+                for (int i = 0; i < tail.length(); i++) {
+                    char ch = tail.charAt(i);
+                    if (!Character.isDigit(ch) && !Character.isWhitespace(ch)) {
+                        onlyDigitsAndSpaces = false;
+                        break;
+                    }
+                }
+                if (onlyDigitsAndSpaces) {
+                    return -1; // line number on closing bracket cannot be known
                 }
             }
         }
-        if (leftTrimSpace > 0 && line.startsWith(generateEmptyString(leftTrimSpace))) {
-            line = line.substring(leftTrimSpace);
+
+        @SuppressWarnings("unchecked")
+        List<Comment> comments = unit.getCommentList();
+
+        int targetLine = unit.getLineNumber(absLineStart);
+
+        for (Comment c : comments) {
+            int cs = c.getStartPosition();
+            int ce = cs + c.getLength() - 1;
+
+            int cLine = unit.getLineNumber(cs);
+
+            if (cLine != targetLine) {
+                continue;
+            }
+
+            String text = fullSource.substring(cs, ce + 1);
+            String body = extractCommentBody(c, text);
+
+            StringBuilder digits = new StringBuilder();
+            for (char ch : body.toCharArray()) {
+                if (Character.isDigit(ch)) {
+                    digits.append(ch);
+                } else {
+                    break;
+                }
+            }
+            if (!digits.isEmpty()) {
+                return Integer.parseInt(digits.toString());
+            }
+        }
+
+        return -1;
+    }
+
+    private String removeJavaLineNumber(String line, boolean generateEmptyString, int leftTrimSpace,
+            int inputLineIndex) {
+
+        int absStart = getAbsoluteOffsetOfLine(inputLineIndex);
+
+        @SuppressWarnings("unchecked")
+        List<Comment> comments = unit.getCommentList();
+
+        Comment best = null;
+        int bestStart = -1;
+        int bestEnd = -1;
+
+        int absEnd = absStart + line.length() - 1;
+
+        for (Comment c : comments) {
+            int cs = c.getStartPosition();
+            int ce = cs + c.getLength() - 1;
+
+            if (cs >= absStart && ce <= absEnd && (best == null || cs < bestStart)) {
+                best = c;
+                bestStart = cs;
+                bestEnd = ce;
+            }
+
+        }
+
+        if (best == null) {
+            return applyLeftTrim(line, leftTrimSpace);
+        }
+
+        int relStart = bestStart - absStart;
+        int relEnd = bestEnd - absStart + 1;
+        String commentText = line.substring(relStart, relEnd);
+
+        boolean beginsLine = isCommentBeginningLine(line, commentText);
+
+        StringBuilder out = new StringBuilder();
+
+        if (beginsLine && generateEmptyString) {
+            for (int i = 0; i < commentText.length(); i++) {
+                out.append(' ');
+            }
+        }
+
+        if (relStart > 0 && !beginsLine) {
+            out.append(line, 0, relStart);
+        }
+
+        if (relEnd < line.length()) {
+            out.append(line.substring(relEnd));
+        }
+
+        return applyLeftTrim(out.toString(), leftTrimSpace);
+    }
+
+    private int getAbsoluteOffsetOfLine(int inputLineIndex) {
+        int offset = 0;
+        // inputLines is 1-based, index 0 is null
+        for (int i = 1; i < inputLineIndex; i++) {
+            InputLine inputLine = inputLines.get(i);
+            if (inputLine != null && inputLine.line != null) {
+                offset += inputLine.line.length();
+            }
+        }
+        return offset;
+    }
+
+    private boolean isCommentBeginningLine(String line, String commentText) {
+        int idx = line.indexOf(commentText);
+        if (idx < 0) {
+            return false;
+        }
+        for (int i = 0; i < idx; i++) {
+            if (!Character.isWhitespace(line.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String applyLeftTrim(String line, int leftTrimSpace) {
+        if (leftTrimSpace <= 0) {
+            return line;
+        }
+        String prefix = generateEmptyString(leftTrimSpace);
+        if (line.startsWith(prefix)) {
+            return line.substring(leftTrimSpace);
         }
         return line;
+    }
+
+    private static String extractCommentBody(Comment c, String raw) {
+        if (c.isLineComment()) {
+            int idx = raw.indexOf("//");
+            return idx != -1 ? raw.substring(idx + 2).trim() : "";
+        }
+        if (c.isBlockComment()) {
+            int s = raw.indexOf("/*");
+            int e = raw.lastIndexOf("*/");
+            if (s != -1 && e > s) {
+                return raw.substring(s + 2, e).trim();
+            }
+        }
+        return "";
     }
 
     /**
@@ -705,7 +813,8 @@ public class DecompilerOutputUtil {
 
             // Parse the commented line number if available
             InputLine inputLine = inputLines.get(inputNumLine);
-            inputLine.outputLineNum = parseJavaLineNumber(decompilerType, inputLine.line);
+            int absStart = getAbsoluteOffsetOfLine(inputNumLine);
+            inputLine.outputLineNum = parseJavaLineNumber(inputLine.line, unit, input, absStart);
 
             if (inputLine.outputLineNum > 1) {
 

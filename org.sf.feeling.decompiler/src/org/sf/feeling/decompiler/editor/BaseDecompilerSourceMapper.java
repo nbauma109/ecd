@@ -206,8 +206,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
                 || UIUtil.isDebugPerspective()) {
             if (showReport)
                 code = usedDecompiler.removeComment(code);
-            DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(usedDecompiler.getDecompilerType(),
-                    code);
+            DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(code);
             code = decompilerOutputUtil.realign();
         }
 
@@ -366,8 +365,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
                 || UIUtil.isDebugPerspective()) {
             if (showReport)
                 code = currentDecompiler.removeComment(code);
-            DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(currentDecompiler.getDecompilerType(),
-                    code);
+            DecompilerOutputUtil decompilerOutputUtil = new DecompilerOutputUtil(code);
             code = decompilerOutputUtil.realign();
         }
 
