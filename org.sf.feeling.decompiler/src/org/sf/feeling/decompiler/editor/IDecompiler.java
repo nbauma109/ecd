@@ -20,56 +20,56 @@ import java.util.List;
  */
 public interface IDecompiler {
 
-	/**
-	 * Decompiles a class file located in file system (not in archive)
-	 * 
-	 * @param root      path to the directory which is root for this class package
-	 *                  hierarchy
-	 * @param packege   file path like package name
-	 * @param className file name of the class file
-	 */
-	public void decompile(String root, String packege, String className);
+    /**
+     * Decompiles a class file located in file system (not in archive)
+     * 
+     * @param root      path to the directory which is root for this class package
+     *                  hierarchy
+     * @param packege   file path like package name
+     * @param className file name of the class file
+     */
+    public void decompile(String root, String packege, String className);
 
-	/**
-	 * Decompiles a class file located in archive.
-	 * 
-	 * @param archivePath path to archive that contains the class to be decompiled
-	 * @param packege     file path like package name
-	 * @param className   file name of the class file
-	 */
-	public void decompileFromArchive(String archivePath, String packege, String className);
+    /**
+     * Decompiles a class file located in archive.
+     * 
+     * @param archivePath path to archive that contains the class to be decompiled
+     * @param packege     file path like package name
+     * @param className   file name of the class file
+     */
+    public void decompileFromArchive(String archivePath, String packege, String className);
 
-	/**
-	 * @return time taken by decompilation
-	 */
-	public long getDecompilationTime();
+    /**
+     * @return time taken by decompilation
+     */
+    public long getDecompilationTime();
 
-	/**
-	 * If any exceptions occurred during decompilation they should be included into
-	 * the <code>List</code> returned by this method.
-	 * 
-	 * @return non-<code>null</code> value which is a list containing
-	 *         <code>java.lang.Exception</code>'s
-	 */
-	public List<Exception> getExceptions();
+    /**
+     * If any exceptions occurred during decompilation they should be included into
+     * the <code>List</code> returned by this method.
+     * 
+     * @return non-<code>null</code> value which is a list containing
+     *         <code>java.lang.Exception</code>'s
+     */
+    public List<Exception> getExceptions();
 
-	/**
-	 * @return decompilation log specific to physical decompiler
-	 */
-	public String getLog();
+    /**
+     * @return decompilation log specific to physical decompiler
+     */
+    public String getLog();
 
-	/**
-	 * @return Class file source which is the result of decompilation.
-	 */
-	public String getSource();
+    /**
+     * @return Class file source which is the result of decompilation.
+     */
+    public String getSource();
 
-	public String getDecompilerType();
+    public String getDecompilerType();
 
-	public String removeComment(String source);
+    public String removeComment(String source);
 
-	public boolean supportDebugLevel(int level);
+    public boolean supportDebugLevel(int level);
 
-	public boolean supportLevel(int level);
+    public boolean supportLevel(int level);
 
-	public boolean supportDebug();
+    public boolean supportDebug();
 }

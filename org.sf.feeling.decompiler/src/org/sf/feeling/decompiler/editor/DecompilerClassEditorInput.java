@@ -13,22 +13,22 @@ import org.eclipse.ui.ide.FileStoreEditorInput;
 
 public class DecompilerClassEditorInput extends FileStoreEditorInput {
 
-	private String toolTipText = null;
+    private String toolTipText = null;
 
-	public DecompilerClassEditorInput(IFileStore fileStore) {
-		super(fileStore);
-	}
+    public DecompilerClassEditorInput(IFileStore fileStore) {
+        super(fileStore);
+    }
 
-	@Override
-	public String getToolTipText() {
-		if (toolTipText != null)
-			return toolTipText;
-		else
-			return super.getToolTipText();
-	}
+    @Override
+    public String getToolTipText() {
+        if (toolTipText != null)
+            return toolTipText;
+        else
+            return super.getToolTipText();
+    }
 
-	public void setToolTipText(String toolTipText) {
-		this.toolTipText = toolTipText;
-	}
+    public void setToolTipText(String toolTipText) {
+        this.toolTipText = toolTipText;
+    }
 
 }

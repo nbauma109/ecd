@@ -6,13 +6,13 @@ import org.junit.Test;
 
 public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 
-	@Test
-	public void testFind() throws IOException {
-		testFindAsmUtil(null);
-	}
+    @Test
+    public void testFind() throws IOException {
+        testFindAsmUtil(null);
+    }
 
-	@Override
-	protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
-		return new MavenRepoSourceCodeFinder();
-	}
+    @Override
+    protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
+        return new MavenRepoSourceCodeFinder();
+    }
 }

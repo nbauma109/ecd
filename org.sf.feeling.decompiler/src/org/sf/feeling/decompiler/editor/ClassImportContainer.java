@@ -13,7 +13,7 @@ import org.eclipse.jdt.internal.core.ImportContainer;
 
 public class ClassImportContainer extends ImportContainer {
 
-	protected ClassImportContainer(ClassFile parent) {
-		super(null);
-	}
+    protected ClassImportContainer(ClassFile parent) {
+        super(null);
+    }
 }

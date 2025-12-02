@@ -15,9 +15,9 @@ import org.sf.feeling.decompiler.vineflower.VineflowerDecompilerPlugin;
 
 public class DecompileWithVineflowerCoreHandler extends BaseDecompilerHandler {
 
-	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
-		return handleDecompile(VineflowerDecompilerPlugin.decompilerType);
-	}
+    @Override
+    public Object execute(ExecutionEvent event) throws ExecutionException {
+        return handleDecompile(VineflowerDecompilerPlugin.decompilerType);
+    }
 
 }

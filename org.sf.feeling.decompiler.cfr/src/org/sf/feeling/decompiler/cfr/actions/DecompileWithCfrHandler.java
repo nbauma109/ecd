@@ -15,8 +15,8 @@ import org.sf.feeling.decompiler.cfr.CfrDecompilerPlugin;
 
 public class DecompileWithCfrHandler extends BaseDecompilerHandler {
 
-	@Override
-	public Object execute(ExecutionEvent event) throws ExecutionException {
-		return handleDecompile(CfrDecompilerPlugin.decompilerType);
-	}
+    @Override
+    public Object execute(ExecutionEvent event) throws ExecutionException {
+        return handleDecompile(CfrDecompilerPlugin.decompilerType);
+    }
 }

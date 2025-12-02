@@ -9,7 +9,7 @@
 ###############################################################################
 -->
 <plugin>
-	<extension-point id="decompilerAdapters" name="decompilerAdapters" schema="schema/decompilerAdapters.exsd"/>
+  <extension-point id="decompilerAdapters" name="decompilerAdapters" schema="schema/decompilerAdapters.exsd"/>
     <extension
          point="org.eclipse.ui.editors">
       <editor
@@ -128,19 +128,19 @@
       </command>  
    </extension> 
    <extension
- 		point="org.eclipse.ui.bindings">
- 		<key
-      		sequence="Ctrl+Alt+,"
-      		commandId="org.sf.feeling.decompiler.decompile"
-      		schemeId="org.eclipse.ui.defaultAcceleratorConfiguration">
-		</key>
-		<key
-      		sequence="Ctrl+Alt+."
-      		commandId="org.sf.feeling.decompiler.debugMode"
-      		schemeId="org.eclipse.ui.defaultAcceleratorConfiguration">
-		</key>
- 	</extension>
- 	<extension  
+     point="org.eclipse.ui.bindings">
+     <key
+          sequence="Ctrl+Alt+,"
+          commandId="org.sf.feeling.decompiler.decompile"
+          schemeId="org.eclipse.ui.defaultAcceleratorConfiguration">
+    </key>
+    <key
+          sequence="Ctrl+Alt+."
+          commandId="org.sf.feeling.decompiler.debugMode"
+          schemeId="org.eclipse.ui.defaultAcceleratorConfiguration">
+    </key>
+   </extension>
+   <extension  
          point="org.eclipse.ui.handlers">  
       <handler  
             commandId="org.sf.feeling.decompiler.decompile"  
@@ -207,16 +207,16 @@
                id="decompilerMenu">
                <separator
                   name="decompilerGroup">
-    		   </separator>
-    		   <separator
+           </separator>
+           <separator
                   name="sourceGroup">
-    		   </separator>
-    		   <separator
+           </separator>
+           <separator
                   name="debugGroup">
-    		   </separator>
-    		   <separator
+           </separator>
+           <separator
                   name="preferenceGroup">
-    		   </separator>
+           </separator>
          </menu>
          <action
                class="org.sf.feeling.decompiler.actions.DecompilerMenuItemAction"
