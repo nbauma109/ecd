@@ -368,22 +368,8 @@ public class DecompilerOutputUtil {
     public static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
         String trimmed = line.trim();
 
-        if (trimmed.startsWith("}//")) {
-            String tail = trimmed.substring(3);
-            tail = tail.trim();
-            if (!tail.isEmpty()) {
-                boolean onlyDigitsAndSpaces = true;
-                for (int i = 0; i < tail.length(); i++) {
-                    char ch = tail.charAt(i);
-                    if (!Character.isDigit(ch) && !Character.isWhitespace(ch)) {
-                        onlyDigitsAndSpaces = false;
-                        break;
-                    }
-                }
-                if (onlyDigitsAndSpaces) {
-                    return -1; // line number on closing bracket cannot be known
-                }
-            }
+        if (trimmed.matches("}//[0-9 ]+")) {
+            return -1; // line number on closing bracket cannot be known
         }
 
         @SuppressWarnings("unchecked")
@@ -402,18 +388,13 @@ public class DecompilerOutputUtil {
             }
 
             String text = fullSource.substring(cs, ce + 1);
-            String body = extractCommentBody(c, text);
+            String commentBody = extractCommentBody(c, text);
 
-            StringBuilder digits = new StringBuilder();
-            for (char ch : body.toCharArray()) {
-                if (Character.isDigit(ch)) {
-                    digits.append(ch);
-                } else {
-                    break;
+            String[] tokens = commentBody.split("\\s+");
+            for (String token : tokens) {
+                if (token.matches("\\d+")) {
+                    return Integer.parseInt(token);
                 }
-            }
-            if (!digits.isEmpty()) {
-                return Integer.parseInt(digits.toString());
             }
         }
 
