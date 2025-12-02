@@ -32,12 +32,11 @@ public class SourceMapperUtil {
             mapSourceMethod = getLegacyMapSourceMethod(sourceMapper);
         }
 
-        if (mapSourceMethod != null) {
-            Object[] parameters = new Object[] { type, source, info, elementToFind };
-            ReflectionUtils.invokeMethod(mapSourceMethod, sourceMapper, parameters);
-        } else {
+        if (mapSourceMethod == null) {
             throw new IllegalStateException("Unable to invoke mapSource method on sourceMapper"); //$NON-NLS-1$
         }
+        Object[] parameters = { type, source, info, elementToFind };
+        ReflectionUtils.invokeMethod(mapSourceMethod, sourceMapper, parameters);
     }
 
     private static Method getMapSourceMethod(SourceMapper sourceMapper) {

@@ -22,10 +22,10 @@ public class SourceMapperFactory {
                 fernFlowerSourceMapper = new FernFlowerSourceMapper();
             }
             return fernFlowerSourceMapper;
-        } else {
-            IDecompilerDescriptor descriptor = JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompiler);
-            if (descriptor != null)
-                return descriptor.getDecompilerSourceMapper();
+        }
+        IDecompilerDescriptor descriptor = JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompiler);
+        if (descriptor != null) {
+            return descriptor.getDecompilerSourceMapper();
         }
         return null;
     }
