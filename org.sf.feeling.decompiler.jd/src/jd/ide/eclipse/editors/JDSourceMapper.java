@@ -28,7 +28,7 @@ import jd.core.preferences.Preferences;
 
 /**
  * JDSourceMapper
- * 
+ *
  * @project Java Decompiler Eclipse Plugin
  * @version 0.1.5
  * @see org.eclipse.jdt.internal.core.SourceMapper
@@ -81,12 +81,12 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
                     }
                 } else {
                     JavaDecompilerPlugin.getDefault().getLog()
-                            .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0,
-                                    "Unable to decompile: " + decompilePath + " is not a valid file.", null));
+                    .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0,
+                            "Unable to decompile: " + decompilePath + " is not a valid file.", null));
                 }
             } catch (Exception e) {
                 JavaDecompilerPlugin.getDefault().getLog()
-                        .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
+                .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
             }
         }
 
@@ -106,7 +106,7 @@ public abstract class JDSourceMapper extends BaseDecompilerSourceMapper {
 
         boolean realignmentLineNumber = store.getBoolean(JavaDecompilerPlugin.ALIGN);
         boolean unicodeEscape = false; // currently unused :
-                                        // store.getBoolean(JavaDecompilerPlugin.PREF_ESCAPE_UNICODE_CHARACTERS);
+        // store.getBoolean(JavaDecompilerPlugin.PREF_ESCAPE_UNICODE_CHARACTERS);
         boolean showLineNumbers = store.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
         boolean showMetaData = false; // currently unused :
         // store.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);

@@ -26,7 +26,7 @@ public class SourceConstants {
             ".gradle", "caches", "modules-2", "files-2.1").toFile(); //$NON-NLS-1$ //$NON-NLS-2$
 
     public static final File SourceAttacherDir = Paths.get(USER_HOME,
-            ".decompiler", TEMP_SOURCE_PREFIX).toFile(); //$NON-NLS-1$ //$NON-NLS-2$
+            ".decompiler", TEMP_SOURCE_PREFIX).toFile(); //$NON-NLS-1$
 
     public static final File getSourceTempDir() {
         return new File(JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)

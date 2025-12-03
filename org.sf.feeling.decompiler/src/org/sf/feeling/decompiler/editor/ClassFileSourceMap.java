@@ -36,14 +36,16 @@ public class ClassFileSourceMap {
     private static void mapSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, SourceMapper mapper,
             IBinaryType info, IClassFile bufferOwner, char[] markedSrc) {
         char[] contents = mapper.findSource(cf.getType(), info);
-        if (Arrays.equals(markedSrc, contents))
+        if (Arrays.equals(markedSrc, contents)) {
             return;
+        }
         contents = markedSrc;
         if (contents != null) {
             // create buffer
             IBuffer buffer = BufferManager.createBuffer(bufferOwner);
-            if (buffer == null)
+            if (buffer == null) {
                 return;
+            }
             JavaDecompilerBufferManager bufManager = bufferManager;
             bufManager.addBuffer(buffer);
 
@@ -59,18 +61,14 @@ public class ClassFileSourceMap {
             SourceMapperUtil.mapSource(mapper, getOuterMostEnclosingType(cf), contents, info);
 
             return;
-        } else {
-            // create buffer
-            IBuffer buffer = BufferManager.createNullBuffer(bufferOwner);
-            if (buffer == null)
-                return;
-            JavaDecompilerBufferManager bufManager = bufferManager;
-            bufManager.addBuffer(buffer);
-
-            // listen to buffer changes
-            // buffer.addBufferChangedListener( cf );
+        }
+        // create buffer
+        IBuffer buffer = BufferManager.createNullBuffer(bufferOwner);
+        if (buffer == null) {
             return;
         }
+        JavaDecompilerBufferManager bufManager = bufferManager;
+        bufManager.addBuffer(buffer);
     }
 
     public static void updateSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, char[] markedSrc)

@@ -81,8 +81,9 @@ public class StringChoiceFieldEditor extends FieldEditor {
     protected void doLoad() {
         String value = getPreferenceStore().getString(getPreferenceName());
         int index = fLabels.indexOf(value);
-        if (index >= 0)
+        if (index >= 0) {
             fCombo.select(index);
+        }
     }
 
     @Override
@@ -111,14 +112,16 @@ public class StringChoiceFieldEditor extends FieldEditor {
 
     protected String getSelectedKey() {
         int index = fCombo.getSelectionIndex();
-        if (index >= 0)
+        if (index >= 0) {
             return (String) fKeys.get(index);
+        }
         return null;
     }
 
     protected void initList() {
-        for (int i = 0; i < fLabels.size(); i++)
+        for (int i = 0; i < fLabels.size(); i++) {
             fCombo.add((String) fLabels.get(i));
+        }
         fOldKey = getSelectedKey();
     }
 
@@ -156,8 +159,9 @@ public class StringChoiceFieldEditor extends FieldEditor {
         boolean oldState = fIsValid;
         refreshValidState();
 
-        if (fIsValid != oldState)
+        if (fIsValid != oldState) {
             fireStateChanged(IS_VALID, oldState, fIsValid);
+        }
 
         String newKey = getSelectedKey();
         if (newKey == null ? newKey != fOldKey : !newKey.equals(fOldKey)) {

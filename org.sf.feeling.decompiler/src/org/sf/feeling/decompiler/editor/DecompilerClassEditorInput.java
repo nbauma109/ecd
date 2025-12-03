@@ -21,10 +21,10 @@ public class DecompilerClassEditorInput extends FileStoreEditorInput {
 
     @Override
     public String getToolTipText() {
-        if (toolTipText != null)
+        if (toolTipText != null) {
             return toolTipText;
-        else
-            return super.getToolTipText();
+        }
+        return super.getToolTipText();
     }
 
     public void setToolTipText(String toolTipText) {

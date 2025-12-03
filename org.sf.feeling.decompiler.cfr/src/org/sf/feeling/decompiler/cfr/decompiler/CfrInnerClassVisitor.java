@@ -85,7 +85,7 @@ public final class CfrInnerClassVisitor extends ASTVisitor {
             sbTypeDeclaration.append('$').append(typeName);
         }
 
-        if (className.equals(typeName + ".class")) {
+        if ((typeName + ".class").equals(className)) {
             return;
         }
         final NavigableMap<Integer, Integer> innerLineMapping = new TreeMap<>();

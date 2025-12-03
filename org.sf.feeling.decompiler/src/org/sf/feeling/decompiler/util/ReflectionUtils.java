@@ -19,8 +19,9 @@ public class ReflectionUtils {
     }
 
     public static Method getDeclaredMethod(Object object, String methodName, Class[] parameterTypes) {
-        if (object == null || methodName == null)
+        if (object == null || methodName == null) {
             return null;
+        }
 
         for (Class clazz = object.getClass(); clazz != Object.class; clazz = clazz.getSuperclass()) {
             try {
@@ -34,8 +35,9 @@ public class ReflectionUtils {
     }
 
     public static Object invokeMethod(Object object, String methodName, Class[] parameterTypes, Object[] parameters) {
-        if (object == null || methodName == null)
+        if (object == null || methodName == null) {
             return null;
+        }
 
         Method method = getDeclaredMethod(object, methodName, parameterTypes);
         return invokeMethod(method, object, parameters);
@@ -55,14 +57,15 @@ public class ReflectionUtils {
     }
 
     public static Object invokeMethod(Object object, String methodName) {
-        if (object == null || methodName == null)
+        if (object == null || methodName == null) {
             return null;
+        }
 
         Method method = getDeclaredMethod(object, methodName, new Class[0]);
         try {
             if (null != method) {
                 method.setAccessible(true);
-                return method.invoke(object, new Object[0]);
+                return method.invoke(object);
             }
         } catch (Exception e) {
             JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
@@ -72,8 +75,9 @@ public class ReflectionUtils {
     }
 
     private static Field getDeclaredField(Object object, String fieldName) {
-        if (object == null || fieldName == null)
+        if (object == null || fieldName == null) {
             return null;
+        }
 
         Class clazz = object.getClass();
 
@@ -89,8 +93,9 @@ public class ReflectionUtils {
     }
 
     public static void setFieldValue(Object object, String fieldName, Object value) {
-        if (object == null || fieldName == null)
+        if (object == null || fieldName == null) {
             return;
+        }
 
         Field field = getDeclaredField(object, fieldName);
 
@@ -106,8 +111,9 @@ public class ReflectionUtils {
     }
 
     public static Object getFieldValue(Object object, String fieldName) {
-        if (object == null || fieldName == null)
+        if (object == null || fieldName == null) {
             return null;
+        }
 
         Field field = getDeclaredField(object, fieldName);
 
@@ -125,14 +131,15 @@ public class ReflectionUtils {
     }
 
     public static Object invokeMethod(Object object, String methodName, Class clazz, Object value) {
-        if (object == null || methodName == null)
+        if (object == null || methodName == null) {
             return null;
+        }
 
         Method method = getDeclaredMethod(object, methodName, new Class[] { clazz });
         try {
             if (null != method) {
                 method.setAccessible(true);
-                return method.invoke(object, new Object[] { value });
+                return method.invoke(object, value);
             }
         } catch (Exception e) {
             JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$

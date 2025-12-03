@@ -64,14 +64,13 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
 
         @Override
         public String getText() {
-            if (DecompilerType.FernFlower.equals(decompilerType))
+            if (DecompilerType.FernFlower.equals(decompilerType)) {
                 return Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithFernFlower"); //$NON-NLS-1$
-            else {
-                IDecompilerDescriptor decompilerDescriptor = JavaDecompilerPlugin.getDefault()
-                        .getDecompilerDescriptor(decompilerType);
-                if (decompilerDescriptor != null)
-                    return decompilerDescriptor.getDecompileAction().getText();
-
+            }
+            IDecompilerDescriptor decompilerDescriptor = JavaDecompilerPlugin.getDefault()
+                    .getDecompilerDescriptor(decompilerType);
+            if (decompilerDescriptor != null) {
+                return decompilerDescriptor.getDecompileAction().getText();
             }
             return classEditor.getLabel();
         }
@@ -80,19 +79,21 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
         public ImageDescriptor getImageDescriptor() {
             if (DecompilerType.FernFlower.equals(decompilerType)) {
                 return JavaDecompilerPlugin.getImageDescriptor("icons/fernflower_16.png"); //$NON-NLS-1$
-            } else
-                return JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompilerType).getDecompilerIcon();
+            }
+            return JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompilerType).getDecompilerIcon();
         }
 
         @Override
         public void run() {
             // Get UI refs
             IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-            if (window == null)
+            if (window == null) {
                 return;
+            }
             IWorkbenchPage page = window.getActivePage();
-            if (page == null)
+            if (page == null) {
                 return;
+            }
 
             // Load each IClassFile into the selected editor
             for (int i = 0; i < classes.size(); i++) {
@@ -103,22 +104,19 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
                 try {
                     IEditorPart openEditor = page.openEditor(input, classEditor.getId(), true);
 
-                    if ((openEditor != null) && (!classEditor.getId().equals(openEditor.getEditorSite().getId()))) {
-                        // An existing editor already has this class open. Close
-                        // it
-                        // and re-open in the correct editor
-                        if (!openEditor.isDirty()) {
-                            openEditor.getSite().getPage().closeEditor(openEditor, false);
-                            page.openEditor(input, classEditor.getId(), true);
-                        }
+                    // An existing editor already has this class open. Close
+                    // it
+                    // and re-open in the correct editor
+                    if (((openEditor != null) && (!classEditor.getId().equals(openEditor.getEditorSite().getId()))) && !openEditor.isDirty()) {
+                        openEditor.getSite().getPage().closeEditor(openEditor, false);
+                        page.openEditor(input, classEditor.getId(), true);
                     }
-                    if (openEditor instanceof JavaDecompilerClassFileEditor) {
-                        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openEditor;
+                    if (openEditor instanceof JavaDecompilerClassFileEditor editor) {
                         editor.doSetInput(decompilerType, true);
                     }
                 } catch (PartInitException e) {
                     JavaDecompilerPlugin.getDefault().getLog()
-                            .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
+                    .log(new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID, 0, e.getMessage(), e));
                 }
             }
         }
@@ -141,8 +139,9 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
 
                 // Get the current selections and return if nothing is selected
                 Iterator<Object> selections = getSelections(selService);
-                if (selections == null)
+                if (selections == null) {
                     return new IContributionItem[0];
+                }
 
                 final List<Object> classes = getSelectedElements(selService, IClassFile.class);
 
@@ -194,8 +193,9 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
                 public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
                     boolean menuVisible = isMenuVisible(selService);
 
-                    if (menuVisible)
+                    if (menuVisible) {
                         return EvaluationResult.TRUE;
+                    }
 
                     return EvaluationResult.FALSE;
                 }
@@ -226,10 +226,8 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
             }
         }
 
-        if (atLeastOneSelection) {
-            if (allClasses || singlePackageOrRoot) {
-                return true;
-            }
+        if (atLeastOneSelection && (allClasses || singlePackageOrRoot)) {
+            return true;
         }
 
         return false;
@@ -243,8 +241,9 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
         while ((selections != null) && selections.hasNext()) {
             Object select = selections.next();
 
-            if (eleClass.isInstance(select))
+            if (eleClass.isInstance(select)) {
                 elements.add(select);
+            }
         }
 
         return elements;
@@ -253,11 +252,9 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
     private Iterator getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
-        if (selection != null) {
-            if (selection instanceof IStructuredSelection) {
-                IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-                return structuredSelection.iterator();
-            }
+        if ((selection != null) && (selection instanceof IStructuredSelection)) {
+            IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+            return structuredSelection.iterator();
         }
 
         return null;

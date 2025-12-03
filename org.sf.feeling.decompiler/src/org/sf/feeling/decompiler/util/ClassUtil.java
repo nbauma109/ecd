@@ -39,29 +39,24 @@ public class ClassUtil {
         boolean debug = isDebug();
         IDecompiler defaultDecompiler = getDefaultDecompiler(classLevel, debug);
 
-        if (decompiler.supportLevel(classLevel)) {
-            if (debug) {
-                if (!decompiler.supportDebugLevel(classLevel)) {
-                    String recommendation = "";
-                    if (JavaDecompilerPlugin.getDefault().isDebug()) {
-                        recommendation += "Disable the 'Align code for debugging' option. ";
-                    }
-                    if (UIUtil.isDebugPerspective()) {
-                        recommendation += "Switch to the Java perspective. ";
-                    }
-                    if (JavaDecompilerPlugin.getDefault().isDebugMode()) {
-                        recommendation += "Disable the debug Mode. ";
-                    }
-                    JavaDecompilerPlugin.logInfo("Could not use " + decompiler.getClass().getSimpleName()
-                            + " for decompilation since the debug view is not supported. " + recommendation
-                            + "Falling back to " + defaultDecompiler.getClass().getSimpleName() + ".");
-                    return defaultDecompiler;
-                }
-            }
-        } else {
+        if (!decompiler.supportLevel(classLevel)) {
             JavaDecompilerPlugin.logInfo("Could not use " + decompiler.getClass().getSimpleName()
                     + " for decompilation since the classLevel " + classLevel + " is not supported. "
                     + "Falling back to " + defaultDecompiler.getClass().getSimpleName() + ".");
+            return defaultDecompiler;
+        }
+        if (debug && !decompiler.supportDebugLevel(classLevel)) {
+            StringBuilder recommendation = new StringBuilder();
+            if (JavaDecompilerPlugin.getDefault().isDebug()) {
+                recommendation.append("Disable the 'Align code for debugging' option. ");
+            }
+            if (UIUtil.isDebugPerspective()) {
+                recommendation.append("Switch to the Java perspective. ");
+            }
+            if (JavaDecompilerPlugin.getDefault().isDebugMode()) {
+                recommendation.append("Disable the debug Mode. ");
+            }
+            JavaDecompilerPlugin.logInfo("Could not use " + decompiler.getClass().getSimpleName() + " for decompilation since the debug view is not supported. " + recommendation.append("Falling back to ").append(defaultDecompiler.getClass().getSimpleName()).append(".").toString());
             return defaultDecompiler;
         }
         return decompiler;
@@ -120,10 +115,8 @@ public class ClassUtil {
                         if (decompiler.supportDebug() && decompiler.supportDebugLevel(level)) {
                             return decompiler;
                         }
-                    } else {
-                        if (decompiler.supportLevel(level)) {
-                            return decompiler;
-                        }
+                    } else if (decompiler.supportLevel(level)) {
+                        return decompiler;
                     }
                 }
             }

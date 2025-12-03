@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.Enumeration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -29,10 +30,10 @@ import org.objectweb.asm.ClassReader;
 import org.sf.feeling.decompiler.util.Logger;
 
 /**
- * 
+ *
  * JD-Core Loader implementation for decompiling classes directly from within a
  * ZIP/JAR archive
- * 
+ *
  * @author Jan Peter Stotz
  *
  */
@@ -48,11 +49,10 @@ public class JDCoreZipLoader implements Loader, Closeable {
         if (entriesCache != null && !entriesCache.zipFilePath.equals(zipFilePath)) {
             throw new IllegalArgumentException("entriesCache is for the wrong zipFilePath");
         }
-        if (Files.exists(zipFilePath)) {
-            zipFile = new ZipFile(zipFilePath.toFile());
-        } else {
+        if (!Files.exists(zipFilePath)) {
             throw new IOException("Could not find " + zipFilePath.toAbsolutePath());
         }
+        zipFile = new ZipFile(zipFilePath.toFile());
 
         if (entriesCache == null) {
             entriesCache = new EntriesCache(zipFilePath);
@@ -156,26 +156,24 @@ public class JDCoreZipLoader implements Loader, Closeable {
 
         @Override
         public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + ((zipFilePath == null) ? 0 : zipFilePath.hashCode());
-            return result;
+            return Objects.hash(zipFilePath);
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+            }
+            if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+            if (getClass() != obj.getClass()) {
                 return false;
+            }
             EntriesCache other = (EntriesCache) obj;
-            if (zipFilePath == null) {
-                if (other.zipFilePath != null)
-                    return false;
-            } else if (!zipFilePath.equals(other.zipFilePath))
+            if (!Objects.equals(zipFilePath, other.zipFilePath)) {
                 return false;
+            }
             return true;
         }
 

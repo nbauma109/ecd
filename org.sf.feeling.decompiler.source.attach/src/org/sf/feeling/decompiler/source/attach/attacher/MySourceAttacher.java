@@ -52,26 +52,26 @@ public class MySourceAttacher implements SourceAttacher {
         final int entryKind = entry.getEntryKind();
         IClasspathEntry result = null;
         switch (entryKind) {
-        case 1: {
-            result = JavaCore.newLibraryEntry(entry.getPath(), (sourcePath == null) ? null : new Path(sourcePath),
-                    (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
-                    entry.getExtraAttributes(), entry.isExported());
-            break;
-        }
-        case 4: {
-            final File sourceAttacherDir = new File(sourcePath).getParentFile();
-            JavaCore.setClasspathVariable("SOURCE_ATTACHER", //$NON-NLS-1$
-                    new Path(sourceAttacherDir.getAbsolutePath()), (IProgressMonitor) null);
-            final Path varAttPath = new Path("SOURCE_ATTACHER/" + new File(sourcePath).getName()); //$NON-NLS-1$
-            result = JavaCore.newVariableEntry(entry.getPath(), varAttPath,
-                    (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
-                    entry.getExtraAttributes(), entry.isExported());
-            break;
-        }
-        default: {
-            result = entry;
-            break;
-        }
+            case 1: {
+                result = JavaCore.newLibraryEntry(entry.getPath(), (sourcePath == null) ? null : new Path(sourcePath),
+                        (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
+                                entry.getExtraAttributes(), entry.isExported());
+                break;
+            }
+            case 4: {
+                final File sourceAttacherDir = new File(sourcePath).getParentFile();
+                JavaCore.setClasspathVariable("SOURCE_ATTACHER", //$NON-NLS-1$
+                        new Path(sourceAttacherDir.getAbsolutePath()), (IProgressMonitor) null);
+                final Path varAttPath = new Path("SOURCE_ATTACHER/" + new File(sourcePath).getName()); //$NON-NLS-1$
+                result = JavaCore.newVariableEntry(entry.getPath(), varAttPath,
+                        (sourceRoot == null) ? null : new Path(sourceRoot), entry.getAccessRules(),
+                                entry.getExtraAttributes(), entry.isExported());
+                break;
+            }
+            default: {
+                result = entry;
+                break;
+            }
         }
         return result;
     }
