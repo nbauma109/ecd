@@ -30,8 +30,9 @@ public class ProcyonDecompilerDescriptor implements IDecompilerDescriptor {
 
     @Override
     public IDecompiler getDecompiler() {
-        if (decompiler == null)
+        if (decompiler == null) {
             decompiler = new ProcyonDecompiler();
+        }
         return decompiler;
     }
 

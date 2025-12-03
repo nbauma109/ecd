@@ -37,12 +37,12 @@ public class CfrSourceMapperTest {
         FileUtils.forceMkdir(new File("target/test"));
 
         JarClassExtractor.extract(
-            jarFile.getAbsolutePath(),
-            "test",
-            "Test.class",
-            true,
-            "target/test"
-        );
+                jarFile.getAbsolutePath(),
+                "test",
+                "Test.class",
+                true,
+                "target/test"
+                );
 
         CfrSourceMapper procyonSourceMapper = new CfrSourceMapper();
         File file = new File("target/test/Test.class");

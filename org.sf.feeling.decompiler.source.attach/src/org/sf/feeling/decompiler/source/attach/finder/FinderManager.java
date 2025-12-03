@@ -26,8 +26,8 @@ public class FinderManager {
 
     public boolean isRunning() {
         boolean result = false;
-        for (int i = 0; i < this.workers.length; i++) {
-            if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
+        for (Worker worker : this.workers) {
+            if ((worker != null) && (worker.isAlive())) {
                 result = true;
                 break;
             }
@@ -36,9 +36,9 @@ public class FinderManager {
     }
 
     public void cancel() {
-        for (int i = 0; i < this.workers.length; i++) {
-            if ((this.workers[i] != null) && (this.workers[i].isAlive())) {
-                this.workers[i].cancel();
+        for (Worker worker : this.workers) {
+            if ((worker != null) && (worker.isAlive())) {
+                worker.cancel();
             }
         }
     }

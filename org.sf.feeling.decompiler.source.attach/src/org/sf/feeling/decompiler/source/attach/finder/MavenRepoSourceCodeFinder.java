@@ -52,8 +52,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             Logger.debug(e);
         }
 
-        if (canceled)
+        if (canceled) {
             return;
+        }
 
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
@@ -78,7 +79,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         }
 
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + SOURCES_JAR; //$NON-NLS-1$
+            String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + SOURCES_JAR;
             try {
                 String tmpFile = new UrlDownloader().download(entry.getValue());
                 if (tmpFile != null && new File(tmpFile).exists()
@@ -98,8 +99,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
     private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws Exception {
         Map<GAV, String> results = new HashMap<>();
         for (GAV gav : gavs) {
-            if (canceled)
+            if (canceled) {
                 return results;
+            }
 
             // g:"ggg" AND a:"aaa" AND v:"vvv" AND l:"sources"
             String qVal = "g:\"" //$NON-NLS-1$
@@ -121,9 +123,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                 String a = doci.getString("a", ""); //$NON-NLS-1$ //$NON-NLS-2$
                 String v = doci.getString("v", ""); //$NON-NLS-1$ //$NON-NLS-2$
                 JsonArray array = doci.get("ec").asArray(); //$NON-NLS-1$
-                if (array.toString().contains(SOURCES_JAR)) //$NON-NLS-1$
+                if (array.toString().contains(SOURCES_JAR))
                 {
-                    String path = g.replace('.', '/') + '/' + a + '/' + v + '/' + a + '-' + v + SOURCES_JAR; //$NON-NLS-1$
+                    String path = g.replace('.', '/') + '/' + a + '/' + v + '/' + a + '-' + v + SOURCES_JAR;
                     path = "https://search.maven.org/remotecontent?filepath=" + path; //$NON-NLS-1$
                     results.put(gav, path);
                 }

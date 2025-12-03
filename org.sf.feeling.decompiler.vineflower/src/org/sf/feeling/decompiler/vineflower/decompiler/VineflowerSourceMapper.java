@@ -25,7 +25,7 @@ public class VineflowerSourceMapper extends BaseDecompilerSourceMapper {
     @Override
     protected void printDecompileReport(StringBuffer source, String fileLocation, Collection<Exception> exceptions,
             long decompilationTime) {
-        String logMsg = originalDecompiler.getLog().replaceAll("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
+        String logMsg = originalDecompiler.getLog().replace("\t", "") //$NON-NLS-1$ //$NON-NLS-2$
                 .replaceAll("\n\\s*", "\n\t"); //$NON-NLS-1$ //$NON-NLS-2$
 
         source.append("\n\n/*"); //$NON-NLS-1$

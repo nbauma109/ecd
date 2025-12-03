@@ -18,8 +18,9 @@ public class VersionUtil {
     public static Version getFeatureVersion(String featureId) {
         for (IBundleGroupProvider provider : Platform.getBundleGroupProviders()) {
             for (IBundleGroup feature : provider.getBundleGroups()) {
-                if (feature.getIdentifier().equals(featureId))
+                if (feature.getIdentifier().equals(featureId)) {
                     return Version.create(feature.getVersion());
+                }
             }
         }
         return null;

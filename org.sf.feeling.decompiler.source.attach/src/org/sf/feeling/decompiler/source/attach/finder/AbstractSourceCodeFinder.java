@@ -103,8 +103,9 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             }
         }
 
-        if (gavs.size() > 1)
+        if (gavs.size() > 1) {
             gavs.clear(); // a merged file, the result will not be correct
+        }
         return gavs.stream().findFirst();
     }
 

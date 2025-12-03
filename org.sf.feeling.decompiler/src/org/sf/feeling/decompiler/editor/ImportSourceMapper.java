@@ -113,8 +113,9 @@ public class ImportSourceMapper extends SourceMapper {
 
         for (int i = 0; i < oldChildren.length; i++) {
             IJavaElement child = oldChildren[i];
-            if (child instanceof ImportContainer)
+            if (child instanceof ImportContainer) {
                 continue;
+            }
             children.add(child);
         }
 
@@ -144,8 +145,9 @@ public class ImportSourceMapper extends SourceMapper {
 
     private void addToChildren(Object parentInfo, JavaElement handle) {
         List childrenList = this.children.get(parentInfo);
-        if (childrenList == null)
+        if (childrenList == null) {
             this.children.put(parentInfo, childrenList = new ArrayList<>());
+        }
         childrenList.add(handle);
     }
 
@@ -154,8 +156,7 @@ public class ImportSourceMapper extends SourceMapper {
             Constructor c = ImportDeclaration.class.getDeclaredConstructor(ImportContainer.class, String.class,
                     boolean.class);
             c.setAccessible(true);
-            ImportDeclaration dec = (ImportDeclaration) c.newInstance(parent, name, onDemand);
-            return dec;
+            return (ImportDeclaration) c.newInstance(parent, name, onDemand);
         } catch (Exception e) {
             Logger.debug(e);
         }
@@ -166,7 +167,7 @@ public class ImportSourceMapper extends SourceMapper {
     public void acceptImport(int declarationStart, int declarationEnd, int nameSourceStart, int nameSourceEnd,
             char[][] tokens, boolean onDemand, int modifiers) {
         JavaElement parentHandle = (JavaElement) this.handleStack.peek();
-        if (!(parentHandle.getElementType() == IJavaElement.CLASS_FILE)) {
+        if ((parentHandle.getElementType() != IJavaElement.CLASS_FILE)) {
             Assert.isTrue(false); // Should not happen
         }
 
