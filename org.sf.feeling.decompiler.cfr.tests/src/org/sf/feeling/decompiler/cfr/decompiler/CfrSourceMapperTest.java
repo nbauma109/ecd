@@ -44,10 +44,10 @@ public class CfrSourceMapperTest {
             "target/test"
         );
 
-        CfrSourceMapper procyonSourceMapper = new CfrSourceMapper();
+        CfrSourceMapper cfrSourceMapper = new CfrSourceMapper();
         File file = new File("target/test/Test.class");
         String expected = toString(getClass().getResource("/Test.txt"));
-        String output = procyonSourceMapper.decompile("Cfr", file);
+        String output = cfrSourceMapper.decompile("Cfr", file);
         assertEquals(expected, output);
     }
 
