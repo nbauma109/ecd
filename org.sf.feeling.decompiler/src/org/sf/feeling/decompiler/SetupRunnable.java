@@ -245,14 +245,14 @@ public class SetupRunnable implements Runnable {
                         try {
                             ReflectionUtils.invokeMethod(mapping, "setDefaultEditor", //$NON-NLS-1$
                                     new Class[] { Class.forName("org.eclipse.ui.IEditorDescriptor") //$NON-NLS-1$
-                                    }, new Object[] { editor });
+                            }, new Object[] { editor });
                         } catch (ClassNotFoundException e) {
                         }
 
                         try {
                             ReflectionUtils.invokeMethod(mapping, "setDefaultEditor", //$NON-NLS-1$
                                     new Class[] { Class.forName("org.eclipse.ui.internal.registry.EditorDescriptor") //$NON-NLS-1$
-                                    }, new Object[] { editor });
+                            }, new Object[] { editor });
                         } catch (ClassNotFoundException e) {
                         }
                     }
@@ -268,8 +268,9 @@ public class SetupRunnable implements Runnable {
         for (int i = 0; i < classMappings.length; i++) {
             IFileEditorMapping mapping = classMappings[i];
             if (mapping.getDefaultEditor() != null
-                    && !mapping.getDefaultEditor().getId().equals(JavaDecompilerPlugin.EDITOR_ID))
+                    && !mapping.getDefaultEditor().getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
                 return true;
+            }
         }
         return false;
     }

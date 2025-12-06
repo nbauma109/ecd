@@ -26,7 +26,7 @@ public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropert
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
      */
@@ -38,7 +38,7 @@ public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropert
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
      */
@@ -80,8 +80,9 @@ public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropert
             e.printStackTrace();
         }
         ImageDescriptor actionIcon = null;
-        if (url != null)
+        if (url != null) {
             actionIcon = ImageDescriptor.createFromURL(url);
+        }
         return actionIcon;
     }
 

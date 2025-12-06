@@ -61,8 +61,9 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             Logger.debug(e);
         }
 
-        if (canceled)
+        if (canceled) {
             return;
+        }
 
         if (gavs.isEmpty()) {
             try {
@@ -72,8 +73,9 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             }
         }
 
-        if (canceled)
+        if (canceled) {
             return;
+        }
 
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
@@ -116,8 +118,9 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
     protected Map<GAV, String> findSourcesUsingArtifactory(Collection<GAV> gavs) throws Exception {
         Map<GAV, String> results = new HashMap<>();
         for (GAV gav : gavs) {
-            if (canceled)
+            if (canceled) {
                 return results;
+            }
             Set<GAV> gavs2 = findArtifactsUsingArtifactory(gav.getGroupId(), gav.getArtifactId(), gav.getVersion(),
                     "sources", null, true); //$NON-NLS-1$
             for (GAV gav2 : gavs2) {
@@ -176,17 +179,18 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
                     String[] gavInArray = matcher.group(1).split("/"); //$NON-NLS-1$
 
                     GAV gav = new GAV();
-                    String group = gavInArray[0];
+                    StringBuilder group = new StringBuilder().append(gavInArray[0]);
                     for (int i = 1; i < gavInArray.length - 3; i++) {
-                        group += "." + gavInArray[i]; //$NON-NLS-1$
+                        group.append(".").append(gavInArray[i]); //$NON-NLS-1$
                     }
-                    gav.setGroupId(group);
+                    gav.setGroupId(group.toString());
 
                     gav.setArtifactId(gavInArray[gavInArray.length - 3]);
                     gav.setVersion(gavInArray[gavInArray.length - 2]);
 
-                    if (getLink)
+                    if (getLink) {
                         gav.setArtifactLink(uri);
+                    }
                     results.add(gav);
                 }
 
