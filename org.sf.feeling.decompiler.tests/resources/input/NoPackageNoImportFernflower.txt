@@ -1,0 +1,6 @@
+
+public class NoPackageNoImportFernflower {
+   public void run() {
+      System.out.println("No package and no import");// 4
+   }// 5
+}

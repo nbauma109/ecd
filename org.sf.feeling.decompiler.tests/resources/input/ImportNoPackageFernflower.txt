@@ -1,0 +1,13 @@
+import java.util.*;
+
+public class ImportNoPackageFernflower {
+   public void run() {
+      Set<String> values = new HashSet();// 6
+      values.add("x");// 7
+      values.add("y");// 8
+
+      for (String value : values) {// 9
+         System.out.println(value);// 10
+      }
+   }// 12
+}

@@ -1,0 +1,11 @@
+package sample.one;
+
+import java.util.Arrays;
+
+public class PackageImportFernflower {
+   public void run() {
+      for (String value : Arrays.asList("a", "b")) {// 8 9
+         System.out.println(value);// 10
+      }
+   }// 12
+}

@@ -1,0 +1,7 @@
+package sample.two;
+
+public class PackageNoImportFernflower {
+   public void run() {
+      System.out.println("Hello");// 6
+   }// 7
+}

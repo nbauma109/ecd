@@ -1,0 +1,13 @@
+/*    */ import java.util.*;
+/*    */
+/*    */ public class ImportNoPackageProcyon
+/*    */ {
+/*    */     public void run() {
+/*  6 */         final Set<String> values = new HashSet<String>();
+/*  7 */         values.add("x");
+/*  8 */         values.add("y");
+/*  9 */         for (final String value : values) {
+/* 10 */             System.out.println(value);
+/*    */         }
+/*    */     }
+/*    */ }

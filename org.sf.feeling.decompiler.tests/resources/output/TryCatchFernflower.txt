@@ -1,0 +1,13 @@
+/*    */ package test;
+/*    */
+/*    */
+/*    */ public class TryCatchFernflower {
+/*    */   public static void main(String[] args) {
+/*    */     try {
+/*  7 */       Thread.sleep(100L);
+/*  8 */     } catch (InterruptedException e) {
+/*  9 */       e.printStackTrace();
+/*    */     }
+/*    */
+/*    */   }
+/*    */ }
