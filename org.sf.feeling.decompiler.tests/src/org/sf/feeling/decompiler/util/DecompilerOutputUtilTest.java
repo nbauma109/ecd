@@ -248,7 +248,7 @@ public class ExampleFour {
         DecompilerOutputUtil util = new DecompilerOutputUtil("""
 package test;
 
-public class ExempleTry {
+public class ExampleTry {
   public static void main(String[] args) {
     try {
       Thread.sleep(100L);// 7
@@ -268,7 +268,7 @@ public class ExempleTry {
 /*    */ package test;
 /*    */
 /*    */
-/*    */ public class ExempleTry {
+/*    */ public class ExampleTry {
 /*    */   public static void main(String[] args) {
 /*    */     try {
 /*  7 */       Thread.sleep(100L);
