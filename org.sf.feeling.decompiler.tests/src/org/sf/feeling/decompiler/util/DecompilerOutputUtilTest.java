@@ -21,12 +21,12 @@ public class DecompilerOutputUtilTest {
     public void testToStringPackageNoImportFernflower() throws IOException, URISyntaxException {
         test("PackageNoImportFernflower");
     }
-    
+
     @Test
     public void testToStringImportNoPackageFernflower() throws IOException, URISyntaxException {
         test("ImportNoPackageFernflower");
     }
-    
+
     @Test
     public void testToStringNoPackageNoImportFernflower() throws IOException, URISyntaxException {
         test("NoPackageNoImportFernflower");
@@ -36,17 +36,17 @@ public class DecompilerOutputUtilTest {
     public void testToStringPackageImportProcyon() throws IOException, URISyntaxException {
         test("PackageImportProcyon");
     }
-    
+
     @Test
     public void testToStringPackageNoImportProcyon() throws IOException, URISyntaxException {
         test("PackageNoImportProcyon");
     }
-    
+
     @Test
     public void testToStringImportNoPackageProcyon() throws IOException, URISyntaxException {
         test("ImportNoPackageProcyon");
     }
-    
+
     @Test
     public void testToStringNoPackageNoImportProcyon() throws IOException, URISyntaxException {
         test("NoPackageNoImportProcyon");
@@ -65,7 +65,7 @@ public class DecompilerOutputUtilTest {
         String output = decompilerOutputUtil.toString();
         assertEquivalent(expected, output);
     }
-    
+
     private String toString(URL resource) throws IOException, URISyntaxException {
         return IOUtils.toString(resource.toURI(), UTF_8);
     }

@@ -21,10 +21,12 @@ public class Logger {
                 throwable.printStackTrace();
             }
         } catch (Exception localException) {
-            if (message != null)
+            if (message != null) {
                 System.err.println(message);
-            if (throwable != null)
+            }
+            if (throwable != null) {
                 throwable.printStackTrace();
+            }
         }
     }
 

@@ -27,7 +27,7 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
      */
@@ -39,7 +39,7 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
      */

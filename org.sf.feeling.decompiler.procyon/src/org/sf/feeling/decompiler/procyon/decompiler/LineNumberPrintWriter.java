@@ -2,7 +2,7 @@
  * Apache License
  * Version 2.0, January 2004
  * https://www.apache.org/licenses/
- * 
+ *
  * Copied from package com.strobel.decompiler;
  */
 
@@ -28,7 +28,7 @@ class LineNumberPrintWriter extends PrintWriter {
     /**
      * Creates an instance. The only valid "print" methods to call are
      * {@link #print(String)} and {@link #println(String)}.
-     * 
+     *
      * @param maxLineNo the highest line number that 'this' will ever encounter
      * @param w         the underlying {@link Writer} to which characters are
      *                  printed.

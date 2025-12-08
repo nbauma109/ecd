@@ -11,6 +11,7 @@ package org.sf.feeling.decompiler.extension;
 import java.lang.reflect.Proxy;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -82,7 +83,7 @@ public class DecompilerAdapterManager {
 
                         if (adapters[k].getAttribute("class") != null //$NON-NLS-1$
                                 && !adapters[k].getAttribute("class") //$NON-NLS-1$
-                                        .equals("")) //$NON-NLS-1$
+                                .equals("")) //$NON-NLS-1$
                         {
                             adapter.setAdapterInstance(adapters[k].createExecutableExtension("class")); //$NON-NLS-1$
 
@@ -93,7 +94,7 @@ public class DecompilerAdapterManager {
                             }
                         } else if (adapters[k].getAttribute("factory") != null //$NON-NLS-1$
                                 && !adapters[k].getAttribute("factory") //$NON-NLS-1$
-                                        .equals("")) //$NON-NLS-1$
+                                .equals("")) //$NON-NLS-1$
                         {
                             adapter.setFactory((IAdapterFactory) adapters[k].createExecutableExtension("factory")); //$NON-NLS-1$
                         }
@@ -114,7 +115,7 @@ public class DecompilerAdapterManager {
 
                         if (adapters[k].getAttribute("priority") != null //$NON-NLS-1$
                                 && !adapters[k].getAttribute("priority") //$NON-NLS-1$
-                                        .equals("")) //$NON-NLS-1$
+                                .equals("")) //$NON-NLS-1$
                         {
                             try {
                                 adapter.setPriority(Integer.parseInt(adapters[k].getAttribute("priority"))); //$NON-NLS-1$
@@ -124,7 +125,7 @@ public class DecompilerAdapterManager {
 
                         if (adapters[k].getAttribute("overwrite") != null //$NON-NLS-1$
                                 && !adapters[k].getAttribute("overwrite") //$NON-NLS-1$
-                                        .equals("")) //$NON-NLS-1$
+                                .equals("")) //$NON-NLS-1$
                         {
                             adapter.setOverwrite(adapters[k].getAttribute("overwrite") //$NON-NLS-1$
                                     .split(";")); //$NON-NLS-1$
@@ -133,19 +134,19 @@ public class DecompilerAdapterManager {
                                 "includeWorkbenchContribute"))); //$NON-NLS-1$
 
                         IConfigurationElement[] enablements = adapters[k].getChildren("enablement"); //$NON-NLS-1$
-                        if (enablements != null && enablements.length > 0)
+                        if (enablements != null && enablements.length > 0) {
                             adapter.setExpression(ExpressionConverter.getDefault().perform(enablements[0]));
+                        }
                         registerAdapter(adaptableType, adapter);
                     } catch (ClassNotFoundException ce) {
                         if (adaptableType == null) {
                             System.out.println(MessageFormat.format("Adaptable Type class '{0}' not found!", //$NON-NLS-1$
-                                    new Object[] { adaptableClassName }));
-                            logger.log(Level.SEVERE, ce.getMessage(), ce);
+                                    adaptableClassName));
                         } else {
                             System.out.println(MessageFormat.format("Adapter Type class '{0}' not found!", //$NON-NLS-1$
-                                    new Object[] { adapterClassName }));
-                            logger.log(Level.SEVERE, ce.getMessage(), ce);
+                                    adapterClassName));
                         }
+                        logger.log(Level.SEVERE, ce.getMessage(), ce);
                     } catch (Exception e) {
                         System.out.println("Register adapter error!"); //$NON-NLS-1$
                         logger.log(Level.SEVERE, e.getMessage(), e);
@@ -176,9 +177,9 @@ public class DecompilerAdapterManager {
                 // other way. See bug 200068.
                 Class[] adapterList = adapterFactory.getAdapterList();
                 if (adapterList != null && adapterList.length > 0) {
-                    for (int i = 0; i < adapterList.length; i++) {
-                        if (className.equals(adapterList[i].getName())) {
-                            clazz = adapterList[i];
+                    for (Class element : adapterList) {
+                        if (className.equals(element.getName())) {
+                            clazz = element;
                             break;
                         }
                     }
@@ -215,24 +216,26 @@ public class DecompilerAdapterManager {
 
         return (adapterObjects != null && adapterObjects.size() > 0)
                 ? adapterObjects.toArray(new Object[adapterObjects.size()])
-                : null;
+                        : null;
     }
 
     public static Object getAdapter(Object adaptableObject, Class adapterType) {
         List adapterObjects = getAdapterList(adaptableObject, adapterType);
-        if (adapterObjects == null || adapterObjects.size() == 0)
+        if (adapterObjects == null || adapterObjects.size() == 0) {
             return null;
-        else if (adapterObjects.size() == 1)
+        }
+        if (adapterObjects.size() == 1) {
             return adapterObjects.get(0);
-        else
-            return Proxy.newProxyInstance(adapterType.getClassLoader(), new Class[] { adapterType },
-                    new DecompilerAdapterInvocationHandler(adapterObjects));
+        }
+        return Proxy.newProxyInstance(adapterType.getClassLoader(), new Class[] { adapterType },
+                new DecompilerAdapterInvocationHandler(adapterObjects));
     }
 
     private static List getAdapterList(Object adaptableObject, Class adapterType) {
         Set adapters = getAdapters(adaptableObject);
-        if (adapters == null)
+        if (adapters == null) {
             return null;
+        }
 
         List adapterObjects = new ArrayList();
         l: for (Iterator iter = adapters.iterator(); iter.hasNext();) {
@@ -241,8 +244,9 @@ public class DecompilerAdapterManager {
                 EvaluationContext context = new EvaluationContext(null, adaptableObject);
                 context.setAllowPluginActivation(true);
                 try {
-                    if (adapter.getExpression().evaluate(context) != EvaluationResult.TRUE)
+                    if (adapter.getExpression().evaluate(context) != EvaluationResult.TRUE) {
                         continue l;
+                    }
                 } catch (CoreException e) {
                 }
             }
@@ -271,8 +275,9 @@ public class DecompilerAdapterManager {
                 }
             }
         }
-        if (adapters != null)
+        if (adapters != null) {
             adapters.reset();
+        }
         return adapters;
     }
 
@@ -285,20 +290,15 @@ class ElementAdapterSet extends TreeSet {
 
     private static final long serialVersionUID = -3451274084543012212L;
 
-    private static Comparator comparator = new Comparator() {
-
-        @Override
-        public int compare(Object o1, Object o2) {
-            if (o1 instanceof DecompilerAdapter && o2 instanceof DecompilerAdapter) {
-                DecompilerAdapter adapter1 = (DecompilerAdapter) o1;
-                DecompilerAdapter adapter2 = (DecompilerAdapter) o2;
-                if (adapter1.equals(adapter2))
-                    return 0;
-                int value = adapter1.getPriority() - adapter2.getPriority();
-                return value == 0 ? 1 : value;
+    private static Comparator comparator = (o1, o2) -> {
+        if (o1 instanceof DecompilerAdapter adapter1 && o2 instanceof DecompilerAdapter adapter2) {
+            if (adapter1.equals(adapter2)) {
+                return 0;
             }
-            return 0;
+            int value = adapter1.getPriority() - adapter2.getPriority();
+            return value == 0 ? 1 : value;
         }
+        return 0;
     };
 
     private transient List overwriteList;
@@ -314,17 +314,14 @@ class ElementAdapterSet extends TreeSet {
 
     @Override
     public boolean add(Object o) {
-        if (o instanceof DecompilerAdapter) {
+        if (o instanceof DecompilerAdapter adapter) {
             // cached overwritten adapters
-            DecompilerAdapter adapter = (DecompilerAdapter) o;
             String[] overwriteIds = adapter.getOverwrite();
             if (overwriteIds != null && overwriteIds.length > 0) {
                 if (this.overwriteList == null) {
                     this.overwriteList = new ArrayList();
                 }
-                for (int i = 0; i < overwriteIds.length; i++) {
-                    this.overwriteList.add(overwriteIds[i]);
-                }
+                this.overwriteList.addAll(Arrays.asList(overwriteIds));
             }
             return super.add(o);
         }

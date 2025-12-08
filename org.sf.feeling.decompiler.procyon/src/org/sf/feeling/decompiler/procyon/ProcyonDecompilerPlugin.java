@@ -28,7 +28,7 @@ public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IProper
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#start(org.osgi.framework.BundleContext )
      */
@@ -40,7 +40,7 @@ public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IProper
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
      */

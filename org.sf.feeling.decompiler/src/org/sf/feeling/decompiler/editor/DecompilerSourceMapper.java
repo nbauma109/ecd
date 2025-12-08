@@ -56,9 +56,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
             declType = parent;
             parent = (BinaryType) declType.getDeclaringType();
         }
-        IBinaryType info = null;
-
-        info = (IBinaryType) declType.getElementInfo(null);
+        IBinaryType info = (IBinaryType) declType.getElementInfo(null);
 
         if (info == null) {
             return null;
@@ -133,12 +131,14 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
         IResource resource;
 
         try {
-            if ((resource = root.getUnderlyingResource()) != null)
+            resource = root.getUnderlyingResource();
+            if (resource != null) {
                 // jar in workspace
                 archivePath = resource.getLocation().toOSString();
-            else
+            } else {
                 // external jar
                 archivePath = root.getPath().toOSString();
+            }
         } catch (JavaModelException e) {
             throw new RuntimeException("Unexpected Java model exception: " //$NON-NLS-1$
                     + e.toString());
@@ -151,7 +151,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
      * <code>elt</elt>'s children (including <code>elt</code> itself) which has a
      * source range that encloses <code>position</code> according to
      * <code>mapper</code>.
-     * 
+     *
      * Code mostly taken from 'org.eclipse.jdt.internal.core.ClassFile'
      */
     protected IJavaElement findElement(IJavaElement elt, int position) {

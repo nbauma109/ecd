@@ -45,8 +45,8 @@ public class DecompileUtil {
             }
             if (src == null) {
                 return origSrc;
-            } else
-                return new String(src);
+            }
+            return new String(src);
         }
 
         return origSrc;
@@ -111,7 +111,7 @@ public class DecompileUtil {
         }
 
         if (flag) {
-            StringBuffer buffer = new StringBuffer();
+            StringBuilder buffer = new StringBuilder();
             for (int i = 0; i < splits.size(); i++) {
                 String split = splits.get(i);
                 buffer.append(split);
