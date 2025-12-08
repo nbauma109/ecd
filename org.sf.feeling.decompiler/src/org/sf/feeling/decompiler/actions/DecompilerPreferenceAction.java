@@ -33,7 +33,7 @@ public class DecompilerPreferenceAction extends Action {
         } else {
             PreferencesUtil.createPreferenceDialogOn(Display.getDefault().getActiveShell(), showId, // $NON-NLS-1$
                     new String[] { showId // $NON-NLS-1$
-                    }, null).open();
+            }, null).open();
         }
     }
 

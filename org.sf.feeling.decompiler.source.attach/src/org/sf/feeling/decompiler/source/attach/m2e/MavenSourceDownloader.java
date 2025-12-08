@@ -32,7 +32,7 @@ import org.sf.feeling.decompiler.util.Logger;
 public class MavenSourceDownloader {
 
     private IPackageFragmentRoot root = null;
-    private static Set<String> libraries = new ConcurrentSkipListSet<String>();
+    private static Set<String> libraries = new ConcurrentSkipListSet<>();
 
     public void downloadSource(IEditorPart part) {
         root = null;
@@ -44,13 +44,13 @@ public class MavenSourceDownloader {
                 element = element.getParent();
                 if ((element instanceof IPackageFragmentRoot)) {
                     root = (IPackageFragmentRoot) element;
-                    if (root.getPath() == null || root.getPath().toOSString() == null)
+                    if (root.getPath() == null || root.getPath().toOSString() == null) {
                         continue;
+                    }
                     if (libraries.contains(root.getPath().toOSString())) {
                         continue;
-                    } else {
-                        libraries.add(root.getPath().toOSString());
                     }
+                    libraries.add(root.getPath().toOSString());
                     if (!SourceAttachUtil.isMavenLibrary(root)) {
                         continue;
                     }

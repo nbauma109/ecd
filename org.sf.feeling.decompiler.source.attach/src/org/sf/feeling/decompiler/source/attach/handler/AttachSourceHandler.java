@@ -32,17 +32,7 @@ public class AttachSourceHandler implements IAttachSourceHandler {
         final List<IPackageFragmentRoot> selections = new ArrayList<>();
         selections.add(library);
         if (!selections.isEmpty()) {
-            if (showUI) {
-                final Job job = new Job(Messages.getString("AttachSourceHandler.Job.Name")) { //$NON-NLS-1$
-
-                    @Override
-                    protected IStatus run(final IProgressMonitor monitor) {
-                        return JavaSourceAttacherHandler.updateSourceAttachments(selections, monitor);
-                    }
-                };
-                job.setPriority(30);
-                job.schedule();
-            } else {
+            if (!showUI) {
                 Thread thread = new Thread() {
 
                     @Override
@@ -54,6 +44,15 @@ public class AttachSourceHandler implements IAttachSourceHandler {
                 thread.start();
                 return thread;
             }
+            final Job job = new Job(Messages.getString("AttachSourceHandler.Job.Name")) { //$NON-NLS-1$
+
+                @Override
+                protected IStatus run(final IProgressMonitor monitor) {
+                    return JavaSourceAttacherHandler.updateSourceAttachments(selections, monitor);
+                }
+            };
+            job.setPriority(30);
+            job.schedule();
         }
         return null;
 
@@ -66,9 +65,8 @@ public class AttachSourceHandler implements IAttachSourceHandler {
 
             if (download) {
                 return SourceAttachUtil.refreshSourceAttachStatus(root);
-            } else {
-                return true;
             }
+            return true;
         } catch (Exception e) {
             Logger.debug(e);
         }
