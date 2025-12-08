@@ -150,7 +150,7 @@ public class ProcyonDecompiler implements IDecompiler {
         long start = System.nanoTime();
         File workingDir = new File(
                 JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR) + "/" //$NON-NLS-1$
-                        + System.currentTimeMillis());
+                + System.currentTimeMillis());
 
         try {
             workingDir.mkdirs();

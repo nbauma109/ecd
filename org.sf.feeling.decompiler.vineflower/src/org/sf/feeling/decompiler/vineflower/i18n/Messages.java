@@ -19,8 +19,7 @@ public class Messages {
 
         try {
             String result = RESOURCE_BUNDLE.getString(key);
-            result = new String(result.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-            return result;
+            return new String(result.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
         } catch (MissingResourceException e) {
             return '!' + key + '!';
         }
@@ -28,7 +27,7 @@ public class Messages {
 
     /**
      * Gets formatted translation for current local
-     * 
+     *
      * @param key the key
      * @return translated value string
      */
