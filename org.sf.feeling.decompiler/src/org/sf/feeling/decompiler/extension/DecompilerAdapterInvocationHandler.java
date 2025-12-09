@@ -50,7 +50,8 @@ public class DecompilerAdapterInvocationHandler implements InvocationHandler {
                         allResult.addAll((Collection) result);
                     }
                     return allResult;
-                } else if (returnType == Boolean.class) {
+                }
+                if (returnType == Boolean.class) {
                     boolean returnValue = false;
                     for (Iterator iter = adapters.iterator(); iter.hasNext();) {
                         Boolean result = (Boolean) method.invoke(iter.next(), args);

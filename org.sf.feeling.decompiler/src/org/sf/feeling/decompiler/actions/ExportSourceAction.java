@@ -373,14 +373,13 @@ public class ExportSourceAction extends Action {
         String projectFile = file.trim();
         try {
             String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
-            if (result != null) {
-                FileUtil.writeToFile(new File(projectFile), result);
-            } else {
+            if (result == null) {
                 IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                         Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
                                 new String[] { className }));
                 throw new CoreException(status);
             }
+            FileUtil.writeToFile(new File(projectFile), result);
         } catch (CoreException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
                     Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$

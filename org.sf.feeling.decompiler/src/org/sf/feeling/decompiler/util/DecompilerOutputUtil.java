@@ -612,12 +612,7 @@ public class DecompilerOutputUtil {
 
                     int innerOffsetInputLine = inputLineNo - innerOffset;
                     inputLine = inputLines.get(innerOffsetInputLine);
-                    if (inputLine.outputLineNum == -1) {
-                        // Found an input line without a source line number
-                        // - add it to javaSrcLineNext
-                        javaSrcLineNext.inputLines.add(0, innerOffsetInputLine);
-                        inputLine.calculatedNumLineJavaSrc = offsetOutputLineNext;
-                    } else {
+                    if (inputLine.outputLineNum != -1) {
                         // Got an InputLine with a corresponding Java source
                         // line
                         // we must already have handled this line and the
@@ -625,6 +620,10 @@ public class DecompilerOutputUtil {
                         // it. Time to bail out!
                         break;
                     }
+                    // Found an input line without a source line number
+                    // - add it to javaSrcLineNext
+                    javaSrcLineNext.inputLines.add(0, innerOffsetInputLine);
+                    inputLine.calculatedNumLineJavaSrc = offsetOutputLineNext;
                 }
                 // Run out of lines to process - bail out
                 break;
@@ -671,12 +670,7 @@ public class DecompilerOutputUtil {
 
                     int innerOffsetInputLine = inputLineNo + innerOffset;
                     outputLine = inputLines.get(innerOffsetInputLine);
-                    if (outputLine.outputLineNum == -1) {
-                        // Found an input line without a source line number
-                        // - add it to javaSrcLineNext
-                        javaSrcLinePrev.inputLines.add(innerOffsetInputLine);
-                        outputLine.calculatedNumLineJavaSrc = offsetOutputLinePrev;
-                    } else {
+                    if (outputLine.outputLineNum != -1) {
                         // Got an InputLine with a corresponding Java source
                         // line
                         // we must already have handled this line and the
@@ -684,6 +678,10 @@ public class DecompilerOutputUtil {
                         // it. Time to bail out!
                         break;
                     }
+                    // Found an input line without a source line number
+                    // - add it to javaSrcLineNext
+                    javaSrcLinePrev.inputLines.add(innerOffsetInputLine);
+                    outputLine.calculatedNumLineJavaSrc = offsetOutputLinePrev;
                 }
                 // Run out of lines to process - bail out
                 break;
