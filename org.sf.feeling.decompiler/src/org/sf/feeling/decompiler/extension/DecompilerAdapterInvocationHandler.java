@@ -60,7 +60,8 @@ public class DecompilerAdapterInvocationHandler implements InvocationHandler {
                         }
                     }
                     return Boolean.valueOf(returnValue);
-                } else if (returnType == Void.TYPE) {
+                }
+                if (returnType == Void.TYPE) {
                     for (Iterator iter = adapters.iterator(); iter.hasNext();) {
                         method.invoke(iter.next(), args);
                     }
