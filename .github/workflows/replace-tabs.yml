@@ -34,7 +34,7 @@ jobs:
           unix2dos **/*.java
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: replace-leading-tabs
           commit-message: "Normalize leading tabs: XML=2 spaces, JAVA=4 spaces"
