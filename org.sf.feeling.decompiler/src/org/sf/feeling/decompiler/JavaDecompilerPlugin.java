@@ -176,10 +176,8 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
         if (decompilerAdapters != null) {
             for (Object adapter : decompilerAdapters) {
-                if (adapter instanceof IDecompilerDescriptor descriptor) {
-                    if (descriptor.isEnabled()) {
-                        decompilerDescriptorMap.put(descriptor.getDecompilerType(), descriptor);
-                    }
+                if ((adapter instanceof IDecompilerDescriptor descriptor) && descriptor.isEnabled()) {
+                    decompilerDescriptorMap.put(descriptor.getDecompilerType(), descriptor);
                 }
             }
         }
