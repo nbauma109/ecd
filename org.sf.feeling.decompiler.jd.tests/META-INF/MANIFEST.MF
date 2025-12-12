@@ -33,7 +33,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.sf.feeling.decompiler.jd,
  org.sf.feeling.decompiler.tests
 Bundle-Vendor: ECD Project Team
-Bundle-Version: 2025.9.9
+Bundle-Version: 2025.12.0
 Bundle-ManifestVersion: 2
 Bundle-Activator: org.sf.feeling.decompiler.JavaDecompilerPlugin
 Bundle-SymbolicName: org.sf.feeling.decompiler.jd.tests;singleton:=true
