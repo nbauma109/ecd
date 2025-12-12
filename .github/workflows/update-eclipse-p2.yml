@@ -34,11 +34,11 @@ jobs:
         if: steps.updater.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          commit-message: "chore: update Eclipse SimRel to ${{ steps.updater.outputs.latest }} (p2 URL + repo id + version ${{ steps.updater.outputs.new_version }})"
+          commit-message: "update Eclipse SimRel to ${{ steps.updater.outputs.latest }} (p2 URL + repo id + version ${{ steps.updater.outputs.new_version }})"
           title: "Update Eclipse SimRel to ${{ steps.updater.outputs.latest }}"
           body: |
             - **p2 URL/id:** `${{ steps.updater.outputs.new_url }}` / `eclipse-${{ steps.updater.outputs.latest }}`
             - **version:** `${{ steps.updater.outputs.new_version }}`
           branch: ${{ steps.updater.outputs.branch }}
           delete-branch: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
