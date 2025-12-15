@@ -24,7 +24,7 @@ jobs:
         uses: nbauma109/refactoring-cleanup-action@6cb57ea52b5c8547196dadea75004c430b2a3ee0
         with:
           project_root: .
-          source_level: "17"
+          source_level: "21"
 
           ######################################################################
           # Code Organizing
@@ -164,8 +164,8 @@ jobs:
 
           # Annotations
           cleanup_add_missing_annotations: true
-          cleanup_add_missing_override_annotations: false
-          cleanup_add_missing_override_annotations_interface_methods: false
+          cleanup_add_missing_override_annotations: true
+          cleanup_add_missing_override_annotations_interface_methods: true
           cleanup_add_missing_deprecated_annotations: true
 
           # Potential programming problems
