@@ -63,7 +63,7 @@ public class JarClassExtractor {
     }
 
     private static List<ZipEntry> findRelevant(ZipFile archive, String packege, String className, boolean inner) {
-        String entryName = (packege.length() == 0) ? className
+        String entryName = (packege.isEmpty()) ? className
                 : packege + "/" //$NON-NLS-1$
                 + className;
         String innerPrefix = entryName.substring(0, entryName.length() - 6) + "$"; //$NON-NLS-1$

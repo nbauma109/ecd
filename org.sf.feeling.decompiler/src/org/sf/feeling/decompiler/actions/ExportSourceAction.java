@@ -87,7 +87,7 @@ public class ExportSourceAction extends Action {
             dialog.setFilterExtensions(new String[] { "*.zip" //$NON-NLS-1$
             });
             String file = dialog.open();
-            if ((file == null) || (file.trim().length() <= 0)) {
+            if ((file == null) || (file.trim().isEmpty())) {
                 return;
             }
             final String projectFile = file.trim();
@@ -118,7 +118,7 @@ public class ExportSourceAction extends Action {
             dialog.setFilterExtensions(new String[] { "*.zip" //$NON-NLS-1$
             });
             String file = dialog.open();
-            if ((file == null) || (file.trim().length() <= 0)) {
+            if ((file == null) || (file.trim().isEmpty())) {
                 return;
             }
             final String projectFile = file.trim();
@@ -234,7 +234,7 @@ public class ExportSourceAction extends Action {
             }
             IPackageFragment pkg = pkgs[i];
             List clazzs = (List) classes.get(pkg);
-            if (clazzs.size() == 0) {
+            if (clazzs.isEmpty()) {
                 monitor.worked(step);
                 continue;
             }
@@ -247,7 +247,7 @@ public class ExportSourceAction extends Action {
                 IJavaElement clazz = (IJavaElement) clazzs.get(j);
                 if (clazz instanceof IClassFile && clazz.getParent() instanceof IPackageFragment) {
                     String className = pkg.getElementName();
-                    if (pkg.getElementName().length() > 0) {
+                    if (!pkg.getElementName().isEmpty()) {
                         className += ("." + clazz.getElementName()); //$NON-NLS-1$
                     }
                     monitor.subTask(className);
@@ -264,7 +264,7 @@ public class ExportSourceAction extends Action {
                             throw new CoreException(status);
                         }
                         String packageName = pkg.getElementName().replace('.', '/');
-                        if (packageName.length() > 0) {
+                        if (!packageName.isEmpty()) {
                             packageName += "/"; //$NON-NLS-1$
                         }
                         FileUtil.writeToFile(
@@ -361,12 +361,12 @@ public class ExportSourceAction extends Action {
         dialog.setFilterExtensions(new String[] { "*.java" //$NON-NLS-1$
         });
         String file = dialog.open();
-        if ((file == null) || (file.trim().length() <= 0)) {
+        if ((file == null) || (file.trim().isEmpty())) {
             return;
         }
         IPackageFragment pkg = (IPackageFragment) cf.getParent();
         String className = pkg.getElementName();
-        if (pkg.getElementName().length() > 0) {
+        if (!pkg.getElementName().isEmpty()) {
             className += ("." + cf.getElementName()); //$NON-NLS-1$
         }
 

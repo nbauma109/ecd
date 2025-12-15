@@ -82,7 +82,7 @@ public class DecompilerOutputUtil {
 
     public String realign() {
         // Handle special cases
-        if (input.length() == 0) {
+        if (input.isEmpty()) {
             return input;
         }
         if (input == null) {
@@ -228,7 +228,7 @@ public class DecompilerOutputUtil {
         for (int i = 1; i < javaSrcLines.size(); i++) {
             JavaSrcLine javaSrcLine = initJavaSrcListItem(i);
 
-            if (javaSrcLine.inputLines.size() > 0) {
+            if (!javaSrcLine.inputLines.isEmpty()) {
                 outputLineNumber = getOutputLineNumber(javaSrcLine);
 
                 if (outputLineNumber != -1) {
@@ -592,7 +592,7 @@ public class DecompilerOutputUtil {
                 javaSrcLine = initJavaSrcListItem(offsetOutputLine);
             }
 
-            if (offsetOutputLine == 1 || javaSrcLine.inputLines.size() > 0) {
+            if (offsetOutputLine == 1 || !javaSrcLine.inputLines.isEmpty()) {
                 // We have reached the start of the file OR the current
                 // javaSrcLine has some output lines
 
@@ -652,7 +652,7 @@ public class DecompilerOutputUtil {
             int offsetOutputLine = outputLineNo + offset;
             JavaSrcLine javaSrcLine = initJavaSrcListItem(offsetOutputLine);
 
-            if (javaSrcLine.inputLines.size() > 0) {
+            if (!javaSrcLine.inputLines.isEmpty()) {
                 // The current javaSrcLine has some output lines
                 int offsetOutputLinePrev = offsetOutputLine - 1;
 

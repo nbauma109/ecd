@@ -214,14 +214,14 @@ public class DecompilerAdapterManager {
     public static Object[] getAdapters(Object adaptableObject, Class adapterType) {
         List adapterObjects = getAdapterList(adaptableObject, adapterType);
 
-        return (adapterObjects != null && adapterObjects.size() > 0)
+        return (adapterObjects != null && !adapterObjects.isEmpty())
                 ? adapterObjects.toArray(new Object[adapterObjects.size()])
                         : null;
     }
 
     public static Object getAdapter(Object adaptableObject, Class adapterType) {
         List adapterObjects = getAdapterList(adaptableObject, adapterType);
-        if (adapterObjects == null || adapterObjects.size() == 0) {
+        if (adapterObjects == null || adapterObjects.isEmpty()) {
             return null;
         }
         if (adapterObjects.size() == 1) {

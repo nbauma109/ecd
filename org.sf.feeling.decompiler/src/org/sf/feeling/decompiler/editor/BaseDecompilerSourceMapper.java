@@ -183,11 +183,11 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
 
         IDecompiler usedDecompiler = decompile(null, type, exceptions, root, className);
 
-        if (usedDecompiler == null || usedDecompiler.getSource() == null || usedDecompiler.getSource().length() == 0) {
+        if (usedDecompiler == null || usedDecompiler.getSource() == null || usedDecompiler.getSource().isEmpty()) {
             if (usedDecompiler == null || !DecompilerType.FernFlower.equals(usedDecompiler.getDecompilerType())) {
                 usedDecompiler = decompile(new FernFlowerDecompiler(), type, exceptions, root, className);
                 if (usedDecompiler == null || usedDecompiler.getSource() == null
-                        || usedDecompiler.getSource().length() == 0) {
+                        || usedDecompiler.getSource().isEmpty()) {
                     return null;
                 }
             }
@@ -344,7 +344,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
             JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
         }
 
-        if (currentDecompiler.getSource() == null || currentDecompiler.getSource().length() == 0) {
+        if (currentDecompiler.getSource() == null || currentDecompiler.getSource().isEmpty()) {
             return null;
         }
 

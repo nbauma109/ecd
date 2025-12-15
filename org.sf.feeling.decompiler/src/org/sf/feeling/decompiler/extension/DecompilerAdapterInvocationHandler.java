@@ -30,7 +30,7 @@ public class DecompilerAdapterInvocationHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         try {
-            if (adapters != null && adapters.size() > 0) {
+            if (adapters != null && !adapters.isEmpty()) {
                 Class returnType = method.getReturnType();
                 if (returnType.isArray()) {
                     List allResult = new ArrayList();

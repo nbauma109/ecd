@@ -47,7 +47,7 @@ public class ExportEditorSourceAction extends Action {
             dialog.setFilterExtensions(new String[] { "*.java" //$NON-NLS-1$
             });
             String file = dialog.open();
-            if ((file == null) || (file.trim().length() <= 0)) {
+            if ((file == null) || (file.trim().isEmpty())) {
                 return;
             }
             String projectFile = file.trim();

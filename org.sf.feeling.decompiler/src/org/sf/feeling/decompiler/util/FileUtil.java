@@ -47,7 +47,7 @@ public class FileUtil {
                 encoding = JavaDecompilerPlugin.getDefault().getExportEncoding();
             } catch (Exception e) {
             }
-            if (encoding == null || encoding.trim().length() == 0) {
+            if (encoding == null || encoding.trim().isEmpty()) {
                 encoding = StandardCharsets.UTF_8.name();
             }
             try (PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), encoding))) {
@@ -189,7 +189,7 @@ public class FileUtil {
             File[] files = file.listFiles(filter);
             if (files != null) {
                 for (File file2 : files) {
-                    recursiveZip(monitor, zos, file2, (path.length() > 0 ? (path + "/") : path) //$NON-NLS-1$
+                    recursiveZip(monitor, zos, file2, (!path.isEmpty() ? (path + "/") : path) //$NON-NLS-1$
                             + file2.getName(), filter, step);
                 }
             }
