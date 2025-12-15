@@ -30,6 +30,7 @@ public class SourceCodeAction extends Action implements IUpdate {
             editor.notifyPropertiesChange();
             Display.getDefault().asyncExec(new Runnable() {
 
+                @Override
                 public void run() {
                     editor.setFocus();
                 }

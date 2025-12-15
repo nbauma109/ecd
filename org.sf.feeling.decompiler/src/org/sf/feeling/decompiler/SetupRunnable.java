@@ -43,6 +43,7 @@ public class SetupRunnable implements Runnable {
                     || PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage() == null) {
                 Display.getDefault().timerExec(1000, new Runnable() {
 
+                    @Override
                     public void run() {
                         SetupRunnable.this.run();
                     }
