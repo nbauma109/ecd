@@ -34,9 +34,9 @@ import org.sf.feeling.decompiler.i18n.Messages;
 
 public class DecompileActionGroup extends ActionGroup {
 
-    public static final String MENU_MAIN = "org.sf.feeling.decompiler.main"; //$NON-NLS-1$
+    private static final String MENU_MAIN = "org.sf.feeling.decompiler.main"; //$NON-NLS-1$
 
-    public static final String MENU_SOURCE = "org.sf.feeling.decompiler.source"; //$NON-NLS-1$
+    private static final String MENU_SOURCE = "org.sf.feeling.decompiler.source"; //$NON-NLS-1$
 
     private static final String PERF_DECOMPILE_ACTION_GROUP = "org.sf.feeling.decompiler/perf/DecompileActionGroup"; //$NON-NLS-1$
 

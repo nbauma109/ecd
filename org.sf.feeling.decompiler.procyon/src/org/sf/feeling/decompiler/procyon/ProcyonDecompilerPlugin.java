@@ -16,8 +16,6 @@ import com.strobel.Procyon;
 
 public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
-    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.procyon"; //$NON-NLS-1$
-
     public static final String decompilerType = "Procyon"; //$NON-NLS-1$
 
     public static final String decompilerVersion = Procyon.version();
@@ -64,7 +62,7 @@ public class ProcyonDecompilerPlugin extends AbstractUIPlugin implements IProper
         return preferenceStore;
     }
 
-    public static ProcyonDecompilerPlugin getDefault() {
+    private static ProcyonDecompilerPlugin getDefault() {
         return plugin;
     }
 

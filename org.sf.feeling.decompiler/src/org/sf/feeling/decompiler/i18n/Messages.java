@@ -17,7 +17,7 @@ public class Messages {
 
     private static final String BUNDLE_NAME = "org.sf.feeling.decompiler.i18n.messages"; //$NON-NLS-1$
 
-    public static final ResourceBundle RESOURCE_BUNDLE = ResourceBundle.getBundle(BUNDLE_NAME);
+    private static final ResourceBundle RESOURCE_BUNDLE = ResourceBundle.getBundle(BUNDLE_NAME);
 
     private Messages() {
     }

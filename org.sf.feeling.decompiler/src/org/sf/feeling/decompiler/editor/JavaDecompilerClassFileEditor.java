@@ -74,8 +74,6 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
-    public static final String ID = "org.sf.feeling.decompiler.ClassFileEditor"; //$NON-NLS-1$
-
     private IBuffer classBuffer;
     private boolean sourceShown = false;
     private boolean selectionChange = false;
@@ -214,7 +212,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         });
     }
 
-    public static boolean debugOptionChange(String source) {
+    private static boolean debugOptionChange(String source) {
         return isDebug(source) != ClassUtil.isDebug();
     }
 

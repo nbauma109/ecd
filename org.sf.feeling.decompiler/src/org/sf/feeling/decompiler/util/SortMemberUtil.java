@@ -113,7 +113,7 @@ public final class SortMemberUtil {
         }
     }
 
-    public static IPackageFragmentRoot getDecompilerSourceFolder() {
+    private static IPackageFragmentRoot getDecompilerSourceFolder() {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject project = root.getProject(".decompiler"); //$NON-NLS-1$
         if (project == null) {

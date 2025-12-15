@@ -43,7 +43,7 @@ public class SourceAttachUtil {
     private static final String JAR_REGEX = "(?i)(\\-)*(\\d)*(\\.)jar";
     private static final String ZIP_REGEX = "(?i)(\\-)*(\\d)*(\\.)zip";
 
-    public static File getBinFile(IPackageFragmentRoot root) {
+    private static File getBinFile(IPackageFragmentRoot root) {
         File binFile;
         if (!root.isExternal()) {
             binFile = root.getResource().getLocation().toFile();
@@ -143,7 +143,7 @@ public class SourceAttachUtil {
         return false;
     }
 
-    public static List<String> getEclipsePlugins(final File file) throws IOException {
+    private static List<String> getEclipsePlugins(final File file) throws IOException {
         final Set<String> plugins = new HashSet<>();
         try (ZipFile zf = new ZipFile(file)) {
             for (Enumeration<? extends ZipEntry> entries = zf.entries(); entries.hasMoreElements();) {

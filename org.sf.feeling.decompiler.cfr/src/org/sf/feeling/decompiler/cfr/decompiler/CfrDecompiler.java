@@ -84,15 +84,7 @@ public class CfrDecompiler implements IDecompiler {
         }
     }
 
-    public static String decompile(File workingDir, String className) {
-        return decompile(workingDir, className, false);
-    }
-
-    public static String decompile(File workingDir, String className, boolean hideUnicode) {
-        return decompile(workingDir, className, hideUnicode, true);
-    }
-
-    public static Pair<String, NavigableMap<Integer, Integer>> decompileWithMappings(File workingDir, String className,
+    private static Pair<String, NavigableMap<Integer, Integer>> decompileWithMappings(File workingDir, String className,
             boolean hideUnicode, boolean printLineNumber) {
 
         String classPathStr = new File(workingDir, className).getAbsolutePath();
@@ -125,7 +117,7 @@ public class CfrDecompiler implements IDecompiler {
         return Pair.make(resultCode, lineMapping);
     }
 
-    public static String decompile(File workingDir, String className, boolean hideUnicode, boolean printLineNumber) {
+    private static String decompile(File workingDir, String className, boolean hideUnicode, boolean printLineNumber) {
         return decompileWithMappings(workingDir, className, hideUnicode, printLineNumber).getFirst();
     }
 
@@ -167,7 +159,7 @@ public class CfrDecompiler implements IDecompiler {
         return sb.toString();
     }
 
-    public static Integer getFirstTypeLineNumber(String source) {
+    static Integer getFirstTypeLineNumber(String source) {
         // Parse source code into AST
         CompilationUnit unit = ASTParserUtil.parse(source);
         SimpleEntry<String, Integer> lineNumber = new SimpleEntry<>("lineNumber", 0);

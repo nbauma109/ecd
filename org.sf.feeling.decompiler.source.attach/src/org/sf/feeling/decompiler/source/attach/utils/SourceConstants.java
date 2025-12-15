@@ -15,9 +15,9 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class SourceConstants {
 
-    public static final String USER_HOME = System.getProperty("user.home"); //$NON-NLS-1$
+    private static final String USER_HOME = System.getProperty("user.home"); //$NON-NLS-1$
 
-    public static final String TEMP_SOURCE_PREFIX = "source"; //$NON-NLS-1$
+    static final String TEMP_SOURCE_PREFIX = "source"; //$NON-NLS-1$
 
     public static final File USER_M2_REPO_DIR = Paths.get(USER_HOME,
             ".m2", "repository").toFile(); //$NON-NLS-1$ //$NON-NLS-2$
@@ -34,8 +34,4 @@ public class SourceConstants {
     }
 
     public static final String SourceAttachPath = SourceAttacherDir.getAbsolutePath();
-
-    public static final String getSourceTempPath() {
-        return getSourceTempDir().getAbsolutePath();
-    }
 }

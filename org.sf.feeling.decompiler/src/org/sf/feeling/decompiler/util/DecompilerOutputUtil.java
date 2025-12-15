@@ -51,7 +51,7 @@ public class DecompilerOutputUtil {
      */
     private final List<JavaSrcLine> javaSrcLines = new ArrayList<>();
 
-    public static final String line_separator = System.getProperty("line.separator", //$NON-NLS-1$
+    private static final String line_separator = System.getProperty("line.separator", //$NON-NLS-1$
             "\r\n"); //$NON-NLS-1$
 
     private static class InputLine {
@@ -146,10 +146,6 @@ public class DecompilerOutputUtil {
 
         // Create aligned source
         return toString();
-    }
-
-    public static boolean isEmpty(String str) {
-        return str == null || str.length() == 0;
     }
 
     @Override
@@ -372,7 +368,7 @@ public class DecompilerOutputUtil {
         }
     }
 
-    public static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
+    private static int parseJavaLineNumber(String line, CompilationUnit unit, String fullSource, int absLineStart) {
         String trimmed = line.trim();
 
         if (trimmed.matches("}//[0-9 ]+")) {

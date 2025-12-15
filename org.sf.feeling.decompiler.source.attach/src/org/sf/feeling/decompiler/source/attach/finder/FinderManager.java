@@ -79,7 +79,7 @@ public class FinderManager {
 
     private static class Worker extends Thread {
 
-        public static final String NO_MORE_WORK = "NO_MORE_WORK"; //$NON-NLS-1$
+        private static final String NO_MORE_WORK = "NO_MORE_WORK"; //$NON-NLS-1$
         private FinderManager.WorkQueue q;
         private List<SourceFileResult> results;
         private boolean canceled;

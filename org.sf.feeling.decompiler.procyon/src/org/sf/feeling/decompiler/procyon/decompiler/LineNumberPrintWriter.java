@@ -19,7 +19,7 @@ import java.util.Arrays;
  * other methods must be avoided.
  */
 class LineNumberPrintWriter extends PrintWriter {
-    public static final int NO_LINE_NUMBER = -1;
+    static final int NO_LINE_NUMBER = -1;
     private final String _emptyPrefix;
     private final String _format;
     private boolean _needsPrefix;

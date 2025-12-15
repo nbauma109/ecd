@@ -2,7 +2,6 @@
 package org.sf.feeling.decompiler.cfr.i18n;
 
 import java.io.UnsupportedEncodingException;
-import java.text.MessageFormat;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -28,15 +27,5 @@ public class Messages {
         } catch (MissingResourceException e) {
             return '!' + key + '!';
         }
-    }
-
-    /**
-     * Gets formatted translation for current local
-     *
-     * @param key the key
-     * @return translated value string
-     */
-    public static String getFormattedString(String key, Object[] arguments) {
-        return MessageFormat.format(getString(key), arguments);
     }
 }

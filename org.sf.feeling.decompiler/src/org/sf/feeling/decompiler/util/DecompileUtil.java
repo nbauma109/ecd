@@ -9,10 +9,7 @@
 package org.sf.feeling.decompiler.util;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -88,40 +85,5 @@ public class DecompileUtil {
             sourceRange.remove(type);
             SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
         }
-    }
-
-    public static String deleteOneEmptyLine(String origSrc) {
-        int index = origSrc.indexOf("{"); //$NON-NLS-1$
-        if (index == -1) {
-            return origSrc;
-        }
-
-        String prefix = origSrc.substring(0, index + 1);
-        String suffix = origSrc.substring(index + 1);
-
-        List<String> splits = new ArrayList(Arrays.asList(prefix.split("\n"))); //$NON-NLS-1$
-        boolean flag = false;
-        for (int i = 0; i < splits.size(); i++) {
-            String split = splits.get(i);
-            if (split.trim().length() == 0) {
-                splits.remove(i);
-                flag = true;
-                break;
-            }
-        }
-
-        if (flag) {
-            StringBuilder buffer = new StringBuilder();
-            for (int i = 0; i < splits.size(); i++) {
-                String split = splits.get(i);
-                buffer.append(split);
-                if (i < splits.size() - 1) {
-                    buffer.append("\n"); //$NON-NLS-1$
-                }
-            }
-            buffer.append(suffix);
-            return buffer.toString();
-        }
-        return null;
     }
 }

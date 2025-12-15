@@ -20,18 +20,6 @@ import org.sf.feeling.decompiler.source.attach.utils.SourceConstants;
  */
 public class SourceAttachPlugin extends AbstractUIPlugin {
 
-    // The plug-in ID
-    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.source.attach"; //$NON-NLS-1$
-
-    // The shared instance
-    private static SourceAttachPlugin plugin;
-
-    /**
-     * The constructor
-     */
-    public SourceAttachPlugin() {
-    }
-
     /*
      * (non-Javadoc)
      *
@@ -41,7 +29,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
     @Override
     public void start(BundleContext context) throws Exception {
         super.start(context);
-        plugin = this;
         SourceBindingUtil.checkSourceBindingConfig();
         flagTempFileDeleteOnExit();
     }
@@ -56,27 +43,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
                 }
             }
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.
-     * BundleContext)
-     */
-    @Override
-    public void stop(BundleContext context) throws Exception {
-        plugin = null;
-        super.stop(context);
-    }
-
-    /**
-     * Returns the shared instance
-     *
-     * @return the shared instance
-     */
-    public static SourceAttachPlugin getDefault() {
-        return plugin;
     }
 
 }

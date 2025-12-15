@@ -15,8 +15,6 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
-    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.cfr"; //$NON-NLS-1$
-
     public static final String decompilerType = "CFR"; //$NON-NLS-1$
 
     public static final String decompilerVersion = CfrVersionInfo.VERSION;
@@ -63,7 +61,7 @@ public class CfrDecompilerPlugin extends AbstractUIPlugin implements IPropertyCh
         return preferenceStore;
     }
 
-    public static CfrDecompilerPlugin getDefault() {
+    private static CfrDecompilerPlugin getDefault() {
         return plugin;
     }
 

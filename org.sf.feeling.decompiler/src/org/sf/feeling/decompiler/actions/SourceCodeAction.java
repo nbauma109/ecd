@@ -17,8 +17,6 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class SourceCodeAction extends Action implements IUpdate {
 
-    public static final String ID = "SourceCode"; //$NON-NLS-1$
-
     public SourceCodeAction() {
         super(Messages.getString("JavaDecompilerActionBarContributor.Action.SourceCode"), AS_CHECK_BOX); //$NON-NLS-1$
     }

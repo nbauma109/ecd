@@ -14,7 +14,7 @@ public class DecompilerType {
 
     public static final String FernFlower = "FernFlower";//$NON-NLS-1$
 
-    public static String[] decompilerTypes = null;
+    private static String[] decompilerTypes = null;
 
     public static String[] getDecompilerTypes() {
         if (decompilerTypes == null) {

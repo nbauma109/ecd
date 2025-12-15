@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 
-import org.objectweb.asm.ClassReader;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.IDecompiler;
 import org.sf.feeling.decompiler.editor.IDecompilerDescriptor;
@@ -68,7 +67,7 @@ public class ClassUtil {
                 || UIUtil.isDebugPerspective();
     }
 
-    public static int getLevel(InputStream is) {
+    private static int getLevel(InputStream is) {
         try (DataInputStream data = new DataInputStream(is)) {
             if (0xCAFEBABE != data.readInt()) {
                 return -1;
@@ -96,15 +95,7 @@ public class ClassUtil {
         return false;
     }
 
-    /**
-     * Uses FernFlower library to read the class and extract it's qualified name
-     */
-    public static String getClassQualifiedName(byte[] classData) throws IOException {
-        ClassReader classReader = new ClassReader(classData);
-        return classReader.getClassName();
-    }
-
-    public static IDecompiler getDefaultDecompiler(int level, boolean debug) {
+    private static IDecompiler getDefaultDecompiler(int level, boolean debug) {
         Collection<IDecompilerDescriptor> descriptors = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorMap()
                 .values();
         if (descriptors != null) {

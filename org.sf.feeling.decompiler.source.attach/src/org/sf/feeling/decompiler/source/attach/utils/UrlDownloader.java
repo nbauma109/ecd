@@ -16,8 +16,6 @@ import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.StandardCopyOption;
-import java.util.Objects;
-
 import org.apache.commons.io.file.PathUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Target;
@@ -87,55 +85,6 @@ public class UrlDownloader {
             file.delete();
         }
         return file.getAbsolutePath();
-    }
-
-    public static String trim(final String str) {
-        return str == null ? null : str.trim();
-    }
-
-    public static String trimToEmpty(final String str) {
-        return str == null ? "" : str.trim();
-    }
-
-    public static String strip(String str, final String stripChars) {
-        str = stripStart(str, stripChars);
-        return stripEnd(str, stripChars);
-    }
-
-    public static String stripStart(final String str, final String stripChars) {
-        Objects.requireNonNull(stripChars);
-        final int strLen = length(str);
-        if (strLen == 0) {
-            return str;
-        }
-        int start = 0;
-        if (stripChars.isEmpty()) {
-            return str;
-        }
-        while (start != strLen && stripChars.indexOf(str.charAt(start)) != -1) {
-            start++;
-        }
-        return str.substring(start);
-    }
-
-    public static String stripEnd(final String str, final String stripChars) {
-        Objects.requireNonNull(stripChars);
-        int end = length(str);
-        if (end == 0) {
-            return str;
-        }
-
-        if (stripChars.isEmpty()) {
-            return str;
-        }
-        while (end != 0 && stripChars.indexOf(str.charAt(end - 1)) != -1) {
-            end--;
-        }
-        return str.substring(0, end);
-    }
-
-    public static int length(final CharSequence cs) {
-        return cs == null ? 0 : cs.length();
     }
 
     /**

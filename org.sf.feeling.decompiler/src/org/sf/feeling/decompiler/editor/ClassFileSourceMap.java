@@ -18,7 +18,6 @@ import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
 import org.eclipse.jdt.internal.core.SourceMapper;
-import org.sf.feeling.decompiler.util.DecompileUtil;
 import org.sf.feeling.decompiler.util.SourceMapperUtil;
 
 public class ClassFileSourceMap {
@@ -71,7 +70,7 @@ public class ClassFileSourceMap {
         bufManager.addBuffer(buffer);
     }
 
-    public static void updateSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, char[] markedSrc)
+    static void updateSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, char[] markedSrc)
             throws JavaModelException {
         IType type = cf.getType();
         if (!type.isBinary()) {

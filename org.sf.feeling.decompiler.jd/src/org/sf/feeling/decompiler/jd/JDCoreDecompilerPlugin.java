@@ -14,10 +14,6 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
-    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.jd"; //$NON-NLS-1$
-
-    public static final String CMD = "org.sf.feeling.decompiler.jd.cmd"; //$NON-NLS-1$
-
     public static final String decompilerType = "JD-Core"; //$NON-NLS-1$
 
     private static JDCoreDecompilerPlugin plugin;
@@ -63,7 +59,7 @@ public class JDCoreDecompilerPlugin extends AbstractUIPlugin implements IPropert
         return preferenceStore;
     }
 
-    public static JDCoreDecompilerPlugin getDefault() {
+    private static JDCoreDecompilerPlugin getDefault() {
         return plugin;
     }
 

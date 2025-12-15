@@ -18,7 +18,7 @@ public class ReflectionUtils {
     private ReflectionUtils() {
     }
 
-    public static Method getDeclaredMethod(Object object, String methodName, Class[] parameterTypes) {
+    static Method getDeclaredMethod(Object object, String methodName, Class[] parameterTypes) {
         if (object == null || methodName == null) {
             return null;
         }
@@ -43,7 +43,7 @@ public class ReflectionUtils {
         return invokeMethod(method, object, parameters);
     }
 
-    public static Object invokeMethod(Method method, Object object, Object[] parameters) {
+    static Object invokeMethod(Method method, Object object, Object[] parameters) {
         try {
             if (null != method) {
                 method.setAccessible(true);
@@ -56,7 +56,7 @@ public class ReflectionUtils {
         return null;
     }
 
-    public static Object invokeMethod(Object object, String methodName) {
+    static Object invokeMethod(Object object, String methodName) {
         if (object == null || methodName == null) {
             return null;
         }

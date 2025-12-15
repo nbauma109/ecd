@@ -37,7 +37,7 @@ import org.eclipse.core.runtime.Platform;
  */
 public class DecompilerAdapterManager {
 
-    public static final String ADAPTERS_EXTENSION_ID = "org.sf.feeling.decompiler.decompilerAdapters"; //$NON-NLS-1$
+    private static final String ADAPTERS_EXTENSION_ID = "org.sf.feeling.decompiler.decompilerAdapters"; //$NON-NLS-1$
 
     protected static final Logger logger = Logger.getLogger(DecompilerAdapterManager.class.getName());
 
@@ -194,7 +194,7 @@ public class DecompilerAdapterManager {
         return clazz;
     }
 
-    public static void registerAdapter(Class adaptableType, DecompilerAdapter adapter) {
+    private static void registerAdapter(Class adaptableType, DecompilerAdapter adapter) {
         synchronized (adaptersMap) {
             Set adapterSet = (Set) adaptersMap.get(adaptableType);
             adapterSet.add(adapter);

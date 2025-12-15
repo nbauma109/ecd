@@ -14,10 +14,6 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class VineflowerDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
-    public static final String PLUGIN_ID = "org.sf.feeling.decompiler.vineflower"; //$NON-NLS-1$
-
-    public static final String CMD = "org.sf.feeling.decompiler.vineflower.cmd"; //$NON-NLS-1$
-
     public static final String decompilerType = "Vineflower"; //$NON-NLS-1$
 
     private static VineflowerDecompilerPlugin plugin;
@@ -62,7 +58,7 @@ public class VineflowerDecompilerPlugin extends AbstractUIPlugin implements IPro
         return preferenceStore;
     }
 
-    public static VineflowerDecompilerPlugin getDefault() {
+    private static VineflowerDecompilerPlugin getDefault() {
         return plugin;
     }
 
