@@ -32,6 +32,7 @@ public class DebugModeAction extends Action {
             editor.notifyPropertiesChange();
             Display.getDefault().asyncExec(new Runnable() {
 
+                @Override
                 public void run() {
                     editor.setFocus();
                 }
