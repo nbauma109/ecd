@@ -1,8 +1,0 @@
-/*   */ package sample.two;
-/*   */
-/*   */ public class PackageNoImportProcyon
-/*   */ {
-/*   */     public void run() {
-/* 6 */         System.out.println("Hello");
-/*   */     }
-/*   */ }

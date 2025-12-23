@@ -48,7 +48,11 @@ public class CfrSourceMapperTest {
         File file = new File("target/test/Test.class");
         String expected = toString(getClass().getResource("/Test.txt"));
         String output = cfrSourceMapper.decompile("Cfr", file);
-        assertEquals(expected, output);
+        assertEqualsIgnoreEOL(expected, output);
+    }
+
+    private void assertEqualsIgnoreEOL(String expected, String actual) {
+        assertEquals(expected.replaceAll("\s*\r?\n", "\n"), actual.replaceAll("\s*\r?\n", "\n"));
     }
 
     private String toString(URL resource) throws IOException, URISyntaxException {

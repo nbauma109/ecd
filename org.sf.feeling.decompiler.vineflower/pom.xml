@@ -40,18 +40,6 @@
                   <overWrite>true</overWrite>
                   <destFileName>vineflower.jar</destFileName>
                 </artifactItem>
-                <artifactItem>
-                  <groupId>com.eclipsesource.minimal-json</groupId>
-                  <artifactId>minimal-json</artifactId>
-                  <overWrite>true</overWrite>
-                  <destFileName>json.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>org.ow2.asm</groupId>
-                  <artifactId>asm</artifactId>
-                  <overWrite>true</overWrite>
-                  <destFileName>asm.jar</destFileName>
-                </artifactItem>
               </artifactItems>
             </configuration>
           </execution>
@@ -63,14 +51,6 @@
     <dependency>
       <groupId>org.vineflower</groupId>
       <artifactId>vineflower</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.eclipsesource.minimal-json</groupId>
-      <artifactId>minimal-json</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.ow2.asm</groupId>
-      <artifactId>asm</artifactId>
     </dependency>
   </dependencies>
 </project>

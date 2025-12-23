@@ -16,7 +16,6 @@
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <fernflower.version>253.28294.334</fernflower.version>
   </properties>
 
   <build>
@@ -30,31 +29,16 @@
             <id>copy</id>
             <phase>validate</phase>
             <goals>
-              <goal>copy</goal>
+              <goal>copy-dependencies</goal>
             </goals>
             <configuration>
-              <outputDirectory>target/lib</outputDirectory>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>com.jetbrains.intellij.java</groupId>
-                  <artifactId>java-decompiler-engine</artifactId>
-                  <version>${fernflower.version}</version>
-                  <overWrite>true</overWrite>
-                  <destFileName>fernflower.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>com.eclipsesource.minimal-json</groupId>
-                  <artifactId>minimal-json</artifactId>
-                  <overWrite>true</overWrite>
-                  <destFileName>json.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>org.ow2.asm</groupId>
-                  <artifactId>asm</artifactId>
-                  <overWrite>true</overWrite>
-                  <destFileName>asm.jar</destFileName>
-                </artifactItem>
-              </artifactItems>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+              <includeScope>compile</includeScope>
+              <excludeScope>provided</excludeScope>
+              <overWriteReleases>true</overWriteReleases>
+              <overWriteSnapshots>true</overWriteSnapshots>
+              <stripVersion>true</stripVersion>
+              <includeArtifactIds>jd-util,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm</includeArtifactIds>
             </configuration>
           </execution>
         </executions>
@@ -62,18 +46,14 @@
     </plugins>
   </build>
 
-  <repositories>
-    <repository>
-      <id>intellij</id>
-      <url>https://www.jetbrains.com/intellij-repository/releases/</url>
-    </repository>
-  </repositories>
-
   <dependencies>
+    <dependency>
+      <groupId>io.github.nbauma109</groupId>
+      <artifactId>jd-util</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.jetbrains.intellij.java</groupId>
       <artifactId>java-decompiler-engine</artifactId>
-      <version>${fernflower.version}</version>
     </dependency>
     <dependency>
       <groupId>com.eclipsesource.minimal-json</groupId>

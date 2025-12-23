@@ -34,26 +34,16 @@
               <overWriteReleases>true</overWriteReleases>
               <overWriteSnapshots>true</overWriteSnapshots>
               <stripVersion>true</stripVersion>
-              <includeArtifactIds>jd-core,jd-util,bcel,commons-lang3,commons-io</includeArtifactIds>
+              <includeArtifactIds>jd-core,jd-util,bcel,commons-lang3,commons-text,commons-io</includeArtifactIds>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-  <repositories>
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-  </repositories>
   <dependencies>
     <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.github.nbauma109</groupId>
+      <groupId>io.github.nbauma109</groupId>
       <artifactId>jd-core</artifactId>
     </dependency>
   </dependencies>

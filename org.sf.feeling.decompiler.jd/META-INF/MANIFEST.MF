@@ -30,6 +30,7 @@ Export-Package: org.sf.feeling.decompiler.jd.actions,
 Bundle-ClassPath: .,
  target/lib/bcel.jar,
  target/lib/commons-lang3.jar,
+ target/lib/commons-text.jar,
  target/lib/commons-io.jar,
  target/lib/jd-util.jar,
  target/lib/jd-core.jar
