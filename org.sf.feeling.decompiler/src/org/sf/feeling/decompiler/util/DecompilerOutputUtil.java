@@ -12,7 +12,7 @@ import org.jd.core.v1.parser.ParseException;
 import org.jd.core.v1.util.ParserRealigner;
 
 public class DecompilerOutputUtil {
- 
+
     public static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file"; //$NON-NLS-1$
 
     private DecompilerOutputUtil() {
