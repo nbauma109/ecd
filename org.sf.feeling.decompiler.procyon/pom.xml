@@ -35,16 +35,10 @@
               <outputDirectory>target/lib</outputDirectory>
               <artifactItems>
                 <artifactItem>
-                  <groupId>org.bitbucket.mstrobel</groupId>
-                  <artifactId>procyon-compilertools</artifactId>
+                  <groupId>com.github.nbauma109.procyon</groupId>
+                  <artifactId>procyon-decompiler</artifactId>
                   <overWrite>true</overWrite>
-                  <destFileName>procyon-compilertools.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>org.bitbucket.mstrobel</groupId>
-                  <artifactId>procyon-core</artifactId>
-                  <overWrite>true</overWrite>
-                  <destFileName>procyon-core.jar</destFileName>
+                  <destFileName>procyon-decompiler.jar</destFileName>
                 </artifactItem>
               </artifactItems>
             </configuration>
@@ -56,12 +50,8 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.bitbucket.mstrobel</groupId>
-      <artifactId>procyon-compilertools</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.bitbucket.mstrobel</groupId>
-      <artifactId>procyon-core</artifactId>
+      <groupId>com.github.nbauma109.procyon</groupId>
+      <artifactId>procyon-decompiler</artifactId>
     </dependency>
   </dependencies>
 </project>

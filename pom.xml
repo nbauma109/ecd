@@ -221,14 +221,9 @@
         <version>0.152</version>
       </dependency>
       <dependency>
-        <groupId>org.bitbucket.mstrobel</groupId>
-        <artifactId>procyon-compilertools</artifactId>
-        <version>0.6.0</version>
-      </dependency>
-      <dependency>
-        <groupId>org.bitbucket.mstrobel</groupId>
-        <artifactId>procyon-core</artifactId>
-        <version>0.6.0</version>
+        <groupId>com.github.nbauma109.procyon</groupId>
+        <artifactId>procyon-decompiler</artifactId>
+        <version>0.6.1</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
