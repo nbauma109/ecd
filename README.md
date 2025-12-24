@@ -30,7 +30,7 @@ Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates J
   * Usage of forked versions of decompilers : I need this freedom to bring bug fixes as some of the decompilers are not maintained anymore, or rarely maintained
   * Source attach plugin comes with some enhancements (see below) but it was removed in upstream project ([5a9a574](https://github.com/ecd-plugin/ecd/commit/5a9a5747159e43fe07c0f8b9ad2698bd3acad2fa))
   * Broken functions "Show Byte Code" and "Show Disassembler" are removed ([yagni](https://en.wikipedia.org/wiki/You_aren%27t_gonna_need_it)) but still present in upstream project
-  * Some significant refactorings in upstream project made rebasing next to impossible without risk of regression
+  * Some significant refactorings in upstream project made rebasing next to impossible without risk of regression ([e3d0e4e](https://github.com/ecd-plugin/ecd/commit/e3d0e4e29035807b6ce5bb46bf8607d9cd5162f6), [94a317a](https://github.com/ecd-plugin/ecd/commit/94a317aa4bcc9300befe3bc9a3ffd8924b1a9075), [6c3710c](https://github.com/ecd-plugin/ecd/commit/6c3710c4333d01bd45c70aa42e3c2fae15f0f250))
 
 ## Why is this plug-in "enhanced"?
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
