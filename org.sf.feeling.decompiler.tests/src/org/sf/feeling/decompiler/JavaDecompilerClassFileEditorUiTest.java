@@ -19,7 +19,6 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
@@ -53,7 +52,9 @@ public class JavaDecompilerClassFileEditorUiTest {
 
     @Test
     public void opensClassFileInDecompilerEditorAndPopulatesBuffer() throws Exception {
-        IClassFile classFile = createAndBuildClass("p", "C",
+        IClassFile classFile = createAndBuildClass(
+                "p",
+                "C",
                 "package p;\n" +
                 "public class C {\n" +
                 "  public int m() { return 42; }\n" +
@@ -74,6 +75,8 @@ public class JavaDecompilerClassFileEditorUiTest {
         assertTrue("Expected decompiled source to contain method signature", contents.contains("int m()"));
         assertTrue("Expected decompiled source to contain return statement", contents.contains("return 42"));
         assertTrue("Expected decompiled source to be non-trivial", contents.length() > 200);
+
+        assertInOrder(contents, "package p", "class C", "int m()", "return 42");
     }
 
     private static IProject createJavaProject(String name) throws Exception {
@@ -101,7 +104,6 @@ public class JavaDecompilerClassFileEditorUiTest {
         }
 
         javaProject.setOutputLocation(binFolder.getFullPath(), new NullProgressMonitor());
-
         JavaProjectClasspath.configure(javaProject, srcFolder.getFullPath());
 
         return p;
@@ -128,7 +130,13 @@ public class JavaDecompilerClassFileEditorUiTest {
 
         IPackageFragmentRoot binRoot = javaProject.getPackageFragmentRoot(binFolder);
         IPackageFragment binPkg = binRoot.getPackageFragment(packageName);
-        return binPkg.getClassFile(typeName + ".class");
+        IClassFile classFile = binPkg.getClassFile(typeName + ".class");
+
+        if (classFile == null || !classFile.exists()) {
+            throw new AssertionError("Expected IClassFile to exist for: " + packageName + "." + typeName);
+        }
+
+        return classFile;
     }
 
     private static IEditorPart openClassFileWithDecompilerEditor(final IClassFile classFile) {
@@ -137,8 +145,17 @@ public class JavaDecompilerClassFileEditorUiTest {
         Display.getDefault().syncExec(() -> {
             try {
                 IWorkbenchPage page = requireWorkbenchPage();
-                IEditorInput input = JavaUI.getEditorInput(classFile);
-                result[0] = page.openEditor(input, EDITOR_ID, true);
+
+                IEditorPart jdtEditor = JavaUI.openInEditor(classFile);
+                if (jdtEditor == null) {
+                    throw new AssertionError("JavaUI.openInEditor returned null for class file");
+                }
+
+                result[0] = page.openEditor(jdtEditor.getEditorInput(), EDITOR_ID, true);
+
+                if (jdtEditor != result[0]) {
+                    page.closeEditor(jdtEditor, false);
+                }
             } catch (Exception e) {
                 throw new AssertionError("Failed to open class file using editor id: " + EDITOR_ID, e);
             }
@@ -193,6 +210,19 @@ public class JavaDecompilerClassFileEditorUiTest {
         });
     }
 
+    private static void assertInOrder(String text, String first, String second, String third, String fourth) {
+        int p1 = indexOrFail(text, first, 0);
+        int p2 = indexOrFail(text, second, p1 + first.length());
+        int p3 = indexOrFail(text, third, p2 + second.length());
+        indexOrFail(text, fourth, p3 + third.length());
+    }
+
+    private static int indexOrFail(String text, String token, int fromIndex) {
+        int idx = text.indexOf(token, fromIndex);
+        assertTrue("Missing token: " + token, idx >= 0);
+        return idx;
+    }
+
     static final class JavaProjectClasspath {
 
         private JavaProjectClasspath() {
@@ -204,7 +234,8 @@ public class JavaDecompilerClassFileEditorUiTest {
 
             org.eclipse.jdt.core.IClasspathEntry src = JavaCore.newSourceEntry(sourceFolderPath);
 
-            javaProject.setRawClasspath(new org.eclipse.jdt.core.IClasspathEntry[] { jre, src },
+            javaProject.setRawClasspath(
+                    new org.eclipse.jdt.core.IClasspathEntry[] { jre, src },
                     new NullProgressMonitor());
         }
     }
