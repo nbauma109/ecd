@@ -184,7 +184,7 @@ public class ExportSourceActionTest {
         assertNotNull(layout);
 
         Optional<ClassLocation> anyTopLevel = layout.findAnyTopLevelClass();
-        assertTrue("test.jar should contain at least one top-level .class", anyTopLevel.isPresent());
+        assertTrue("test.jar should contain at least one .class", anyTopLevel.isPresent());
 
         IPackageFragment pkg = jarRoot.getPackageFragment(anyTopLevel.get().packageName);
         assertTrue(pkg.exists());
@@ -207,18 +207,19 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesCreatesZipWithJavaEntries() throws Exception {
+    public void testExportPackageSourcesExportsAllClassesAsJavaFiles() throws Exception {
         String decompilerType = JavaDecompilerPlugin.getDefault().getPreferenceStore()
                 .getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
 
-        Assume.assumeTrue("Decompiler type must be configured for tests", decompilerType != null && !decompilerType.trim().isEmpty());
+        Assume.assumeTrue("Decompiler type must be configured for tests",
+                decompilerType != null && !decompilerType.trim().isEmpty());
 
         boolean reuseBuf = JavaDecompilerPlugin.getDefault().getPreferenceStore()
                 .getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
         boolean always = JavaDecompilerPlugin.getDefault().getPreferenceStore()
                 .getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
-        File outZip = new File(tempDir, "exported-src-" + UUID.randomUUID().toString() + ".zip");
+        File outZip = new File(tempDir, "exported-src-all-" + UUID.randomUUID().toString() + ".zip");
         if (outZip.exists()) {
             assertTrue(outZip.delete());
         }
@@ -232,63 +233,17 @@ public class ExportSourceActionTest {
 
         invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children, exceptions);
 
-        assertTrue("No exceptions should be reported", exceptions.isEmpty());
         assertTrue("Output zip should be created", outZip.exists());
         assertTrue("Output zip should be non-empty", outZip.length() > 0);
 
-        List<String> javaEntries = listZipEntries(outZip, ".java");
-        assertTrue("Zip should contain at least one .java entry", !javaEntries.isEmpty());
-    }
+        Set<String> expectedJavaEntries = listExpectedJavaEntriesFromJar(jarFileOnDisk);
+        assertTrue("Jar should contain at least one .class", !expectedJavaEntries.isEmpty());
 
-@Test
-public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Exception {
-    String decompilerType = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-            .getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
-
-    Assume.assumeTrue("Decompiler type must be configured for tests",
-            decompilerType != null && !decompilerType.trim().isEmpty());
-
-    boolean reuseBuf = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-            .getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
-    boolean always = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-            .getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
-
-    JarLayout layout = readJarLayout(jarFileOnDisk);
-    assertNotNull(layout);
-
-    Assume.assumeTrue("test.jar must contain at least one inner class to verify export behavior",
-            layout.hasAnyInnerClass);
-
-    File outZip = new File(tempDir, "exported-src-inner-" + UUID.randomUUID().toString() + ".zip");
-    if (outZip.exists()) {
-        assertTrue(outZip.delete());
-    }
-
-    IJavaElement[] children = jarRoot.getChildren();
-    assertNotNull(children);
-    assertTrue(children.length > 0);
-
-    ExportSourceAction action = new ExportSourceAction(new ArrayList());
-    List exceptions = new ArrayList();
-
-    invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children, exceptions);
-
-    assertTrue("No exceptions should be reported", exceptions.isEmpty());
-    assertTrue("Output zip should be created", outZip.exists());
-
-    List<String> javaEntries = listZipEntries(outZip, ".java");
-
-    boolean hasInnerJava = false;
-    for (int i = 0; i < javaEntries.size(); i++) {
-        String entry = javaEntries.get(i);
-        if (entry.indexOf('$') >= 0) {
-            hasInnerJava = true;
-            break;
+        Set<String> actualJavaEntries = new HashSet(listZipEntries(outZip, ".java"));
+        for (String expected : expectedJavaEntries) {
+            assertTrue("Missing exported entry: " + expected, actualJavaEntries.contains(expected));
         }
     }
-
-    assertTrue("At least one inner class source should be exported when inner classes exist in the jar", hasInnerJava);
-}
 
     private static void invokeExportPackageSources(ExportSourceAction action, String decompilerType, boolean reuseBuf,
             boolean always, String projectFile, IJavaElement[] children, List exceptions) throws Exception {
@@ -316,6 +271,25 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
             }
         }
         return names;
+    }
+
+    private static Set<String> listExpectedJavaEntriesFromJar(File jarFile) throws Exception {
+        Set<String> expected = new HashSet();
+        try (JarFile jar = new JarFile(jarFile)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (name == null || !name.endsWith(".class")) { //$NON-NLS-1$
+                    continue;
+                }
+                expected.add(name.substring(0, name.length() - ".class".length()) + ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+            }
+        }
+        return expected;
     }
 
     private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
@@ -410,8 +384,7 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
     private static JarLayout readJarLayout(File jarFile) throws Exception {
         try (JarFile jar = new JarFile(jarFile)) {
             Set<String> packages = new HashSet();
-            List<ClassLocation> topLevelClasses = new ArrayList();
-            boolean hasInner = false;
+            List<ClassLocation> classes = new ArrayList();
 
             Enumeration<JarEntry> entries = jar.entries();
             while (entries.hasMoreElements()) {
@@ -421,17 +394,12 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
                 }
 
                 String name = entry.getName();
-                if (!name.endsWith(".class")) {
-                    continue;
-                }
-
-                if (name.indexOf('$') >= 0) {
-                    hasInner = true;
+                if (!name.endsWith(".class")) { //$NON-NLS-1$
                     continue;
                 }
 
                 int lastSlash = name.lastIndexOf('/');
-                String packageName = "";
+                String packageName = ""; //$NON-NLS-1$
                 String fileName = name;
                 if (lastSlash >= 0) {
                     packageName = name.substring(0, lastSlash).replace('/', '.');
@@ -439,10 +407,10 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
                 }
 
                 packages.add(packageName);
-                topLevelClasses.add(new ClassLocation(packageName, fileName));
+                classes.add(new ClassLocation(packageName, fileName));
             }
 
-            return new JarLayout(packages, topLevelClasses, hasInner);
+            return new JarLayout(packages, classes);
         }
     }
 
@@ -468,13 +436,11 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
 
     private static final class JarLayout {
         private final Set<String> packages;
-        private final List<ClassLocation> topLevelClasses;
-        private final boolean hasAnyInnerClass;
+        private final List<ClassLocation> classes;
 
-        private JarLayout(Set<String> packages, List<ClassLocation> topLevelClasses, boolean hasAnyInnerClass) {
+        private JarLayout(Set<String> packages, List<ClassLocation> classes) {
             this.packages = packages;
-            this.topLevelClasses = topLevelClasses;
-            this.hasAnyInnerClass = hasAnyInnerClass;
+            this.classes = classes;
         }
 
         private Optional<String> findAnyPackage() {
@@ -492,7 +458,7 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
                     continue;
                 }
 
-                String prefix = base + ".";
+                String prefix = base + "."; //$NON-NLS-1$
                 for (int j = 0; j < all.length; j++) {
                     String candidate = all[j];
                     if (candidate != null && candidate.startsWith(prefix)) {
@@ -504,10 +470,10 @@ public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Except
         }
 
         private Optional<ClassLocation> findAnyTopLevelClass() {
-            if (topLevelClasses.isEmpty()) {
+            if (classes.isEmpty()) {
                 return Optional.empty();
             }
-            return Optional.of(topLevelClasses.get(0));
+            return Optional.of(classes.get(0));
         }
     }
 }
