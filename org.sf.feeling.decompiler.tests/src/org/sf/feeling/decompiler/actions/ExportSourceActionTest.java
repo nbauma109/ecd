@@ -36,11 +36,13 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.junit.After;
 import org.junit.Before;
@@ -80,7 +82,7 @@ public class ExportSourceActionTest {
         project.setDescription(description, null);
 
         javaProject = JavaCore.create(project);
-        javaProject.setRawClasspath(JavaRuntime.getDefaultJREContainerEntry(), null);
+        configureClasspathWithJre(javaProject);
 
         jarRoot = addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
         assertNotNull(jarRoot);
@@ -183,6 +185,11 @@ public class ExportSourceActionTest {
         assertEquals(classFile, list.get(0));
     }
 
+    private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
+        IClasspathEntry[] classpath = new IClasspathEntry[] { JavaRuntime.getDefaultJREContainerEntry() };
+        project.setRawClasspath(classpath, null);
+    }
+
     private static File resolveTestJar() throws Exception {
         Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
         assertNotNull("Test bundle must be available: " + TEST_BUNDLE_ID, bundle);
@@ -198,8 +205,8 @@ public class ExportSourceActionTest {
     private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar) throws Exception {
         IPath jarPath = new Path(jar.getAbsolutePath());
 
-        org.eclipse.jdt.core.IClasspathEntry[] existing = project.getRawClasspath();
-        org.eclipse.jdt.core.IClasspathEntry[] updated = new org.eclipse.jdt.core.IClasspathEntry[existing.length + 1];
+        IClasspathEntry[] existing = project.getRawClasspath();
+        IClasspathEntry[] updated = new IClasspathEntry[existing.length + 1];
 
         int i = 0;
         for (; i < existing.length; i++) {
@@ -208,9 +215,23 @@ public class ExportSourceActionTest {
         updated[i] = JavaCore.newLibraryEntry(jarPath, null, null);
 
         project.setRawClasspath(updated, null);
-        IPackageFragmentRoot root = project.getPackageFragmentRoot(jarPath);
-        root.open(null);
-        return root;
+
+        return findJarPackageFragmentRoot(project, jarPath).orElseThrow(() -> new IllegalStateException(
+                "Unable to locate package fragment root for jar: " + jarPath.toOSString()));
+    }
+
+    private static Optional<IPackageFragmentRoot> findJarPackageFragmentRoot(IJavaProject project, IPath jarPath)
+            throws JavaModelException {
+        IPackageFragmentRoot[] roots = project.getAllPackageFragmentRoots();
+        for (int i = 0; i < roots.length; i++) {
+            IPackageFragmentRoot root = roots[i];
+            IPath rootPath = root.getPath();
+            if (rootPath != null && rootPath.equals(jarPath)) {
+                root.open(null);
+                return Optional.of(root);
+            }
+        }
+        return Optional.empty();
     }
 
     private static void invokeCollectClasses(ExportSourceAction action, IJavaElement element, Map classes)
