@@ -1,4 +1,4 @@
-package org.sf.feeling.decompiler.tests;
+package org.sf.feeling.decompiler;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -19,8 +19,8 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
@@ -34,6 +34,7 @@ public class JavaDecompilerClassFileEditorUiTest {
     private static final String PROJECT_NAME = "ecd-decompiler-editor-test";
     private static final String SRC_FOLDER = "src";
     private static final String BIN_FOLDER = "bin";
+    private static final String EDITOR_ID = "org.sf.feeling.decompiler.ClassFileEditor";
 
     private IProject project;
 
@@ -44,30 +45,35 @@ public class JavaDecompilerClassFileEditorUiTest {
 
     @After
     public void tearDown() throws Exception {
-        closeAllEditors();
+        safeCloseAllEditors();
         if (project != null && project.exists()) {
             project.delete(true, true, new NullProgressMonitor());
         }
     }
 
     @Test
-    public void opensClassFileInDecompilerEditorAndCreatesBuffer() throws Exception {
+    public void opensClassFileInDecompilerEditorAndPopulatesBuffer() throws Exception {
         IClassFile classFile = createAndBuildClass("p", "C",
                 "package p;\n" +
                 "public class C {\n" +
                 "  public int m() { return 42; }\n" +
                 "}\n");
 
-        IEditorPart editorPart = openInEditorOnUiThread(classFile);
+        IEditorPart editorPart = openClassFileWithDecompilerEditor(classFile);
 
-        assertTrue(editorPart instanceof JavaDecompilerClassFileEditor);
+        assertTrue("Expected JavaDecompilerClassFileEditor but got: " + editorPart.getClass().getName(),
+                editorPart instanceof JavaDecompilerClassFileEditor);
 
         JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) editorPart;
-        assertNotNull(editor.getClassBuffer());
 
+        assertNotNull("Expected class buffer to be created", editor.getClassBuffer());
         String contents = new String(editor.getClassBuffer().getCharacters());
-        assertTrue(contents.contains("class"));
-        assertTrue(contents.contains("m"));
+
+        assertTrue("Expected decompiled source to contain package declaration", contents.contains("package p"));
+        assertTrue("Expected decompiled source to contain class name", contents.contains("class C"));
+        assertTrue("Expected decompiled source to contain method signature", contents.contains("int m()"));
+        assertTrue("Expected decompiled source to contain return statement", contents.contains("return 42"));
+        assertTrue("Expected decompiled source to be non-trivial", contents.length() > 200);
     }
 
     private static IProject createJavaProject(String name) throws Exception {
@@ -106,15 +112,16 @@ public class JavaDecompilerClassFileEditorUiTest {
 
         IPackageFragmentRoot srcRoot = javaProject.getPackageFragmentRoot(project.getFolder(SRC_FOLDER));
         IPackageFragment pkg = srcRoot.createPackageFragment(packageName, true, new NullProgressMonitor());
-
         pkg.createCompilationUnit(typeName + ".java", source, true, new NullProgressMonitor());
 
         project.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
 
         IFolder binFolder = project.getFolder(BIN_FOLDER);
-        IPath classPath = binFolder.getFullPath().append(packageName.replace('.', '/')).append(typeName + ".class");
-        IFile classFileResource = ResourcesPlugin.getWorkspace().getRoot().getFile(classPath);
+        IPath classPath = binFolder.getFullPath()
+                .append(packageName.replace('.', '/'))
+                .append(typeName + ".class");
 
+        IFile classFileResource = ResourcesPlugin.getWorkspace().getRoot().getFile(classPath);
         if (!classFileResource.exists()) {
             throw new AssertionError("Expected compiled class file to exist at: " + classPath.toString());
         }
@@ -124,46 +131,62 @@ public class JavaDecompilerClassFileEditorUiTest {
         return binPkg.getClassFile(typeName + ".class");
     }
 
-    private static IEditorPart openInEditorOnUiThread(final IClassFile classFile) {
+    private static IEditorPart openClassFileWithDecompilerEditor(final IClassFile classFile) {
         final IEditorPart[] result = new IEditorPart[1];
 
         Display.getDefault().syncExec(() -> {
             try {
-                ensureWorkbenchPage();
-                result[0] = JavaUI.openInEditor(classFile);
+                IWorkbenchPage page = requireWorkbenchPage();
+                IEditorInput input = JavaUI.getEditorInput(classFile);
+                result[0] = page.openEditor(input, EDITOR_ID, true);
             } catch (Exception e) {
-                throw new AssertionError("Failed to open class file in editor", e);
+                throw new AssertionError("Failed to open class file using editor id: " + EDITOR_ID, e);
             }
         });
 
         return result[0];
     }
 
-    private static void ensureWorkbenchPage() {
-        IWorkbench workbench = PlatformUI.getWorkbench();
-        IWorkbenchWindow window = workbench.getActiveWorkbenchWindow();
+    private static IWorkbenchPage requireWorkbenchPage() {
+        if (!PlatformUI.isWorkbenchRunning()) {
+            throw new AssertionError("Workbench is not running. Launch as a UI JUnit Plug-in Test.");
+        }
 
+        IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
         if (window == null) {
-            IWorkbenchWindow[] windows = workbench.getWorkbenchWindows();
+            IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();
             if (windows != null && windows.length > 0) {
                 window = windows[0];
             }
         }
 
         if (window == null) {
-            throw new AssertionError("No workbench window available. Run this as a UI JUnit Plug-in Test.");
+            throw new AssertionError("No workbench window available. Launch as a UI JUnit Plug-in Test.");
         }
 
         IWorkbenchPage page = window.getActivePage();
         if (page == null) {
-            throw new AssertionError("No active workbench page available. Run this as a UI JUnit Plug-in Test.");
+            throw new AssertionError("No workbench page available. Launch as a UI JUnit Plug-in Test.");
         }
+
+        return page;
     }
 
-    private static void closeAllEditors() {
-        Display.getDefault().syncExec(() -> {
-            IWorkbench workbench = PlatformUI.getWorkbench();
-            IWorkbenchWindow window = workbench.getActiveWorkbenchWindow();
+    private static void safeCloseAllEditors() {
+        if (!PlatformUI.isWorkbenchRunning()) {
+            return;
+        }
+
+        Display display = Display.getDefault();
+        if (display == null || display.isDisposed()) {
+            return;
+        }
+
+        display.syncExec(() -> {
+            if (!PlatformUI.isWorkbenchRunning()) {
+                return;
+            }
+            IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
             if (window != null && window.getActivePage() != null) {
                 window.getActivePage().closeAllEditors(false);
             }
