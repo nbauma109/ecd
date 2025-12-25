@@ -208,6 +208,16 @@ public class ExportSourceAction extends Action {
                 + "/export/" //$NON-NLS-1$
                 + System.currentTimeMillis());
 
+        try {
+            ensureDirectoryExists(workingDir);
+        } catch (IOException e) {
+            final IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
+                    Messages.getString("ExportSourceAction.Status.Error.ExportFailed"), //$NON-NLS-1$
+                    e);
+            exceptions.add(status);
+            return;
+        }
+
         Map classes = new HashMap();
         for (int i = 0; i < children.length; i++) {
             if (monitor.isCanceled()) {
@@ -251,18 +261,9 @@ public class ExportSourceAction extends Action {
                         className += ("." + clazz.getElementName()); //$NON-NLS-1$
                     }
                     monitor.subTask(className);
-                    File target = null;
                     try {
                         IClassFile cf = (IClassFile) clazz;
-
-                        String packageName = pkg.getElementName().replace('.', '/');
-                        if (!packageName.isEmpty()) {
-                            packageName += "/"; //$NON-NLS-1$
-                        }
-
-                        target = new File(workingDir,
-                                packageName + cf.getElementName().replaceAll("\\..+", "") + ".java"); //$NON-NLS-1$ //$NON-NLS-2$
-                        ensureParentDirectoryExists(target);
+                        cf.open(monitor);
 
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
                         if (result == null) {
@@ -271,30 +272,26 @@ public class ExportSourceAction extends Action {
                                             new String[] { className }));
                             throw new CoreException(status);
                         }
+
+                        String packageName = pkg.getElementName().replace('.', '/');
+                        if (!packageName.isEmpty()) {
+                            packageName += "/"; //$NON-NLS-1$
+                        }
+
+                        File target = new File(workingDir,
+                                packageName + cf.getElementName().replaceAll("\\..+", "") //$NON-NLS-1$ //$NON-NLS-2$
+                                        + ".java"); //$NON-NLS-1$
+
+                        ensureParentDirectoryExists(target);
                         FileUtil.writeToFile(target, result);
                     } catch (Exception e) {
                         IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                                 Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
-                                        new String[] { className }));
+                                        new String[] { className }),
+                                e);
                         exceptions.add(status);
-
-                        try {
-                            if (target == null) {
-                                IClassFile cf = (IClassFile) clazz;
-                                String packageName = pkg.getElementName().replace('.', '/');
-                                if (!packageName.isEmpty()) {
-                                    packageName += "/"; //$NON-NLS-1$
-                                }
-                                target = new File(workingDir,
-                                        packageName + cf.getElementName().replaceAll("\\..+", "") + ".java"); //$NON-NLS-1$ //$NON-NLS-2$
-                            }
-                            ensureParentDirectoryExists(target);
-                            FileUtil.writeToFile(target,
-                                    buildDecompileFailurePlaceholder(pkg.getElementName(), (IClassFile) clazz, e));
-                        } catch (Exception ignored) {
-                            Logger.debug(ignored);
-                        }
                     }
+
                 }
                 total += classStep;
                 monitor.worked(classStep);
@@ -389,6 +386,7 @@ public class ExportSourceAction extends Action {
 
         String projectFile = file.trim();
         try {
+            cf.open(null);
             String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
             if (result == null) {
                 IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
@@ -396,8 +394,20 @@ public class ExportSourceAction extends Action {
                                 new String[] { className }));
                 throw new CoreException(status);
             }
-            FileUtil.writeToFile(new File(projectFile), result);
+            File target = new File(projectFile);
+            ensureParentDirectoryExists(target);
+            FileUtil.writeToFile(target, result);
         } catch (CoreException e) {
+            MessageDialog.openError(Display.getDefault().getActiveShell(),
+                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
+                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                            new String[] { className }));
+        } catch (IOException e) {
+            MessageDialog.openError(Display.getDefault().getActiveShell(),
+                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
+                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                            new String[] { className }));
+        } catch (JavaModelException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
                     Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
                     Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
@@ -406,32 +416,36 @@ public class ExportSourceAction extends Action {
     }
 
     private static void ensureParentDirectoryExists(File target) throws IOException {
+        if (target == null) {
+            throw new IOException("Target is null"); //$NON-NLS-1$
+        }
         File parent = target.getParentFile();
-        if (parent == null || parent.exists()) {
+        if (parent == null) {
             return;
         }
-        if (!parent.mkdirs() && !parent.exists()) {
-            throw new IOException("Unable to create directory: " + parent.getAbsolutePath()); //$NON-NLS-1$
-        }
+        ensureDirectoryExists(parent);
     }
 
-    private static String buildDecompileFailurePlaceholder(String packageName, IClassFile classFile, Exception error) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("/**\n"); //$NON-NLS-1$
-        builder.append(" * Decompiler failed to produce source for this class.\n"); //$NON-NLS-1$
-        builder.append(" *\n"); //$NON-NLS-1$
-        builder.append(" * Class: ").append(String.valueOf(classFile.getElementName())).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
-        builder.append(" * Error: ").append(String.valueOf(error)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
-        builder.append(" */\n"); //$NON-NLS-1$
-        if (packageName != null && !packageName.isEmpty()) {
-            builder.append("package ").append(packageName).append(";\n"); //$NON-NLS-1$ //$NON-NLS-2$
+    private static void ensureDirectoryExists(File dir) throws IOException {
+        if (dir == null) {
+            throw new IOException("Directory is null"); //$NON-NLS-1$
         }
-        builder.append("\n"); //$NON-NLS-1$
-        return builder.toString();
+        if (dir.exists()) {
+            if (dir.isDirectory()) {
+                return;
+            }
+            if (!dir.delete() && dir.exists()) {
+                throw new IOException("Unable to delete file blocking directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
+            }
+        }
+        if (!dir.mkdirs() && !dir.isDirectory()) {
+            throw new IOException("Unable to create directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
+        }
     }
 
     @Override
     public boolean isEnabled() {
         return selection != null;
     }
+
 }
