@@ -11,18 +11,18 @@ import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.part.FileEditorInput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,7 +52,7 @@ public class JavaDecompilerClassFileEditorUiTest {
 
     @Test
     public void opensClassFileInDecompilerEditorAndPopulatesBuffer() throws Exception {
-        IClassFile classFile = createAndBuildClass(
+        IFile classFile = createAndBuildClass(
                 "p",
                 "C",
                 "package p;\n" +
@@ -109,7 +109,7 @@ public class JavaDecompilerClassFileEditorUiTest {
         return p;
     }
 
-    private IClassFile createAndBuildClass(String packageName, String typeName, String source) throws Exception {
+    private IFile createAndBuildClass(String packageName, String typeName, String source) throws Exception {
         IJavaProject javaProject = JavaCore.create(project);
 
         IPackageFragmentRoot srcRoot = javaProject.getPackageFragmentRoot(project.getFolder(SRC_FOLDER));
@@ -129,44 +129,18 @@ public class JavaDecompilerClassFileEditorUiTest {
             throw new AssertionError("Expected compiled class file to exist at: " + classPath.toString());
         }
 
-        return findClassFile(javaProject, packageName, typeName + ".class");
+        return classFileResource;
     }
 
-    private static IClassFile findClassFile(IJavaProject javaProject, String packageName, String classFileName)
-            throws JavaModelException {
-
-        for (IPackageFragmentRoot root : javaProject.getPackageFragmentRoots()) {
-            if (root.getKind() == IPackageFragmentRoot.K_BINARY) {
-                IPackageFragment pkg = root.getPackageFragment(packageName);
-                if (pkg != null && pkg.exists()) {
-                    IClassFile candidate = pkg.getClassFile(classFileName);
-                    if (candidate != null && candidate.exists()) {
-                        return candidate;
-                    }
-                }
-            }
-        }
-
-        throw new AssertionError("Could not locate IClassFile in binary roots for: " + packageName + "." + classFileName);
-    }
-
-    private static IEditorPart openClassFileWithDecompilerEditor(final IClassFile classFile) {
+    private static IEditorPart openClassFileWithDecompilerEditor(final IFile classFile) {
         final IEditorPart[] result = new IEditorPart[1];
 
         Display.getDefault().syncExec(() -> {
             try {
                 IWorkbenchPage page = requireWorkbenchPage();
 
-                IEditorPart jdtEditor = JavaUI.openInEditor(classFile);
-                if (jdtEditor == null) {
-                    throw new AssertionError("JavaUI.openInEditor returned null for class file");
-                }
-
-                result[0] = page.openEditor(jdtEditor.getEditorInput(), EDITOR_ID, true);
-
-                if (jdtEditor != result[0]) {
-                    page.closeEditor(jdtEditor, false);
-                }
+                IEditorInput input = new FileEditorInput(classFile);
+                result[0] = page.openEditor(input, EDITOR_ID, true);
             } catch (Exception e) {
                 throw new AssertionError("Failed to open class file using editor id: " + EDITOR_ID, e);
             }
