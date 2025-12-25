@@ -12,11 +12,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -48,8 +51,8 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.JavaRuntime;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -59,6 +62,9 @@ public class ExportSourceActionTest {
 
     private static final String TEST_BUNDLE_ID = "org.sf.feeling.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
+
+    private static final String PLACEHOLDER_MARKER = "Decompiler failed to produce source for this class."; //$NON-NLS-1$
+    private static final String DECOMPILER_FERNFLOWER = "FernFlower"; //$NON-NLS-1$
 
     private IProject project;
     private IJavaProject javaProject;
@@ -73,15 +79,16 @@ public class ExportSourceActionTest {
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
 
-        tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID().toString());
+        tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID().toString()); //$NON-NLS-1$
         assertNotNull(tempDir);
         assertTrue(tempDir.exists());
         assertTrue(tempDir.isDirectory());
 
-        JavaDecompilerPlugin.getDefault().getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR,
-                tempDir.getAbsolutePath());
+        IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        store.setValue(JavaDecompilerPlugin.TEMP_DIR, tempDir.getAbsolutePath());
+        store.setValue(JavaDecompilerPlugin.DECOMPILER_TYPE, DECOMPILER_FERNFLOWER);
 
-        String projectName = "export-source-action-test-project";
+        String projectName = "export-source-action-test-project"; //$NON-NLS-1$
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         project = root.getProject(projectName);
 
@@ -119,13 +126,13 @@ public class ExportSourceActionTest {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         assertNotNull(layout);
 
-        String anyPackage = layout.findAnyPackage().orElse("");
+        String anyPackage = layout.findAnyPackage().orElse(""); //$NON-NLS-1$
         IPackageFragment pkg = jarRoot.getPackageFragment(anyPackage);
         assertNotNull(pkg);
         assertTrue(pkg.exists());
 
         ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", true);
+        setBooleanField(action, "isFlat", true); //$NON-NLS-1$
 
         Map classes = new HashMap();
         invokeCollectClasses(action, pkg, classes);
@@ -139,7 +146,7 @@ public class ExportSourceActionTest {
             collected.add(key.getElementName());
         }
 
-        assertEquals("Flat mode should only collect the selected package", 1, collected.size());
+        assertEquals(1, collected.size());
         assertTrue(collected.contains(anyPackage));
     }
 
@@ -149,13 +156,13 @@ public class ExportSourceActionTest {
         assertNotNull(layout);
 
         Optional<PackagePair> pair = layout.findBaseAndSubpackagePair();
-        String selectedPackage = pair.map(p -> p.base).orElseGet(() -> layout.findAnyPackage().orElse(""));
+        String selectedPackage = pair.map(p -> p.base).orElseGet(() -> layout.findAnyPackage().orElse("")); //$NON-NLS-1$
 
         IPackageFragment base = jarRoot.getPackageFragment(selectedPackage);
         assertTrue(base.exists());
 
         ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", false);
+        setBooleanField(action, "isFlat", false); //$NON-NLS-1$
 
         Map classes = new HashMap();
         invokeCollectClasses(action, base, classes);
@@ -167,15 +174,13 @@ public class ExportSourceActionTest {
             collected.add(key.getElementName());
         }
 
-        assertTrue("Hierarchical mode should include the selected package", collected.contains(selectedPackage));
+        assertTrue(collected.contains(selectedPackage));
 
         if (pair.isPresent()) {
-            assertTrue("Hierarchical mode should include subpackages when present", collected.contains(pair.get().sub));
-            assertTrue("Hierarchical mode should collect at least base and subpackage", collected.size() >= 2);
+            assertTrue(collected.contains(pair.get().sub));
+            assertTrue(collected.size() >= 2);
         } else {
-            assertEquals(
-                    "When no subpackages exist, hierarchical mode should behave like flat collection for the selected package",
-                    1, collected.size());
+            assertEquals(1, collected.size());
         }
     }
 
@@ -185,7 +190,7 @@ public class ExportSourceActionTest {
         assertNotNull(layout);
 
         Optional<ClassLocation> anyClass = layout.findAnyClass();
-        assertTrue("test.jar should contain at least one .class", anyClass.isPresent());
+        assertTrue(anyClass.isPresent());
 
         IPackageFragment pkg = jarRoot.getPackageFragment(anyClass.get().packageName);
         assertTrue(pkg.exists());
@@ -195,7 +200,7 @@ public class ExportSourceActionTest {
         assertTrue(classFile.exists());
 
         ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", true);
+        setBooleanField(action, "isFlat", true); //$NON-NLS-1$
 
         Map classes = new HashMap();
         invokeCollectClasses(action, classFile, classes);
@@ -208,19 +213,18 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesExportsAllClassesAsJavaFiles() throws Exception {
-        String decompilerType = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+    public void testExportPackageSourcesExportsAllClassesAsJavaFilesAndHasAtLeastOneSuccessfulDecompile()
+            throws Exception {
+        IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        String decompilerType = store.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+        assertNotNull(decompilerType);
+        assertTrue(!decompilerType.trim().isEmpty());
+        assertEquals(DECOMPILER_FERNFLOWER, decompilerType);
 
-        Assume.assumeTrue("Decompiler type must be configured for tests",
-                decompilerType != null && !decompilerType.trim().isEmpty());
+        boolean reuseBuf = store.getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
+        boolean always = store.getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
-        boolean reuseBuf = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
-        boolean always = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
-
-        File outZip = new File(tempDir, "exported-src-all-" + UUID.randomUUID().toString() + ".zip");
+        File outZip = new File(tempDir, "exported-src-all-" + UUID.randomUUID().toString() + ".zip"); //$NON-NLS-1$
         if (outZip.exists()) {
             assertTrue(outZip.delete());
         }
@@ -235,21 +239,56 @@ public class ExportSourceActionTest {
         invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children,
                 exceptions);
 
-        assertTrue("Output zip should be created", outZip.exists());
-        assertTrue("Output zip should be non-empty", outZip.length() > 0);
+        assertTrue(outZip.exists());
+        assertTrue(outZip.length() > 0);
 
         Set<String> expectedJavaEntries = listExpectedJavaEntriesFromJar(jarFileOnDisk);
-        assertTrue("Jar should contain at least one .class", !expectedJavaEntries.isEmpty());
+        assertTrue(!expectedJavaEntries.isEmpty());
 
-        Set<String> actualJavaEntries = new HashSet(listZipEntries(outZip, ".java"));
+        Set<String> actualJavaEntries = new HashSet(listZipEntries(outZip, ".java")); //$NON-NLS-1$
         for (String expected : expectedJavaEntries) {
-            assertTrue("Missing exported entry: " + expected, actualJavaEntries.contains(expected));
+            assertTrue("Missing exported entry: " + expected, actualJavaEntries.contains(expected)); //$NON-NLS-1$
+        }
+
+        assertTrue("Expected at least one successfully decompiled source file", hasAnyNonPlaceholderJava(outZip));
+    }
+
+    private static boolean hasAnyNonPlaceholderJava(File outZip) throws IOException {
+        try (ZipFile zf = new ZipFile(outZip)) {
+            Enumeration<? extends ZipEntry> entries = zf.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (name == null || !name.endsWith(".java")) { //$NON-NLS-1$
+                    continue;
+                }
+                String content = readZipEntryAsString(zf, entry);
+                if (content != null && content.indexOf(PLACEHOLDER_MARKER) < 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String readZipEntryAsString(ZipFile zf, ZipEntry entry) throws IOException {
+        try (InputStream in = zf.getInputStream(entry)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) >= 0) {
+                out.write(buffer, 0, read);
+            }
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
         }
     }
 
     private static void invokeExportPackageSources(ExportSourceAction action, String decompilerType, boolean reuseBuf,
             boolean always, String projectFile, IJavaElement[] children, List exceptions) throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("exportPackageSources",
+        Method method = ExportSourceAction.class.getDeclaredMethod("exportPackageSources", //$NON-NLS-1$
                 org.eclipse.core.runtime.IProgressMonitor.class, String.class, boolean.class, boolean.class, String.class,
                 IJavaElement[].class, List.class);
         method.setAccessible(true);
@@ -301,10 +340,10 @@ public class ExportSourceActionTest {
 
     private static File resolveTestJar() throws Exception {
         Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
-        assertNotNull("Test bundle must be available: " + TEST_BUNDLE_ID, bundle);
+        assertNotNull(bundle);
 
         URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull("Missing test.jar at: " + TEST_JAR_PATH, entry);
+        assertNotNull(entry);
 
         URL resolved = FileLocator.toFileURL(entry);
         IPath path = new Path(resolved.getPath());
@@ -326,7 +365,7 @@ public class ExportSourceActionTest {
         project.setRawClasspath(updated, null);
 
         return findJarPackageFragmentRoot(project, jarPath).orElseThrow(
-                () -> new IllegalStateException("Unable to locate package fragment root for jar: " + jarPath.toOSString()));
+                () -> new IllegalStateException("Unable to locate package fragment root for jar: " + jarPath.toOSString())); //$NON-NLS-1$
     }
 
     private static Optional<IPackageFragmentRoot> findJarPackageFragmentRoot(IJavaProject project, IPath jarPath)
@@ -344,8 +383,8 @@ public class ExportSourceActionTest {
     }
 
     private static void invokeCollectClasses(ExportSourceAction action, IJavaElement element, Map classes) throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("collectClasses", IJavaElement.class, Map.class,
-                org.eclipse.core.runtime.IProgressMonitor.class);
+        Method method = ExportSourceAction.class.getDeclaredMethod("collectClasses", //$NON-NLS-1$
+                IJavaElement.class, Map.class, org.eclipse.core.runtime.IProgressMonitor.class);
         method.setAccessible(true);
         org.eclipse.core.runtime.IProgressMonitor monitor = new org.eclipse.core.runtime.NullProgressMonitor();
         method.invoke(action, element, classes, monitor);
