@@ -73,9 +73,10 @@ public class ExportSourceActionTest {
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
 
-        tempDir = createTempDirUnderWorkspace(".ecd-test-tmp-" + UUID.randomUUID().toString());
+        tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID().toString());
         assertNotNull(tempDir);
         assertTrue(tempDir.exists());
+        assertTrue(tempDir.isDirectory());
 
         JavaDecompilerPlugin.getDefault().getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR,
                 tempDir.getAbsolutePath());
@@ -148,8 +149,8 @@ public class ExportSourceActionTest {
         assertNotNull(layout);
 
         Optional<PackagePair> pair = layout.findBaseAndSubpackagePair();
-
         String selectedPackage = pair.map(p -> p.base).orElseGet(() -> layout.findAnyPackage().orElse(""));
+
         IPackageFragment base = jarRoot.getPackageFragment(selectedPackage);
         assertTrue(base.exists());
 
@@ -183,13 +184,13 @@ public class ExportSourceActionTest {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         assertNotNull(layout);
 
-        Optional<ClassLocation> anyTopLevel = layout.findAnyTopLevelClass();
-        assertTrue("test.jar should contain at least one .class", anyTopLevel.isPresent());
+        Optional<ClassLocation> anyClass = layout.findAnyClass();
+        assertTrue("test.jar should contain at least one .class", anyClass.isPresent());
 
-        IPackageFragment pkg = jarRoot.getPackageFragment(anyTopLevel.get().packageName);
+        IPackageFragment pkg = jarRoot.getPackageFragment(anyClass.get().packageName);
         assertTrue(pkg.exists());
 
-        IClassFile classFile = pkg.getClassFile(anyTopLevel.get().classFileName);
+        IClassFile classFile = pkg.getClassFile(anyClass.get().classFileName);
         assertNotNull(classFile);
         assertTrue(classFile.exists());
 
@@ -231,7 +232,8 @@ public class ExportSourceActionTest {
         ExportSourceAction action = new ExportSourceAction(new ArrayList());
         List exceptions = new ArrayList();
 
-        invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children, exceptions);
+        invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children,
+                exceptions);
 
         assertTrue("Output zip should be created", outZip.exists());
         assertTrue("Output zip should be non-empty", outZip.length() > 0);
@@ -355,11 +357,15 @@ public class ExportSourceActionTest {
         field.setBoolean(target, value);
     }
 
-    private static File createTempDirUnderWorkspace(String name) throws IOException {
-        File workspaceRoot = ResourcesPlugin.getWorkspace().getRoot().getLocation().toFile();
-        File dir = new File(workspaceRoot, name);
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw new IOException("Unable to create temp directory: " + dir.getAbsolutePath());
+    private static File createTempDirUnderTarget(String name) throws IOException {
+        File base = new File("target"); //$NON-NLS-1$
+        if (!base.exists() && !base.mkdirs() && !base.exists()) {
+            throw new IOException("Unable to create target directory: " + base.getAbsolutePath()); //$NON-NLS-1$
+        }
+
+        File dir = new File(base, name);
+        if (!dir.exists() && !dir.mkdirs() && !dir.exists()) {
+            throw new IOException("Unable to create temp directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
         }
         return dir;
     }
@@ -377,7 +383,7 @@ public class ExportSourceActionTest {
             }
         }
         if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath());
+            throw new IOException("Unable to delete: " + file.getAbsolutePath()); //$NON-NLS-1$
         }
     }
 
@@ -469,7 +475,7 @@ public class ExportSourceActionTest {
             return Optional.empty();
         }
 
-        private Optional<ClassLocation> findAnyTopLevelClass() {
+        private Optional<ClassLocation> findAnyClass() {
             if (classes.isEmpty()) {
                 return Optional.empty();
             }
