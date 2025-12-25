@@ -12,14 +12,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -62,8 +59,6 @@ public class ExportSourceActionTest {
 
     private static final String TEST_BUNDLE_ID = "org.sf.feeling.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
-
-    private static final String PLACEHOLDER_MARKER = "Decompiler failed to produce source for this class."; //$NON-NLS-1$
     private static final String DECOMPILER_FERNFLOWER = "FernFlower"; //$NON-NLS-1$
 
     private IProject project;
@@ -79,14 +74,12 @@ public class ExportSourceActionTest {
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
 
-        tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID().toString()); //$NON-NLS-1$
+        tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID()); //$NON-NLS-1$
         assertNotNull(tempDir);
         assertTrue(tempDir.exists());
         assertTrue(tempDir.isDirectory());
 
-        IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-        store.setValue(JavaDecompilerPlugin.TEMP_DIR, tempDir.getAbsolutePath());
-        store.setValue(JavaDecompilerPlugin.DECOMPILER_TYPE, DECOMPILER_FERNFLOWER);
+        configureExportPreferences(tempDir);
 
         String projectName = "export-source-action-test-project"; //$NON-NLS-1$
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
@@ -156,7 +149,7 @@ public class ExportSourceActionTest {
         assertNotNull(layout);
 
         Optional<PackagePair> pair = layout.findBaseAndSubpackagePair();
-        String selectedPackage = pair.map(p -> p.base).orElseGet(() -> layout.findAnyPackage().orElse("")); //$NON-NLS-1$
+        String selectedPackage = pair.map(PackagePair::base).orElseGet(() -> layout.findAnyPackage().orElse("")); //$NON-NLS-1$
 
         IPackageFragment base = jarRoot.getPackageFragment(selectedPackage);
         assertTrue(base.exists());
@@ -177,7 +170,7 @@ public class ExportSourceActionTest {
         assertTrue(collected.contains(selectedPackage));
 
         if (pair.isPresent()) {
-            assertTrue(collected.contains(pair.get().sub));
+            assertTrue(collected.contains(pair.get().sub()));
             assertTrue(collected.size() >= 2);
         } else {
             assertEquals(1, collected.size());
@@ -192,10 +185,10 @@ public class ExportSourceActionTest {
         Optional<ClassLocation> anyClass = layout.findAnyClass();
         assertTrue(anyClass.isPresent());
 
-        IPackageFragment pkg = jarRoot.getPackageFragment(anyClass.get().packageName);
+        IPackageFragment pkg = jarRoot.getPackageFragment(anyClass.get().packageName());
         assertTrue(pkg.exists());
 
-        IClassFile classFile = pkg.getClassFile(anyClass.get().classFileName);
+        IClassFile classFile = pkg.getClassFile(anyClass.get().classFileName());
         assertNotNull(classFile);
         assertTrue(classFile.exists());
 
@@ -213,18 +206,14 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesExportsAllClassesAsJavaFilesAndHasAtLeastOneSuccessfulDecompile()
-            throws Exception {
+    public void testExportPackageSourcesExportsAllClassesAsJavaFilesWithoutFailures() throws Exception {
         IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-        String decompilerType = store.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
-        assertNotNull(decompilerType);
-        assertTrue(!decompilerType.trim().isEmpty());
-        assertEquals(DECOMPILER_FERNFLOWER, decompilerType);
+        assertEquals(DECOMPILER_FERNFLOWER, store.getString(JavaDecompilerPlugin.DECOMPILER_TYPE));
 
         boolean reuseBuf = store.getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
         boolean always = store.getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
-        File outZip = new File(tempDir, "exported-src-all-" + UUID.randomUUID().toString() + ".zip"); //$NON-NLS-1$
+        File outZip = new File(tempDir, "exported-src-all-" + UUID.randomUUID() + ".zip"); //$NON-NLS-1$ //$NON-NLS-2$
         if (outZip.exists()) {
             assertTrue(outZip.delete());
         }
@@ -236,9 +225,10 @@ public class ExportSourceActionTest {
         ExportSourceAction action = new ExportSourceAction(new ArrayList());
         List exceptions = new ArrayList();
 
-        invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children,
+        invokeExportPackageSources(action, DECOMPILER_FERNFLOWER, reuseBuf, always, outZip.getAbsolutePath(), children,
                 exceptions);
 
+        assertTrue("No exceptions should be reported", exceptions.isEmpty()); //$NON-NLS-1$
         assertTrue(outZip.exists());
         assertTrue(outZip.length() > 0);
 
@@ -246,44 +236,19 @@ public class ExportSourceActionTest {
         assertTrue(!expectedJavaEntries.isEmpty());
 
         Set<String> actualJavaEntries = new HashSet(listZipEntries(outZip, ".java")); //$NON-NLS-1$
+        assertEquals("Exported entry count must match jar class count", expectedJavaEntries.size(), actualJavaEntries.size()); //$NON-NLS-1$
+
         for (String expected : expectedJavaEntries) {
             assertTrue("Missing exported entry: " + expected, actualJavaEntries.contains(expected)); //$NON-NLS-1$
         }
-
-        assertTrue("Expected at least one successfully decompiled source file", hasAnyNonPlaceholderJava(outZip));
     }
 
-    private static boolean hasAnyNonPlaceholderJava(File outZip) throws IOException {
-        try (ZipFile zf = new ZipFile(outZip)) {
-            Enumeration<? extends ZipEntry> entries = zf.entries();
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (entry.isDirectory()) {
-                    continue;
-                }
-                String name = entry.getName();
-                if (name == null || !name.endsWith(".java")) { //$NON-NLS-1$
-                    continue;
-                }
-                String content = readZipEntryAsString(zf, entry);
-                if (content != null && content.indexOf(PLACEHOLDER_MARKER) < 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private static String readZipEntryAsString(ZipFile zf, ZipEntry entry) throws IOException {
-        try (InputStream in = zf.getInputStream(entry)) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) >= 0) {
-                out.write(buffer, 0, read);
-            }
-            return new String(out.toByteArray(), StandardCharsets.UTF_8);
-        }
+    private static void configureExportPreferences(File tempDir) {
+        IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        store.setValue(JavaDecompilerPlugin.TEMP_DIR, tempDir.getAbsolutePath());
+        store.setValue(JavaDecompilerPlugin.DECOMPILER_TYPE, DECOMPILER_FERNFLOWER);
+        store.setValue(JavaDecompilerPlugin.REUSE_BUFFER, false);
+        store.setValue(JavaDecompilerPlugin.IGNORE_EXISTING, true);
     }
 
     private static void invokeExportPackageSources(ExportSourceAction action, String decompilerType, boolean reuseBuf,
@@ -459,43 +424,26 @@ public class ExportSourceActionTest {
         }
     }
 
-    private static final class PackagePair {
-        private final String base;
-        private final String sub;
-
-        private PackagePair(String base, String sub) {
-            this.base = base;
-            this.sub = sub;
-        }
+    public record PackagePair(String base, String sub) {
     }
 
-    private static final class ClassLocation {
-        private final String packageName;
-        private final String classFileName;
-
-        private ClassLocation(String packageName, String classFileName) {
-            this.packageName = packageName;
-            this.classFileName = classFileName;
-        }
+    public record ClassLocation(String packageName, String classFileName) {
     }
 
-    private static final class JarLayout {
-        private final Set<String> packages;
-        private final List<ClassLocation> classes;
+    public record JarLayout(Set<String> packages, List<ClassLocation> classes) {
 
-        private JarLayout(Set<String> packages, List<ClassLocation> classes) {
-            this.packages = packages;
-            this.classes = classes;
-        }
-
-        private Optional<String> findAnyPackage() {
-            if (packages.isEmpty()) {
+        public Optional<String> findAnyPackage() {
+            if (packages == null || packages.isEmpty()) {
                 return Optional.empty();
             }
             return Optional.of(packages.iterator().next());
         }
 
-        private Optional<PackagePair> findBaseAndSubpackagePair() {
+        public Optional<PackagePair> findBaseAndSubpackagePair() {
+            if (packages == null || packages.isEmpty()) {
+                return Optional.empty();
+            }
+
             String[] all = packages.toArray(new String[0]);
             for (int i = 0; i < all.length; i++) {
                 String base = all[i];
@@ -514,8 +462,8 @@ public class ExportSourceActionTest {
             return Optional.empty();
         }
 
-        private Optional<ClassLocation> findAnyClass() {
-            if (classes.isEmpty()) {
+        public Optional<ClassLocation> findAnyClass() {
+            if (classes == null || classes.isEmpty()) {
                 return Optional.empty();
             }
             return Optional.of(classes.get(0));
