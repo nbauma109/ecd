@@ -251,8 +251,19 @@ public class ExportSourceAction extends Action {
                         className += ("." + clazz.getElementName()); //$NON-NLS-1$
                     }
                     monitor.subTask(className);
+                    File target = null;
                     try {
                         IClassFile cf = (IClassFile) clazz;
+
+                        String packageName = pkg.getElementName().replace('.', '/');
+                        if (!packageName.isEmpty()) {
+                            packageName += "/"; //$NON-NLS-1$
+                        }
+
+                        target = new File(workingDir,
+                                packageName + cf.getElementName().replaceAll("\\..+", "") + ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+                        ensureParentDirectoryExists(target);
+
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
                         if (result == null) {
                             IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
@@ -260,21 +271,30 @@ public class ExportSourceAction extends Action {
                                             new String[] { className }));
                             throw new CoreException(status);
                         }
-                        String packageName = pkg.getElementName().replace('.', '/');
-                        if (!packageName.isEmpty()) {
-                            packageName += "/"; //$NON-NLS-1$
-                        }
-                        FileUtil.writeToFile(
-                                new File(workingDir, packageName + cf.getElementName().replaceAll("\\..+", "") //$NON-NLS-1$ //$NON-NLS-2$
-                                        + ".java"), //$NON-NLS-1$
-                                result);
+                        FileUtil.writeToFile(target, result);
                     } catch (Exception e) {
                         IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                                 Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
                                         new String[] { className }));
                         exceptions.add(status);
-                    }
 
+                        try {
+                            if (target == null) {
+                                IClassFile cf = (IClassFile) clazz;
+                                String packageName = pkg.getElementName().replace('.', '/');
+                                if (!packageName.isEmpty()) {
+                                    packageName += "/"; //$NON-NLS-1$
+                                }
+                                target = new File(workingDir,
+                                        packageName + cf.getElementName().replaceAll("\\..+", "") + ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+                            }
+                            ensureParentDirectoryExists(target);
+                            FileUtil.writeToFile(target,
+                                    buildDecompileFailurePlaceholder(pkg.getElementName(), (IClassFile) clazz, e));
+                        } catch (Exception ignored) {
+                            Logger.debug(ignored);
+                        }
+                    }
                 }
                 total += classStep;
                 monitor.worked(classStep);
@@ -385,10 +405,33 @@ public class ExportSourceAction extends Action {
         }
     }
 
+    private static void ensureParentDirectoryExists(File target) throws IOException {
+        File parent = target.getParentFile();
+        if (parent == null || parent.exists()) {
+            return;
+        }
+        if (!parent.mkdirs() && !parent.exists()) {
+            throw new IOException("Unable to create directory: " + parent.getAbsolutePath()); //$NON-NLS-1$
+        }
+    }
+
+    private static String buildDecompileFailurePlaceholder(String packageName, IClassFile classFile, Exception error) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("/**\n"); //$NON-NLS-1$
+        builder.append(" * Decompiler failed to produce source for this class.\n"); //$NON-NLS-1$
+        builder.append(" *\n"); //$NON-NLS-1$
+        builder.append(" * Class: ").append(String.valueOf(classFile.getElementName())).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+        builder.append(" * Error: ").append(String.valueOf(error)).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
+        builder.append(" */\n"); //$NON-NLS-1$
+        if (packageName != null && !packageName.isEmpty()) {
+            builder.append("package ").append(packageName).append(";\n"); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        builder.append("\n"); //$NON-NLS-1$
+        return builder.toString();
+    }
+
     @Override
     public boolean isEnabled() {
         return selection != null;
     }
-
 }
-
