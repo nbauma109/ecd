@@ -1,5 +1,4 @@
 Manifest-Version: 1.0
-Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .
 Bundle-Name: Enhanced Class Decompiler
 Bundle-RequiredExecutionEnvironment: JavaSE-21
@@ -33,8 +32,7 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-Vendor: ECD Project Team
 Bundle-Version: 2025.12.1
 Bundle-ManifestVersion: 2
-Bundle-Activator: org.sf.feeling.decompiler.JavaDecompilerPlugin
 Bundle-SymbolicName: org.sf.feeling.decompiler.tests;singleton:=true
 Eclipse-ExtensibleAPI: true
 Automatic-Module-Name: org.sf.feeling.decompiler.tests
-Export-Package: org.sf.feeling.decompiler.util
+
