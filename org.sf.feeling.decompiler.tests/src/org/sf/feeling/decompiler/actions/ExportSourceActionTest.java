@@ -37,8 +37,9 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaElement;
@@ -228,7 +229,8 @@ public class ExportSourceActionTest {
         invokeExportPackageSources(action, DECOMPILER_FERNFLOWER, reuseBuf, always, outZip.getAbsolutePath(), children,
                 exceptions);
 
-        assertTrue("No exceptions should be reported", exceptions.isEmpty()); //$NON-NLS-1$
+        assertTrue(buildExceptionsMessage(exceptions), exceptions.isEmpty());
+
         assertTrue(outZip.exists());
         assertTrue(outZip.length() > 0);
 
@@ -236,7 +238,7 @@ public class ExportSourceActionTest {
         assertTrue(!expectedJavaEntries.isEmpty());
 
         Set<String> actualJavaEntries = new HashSet(listZipEntries(outZip, ".java")); //$NON-NLS-1$
-        assertEquals("Exported entry count must match jar class count", expectedJavaEntries.size(), actualJavaEntries.size()); //$NON-NLS-1$
+        assertEquals(expectedJavaEntries.size(), actualJavaEntries.size());
 
         for (String expected : expectedJavaEntries) {
             assertTrue("Missing exported entry: " + expected, actualJavaEntries.contains(expected)); //$NON-NLS-1$
@@ -296,6 +298,30 @@ public class ExportSourceActionTest {
             }
         }
         return expected;
+    }
+
+    private static String buildExceptionsMessage(List exceptions) {
+        if (exceptions == null || exceptions.isEmpty()) {
+            return "No exceptions should be reported"; //$NON-NLS-1$
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Export reported ").append(exceptions.size()).append(" exception(s):"); //$NON-NLS-1$ //$NON-NLS-2$
+        for (int i = 0; i < exceptions.size(); i++) {
+            Object o = exceptions.get(i);
+            sb.append("\n  [").append(i).append("] "); //$NON-NLS-1$ //$NON-NLS-2$
+            if (o instanceof Status) {
+                Status s = (Status) o;
+                sb.append("severity=").append(s.getSeverity()).append(", message=").append(s.getMessage()); //$NON-NLS-1$ //$NON-NLS-2$
+                if (s.getException() != null) {
+                    sb.append(", exception=").append(s.getException().getClass().getName()).append(": ") //$NON-NLS-1$ //$NON-NLS-2$
+                            .append(String.valueOf(s.getException().getMessage()));
+                }
+            } else {
+                sb.append(String.valueOf(o));
+            }
+        }
+        return sb.toString();
     }
 
     private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
