@@ -237,6 +237,10 @@ public class ExportSourceAction extends Action {
         monitor.worked(20000);
 
         IPackageFragment[] pkgs = (IPackageFragment[]) classes.keySet().toArray(new IPackageFragment[0]);
+        if (pkgs.length == 0) {
+            return;
+        }
+
         int step = 880000 / pkgs.length;
         for (int i = 0; i < pkgs.length; i++) {
             if (monitor.isCanceled()) {
@@ -403,11 +407,6 @@ public class ExportSourceAction extends Action {
                     Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
                             new String[] { className }));
         } catch (IOException e) {
-            MessageDialog.openError(Display.getDefault().getActiveShell(),
-                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
-                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
-                            new String[] { className }));
-        } catch (JavaModelException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
                     Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
                     Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
