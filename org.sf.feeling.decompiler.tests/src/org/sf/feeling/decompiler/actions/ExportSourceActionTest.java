@@ -240,47 +240,55 @@ public class ExportSourceActionTest {
         assertTrue("Zip should contain at least one .java entry", !javaEntries.isEmpty());
     }
 
-    @Test
-    public void testExportPackageSourcesSkipsInnerClassesIfPresent() throws Exception {
-        String decompilerType = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+@Test
+public void testExportPackageSourcesExportsInnerClassesIfPresent() throws Exception {
+    String decompilerType = JavaDecompilerPlugin.getDefault().getPreferenceStore()
+            .getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
 
-        Assume.assumeTrue("Decompiler type must be configured for tests", decompilerType != null && !decompilerType.trim().isEmpty());
+    Assume.assumeTrue("Decompiler type must be configured for tests",
+            decompilerType != null && !decompilerType.trim().isEmpty());
 
-        boolean reuseBuf = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
-        boolean always = JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                .getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
+    boolean reuseBuf = JavaDecompilerPlugin.getDefault().getPreferenceStore()
+            .getBoolean(JavaDecompilerPlugin.REUSE_BUFFER);
+    boolean always = JavaDecompilerPlugin.getDefault().getPreferenceStore()
+            .getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
-        JarLayout layout = readJarLayout(jarFileOnDisk);
-        assertNotNull(layout);
+    JarLayout layout = readJarLayout(jarFileOnDisk);
+    assertNotNull(layout);
 
-        boolean jarHasInnerClasses = layout.hasAnyInnerClass;
-        Assume.assumeTrue("test.jar must contain at least one inner class to verify skipping behavior", jarHasInnerClasses);
+    Assume.assumeTrue("test.jar must contain at least one inner class to verify export behavior",
+            layout.hasAnyInnerClass);
 
-        File outZip = new File(tempDir, "exported-src-inner-skip-" + UUID.randomUUID().toString() + ".zip");
-        if (outZip.exists()) {
-            assertTrue(outZip.delete());
-        }
+    File outZip = new File(tempDir, "exported-src-inner-" + UUID.randomUUID().toString() + ".zip");
+    if (outZip.exists()) {
+        assertTrue(outZip.delete());
+    }
 
-        IJavaElement[] children = jarRoot.getChildren();
-        assertNotNull(children);
-        assertTrue(children.length > 0);
+    IJavaElement[] children = jarRoot.getChildren();
+    assertNotNull(children);
+    assertTrue(children.length > 0);
 
-        ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        List exceptions = new ArrayList();
+    ExportSourceAction action = new ExportSourceAction(new ArrayList());
+    List exceptions = new ArrayList();
 
-        invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children, exceptions);
+    invokeExportPackageSources(action, decompilerType, reuseBuf, always, outZip.getAbsolutePath(), children, exceptions);
 
-        assertTrue("No exceptions should be reported", exceptions.isEmpty());
-        assertTrue("Output zip should be created", outZip.exists());
+    assertTrue("No exceptions should be reported", exceptions.isEmpty());
+    assertTrue("Output zip should be created", outZip.exists());
 
-        List<String> javaEntries = listZipEntries(outZip, ".java");
-        for (int i = 0; i < javaEntries.size(); i++) {
-            String entry = javaEntries.get(i);
-            assertTrue("Inner class sources should not be exported: " + entry, entry.indexOf('$') < 0);
+    List<String> javaEntries = listZipEntries(outZip, ".java");
+
+    boolean hasInnerJava = false;
+    for (int i = 0; i < javaEntries.size(); i++) {
+        String entry = javaEntries.get(i);
+        if (entry.indexOf('$') >= 0) {
+            hasInnerJava = true;
+            break;
         }
     }
+
+    assertTrue("At least one inner class source should be exported when inner classes exist in the jar", hasInnerJava);
+}
 
     private static void invokeExportPackageSources(ExportSourceAction action, String decompilerType, boolean reuseBuf,
             boolean always, String projectFile, IJavaElement[] children, List exceptions) throws Exception {
