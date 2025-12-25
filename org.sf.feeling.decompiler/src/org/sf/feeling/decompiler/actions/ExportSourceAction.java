@@ -208,6 +208,16 @@ public class ExportSourceAction extends Action {
                 + "/export/" //$NON-NLS-1$
                 + System.currentTimeMillis());
 
+        try {
+            ensureDirectoryExists(workingDir);
+        } catch (IOException e) {
+            final IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
+                    Messages.getString("ExportSourceAction.Status.Error.ExportFailed"), //$NON-NLS-1$
+                    e);
+            exceptions.add(status);
+            return;
+        }
+
         Map classes = new HashMap();
         for (int i = 0; i < children.length; i++) {
             if (monitor.isCanceled()) {
@@ -227,6 +237,10 @@ public class ExportSourceAction extends Action {
         monitor.worked(20000);
 
         IPackageFragment[] pkgs = (IPackageFragment[]) classes.keySet().toArray(new IPackageFragment[0]);
+        if (pkgs.length == 0) {
+            return;
+        }
+
         int step = 880000 / pkgs.length;
         for (int i = 0; i < pkgs.length; i++) {
             if (monitor.isCanceled()) {
@@ -253,9 +267,8 @@ public class ExportSourceAction extends Action {
                     monitor.subTask(className);
                     try {
                         IClassFile cf = (IClassFile) clazz;
-                        if (cf.getElementName().indexOf('$') != -1) {
-                            continue;
-                        }
+                        cf.open(monitor);
+
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
                         if (result == null) {
                             IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
@@ -263,18 +276,23 @@ public class ExportSourceAction extends Action {
                                             new String[] { className }));
                             throw new CoreException(status);
                         }
+
                         String packageName = pkg.getElementName().replace('.', '/');
                         if (!packageName.isEmpty()) {
                             packageName += "/"; //$NON-NLS-1$
                         }
-                        FileUtil.writeToFile(
-                                new File(workingDir, packageName + cf.getElementName().replaceAll("\\..+", "") //$NON-NLS-1$ //$NON-NLS-2$
-                                        + ".java"), //$NON-NLS-1$
-                                result);
+
+                        File target = new File(workingDir,
+                                packageName + cf.getElementName().replaceAll("\\..+", "") //$NON-NLS-1$ //$NON-NLS-2$
+                                        + ".java"); //$NON-NLS-1$
+
+                        ensureParentDirectoryExists(target);
+                        FileUtil.writeToFile(target, result);
                     } catch (Exception e) {
                         IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                                 Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
-                                        new String[] { className }));
+                                        new String[] { className }),
+                                e);
                         exceptions.add(status);
                     }
 
@@ -372,6 +390,7 @@ public class ExportSourceAction extends Action {
 
         String projectFile = file.trim();
         try {
+            cf.open(null);
             String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
             if (result == null) {
                 IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
@@ -379,12 +398,47 @@ public class ExportSourceAction extends Action {
                                 new String[] { className }));
                 throw new CoreException(status);
             }
-            FileUtil.writeToFile(new File(projectFile), result);
+            File target = new File(projectFile);
+            ensureParentDirectoryExists(target);
+            FileUtil.writeToFile(target, result);
         } catch (CoreException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
                     Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
                     Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
                             new String[] { className }));
+        } catch (IOException e) {
+            MessageDialog.openError(Display.getDefault().getActiveShell(),
+                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
+                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                            new String[] { className }));
+        }
+    }
+
+    private static void ensureParentDirectoryExists(File target) throws IOException {
+        if (target == null) {
+            throw new IOException("Target is null"); //$NON-NLS-1$
+        }
+        File parent = target.getParentFile();
+        if (parent == null) {
+            return;
+        }
+        ensureDirectoryExists(parent);
+    }
+
+    private static void ensureDirectoryExists(File dir) throws IOException {
+        if (dir == null) {
+            throw new IOException("Directory is null"); //$NON-NLS-1$
+        }
+        if (dir.exists()) {
+            if (dir.isDirectory()) {
+                return;
+            }
+            if (!dir.delete() && dir.exists()) {
+                throw new IOException("Unable to delete file blocking directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
+            }
+        }
+        if (!dir.mkdirs() && !dir.isDirectory()) {
+            throw new IOException("Unable to create directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
         }
     }
 
