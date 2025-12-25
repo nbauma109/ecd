@@ -117,6 +117,7 @@ public class JavaDecompilerClassFileEditorUiTest {
         pkg.createCompilationUnit(typeName + ".java", source, true, new NullProgressMonitor());
 
         project.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+        project.refreshLocal(IProject.DEPTH_INFINITE, new NullProgressMonitor());
 
         IFolder binFolder = project.getFolder(BIN_FOLDER);
         IPath classPath = binFolder.getFullPath()
@@ -128,15 +129,25 @@ public class JavaDecompilerClassFileEditorUiTest {
             throw new AssertionError("Expected compiled class file to exist at: " + classPath.toString());
         }
 
-        IPackageFragmentRoot binRoot = javaProject.getPackageFragmentRoot(binFolder);
-        IPackageFragment binPkg = binRoot.getPackageFragment(packageName);
-        IClassFile classFile = binPkg.getClassFile(typeName + ".class");
+        return findClassFile(javaProject, packageName, typeName + ".class");
+    }
 
-        if (classFile == null || !classFile.exists()) {
-            throw new AssertionError("Expected IClassFile to exist for: " + packageName + "." + typeName);
+    private static IClassFile findClassFile(IJavaProject javaProject, String packageName, String classFileName)
+            throws JavaModelException {
+
+        for (IPackageFragmentRoot root : javaProject.getPackageFragmentRoots()) {
+            if (root.getKind() == IPackageFragmentRoot.K_BINARY) {
+                IPackageFragment pkg = root.getPackageFragment(packageName);
+                if (pkg != null && pkg.exists()) {
+                    IClassFile candidate = pkg.getClassFile(classFileName);
+                    if (candidate != null && candidate.exists()) {
+                        return candidate;
+                    }
+                }
+            }
         }
 
-        return classFile;
+        throw new AssertionError("Could not locate IClassFile in binary roots for: " + packageName + "." + classFileName);
     }
 
     private static IEditorPart openClassFileWithDecompilerEditor(final IClassFile classFile) {
