@@ -253,9 +253,6 @@ public class ExportSourceAction extends Action {
                     monitor.subTask(className);
                     try {
                         IClassFile cf = (IClassFile) clazz;
-                        if (cf.getElementName().indexOf('$') != -1) {
-                            continue;
-                        }
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
                         if (result == null) {
                             IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
@@ -394,3 +391,4 @@ public class ExportSourceAction extends Action {
     }
 
 }
+
