@@ -78,11 +78,9 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
         for (int i = 0; i < selection.size(); i++) {
             IPackageFragmentRoot packRoot = null;
             Object obj = selection.get(i);
-            if (obj instanceof IPackageFragment) {
-                IPackageFragment packageFragment = (IPackageFragment) obj;
+            if (obj instanceof IPackageFragment packageFragment) {
                 packRoot = (IPackageFragmentRoot) packageFragment.getParent();
-            } else if (obj instanceof IClassFile) {
-                IClassFile classFile = (IClassFile) obj;
+            } else if (obj instanceof IClassFile classFile) {
                 packRoot = (IPackageFragmentRoot) classFile.getParent().getParent();
             } else {
                 return false;

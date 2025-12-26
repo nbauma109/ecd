@@ -265,9 +265,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             } else {
                 doSetInput(new DecompilerClassEditorInput(EFS.getLocalFileSystem().getStore(new Path(filePath))));
             }
-        } else if (input instanceof FileStoreEditorInput) {
-
-            FileStoreEditorInput storeInput = (FileStoreEditorInput) input;
+        } else if (input instanceof FileStoreEditorInput storeInput) {
             IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
             String decompilerType = prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
             String source = DecompileUtil.decompiler(storeInput, decompilerType);
@@ -318,8 +316,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             throw new CoreException(new Status(8, JavaDecompilerPlugin.PLUGIN_ID, 1, "", //$NON-NLS-1$
                     null));
         } else {
-            if (input instanceof InternalClassFileEditorInput) {
-                InternalClassFileEditorInput classInput = (InternalClassFileEditorInput) input;
+            if (input instanceof InternalClassFileEditorInput classInput) {
 
                 if (classInput.getClassFile().getParent() instanceof PackageFragment) {
                     doOpenBuffer(input, false);

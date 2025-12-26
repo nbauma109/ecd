@@ -74,8 +74,7 @@ public class DecompileUtil {
     }
 
     public static void updateSourceRanges(IClassFile cf, String contents) throws JavaModelException {
-        if (cf instanceof ClassFile) {
-            ClassFile classFile = (ClassFile) cf;
+        if (cf instanceof ClassFile classFile) {
             Object info = classFile.getElementInfo();
             IBinaryType typeInfo = info instanceof IBinaryType ? (IBinaryType) info : null;
             SourceMapper mapper = classFile.getSourceMapper();

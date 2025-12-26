@@ -341,8 +341,7 @@ public class ExportSourceAction extends Action {
     }
 
     private void collectClasses(IJavaElement element, Map classes, IProgressMonitor monitor) throws JavaModelException {
-        if (element instanceof IPackageFragment) {
-            IPackageFragment pkg = (IPackageFragment) element;
+        if (element instanceof IPackageFragment pkg) {
             if (!classes.containsKey(pkg)) {
                 monitor.subTask(pkg.getElementName());
                 List list = new ArrayList();

@@ -103,8 +103,7 @@ public abstract class BaseDecompilerSourceMapper extends DecompilerSourceMapper 
         }
 
         try {
-            if (root instanceof PackageFragmentRoot) {
-                PackageFragmentRoot pfr = (PackageFragmentRoot) root;
+            if (root instanceof PackageFragmentRoot pfr) {
 
                 SourceMapper sourceMapper = pfr.getSourceMapper();
 
