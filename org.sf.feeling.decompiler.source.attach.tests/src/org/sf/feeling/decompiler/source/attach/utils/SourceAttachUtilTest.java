@@ -59,8 +59,7 @@ public class SourceAttachUtilTest {
         }
         projectsToDelete.clear();
 
-        for (int i = 0; i < filesToDelete.size(); i++) {
-            File f = filesToDelete.get(i);
+        for (File f : filesToDelete) {
             if (f != null && f.exists()) {
                 deleteRecursively(f);
             }
@@ -147,10 +146,6 @@ public class SourceAttachUtilTest {
             Class<?> clazz = Class.forName("org.eclipse.m2e.jdt.IClasspathManager"); //$NON-NLS-1$
             Class<?>[] parameterTypes = new Class[] { IPackageFragmentRoot.class, boolean.class, boolean.class };
             return clazz.getMethod("scheduleDownload", parameterTypes) != null; //$NON-NLS-1$
-        } catch (ClassNotFoundException e) {
-            return false;
-        } catch (NoSuchMethodException e) {
-            return false;
         } catch (Exception e) {
             return false;
         }
@@ -286,8 +281,8 @@ public class SourceAttachUtilTest {
         if (file.isDirectory()) {
             File[] children = file.listFiles();
             if (children != null) {
-                for (int i = 0; i < children.length; i++) {
-                    deleteRecursively(children[i]);
+                for (File child : children) {
+                    deleteRecursively(child);
                 }
             }
         }

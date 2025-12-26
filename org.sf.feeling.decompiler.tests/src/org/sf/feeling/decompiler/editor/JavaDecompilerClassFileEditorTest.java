@@ -380,8 +380,8 @@ public class JavaDecompilerClassFileEditorTest {
         if (file.isDirectory()) {
             File[] children = file.listFiles();
             if (children != null) {
-                for (int i = 0; i < children.length; i++) {
-                    deleteRecursively(children[i]);
+                for (File child : children) {
+                    deleteRecursively(child);
                 }
             }
         }

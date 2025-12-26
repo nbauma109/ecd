@@ -315,7 +315,7 @@ public class ExportSourceActionTest {
                 sb.append("severity=").append(s.getSeverity()).append(", message=").append(s.getMessage()); //$NON-NLS-1$ //$NON-NLS-2$
                 if (s.getException() != null) {
                     sb.append(", exception=").append(s.getException().getClass().getName()).append(": ") //$NON-NLS-1$ //$NON-NLS-2$
-                            .append(String.valueOf(s.getException().getMessage()));
+                    .append(String.valueOf(s.getException().getMessage()));
                 }
             } else {
                 sb.append(String.valueOf(o));
@@ -407,8 +407,8 @@ public class ExportSourceActionTest {
         if (file.isDirectory()) {
             File[] children = file.listFiles();
             if (children != null) {
-                for (int i = 0; i < children.length; i++) {
-                    deleteRecursively(children[i]);
+                for (File child : children) {
+                    deleteRecursively(child);
                 }
             }
         }
@@ -471,15 +471,13 @@ public class ExportSourceActionTest {
             }
 
             String[] all = packages.toArray(new String[0]);
-            for (int i = 0; i < all.length; i++) {
-                String base = all[i];
+            for (String base : all) {
                 if (base == null || base.isEmpty()) {
                     continue;
                 }
 
                 String prefix = base + "."; //$NON-NLS-1$
-                for (int j = 0; j < all.length; j++) {
-                    String candidate = all[j];
+                for (String candidate : all) {
                     if (candidate != null && candidate.startsWith(prefix)) {
                         return Optional.of(new PackagePair(base, candidate));
                     }
