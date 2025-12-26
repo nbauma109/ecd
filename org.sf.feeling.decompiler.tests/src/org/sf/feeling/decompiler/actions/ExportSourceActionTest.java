@@ -326,8 +326,7 @@ public class ExportSourceActionTest {
 
         private Optional<PackagePair> findBaseAndSubpackagePair() {
             String[] all = packages.toArray(new String[0]);
-            for (int i = 0; i < all.length; i++) {
-                String base = all[i];
+            for (String base : all) {
                 if (base == null) {
                     continue;
                 }
@@ -336,8 +335,7 @@ public class ExportSourceActionTest {
                 }
 
                 String prefix = base + ".";
-                for (int j = 0; j < all.length; j++) {
-                    String candidate = all[j];
+                for (String candidate : all) {
                     if (candidate == null) {
                         continue;
                     }
