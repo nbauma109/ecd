@@ -130,10 +130,7 @@ public class JavaDecompilerClassFileEditorTest {
         IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
         assertTrue(classFile.exists());
 
-        IEditorInput input = JavaUI.getEditorInput(classFile);
-        assertNotNull(input);
-
-        openedEditor = openInEditorById(input, editorId);
+        openedEditor = openWithEditorId(classFile, editorId);
         assertNotNull(openedEditor);
 
         assertTrue("Expected JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
@@ -152,6 +149,50 @@ public class JavaDecompilerClassFileEditorTest {
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
         assertTrue(contents.contains("class")); //$NON-NLS-1$
+    }
+
+    private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {
+        return runInUiThreadWithResult(() -> {
+            IWorkbenchWindow window = resolveWorkbenchWindow();
+            IWorkbenchPage page = resolveWorkbenchPage(window);
+
+            IEditorPart first = JavaUI.openInEditor(classFile, true, true);
+            if (first == null) {
+                throw new IllegalStateException("Unable to open initial editor for class file"); //$NON-NLS-1$
+            }
+
+            IEditorInput input = first.getEditorInput();
+            if (input == null) {
+                page.closeEditor(first, false);
+                throw new IllegalStateException("Initial editor input is null"); //$NON-NLS-1$
+            }
+
+            page.closeEditor(first, false);
+
+            IEditorPart editor = IDE.openEditor(page, input, editorId, true);
+            page.activate(editor);
+            return editor;
+        });
+    }
+
+    private static IWorkbenchWindow resolveWorkbenchWindow() {
+        IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (window != null) {
+            return window;
+        }
+        IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();
+        if (windows != null && windows.length > 0) {
+            return windows[0];
+        }
+        throw new IllegalStateException("No workbench window available"); //$NON-NLS-1$
+    }
+
+    private static IWorkbenchPage resolveWorkbenchPage(IWorkbenchWindow window) {
+        IWorkbenchPage page = window.getActivePage();
+        if (page != null) {
+            return page;
+        }
+        throw new IllegalStateException("No workbench page available"); //$NON-NLS-1$
     }
 
     private static String resolveDecompilerEditorIdFromRegistry() {
@@ -183,29 +224,6 @@ public class JavaDecompilerClassFileEditorTest {
         store.setValue(JavaDecompilerPlugin.DECOMPILER_TYPE, DECOMPILER_FERNFLOWER);
         store.setValue(JavaDecompilerPlugin.REUSE_BUFFER, false);
         store.setValue(JavaDecompilerPlugin.IGNORE_EXISTING, true);
-    }
-
-    private static IEditorPart openInEditorById(IEditorInput input, String editorId) throws Exception {
-        return runInUiThreadWithResult(() -> {
-            IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-            if (window == null) {
-                window = PlatformUI.getWorkbench().getWorkbenchWindows().length > 0
-                        ? PlatformUI.getWorkbench().getWorkbenchWindows()[0]
-                        : null;
-            }
-            if (window == null) {
-                throw new IllegalStateException("No workbench window available"); //$NON-NLS-1$
-            }
-
-            IWorkbenchPage page = window.getActivePage();
-            if (page == null) {
-                throw new IllegalStateException("No workbench page available"); //$NON-NLS-1$
-            }
-
-            IEditorPart editor = IDE.openEditor(page, input, editorId, true);
-            page.activate(editor);
-            return editor;
-        });
     }
 
     private static ITextEditor adaptToTextEditor(IEditorPart editor) {
