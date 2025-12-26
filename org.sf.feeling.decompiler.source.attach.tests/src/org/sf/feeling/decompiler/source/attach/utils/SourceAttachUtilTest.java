@@ -19,12 +19,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.UUID;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -47,8 +43,8 @@ import org.osgi.framework.Bundle;
 @SuppressWarnings("restriction")
 public class SourceAttachUtilTest {
 
-    private static final String TEST_JAR_BUNDLE_ID = "org.sf.feeling.decompiler.tests";
-    private static final String TEST_JAR_PATH = "resources/test.jar";
+    private static final String TEST_JAR_BUNDLE_ID = "org.sf.feeling.decompiler.source.attach.tests";
+    private static final String TEST_JAR_PATH = "target/lib/commons-io.jar";
 
     private final List<IProject> projectsToDelete = new ArrayList<>();
     private final List<File> filesToDelete = new ArrayList<>();
@@ -79,8 +75,7 @@ public class SourceAttachUtilTest {
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
-        IPackageFragment pkg = findAnyPackage(root);
-        IClassFile classFile = findAnyClassFile(pkg);
+        IClassFile classFile = findAnyClassFileInRoot(root);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(classFile);
@@ -99,8 +94,8 @@ public class SourceAttachUtilTest {
         IPackageFragmentRoot rootA = setup.roots().get(0);
         IPackageFragmentRoot rootB = setup.roots().get(1);
 
-        IPackageFragment pkgA = findAnyPackage(rootA);
-        IPackageFragment pkgB = findAnyPackage(rootB);
+        IPackageFragment pkgA = findAnyPackageWithClasses(rootA);
+        IPackageFragment pkgB = findAnyPackageWithClasses(rootB);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(pkgA);
@@ -118,7 +113,7 @@ public class SourceAttachUtilTest {
                 new LibrarySpec(jar, existingSourceJar));
 
         IPackageFragmentRoot root = setup.roots().get(0);
-        IPackageFragment pkg = findAnyPackage(root);
+        IPackageFragment pkg = findAnyPackageWithClasses(root);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(pkg);
@@ -232,25 +227,30 @@ public class SourceAttachUtilTest {
         return new JavaProjectSetup(project, javaProject, roots);
     }
 
-    private static IPackageFragment findAnyPackage(IPackageFragmentRoot root) throws Exception {
+    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws Exception {
         IJavaElement[] children = root.getChildren();
         for (int i = 0; i < children.length; i++) {
-            if (children[i] instanceof IPackageFragment) {
-                IPackageFragment pkg = (IPackageFragment) children[i];
-                if (pkg.exists()) {
+            if (children[i] instanceof IPackageFragment pkg) {
+                IClassFile[] classFiles = pkg.getClassFiles();
+                if (classFiles != null && classFiles.length > 0) {
+                    return classFiles[0];
+                }
+            }
+        }
+        throw new IllegalStateException("No class file found in root: " + root.getElementName()); //$NON-NLS-1$
+    }
+
+    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws Exception {
+        IJavaElement[] children = root.getChildren();
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] instanceof IPackageFragment pkg) {
+                IClassFile[] classFiles = pkg.getClassFiles();
+                if (classFiles != null && classFiles.length > 0) {
                     return pkg;
                 }
             }
         }
-        throw new IllegalStateException("No package found in root: " + root.getElementName()); //$NON-NLS-1$
-    }
-
-    private static IClassFile findAnyClassFile(IPackageFragment pkg) throws Exception {
-        IClassFile[] classFiles = pkg.getClassFiles();
-        if (classFiles != null && classFiles.length > 0) {
-            return classFiles[0];
-        }
-        throw new IllegalStateException("No class file found in package: " + pkg.getElementName()); //$NON-NLS-1$
+        throw new IllegalStateException("No package with class files found in root: " + root.getElementName()); //$NON-NLS-1$
     }
 
     private File copyJarToTempFile(File original, String name) throws IOException {
