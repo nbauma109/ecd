@@ -284,7 +284,7 @@ public class ExportSourceAction extends Action {
 
                         File target = new File(workingDir,
                                 packageName + cf.getElementName().replaceAll("\\..+", "") //$NON-NLS-1$ //$NON-NLS-2$
-                                        + ".java"); //$NON-NLS-1$
+                                + ".java"); //$NON-NLS-1$
 
                         ensureParentDirectoryExists(target);
                         FileUtil.writeToFile(target, result);
