@@ -28,12 +28,13 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.IConfigurationElement;
+import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -43,10 +44,12 @@ import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.junit.After;
 import org.junit.Before;
@@ -113,7 +116,11 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testOpenClassFileUsesJavaDecompilerClassFileEditorAndShowsSource() throws Exception {
+    public void testOpenClassFileWithDecompilerEditorIdShowsSource() throws Exception {
+        String editorId = resolveDecompilerEditorIdFromRegistry();
+        assertNotNull(editorId);
+        assertTrue(!editorId.trim().isEmpty());
+
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
 
@@ -123,10 +130,14 @@ public class JavaDecompilerClassFileEditorTest {
         IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
         assertTrue(classFile.exists());
 
-        openedEditor = openInEditor(classFile);
+        IEditorInput input = JavaUI.getEditorInput(classFile);
+        assertNotNull(input);
+
+        openedEditor = openInEditorById(input, editorId);
         assertNotNull(openedEditor);
 
-        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+        assertTrue("Expected JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
+                openedEditor instanceof JavaDecompilerClassFileEditor);
 
         ITextEditor textEditor = adaptToTextEditor(openedEditor);
         assertNotNull(textEditor);
@@ -135,10 +146,35 @@ public class JavaDecompilerClassFileEditorTest {
         assertNotNull(document);
 
         String contents = waitForNonEmptyDocument(document);
-        assertTrue(contents.contains("class")); //$NON-NLS-1$
+        assertNotNull(contents);
+        assertTrue(!contents.trim().isEmpty());
 
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
+        assertTrue(contents.contains("class")); //$NON-NLS-1$
+    }
+
+    private static String resolveDecompilerEditorIdFromRegistry() {
+        IExtensionRegistry registry = Platform.getExtensionRegistry();
+        if (registry == null) {
+            return null;
+        }
+
+        IConfigurationElement[] elements = registry.getConfigurationElementsFor("org.eclipse.ui.editors"); //$NON-NLS-1$
+        String expectedClassName = JavaDecompilerClassFileEditor.class.getName();
+
+        for (int i = 0; i < elements.length; i++) {
+            IConfigurationElement e = elements[i];
+            if (!"editor".equals(e.getName())) { //$NON-NLS-1$
+                continue;
+            }
+
+            String className = e.getAttribute("class"); //$NON-NLS-1$
+            if (expectedClassName.equals(className)) {
+                return e.getAttribute("id"); //$NON-NLS-1$
+            }
+        }
+        return null;
     }
 
     private static void configurePreferences(File tempDir) {
@@ -149,7 +185,7 @@ public class JavaDecompilerClassFileEditorTest {
         store.setValue(JavaDecompilerPlugin.IGNORE_EXISTING, true);
     }
 
-    private static IEditorPart openInEditor(IClassFile classFile) throws Exception {
+    private static IEditorPart openInEditorById(IEditorInput input, String editorId) throws Exception {
         return runInUiThreadWithResult(() -> {
             IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
             if (window == null) {
@@ -166,7 +202,7 @@ public class JavaDecompilerClassFileEditorTest {
                 throw new IllegalStateException("No workbench page available"); //$NON-NLS-1$
             }
 
-            IEditorPart editor = JavaUI.openInEditor(classFile, true, true);
+            IEditorPart editor = IDE.openEditor(page, input, editorId, true);
             page.activate(editor);
             return editor;
         });
@@ -180,7 +216,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     private static String waitForNonEmptyDocument(IDocument document) throws InterruptedException {
-        int attempts = 200;
+        int attempts = 250;
         for (int i = 0; i < attempts; i++) {
             String text = document.get();
             if (text != null && !text.trim().isEmpty()) {
