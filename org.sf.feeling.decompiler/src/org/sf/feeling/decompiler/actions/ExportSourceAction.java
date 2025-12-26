@@ -267,6 +267,9 @@ public class ExportSourceAction extends Action {
                     monitor.subTask(className);
                     try {
                         IClassFile cf = (IClassFile) clazz;
+                        if (cf.getElementName().indexOf('$') != -1) {
+                            continue;
+                        }
                         cf.open(monitor);
 
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
