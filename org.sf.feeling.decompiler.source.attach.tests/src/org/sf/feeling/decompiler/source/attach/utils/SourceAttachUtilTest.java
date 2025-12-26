@@ -40,7 +40,6 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.launching.JavaRuntime;
 import org.junit.After;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -81,7 +80,7 @@ public class SourceAttachUtilTest {
 
         IPackageFragmentRoot root = setup.roots().get(0);
         IPackageFragment pkg = findAnyPackage(root);
-        IClassFile classFile = findAnyTopLevelClass(pkg);
+        IClassFile classFile = findAnyClassFile(pkg);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(classFile);
@@ -194,8 +193,6 @@ public class SourceAttachUtilTest {
         IJavaProject javaProject = JavaCore.create(project);
 
         List<IClasspathEntry> entries = new ArrayList<>();
-        entries.add(JavaRuntime.getDefaultJREContainerEntry());
-
         for (int i = 0; i < libs.length; i++) {
             LibrarySpec lib = libs[i];
             IPath jarPath = new Path(lib.binaryJar().getAbsolutePath());
@@ -248,16 +245,9 @@ public class SourceAttachUtilTest {
         throw new IllegalStateException("No package found in root: " + root.getElementName()); //$NON-NLS-1$
     }
 
-    private static IClassFile findAnyTopLevelClass(IPackageFragment pkg) throws Exception {
+    private static IClassFile findAnyClassFile(IPackageFragment pkg) throws Exception {
         IClassFile[] classFiles = pkg.getClassFiles();
-        for (int i = 0; i < classFiles.length; i++) {
-            IClassFile cf = classFiles[i];
-            String name = cf.getElementName();
-            if (name != null && name.indexOf('$') == -1) {
-                return cf;
-            }
-        }
-        if (classFiles.length > 0) {
+        if (classFiles != null && classFiles.length > 0) {
             return classFiles[0];
         }
         throw new IllegalStateException("No class file found in package: " + pkg.getElementName()); //$NON-NLS-1$
