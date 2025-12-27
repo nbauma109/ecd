@@ -229,6 +229,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return classBuffer;
     }
 
+    private void callSuperDoSetInput(IEditorInput input) throws CoreException {
+        super.doSetInput(input);
+        refreshSemanticHighlighting();
+    }
+
     /**
      * Sets editor input only if buffer was actually opened.
      *
@@ -238,7 +243,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         IEditorInput input = getEditorInput();
         try {
             if (doOpenBuffer(input, force)) {
-                super.doSetInput(input);
+                callSuperDoSetInput(input);
             }
         } catch (Exception e) {
             JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
@@ -249,7 +254,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         IEditorInput input = getEditorInput();
         try {
             if (doOpenBuffer(input, type, force)) {
-                super.doSetInput(input);
+                callSuperDoSetInput(input);
             }
         } catch (Exception e) {
             JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
@@ -261,7 +266,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (input instanceof IFileEditorInput) {
             String filePath = UIUtil.getPathLocation(((IFileEditorInput) input).getStorage().getFullPath());
             if (filePath == null || !new File(filePath).exists()) {
-                super.doSetInput(input);
+                callSuperDoSetInput(input);
             } else {
                 doSetInput(new DecompilerClassEditorInput(EFS.getLocalFileSystem().getStore(new Path(filePath))));
             }
@@ -365,7 +370,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                 }
             }
 
-            super.doSetInput(input);
+            callSuperDoSetInput(input);
         }
     }
 
