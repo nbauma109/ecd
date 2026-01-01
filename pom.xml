@@ -200,7 +200,7 @@
       <dependency>
         <groupId>io.github.nbauma109</groupId>
         <artifactId>jd-util</artifactId>
-        <version>1.3.1</version>
+        <version>1.3.3</version>
       </dependency>
       <dependency>
         <groupId>io.github.nbauma109</groupId>
