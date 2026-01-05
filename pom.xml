@@ -235,7 +235,7 @@
       <dependency>
         <groupId>com.github.nbauma109.procyon</groupId>
         <artifactId>procyon-decompiler</artifactId>
-        <version>0.6.1</version>
+        <version>0.6.2</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
