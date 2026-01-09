@@ -210,7 +210,7 @@
       <dependency>
         <groupId>com.jetbrains.intellij.java</groupId>
         <artifactId>java-decompiler-engine</artifactId>
-        <version>253.29346.138</version>
+        <version>253.29346.240</version>
       </dependency>
       <dependency>
         <groupId>org.vineflower</groupId>
