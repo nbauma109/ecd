@@ -21,11 +21,13 @@ import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.core.ClassFile;
 import org.eclipse.jdt.internal.core.SourceMapper;
 import org.eclipse.ui.ide.FileStoreEditorInput;
+import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.DecompilerSourceMapper;
-import org.sf.feeling.decompiler.editor.DecompilerType;
-import org.sf.feeling.decompiler.editor.SourceMapperFactory;
 
 public class DecompileUtil {
+
+    private DecompileUtil() {
+    }
 
     public static String decompile(IClassFile cf, String type, boolean always, boolean reuseBuf, boolean force)
             throws CoreException {
@@ -34,12 +36,8 @@ public class DecompileUtil {
         // have to check our mark since all line comments are stripped
         // in debug align mode
         if (origSrc == null || always || !reuseBuf || force) {
-            DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
+            DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
             char[] src = sourceMapper.findSource(cf.getType());
-
-            if (src == null && !DecompilerType.FernFlower.equals(decompilerType)) {
-                src = SourceMapperFactory.getSourceMapper(DecompilerType.FernFlower).findSource(cf.getType());
-            }
             if (src == null) {
                 return origSrc;
             }
@@ -50,7 +48,7 @@ public class DecompileUtil {
     }
 
     public static String decompiler(FileStoreEditorInput input, String decompilerType) {
-        DecompilerSourceMapper sourceMapper = SourceMapperFactory.getSourceMapper(decompilerType);
+        DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
         File file = new File(input.getURI());
         return sourceMapper.decompile(decompilerType, file);
 

@@ -31,7 +31,7 @@ public class DecompilerAdapterInvocationHandler implements InvocationHandler {
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         try {
             if (adapters != null && !adapters.isEmpty()) {
-                Class returnType = method.getReturnType();
+                Class<?> returnType = method.getReturnType();
                 if (returnType.isArray()) {
                     List allResult = new ArrayList();
                     for (Iterator iter = adapters.iterator(); iter.hasNext();) {

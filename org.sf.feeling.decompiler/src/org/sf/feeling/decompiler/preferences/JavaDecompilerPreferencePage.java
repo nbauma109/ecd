@@ -20,7 +20,6 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.DecompilerType;
-import org.sf.feeling.decompiler.editor.IDecompilerDescriptor;
 import org.sf.feeling.decompiler.i18n.Messages;
 
 public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
@@ -59,23 +58,8 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
             }
         };
 
-        String fernLabel = Messages.getString("JavaDecompilerPreferencePage.Decompiler.FernFlower"); //$NON-NLS-1$
-
-        boolean isAddFernFlower = false;
-
-        for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
-            IDecompilerDescriptor descriptor = JavaDecompilerPlugin.getDefault()
-                    .getDecompilerDescriptor(DecompilerType.getDecompilerTypes()[i]);
-            String label = descriptor.getDecompilerPreferenceLabel().trim();
-            if (label.compareToIgnoreCase(fernLabel) > 0 && !isAddFernFlower) {
-                defaultDecompiler.addItem(DecompilerType.FernFlower, fernLabel, DecompilerType.FernFlower);
-                isAddFernFlower = true;
-            }
-            defaultDecompiler.addItem(descriptor.getDecompilerType(), label, descriptor.getDecompilerType());
-        }
-
-        if (!isAddFernFlower) {
-            defaultDecompiler.addItem(DecompilerType.FernFlower, fernLabel, DecompilerType.FernFlower);
+        for (String decompilerType : DecompilerType.getDecompilerTypes()) {
+            defaultDecompiler.addItem(decompilerType, decompilerType, decompilerType);
         }
 
         addField(defaultDecompiler);

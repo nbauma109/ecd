@@ -44,7 +44,6 @@ import org.eclipse.ui.menus.IContributionRoot;
 import org.eclipse.ui.services.IServiceLocator;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.editor.DecompilerType;
-import org.sf.feeling.decompiler.editor.IDecompilerDescriptor;
 import org.sf.feeling.decompiler.editor.JavaDecompilerClassFileEditor;
 import org.sf.feeling.decompiler.i18n.Messages;
 
@@ -64,23 +63,12 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
 
         @Override
         public String getText() {
-            if (DecompilerType.FernFlower.equals(decompilerType)) {
-                return Messages.getString("JavaDecompilerActionBarContributor.Action.DecompileWithFernFlower"); //$NON-NLS-1$
-            }
-            IDecompilerDescriptor decompilerDescriptor = JavaDecompilerPlugin.getDefault()
-                    .getDecompilerDescriptor(decompilerType);
-            if (decompilerDescriptor != null) {
-                return decompilerDescriptor.getDecompileAction().getText();
-            }
-            return classEditor.getLabel();
+            return decompilerType;
         }
 
         @Override
         public ImageDescriptor getImageDescriptor() {
-            if (DecompilerType.FernFlower.equals(decompilerType)) {
-                return JavaDecompilerPlugin.getImageDescriptor("icons/fernflower_16.png"); //$NON-NLS-1$
-            }
-            return JavaDecompilerPlugin.getDefault().getDecompilerDescriptor(decompilerType).getDecompilerIcon();
+            return JavaDecompilerPlugin.getDecompilerImageDescriptor(decompilerType);
         }
 
         @Override
@@ -125,7 +113,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
     @Override
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
 
-        final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+        final ISelectionService selService = serviceLocator.getService(ISelectionService.class);
 
         // Define a dynamic set of submenu entries
         String dynamicMenuId = "org.sf.feeling.decompiler.openwith.items"; //$NON-NLS-1$
@@ -151,27 +139,13 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
                 if (classes.size() == 1) {
                     IEditorDescriptor editor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);
 
-                    boolean isAddFernFlower = false;
-
-                    for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
-                        if (DecompilerType.getDecompilerTypes()[i].compareToIgnoreCase(DecompilerType.FernFlower) > 0
-                                && !isAddFernFlower) {
-                            list.add(new ActionContributionItem(
-                                    new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
-                            isAddFernFlower = true;
-                        }
-
+                    for (String decompilerType : DecompilerType.getDecompilerTypes()) {
                         list.add(new ActionContributionItem(
-                                new OpenClassesAction(editor, classes, DecompilerType.getDecompilerTypes()[i])));
-                    }
-
-                    if (!isAddFernFlower) {
-                        list.add(new ActionContributionItem(
-                                new OpenClassesAction(editor, classes, DecompilerType.FernFlower)));
+                                new OpenClassesAction(editor, classes, decompilerType)));
                     }
                 }
 
-                return (IContributionItem[]) list.toArray(new IContributionItem[list.size()]);
+                return list.toArray(new IContributionItem[list.size()]);
             }
         };
 
@@ -233,7 +207,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
         return false;
     }
 
-    private List getSelectedElements(ISelectionService selService, Class eleClass) {
+    private List getSelectedElements(ISelectionService selService, Class<?> eleClass) {
 
         Iterator selections = getSelections(selService);
         List elements = new ArrayList();
@@ -252,8 +226,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
     private Iterator getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
-        if ((selection != null) && (selection instanceof IStructuredSelection)) {
-            IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+        if (selection instanceof IStructuredSelection structuredSelection) {
             return structuredSelection.iterator();
         }
 

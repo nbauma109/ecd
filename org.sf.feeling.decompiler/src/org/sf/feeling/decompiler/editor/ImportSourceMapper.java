@@ -69,9 +69,9 @@ public class ImportSourceMapper extends SourceMapper {
 
     @Override
     public void enterCompilationUnit() {
-        this.infoStack = new Stack();
+        this.infoStack = new Stack<>();
         this.children = new HashMap<>();
-        this.handleStack = new Stack();
+        this.handleStack = new Stack<>();
         this.infoStack.push(this.unitInfo);
         this.handleStack.push(this.unit);
     }
@@ -109,7 +109,7 @@ public class ImportSourceMapper extends SourceMapper {
             ReflectionUtils.setFieldValue(this.importContainerInfo, "children", getChildren(this.importContainerInfo)); //$NON-NLS-1$
         }
 
-        List<IJavaElement> children = new ArrayList<IJavaElement>();
+        List<IJavaElement> children = new ArrayList<>();
 
         for (int i = 0; i < oldChildren.length; i++) {
             IJavaElement child = oldChildren[i];
@@ -132,9 +132,9 @@ public class ImportSourceMapper extends SourceMapper {
     }
 
     private IJavaElement[] getChildren(Object info) {
-        List childrenList = this.children.get(info);
+        List<IJavaElement> childrenList = this.children.get(info);
         if (childrenList != null) {
-            return (IJavaElement[]) childrenList.toArray(new IJavaElement[childrenList.size()]);
+            return childrenList.toArray(IJavaElement[]::new);
         }
         return new JavaElement[0];
     }

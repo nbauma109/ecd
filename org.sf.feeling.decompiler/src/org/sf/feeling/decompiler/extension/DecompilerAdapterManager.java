@@ -67,12 +67,12 @@ public class DecompilerAdapterManager {
             IConfigurationElement[] elements = extensionPoint.getConfigurationElements();
             for (int j = 0; j < elements.length; j++) {
                 String adaptableClassName = elements[j].getAttribute("class"); //$NON-NLS-1$
-                Class adaptableType = null;
+                Class<?> adaptableType = null;
 
                 IConfigurationElement[] adapters = elements[j].getChildren("adapter"); //$NON-NLS-1$
                 for (int k = 0; k < adapters.length; k++) {
                     String adapterClassName = null;
-                    Class adapterType = null;
+                    Class<?> adapterType = null;
 
                     try {
                         DecompilerAdapter adapter = new DecompilerAdapter();
@@ -175,9 +175,9 @@ public class DecompilerAdapterManager {
                 // it is possible that the default bundle classloader is unaware
                 // of this class, but the adaptor factory can load it in some
                 // other way. See bug 200068.
-                Class[] adapterList = adapterFactory.getAdapterList();
+                Class<?>[] adapterList = adapterFactory.getAdapterList();
                 if (adapterList != null && adapterList.length > 0) {
-                    for (Class element : adapterList) {
+                    for (Class<?> element : adapterList) {
                         if (className.equals(element.getName())) {
                             clazz = element;
                             break;
@@ -194,7 +194,7 @@ public class DecompilerAdapterManager {
         return clazz;
     }
 
-    private static void registerAdapter(Class adaptableType, DecompilerAdapter adapter) {
+    private static void registerAdapter(Class<?> adaptableType, DecompilerAdapter adapter) {
         synchronized (adaptersMap) {
             Set adapterSet = (Set) adaptersMap.get(adaptableType);
             adapterSet.add(adapter);
@@ -211,15 +211,15 @@ public class DecompilerAdapterManager {
         }
     }
 
-    public static Object[] getAdapters(Object adaptableObject, Class adapterType) {
+    public static Object[] getAdapters(Object adaptableObject, Class<?> adapterType) {
         List adapterObjects = getAdapterList(adaptableObject, adapterType);
 
         return (adapterObjects != null && !adapterObjects.isEmpty())
-                ? adapterObjects.toArray(new Object[adapterObjects.size()])
+                ? adapterObjects.toArray(Object[]::new)
                         : null;
     }
 
-    public static Object getAdapter(Object adaptableObject, Class adapterType) {
+    public static Object getAdapter(Object adaptableObject, Class<?> adapterType) {
         List adapterObjects = getAdapterList(adaptableObject, adapterType);
         if (adapterObjects == null || adapterObjects.isEmpty()) {
             return null;
@@ -231,7 +231,7 @@ public class DecompilerAdapterManager {
                 new DecompilerAdapterInvocationHandler(adapterObjects));
     }
 
-    private static List getAdapterList(Object adaptableObject, Class adapterType) {
+    private static List getAdapterList(Object adaptableObject, Class<?> adapterType) {
         Set adapters = getAdapters(adaptableObject);
         if (adapters == null) {
             return null;
@@ -263,7 +263,7 @@ public class DecompilerAdapterManager {
         Set keys = adaptersMap.keySet();
         ElementAdapterSet adapters = null;
         for (Iterator iter = keys.iterator(); iter.hasNext();) {
-            Class clazz = (Class) iter.next();
+            Class<?> clazz = (Class<?>) iter.next();
             // adaptable is the instance of the key class or its subclass.
             if (clazz.isAssignableFrom(adaptableObject.getClass())) {
                 if (adapters == null) {

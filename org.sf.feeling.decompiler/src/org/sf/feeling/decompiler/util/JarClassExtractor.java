@@ -71,7 +71,7 @@ public class JarClassExtractor {
         Enumeration<? extends ZipEntry> entries = archive.entries();
         ZipEntry entry;
         String name;
-        ArrayList<ZipEntry> relevant = new ArrayList();
+        ArrayList<ZipEntry> relevant = new ArrayList<>();
 
         while (entries.hasMoreElements()) {
             entry = entries.nextElement();

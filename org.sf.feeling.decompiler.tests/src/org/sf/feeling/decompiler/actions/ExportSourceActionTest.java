@@ -13,8 +13,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -33,6 +31,7 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
@@ -106,18 +105,18 @@ public class ExportSourceActionTest {
         assertNotNull(pkg);
         assertTrue(pkg.exists());
 
-        ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", true);
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        action.setFlat(true);
 
-        Map classes = new HashMap();
-        invokeCollectClasses(action, pkg, classes);
+        Map<IJavaElement, List<IJavaElement>> classes = new HashMap<>();
+        action.collectClasses(pkg, classes, new NullProgressMonitor());
 
         assertTrue(classes.containsKey(pkg));
 
-        Set<String> collected = new HashSet();
+        Set<String> collected = new HashSet<>();
         Object[] keys = classes.keySet().toArray();
-        for (int i = 0; i < keys.length; i++) {
-            IPackageFragment key = (IPackageFragment) keys[i];
+        for (Object o : keys) {
+            IPackageFragment key = (IPackageFragment) o;
             collected.add(key.getElementName());
         }
 
@@ -136,16 +135,16 @@ public class ExportSourceActionTest {
         IPackageFragment base = jarRoot.getPackageFragment(selectedPackage);
         assertTrue(base.exists());
 
-        ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", false);
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        action.setFlat(false);
 
-        Map classes = new HashMap();
-        invokeCollectClasses(action, base, classes);
+        Map<IJavaElement, List<IJavaElement>> classes = new HashMap<>();
+        action.collectClasses(base, classes, new NullProgressMonitor());
 
-        Set<String> collected = new HashSet();
+        Set<String> collected = new HashSet<>();
         Object[] keys = classes.keySet().toArray();
-        for (int i = 0; i < keys.length; i++) {
-            IPackageFragment key = (IPackageFragment) keys[i];
+        for (Object o : keys) {
+            IPackageFragment key = (IPackageFragment) o;
             collected.add(key.getElementName());
         }
 
@@ -175,21 +174,21 @@ public class ExportSourceActionTest {
         assertNotNull(classFile);
         assertTrue(classFile.exists());
 
-        ExportSourceAction action = new ExportSourceAction(new ArrayList());
-        setBooleanField(action, "isFlat", true);
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        action.setFlat(true);
 
-        Map classes = new HashMap();
-        invokeCollectClasses(action, classFile, classes);
+        Map<IJavaElement, List<IJavaElement>> classes = new HashMap<>();
+        action.collectClasses(classFile, classes, new NullProgressMonitor());
 
         assertTrue(classes.containsKey(pkg));
-        List list = (List) classes.get(pkg);
+        List<IJavaElement> list = classes.get(pkg);
         assertNotNull(list);
         assertEquals(1, list.size());
         assertEquals(classFile, list.get(0));
     }
 
     private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
-        IClasspathEntry[] classpath = new IClasspathEntry[] { JavaRuntime.getDefaultJREContainerEntry() };
+        IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
         project.setRawClasspath(classpath, null);
     }
 
@@ -226,8 +225,7 @@ public class ExportSourceActionTest {
     private static Optional<IPackageFragmentRoot> findJarPackageFragmentRoot(IJavaProject project, IPath jarPath)
             throws JavaModelException {
         IPackageFragmentRoot[] roots = project.getAllPackageFragmentRoots();
-        for (int i = 0; i < roots.length; i++) {
-            IPackageFragmentRoot root = roots[i];
+        for (IPackageFragmentRoot root : roots) {
             IPath rootPath = root.getPath();
             if (rootPath != null && rootPath.equals(jarPath)) {
                 root.open(null);
@@ -237,25 +235,10 @@ public class ExportSourceActionTest {
         return Optional.empty();
     }
 
-    private static void invokeCollectClasses(ExportSourceAction action, IJavaElement element, Map classes)
-            throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("collectClasses", IJavaElement.class, Map.class,
-                org.eclipse.core.runtime.IProgressMonitor.class);
-        method.setAccessible(true);
-        org.eclipse.core.runtime.IProgressMonitor monitor = new org.eclipse.core.runtime.NullProgressMonitor();
-        method.invoke(action, element, classes, monitor);
-    }
-
-    private static void setBooleanField(Object target, String fieldName, boolean value) throws Exception {
-        Field field = ExportSourceAction.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.setBoolean(target, value);
-    }
-
     private static JarLayout readJarLayout(File jarFile) throws Exception {
         try (JarFile jar = new JarFile(jarFile)) {
-            Set<String> packages = new HashSet();
-            List<ClassLocation> topLevelClasses = new ArrayList();
+            Set<String> packages = new HashSet<>();
+            List<ClassLocation> topLevelClasses = new ArrayList<>();
 
             Enumeration<JarEntry> entries = jar.entries();
             while (entries.hasMoreElements()) {
@@ -265,10 +248,7 @@ public class ExportSourceActionTest {
                 }
 
                 String name = entry.getName();
-                if (!name.endsWith(".class")) {
-                    continue;
-                }
-                if (name.indexOf('$') >= 0) {
+                if (!name.endsWith(".class") || name.indexOf('$') >= 0) {
                     continue;
                 }
 
@@ -288,34 +268,13 @@ public class ExportSourceActionTest {
         }
     }
 
-    private static final class PackagePair {
-        private final String base;
-        private final String sub;
-
-        private PackagePair(String base, String sub) {
-            this.base = base;
-            this.sub = sub;
-        }
+    private record PackagePair(String base, String sub) {
     }
 
-    private static final class ClassLocation {
-        private final String packageName;
-        private final String classFileName;
-
-        private ClassLocation(String packageName, String classFileName) {
-            this.packageName = packageName;
-            this.classFileName = classFileName;
-        }
+    private record ClassLocation(String packageName, String classFileName) {
     }
 
-    private static final class JarLayout {
-        private final Set<String> packages;
-        private final List<ClassLocation> topLevelClasses;
-
-        private JarLayout(Set<String> packages, List<ClassLocation> topLevelClasses) {
-            this.packages = packages;
-            this.topLevelClasses = topLevelClasses;
-        }
+    private record JarLayout(Set<String> packages, List<ClassLocation> topLevelClasses) {
 
         private Optional<String> findAnyPackage() {
             if (packages.isEmpty()) {
@@ -327,10 +286,7 @@ public class ExportSourceActionTest {
         private Optional<PackagePair> findBaseAndSubpackagePair() {
             String[] all = packages.toArray(new String[0]);
             for (String base : all) {
-                if (base == null) {
-                    continue;
-                }
-                if (base.isEmpty()) {
+                if (base == null || base.isEmpty()) {
                     continue;
                 }
 

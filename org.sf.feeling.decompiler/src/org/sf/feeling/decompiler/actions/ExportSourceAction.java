@@ -12,8 +12,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +35,6 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
-import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
@@ -49,10 +48,12 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class ExportSourceAction extends Action {
 
-    private List selection = null;
+	private static final String[] ZIP_FILTER = { "*.zip" };
+
+    private List<?> selection = null;
     private boolean isFlat = false;
 
-    public ExportSourceAction(List selection) {
+    public ExportSourceAction(List<?> selection) {
         super(Messages.getString("ExportSourceAction.Action.Text")); //$NON-NLS-1$
         this.setImageDescriptor(JavaDecompilerPlugin.getImageDescriptor("icons/etool16/export_wiz.png")); //$NON-NLS-1$
         this.setDisabledImageDescriptor(JavaDecompilerPlugin.getImageDescriptor("icons/dtool16/export_wiz.png")); //$NON-NLS-1$
@@ -72,11 +73,9 @@ public class ExportSourceAction extends Action {
         final boolean always = prefs.getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
         Object firstElement = selection.get(0);
-        if (selection.size() == 1 && firstElement instanceof IClassFile) {
-            IClassFile cf = (IClassFile) firstElement;
+        if (selection.size() == 1 && firstElement instanceof IClassFile cf) {
             exportClass(decompilerType, reuseBuf, always, cf);
-        } else if (selection.size() == 1 && firstElement instanceof IPackageFragmentRoot) {
-            IPackageFragmentRoot root = (IPackageFragmentRoot) firstElement;
+        } else if (selection.size() == 1 && firstElement instanceof IPackageFragmentRoot root) {
             FileDialog dialog = new FileDialog(Display.getDefault().getActiveShell(), SWT.SAVE | SWT.SHEET);
             String fileName = root.getElementName();
             int index = fileName.lastIndexOf('.');
@@ -84,10 +83,9 @@ public class ExportSourceAction extends Action {
                 fileName = fileName.substring(0, index);
             }
             dialog.setFileName(fileName + "-src"); //$NON-NLS-1$
-            dialog.setFilterExtensions(new String[] { "*.zip" //$NON-NLS-1$
-            });
+			dialog.setFilterExtensions(ZIP_FILTER);
             String file = dialog.open();
-            if ((file == null) || (file.trim().isEmpty())) {
+            if (file == null || file.trim().isEmpty()) {
                 return;
             }
             final String projectFile = file.trim();
@@ -115,39 +113,34 @@ public class ExportSourceAction extends Action {
                 fileName = fileName.substring(0, index);
             }
             dialog.setFileName(fileName + "-src"); //$NON-NLS-1$
-            dialog.setFilterExtensions(new String[] { "*.zip" //$NON-NLS-1$
-            });
+			dialog.setFilterExtensions(ZIP_FILTER);
             String file = dialog.open();
-            if ((file == null) || (file.trim().isEmpty())) {
+            if (file == null || file.trim().isEmpty()) {
                 return;
             }
             final String projectFile = file.trim();
 
             exportPackagesSource(decompilerType, reuseBuf, always, projectFile,
-                    (IJavaElement[]) selection.toArray(new IJavaElement[0]));
+                    selection.toArray(IJavaElement[]::new));
         }
     }
 
     private void exportPackagesSource(final String decompilerType, final boolean reuseBuf, final boolean always,
             final String projectFile, final IJavaElement[] children) {
         try {
-            final List exceptions = new ArrayList();
+            final List<IStatus> exceptions = new ArrayList<>();
             ProgressMonitorDialog dialog = new ProgressMonitorDialog(Display.getDefault().getActiveShell());
-            dialog.run(true, true, new IRunnableWithProgress() {
+            dialog.run(true, true, monitor -> {
+                exportPackageSources(monitor, decompilerType, reuseBuf, always, projectFile, children, exceptions);
 
-                @Override
-                public void run(final IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-                    exportPackageSources(monitor, decompilerType, reuseBuf, always, projectFile, children, exceptions);
+                final File workingDir = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
+                        .getString(JavaDecompilerPlugin.TEMP_DIR));// $NON-NLS-1$
 
-                    final File workingDir = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                            .getString(JavaDecompilerPlugin.TEMP_DIR));// $NON-NLS-1$
-
-                    if (workingDir != null && workingDir.exists()) {
-                        try {
-                            FileUtil.deleteDirectory(null, workingDir, 0);
-                        } catch (IOException e) {
-                            Logger.debug(e);
-                        }
+                if (workingDir.exists()) {
+                    try {
+                        FileUtil.deleteDirectory(null, workingDir, 0);
+                    } catch (IOException e) {
+                        Logger.debug(e);
                     }
                 }
             });
@@ -158,13 +151,13 @@ public class ExportSourceAction extends Action {
                         Messages.getString("ExportSourceAction.InfoDialog.Message.Canceled")); //$NON-NLS-1$
             } else if (!exceptions.isEmpty()) {
                 final MultiStatus status = new MultiStatus(JavaDecompilerPlugin.PLUGIN_ID, IStatus.WARNING,
-                        (exceptions.size() <= 1
+                        exceptions.size() <= 1
                         ? Messages.getFormattedString("ExportSourceAction.WarningDialog.Message.Failed", //$NON-NLS-1$
                                 new String[] { "" + exceptions.size() //$NON-NLS-1$
                         })
                                 : Messages.getFormattedString("ExportSourceAction.WarningDialog.Message.Failed.Multi", //$NON-NLS-1$
                                         new String[] { "" + exceptions.size() //$NON-NLS-1$
-                                })), null) {
+                                }), null) {
 
                     @Override
                     public void add(IStatus status) {
@@ -172,8 +165,7 @@ public class ExportSourceAction extends Action {
                         setSeverity(IStatus.WARNING);
                     }
                 };
-                for (int i = 0; i < exceptions.size(); i++) {
-                    Status exception = (Status) exceptions.get(i);
+                for (IStatus exception : exceptions) {
                     status.add(exception);
                 }
 
@@ -198,8 +190,7 @@ public class ExportSourceAction extends Action {
     }
 
     private void exportPackageSources(IProgressMonitor monitor, final String decompilerType, final boolean reuseBuf,
-            final boolean always, final String projectFile, final IJavaElement[] children, List exceptions)
-                    throws InvocationTargetException, InterruptedException {
+            final boolean always, final String projectFile, final IJavaElement[] children, List<IStatus> exceptions) {
         monitor.beginTask(Messages.getString("ExportSourceAction.Task.Begin"), //$NON-NLS-1$
                 1000000);
 
@@ -218,14 +209,13 @@ public class ExportSourceAction extends Action {
             return;
         }
 
-        Map classes = new HashMap();
-        for (int i = 0; i < children.length; i++) {
+        Map<IJavaElement, List<IJavaElement>> classesMap = new HashMap<>();
+        for (IJavaElement child : children) {
             if (monitor.isCanceled()) {
                 return;
             }
-            IJavaElement child = children[i];
             try {
-                collectClasses(child, classes, monitor);
+                collectClasses(child, classesMap, monitor);
             } catch (JavaModelException e) {
                 IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                         Messages.getString("ExportSourceAction.Status.Error.CollectPackage"), //$NON-NLS-1$
@@ -236,37 +226,34 @@ public class ExportSourceAction extends Action {
 
         monitor.worked(20000);
 
-        IPackageFragment[] pkgs = (IPackageFragment[]) classes.keySet().toArray(new IPackageFragment[0]);
+        IPackageFragment[] pkgs = classesMap.keySet().toArray(IPackageFragment[]::new);
         if (pkgs.length == 0) {
             return;
         }
 
         int step = 880000 / pkgs.length;
-        for (int i = 0; i < pkgs.length; i++) {
+        for (IPackageFragment pkg : pkgs) {
             if (monitor.isCanceled()) {
                 return;
             }
-            IPackageFragment pkg = pkgs[i];
-            List clazzs = (List) classes.get(pkg);
-            if (clazzs.isEmpty()) {
+            List<IJavaElement> clazzList = classesMap.get(pkg);
+            if (clazzList.isEmpty()) {
                 monitor.worked(step);
                 continue;
             }
             int total = 0;
-            int classStep = step / clazzs.size();
-            for (int j = 0; j < clazzs.size(); j++) {
+            int classStep = step / clazzList.size();
+            for (IJavaElement clazz : clazzList) {
                 if (monitor.isCanceled()) {
                     return;
                 }
-                IJavaElement clazz = (IJavaElement) clazzs.get(j);
-                if (clazz instanceof IClassFile && clazz.getParent() instanceof IPackageFragment) {
+                if (clazz instanceof IClassFile cf && clazz.getParent() instanceof IPackageFragment) {
                     String className = pkg.getElementName();
                     if (!pkg.getElementName().isEmpty()) {
-                        className += ("." + clazz.getElementName()); //$NON-NLS-1$
+                        className += "." + clazz.getElementName(); //$NON-NLS-1$
                     }
                     monitor.subTask(className);
                     try {
-                        IClassFile cf = (IClassFile) clazz;
                         if (cf.getElementName().indexOf('$') != -1) {
                             continue;
                         }
@@ -340,37 +327,32 @@ public class ExportSourceAction extends Action {
         }
     }
 
-    private void collectClasses(IJavaElement element, Map classes, IProgressMonitor monitor) throws JavaModelException {
+    public void collectClasses(IJavaElement element, Map<IJavaElement, List<IJavaElement>> classesMap, IProgressMonitor monitor) throws JavaModelException {
         if (element instanceof IPackageFragment pkg) {
-            if (!classes.containsKey(pkg)) {
+            if (!classesMap.containsKey(pkg)) {
                 monitor.subTask(pkg.getElementName());
-                List list = new ArrayList();
-                IJavaElement[] children = pkg.getChildren();
-                for (int i = 0; i < children.length; i++) {
-                    list.add(children[i]);
-                }
-                classes.put(pkg, list);
+                List<IJavaElement> list = new ArrayList<>();
+                Collections.addAll(list, pkg.getChildren());
+                classesMap.put(pkg, list);
             }
             if (!isFlat) {
                 IPackageFragmentRoot root = (IPackageFragmentRoot) pkg.getParent();
-                IJavaElement[] children = root.getChildren();
-                for (int i = 0; i < root.getChildren().length; i++) {
-                    IPackageFragment child = (IPackageFragment) children[i];
+                for (IJavaElement child : root.getChildren()) {
                     if (child.getElementName().startsWith(pkg.getElementName() + ".") //$NON-NLS-1$
-                            && !classes.containsKey(child)) {
-                        collectClasses(child, classes, monitor);
+                            && !classesMap.containsKey(child)) {
+                        collectClasses(child, classesMap, monitor);
                     }
                 }
             }
-        } else if (element instanceof IClassFile) {
-            IPackageFragment pkg = (IPackageFragment) ((IClassFile) element).getParent();
-            if (!classes.containsKey(pkg)) {
+        } else if (element instanceof IClassFile cf) {
+            IPackageFragment pkg = (IPackageFragment) cf.getParent();
+            if (!classesMap.containsKey(pkg)) {
                 monitor.subTask(pkg.getElementName());
-                List list = new ArrayList();
+                List<IJavaElement> list = new ArrayList<>();
                 list.add(element);
-                classes.put(pkg, list);
+                classesMap.put(pkg, list);
             } else {
-                ((List) classes.get(pkg)).add(element);
+                classesMap.get(pkg).add(element);
             }
         }
     }
@@ -381,13 +363,13 @@ public class ExportSourceAction extends Action {
         dialog.setFilterExtensions(new String[] { "*.java" //$NON-NLS-1$
         });
         String file = dialog.open();
-        if ((file == null) || (file.trim().isEmpty())) {
+        if (file == null || file.trim().isEmpty()) {
             return;
         }
         IPackageFragment pkg = (IPackageFragment) cf.getParent();
         String className = pkg.getElementName();
         if (!pkg.getElementName().isEmpty()) {
-            className += ("." + cf.getElementName()); //$NON-NLS-1$
+            className += "." + cf.getElementName(); //$NON-NLS-1$
         }
 
         String projectFile = file.trim();
@@ -403,12 +385,7 @@ public class ExportSourceAction extends Action {
             File target = new File(projectFile);
             ensureParentDirectoryExists(target);
             FileUtil.writeToFile(target, result);
-        } catch (CoreException e) {
-            MessageDialog.openError(Display.getDefault().getActiveShell(),
-                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
-                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
-                            new String[] { className }));
-        } catch (IOException e) {
+        } catch (CoreException | IOException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
                     Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
                     Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
@@ -449,4 +426,7 @@ public class ExportSourceAction extends Action {
         return selection != null;
     }
 
+    public void setFlat(boolean isFlat) {
+        this.isFlat = isFlat;
+    }
 }

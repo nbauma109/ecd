@@ -61,7 +61,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     private static final String TEST_BUNDLE_ID = "org.sf.feeling.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
-    private static final String DECOMPILER_FERNFLOWER = "FernFlower"; //$NON-NLS-1$
+    private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
 
     private IProject project;
     private IJavaProject javaProject;
@@ -313,7 +313,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     private static Optional<ClassInJar> findPreferredClass(File jarFile) throws Exception {
-        Set<String> classEntries = new HashSet();
+        Set<String> classEntries = new HashSet<>();
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
             while (entries.hasMoreElements()) {
@@ -396,7 +396,7 @@ public class JavaDecompilerClassFileEditorTest {
             runnable.run();
             return;
         }
-        final ArrayList<Exception> errors = new ArrayList();
+        final ArrayList<Exception> errors = new ArrayList<>();
         display.syncExec(() -> {
             try {
                 runnable.run();
@@ -414,8 +414,8 @@ public class JavaDecompilerClassFileEditorTest {
         if (display == null) {
             return supplier.get();
         }
-        final ArrayList<Exception> errors = new ArrayList();
-        final ArrayList<T> results = new ArrayList();
+        final ArrayList<Exception> errors = new ArrayList<>();
+        final ArrayList<T> results = new ArrayList<>();
         display.syncExec(() -> {
             try {
                 results.add(supplier.get());

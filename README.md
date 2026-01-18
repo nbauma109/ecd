@@ -18,12 +18,12 @@ Downloads from Jitpack :
 [![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
 # Enhanced Class Decompiler
-Enhanced Class Decompiler integrates **JD**, **FernFlower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
+Enhanced Class Decompiler integrates **JD**, **Fernflower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
 
 <p align="center"><img src="https://ecd-plugin.github.io/ecd/doc/o_debug_class.png"></p>
 
 ## Description
-Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, FernFlower, Vineflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
+Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, Fernflower, Vineflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
 ## Why a fork?
   * Compatibility with latest version of Eclipse over backward compatibility : upstream project aims at supporting all versions of Eclipse which is not maintainable from my point of view ([2b13e85](https://github.com/ecd-plugin/ecd/commit/2b13e856e0e557b155d658e5077c05efa8218e9c), [b518dd3](https://github.com/ecd-plugin/ecd/commit/b518dd30c4a045621f7a7e8c3b38ebedefb4cd09), [f2b6022](https://github.com/ecd-plugin/ecd/commit/f2b6022063dec1b4e15d9ddc7a31524240da1481), [8538745](https://github.com/ecd-plugin/ecd/commit/8538745e48485482bb8e0abc3fecc00f62527ca0), [8b47e95](https://github.com/ecd-plugin/ecd/commit/8b47e959916c337991c8ff4fe4637538df339565))

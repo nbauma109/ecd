@@ -10,75 +10,17 @@ package org.sf.feeling.decompiler.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Collection;
-
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
-import org.sf.feeling.decompiler.editor.IDecompiler;
-import org.sf.feeling.decompiler.editor.IDecompilerDescriptor;
-import org.sf.feeling.decompiler.fernflower.FernFlowerDecompiler;
 
 public class ClassUtil {
 
-    public static IDecompiler checkAvailableDecompiler(IDecompiler decompiler, File file) {
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return checkAvailableDecompiler(decompiler, fis);
-        } catch (IOException e) {
-            Logger.error(e);
-        }
-        return decompiler;
-    }
-
-    public static IDecompiler checkAvailableDecompiler(IDecompiler decompiler, InputStream is) {
-        int classLevel = getLevel(is);
-
-        boolean debug = isDebug();
-        IDecompiler defaultDecompiler = getDefaultDecompiler(classLevel, debug);
-
-        if (!decompiler.supportLevel(classLevel)) {
-            JavaDecompilerPlugin.logInfo("Could not use " + decompiler.getClass().getSimpleName()
-                    + " for decompilation since the classLevel " + classLevel + " is not supported. "
-                    + "Falling back to " + defaultDecompiler.getClass().getSimpleName() + ".");
-            return defaultDecompiler;
-        }
-        if (debug && !decompiler.supportDebugLevel(classLevel)) {
-            StringBuilder recommendation = new StringBuilder();
-            if (JavaDecompilerPlugin.getDefault().isDebug()) {
-                recommendation.append("Disable the 'Align code for debugging' option. ");
-            }
-            if (UIUtil.isDebugPerspective()) {
-                recommendation.append("Switch to the Java perspective. ");
-            }
-            if (JavaDecompilerPlugin.getDefault().isDebugMode()) {
-                recommendation.append("Disable the debug Mode. ");
-            }
-            JavaDecompilerPlugin.logInfo("Could not use " + decompiler.getClass().getSimpleName() + " for decompilation since the debug view is not supported. " + recommendation.append("Falling back to ").append(defaultDecompiler.getClass().getSimpleName()).append(".").toString());
-            return defaultDecompiler;
-        }
-        return decompiler;
+    private ClassUtil() {
     }
 
     public static boolean isDebug() {
         return JavaDecompilerPlugin.getDefault().isDebug()
-                || JavaDecompilerPlugin.getDefault().isDebugMode()
                 || UIUtil.isDebugPerspective();
-    }
-
-    private static int getLevel(InputStream is) {
-        try (DataInputStream data = new DataInputStream(is)) {
-            if (0xCAFEBABE != data.readInt()) {
-                return -1;
-            }
-            data.readUnsignedShort();
-            int major = data.readUnsignedShort();
-            return major - 44;
-        } catch (IOException e) {
-            Logger.error("Failed to get Class file version", e);
-        }
-        return -1;
     }
 
     public static boolean isClassFile(byte[] classData) {
@@ -95,23 +37,4 @@ public class ClassUtil {
         return false;
     }
 
-    private static IDecompiler getDefaultDecompiler(int level, boolean debug) {
-        Collection<IDecompilerDescriptor> descriptors = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorMap()
-                .values();
-        if (descriptors != null) {
-            for (IDecompilerDescriptor iDecompilerDescriptor : descriptors) {
-                if (iDecompilerDescriptor.isDefault()) {
-                    IDecompiler decompiler = iDecompilerDescriptor.getDecompiler();
-                    if (debug) {
-                        if (decompiler.supportDebug() && decompiler.supportDebugLevel(level)) {
-                            return decompiler;
-                        }
-                    } else if (decompiler.supportLevel(level)) {
-                        return decompiler;
-                    }
-                }
-            }
-        }
-        return new FernFlowerDecompiler();
-    }
 }

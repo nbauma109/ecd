@@ -48,28 +48,15 @@ public class SubMenuCreator implements IMenuCreator {
     private void fillMenu(final Menu menu) {
         final MenuManager menuMgr = new MenuManager();
 
-        boolean isAddFernFlower = false;
-
-        for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
-            if (DecompilerType.getDecompilerTypes()[i].compareToIgnoreCase(DecompilerType.FernFlower) > 0
-                    && !isAddFernFlower) {
-                menuMgr.add(new DecompileWithFernFlowerAction());
-                isAddFernFlower = true;
-            }
-            menuMgr.add(JavaDecompilerPlugin.getDefault()
-                    .getDecompilerDescriptor(DecompilerType.getDecompilerTypes()[i]).getDecompileAction());
-        }
-
-        if (!isAddFernFlower) {
-            menuMgr.add(new DecompileWithFernFlowerAction());
+        for (String decompilerType : DecompilerType.getDecompilerTypes()) {
+            menuMgr.add(JavaDecompilerPlugin.getDefault().getDecompileAction(decompilerType));
         }
 
         IContributionItem[] items = menuMgr.getItems();
-        for (int i = 0; i < items.length; i++) {
-            IContributionItem item = items[i];
+        for (IContributionItem item : items) {
             IContributionItem newItem = item;
-            if (item instanceof ActionContributionItem) {
-                newItem = new ActionContributionItem(((ActionContributionItem) item).getAction());
+            if (item instanceof ActionContributionItem acItem) {
+                newItem = new ActionContributionItem(acItem.getAction());
             }
             newItem.fill(menu, -1);
         }
@@ -105,30 +92,13 @@ public class SubMenuCreator implements IMenuCreator {
         if (dropDownMenuMgr == null) {
             dropDownMenuMgr = new MenuManager();
 
-            boolean isAddFernFlower = false;
-
-            for (int i = 0; i < DecompilerType.getDecompilerTypes().length; i++) {
-                if (DecompilerType.getDecompilerTypes()[i].compareToIgnoreCase(DecompilerType.FernFlower) > 0
-                        && !isAddFernFlower) {
-                    dropDownMenuMgr.add(new DecompileWithFernFlowerAction());
-                    isAddFernFlower = true;
-                }
-
-                dropDownMenuMgr.add(JavaDecompilerPlugin.getDefault()
-                        .getDecompilerDescriptor(DecompilerType.getDecompilerTypes()[i]).getDecompileAction());
-            }
-
-            if (!isAddFernFlower) {
-                dropDownMenuMgr.add(new DecompileWithFernFlowerAction());
+            for (String decompilerType : DecompilerType.getDecompilerTypes()) {
+                dropDownMenuMgr.add(JavaDecompilerPlugin.getDefault().getDecompileAction(decompilerType));
             }
 
             dropDownMenuMgr.add(new Separator());
 
             dropDownMenuMgr.add(new SourceCodeAction());
-
-            dropDownMenuMgr.add(new Separator());
-
-            dropDownMenuMgr.add(new DebugModeAction());
 
             dropDownMenuMgr.add(new Separator());
 

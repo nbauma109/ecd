@@ -38,11 +38,11 @@ import org.sf.feeling.decompiler.util.SourceMapperUtil;
 
 public abstract class DecompilerSourceMapper extends SourceMapper {
 
-    protected static Map<IPackageFragmentRoot, SourceMapper> originalSourceMapper = new ConcurrentHashMap<IPackageFragmentRoot, SourceMapper>();
+    protected static Map<IPackageFragmentRoot, SourceMapper> originalSourceMapper = new ConcurrentHashMap<>();
 
     protected boolean isAttachedSource;
 
-    protected DecompilerSourceMapper(IPath sourcePath, String rootPath, Map options) {
+    protected DecompilerSourceMapper(IPath sourcePath, String rootPath, Map<String, String> options) {
         super(sourcePath, rootPath, options);
     }
 
@@ -159,11 +159,10 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
         if (range == null || position < range.getOffset() || range.getOffset() + range.getLength() - 1 < position) {
             return null;
         }
-        if (elt instanceof IParent) {
+        if (elt instanceof IParent p) {
             try {
-                IJavaElement[] children = ((IParent) elt).getChildren();
-                for (int i = 0; i < children.length; i++) {
-                    IJavaElement match = findElement(children[i], position);
+                for (IJavaElement child : p.getChildren()) {
+                    IJavaElement match = findElement(child, position);
                     if (match != null) {
                         return match;
                     }

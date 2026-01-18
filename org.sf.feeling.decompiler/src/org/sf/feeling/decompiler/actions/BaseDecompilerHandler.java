@@ -20,7 +20,7 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class BaseDecompilerHandler extends DecompileHandler {
 
-    protected Object handleDecompile(String decompilerType) {
+    public Object handleDecompile(String decompilerType) {
         final List classes = UIUtil.getActiveSelection();
         if (classes != null && !classes.isEmpty()) {
             IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();

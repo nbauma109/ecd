@@ -38,7 +38,7 @@
               <overWriteReleases>true</overWriteReleases>
               <overWriteSnapshots>true</overWriteSnapshots>
               <stripVersion>true</stripVersion>
-              <includeArtifactIds>jd-util,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm</includeArtifactIds>
+              <includeArtifactIds>transformer-api,jd-util,jd-core,jd-core-v0,cfr,procyon-decompiler,jadx-java-input,jadx-input-api,jadx-core,jadx-zip,vineflower,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm,asm-tree,slf4j-api</includeArtifactIds>
             </configuration>
           </execution>
         </executions>
@@ -49,19 +49,11 @@
   <dependencies>
     <dependency>
       <groupId>io.github.nbauma109</groupId>
-      <artifactId>jd-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.jetbrains.intellij.java</groupId>
-      <artifactId>java-decompiler-engine</artifactId>
+      <artifactId>transformer-api</artifactId>
     </dependency>
     <dependency>
       <groupId>com.eclipsesource.minimal-json</groupId>
       <artifactId>minimal-json</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.ow2.asm</groupId>
-      <artifactId>asm</artifactId>
     </dependency>
   </dependencies>
 </project>

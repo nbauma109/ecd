@@ -18,12 +18,12 @@ public class ReflectionUtils {
     private ReflectionUtils() {
     }
 
-    static Method getDeclaredMethod(Object object, String methodName, Class[] parameterTypes) {
+    static Method getDeclaredMethod(Object object, String methodName, Class<?>[] parameterTypes) {
         if (object == null || methodName == null) {
             return null;
         }
 
-        for (Class clazz = object.getClass(); clazz != Object.class; clazz = clazz.getSuperclass()) {
+        for (Class<?> clazz = object.getClass(); clazz != Object.class; clazz = clazz.getSuperclass()) {
             try {
                 return clazz.getDeclaredMethod(methodName, parameterTypes);
             } catch (Exception e) {
@@ -34,7 +34,7 @@ public class ReflectionUtils {
         return null;
     }
 
-    public static Object invokeMethod(Object object, String methodName, Class[] parameterTypes, Object[] parameters) {
+    public static Object invokeMethod(Object object, String methodName, Class<?>[] parameterTypes, Object[] parameters) {
         if (object == null || methodName == null) {
             return null;
         }
@@ -79,7 +79,7 @@ public class ReflectionUtils {
             return null;
         }
 
-        Class clazz = object.getClass();
+        Class<?> clazz = object.getClass();
 
         for (; clazz != Object.class; clazz = clazz.getSuperclass()) {
             try {
@@ -130,7 +130,7 @@ public class ReflectionUtils {
         return null;
     }
 
-    public static Object invokeMethod(Object object, String methodName, Class clazz, Object value) {
+    public static Object invokeMethod(Object object, String methodName, Class<?> clazz, Object value) {
         if (object == null || methodName == null) {
             return null;
         }

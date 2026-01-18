@@ -8,18 +8,16 @@
 
 package org.sf.feeling.decompiler.editor;
 
-import org.sf.feeling.decompiler.JavaDecompilerPlugin;
+import java.util.Set;
+
+import com.heliosdecompiler.transformerapi.StandardTransformers;
 
 public class DecompilerType {
 
-    public static final String FernFlower = "FernFlower";//$NON-NLS-1$
+    private DecompilerType() {
+    }
 
-    private static String[] decompilerTypes = null;
-
-    public static String[] getDecompilerTypes() {
-        if (decompilerTypes == null) {
-            decompilerTypes = JavaDecompilerPlugin.getDefault().getDecompilerDescriptorTypes();
-        }
-        return decompilerTypes;
+    public static Set<String> getDecompilerTypes() {
+        return StandardTransformers.Decompilers.AVAILABLE_DECOMPILERS;
     }
 }

@@ -36,13 +36,13 @@ public class DecompilerAdapter {
      */
     private boolean includeWorkbenchContribute;
     /**
-     * Adapterabe type.
+     * Adaptable type.
      */
-    private Class adaptableType;
+    private Class<?> adaptableType;
     /**
      * Target adapter type.
      */
-    private Class adapterType;
+    private Class<?> adapterType;
 
     private IConfigurationElement adapterConfig;
 
@@ -66,11 +66,11 @@ public class DecompilerAdapter {
     private Expression expression;
 
     // getters and setters
-    public Class getAdaptableType() {
+    public Class<?> getAdaptableType() {
         return adaptableType;
     }
 
-    public void setAdaptableType(Class adaptableType) {
+    public void setAdaptableType(Class<?> adaptableType) {
         this.adaptableType = adaptableType;
     }
 
@@ -106,11 +106,11 @@ public class DecompilerAdapter {
         this.priority = priority;
     }
 
-    public Class getAdapterType() {
+    public Class<?> getAdapterType() {
         return adapterType;
     }
 
-    public void setAdapterType(Class type) {
+    public void setAdapterType(Class<?> type) {
         this.adapterType = type;
     }
 

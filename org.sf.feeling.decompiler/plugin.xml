@@ -122,7 +122,7 @@
             id="org.sf.feeling.decompiler.decompile">  
       </command>  
       <command  
-            name="Decompile With FernFlower"  
+            name="Decompile With Fernflower"  
             categoryId="org.sf.feeling.decompiler"  
             id="org.sf.feeling.decompiler.decompile.fernflower">  
       </command>  
@@ -150,14 +150,6 @@
             commandId="org.sf.feeling.decompiler.sourcecode"  
             class="org.sf.feeling.decompiler.actions.SourceCodeHandler">  
       </handler> 
-      <handler  
-            commandId="org.sf.feeling.decompiler.debugMode"  
-            class="org.sf.feeling.decompiler.actions.DebugModeHandler">  
-      </handler>  
-      <handler  
-            commandId="org.sf.feeling.decompiler.decompile.fernflower"  
-            class="org.sf.feeling.decompiler.actions.DecompileWithFernFlowerHandler">  
-      </handler>
    </extension>
    <extension
          point="org.eclipse.ui.popupMenus">
@@ -170,14 +162,6 @@
                menubarPath="org.sf.feeling.decompiler.main"
                id="org.sf.feeling.decompiler.actions.ExportSourceAction"
                icon="icons/etool16/export_wiz.png"
-               >
-         </action>
-         <action
-               label="%DebugMode"
-               class="org.sf.feeling.decompiler.actions.DebugModeActionDelegate"
-               menubarPath="org.sf.feeling.decompiler.main"
-               id="org.sf.feeling.decompiler.actions.DebugModeAction"
-               style="toggle"
                >
          </action>
          <action
@@ -257,14 +241,6 @@
                label="%Preferences"
                style="push"
                menubarPath="decompilerMenu/preferenceGroup">
-         </action>
-         <action
-               class="org.sf.feeling.decompiler.actions.DebugModeMenuItemAction"
-               enablesFor="*"
-               id="org.sf.feeling.decompiler.actions.debugModeMenu"
-               label="%DebugMode"
-               style="toggle"
-               menubarPath="decompilerMenu/debugGroup">
          </action>
          <action
                class="org.sf.feeling.decompiler.actions.SourceCodeMenuItemAction"

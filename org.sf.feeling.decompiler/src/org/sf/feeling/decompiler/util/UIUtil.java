@@ -48,24 +48,20 @@ public class UIUtil {
 
     public static JavaDecompilerClassFileEditor getActiveEditor() {
         final JavaDecompilerClassFileEditor[] editors = new JavaDecompilerClassFileEditor[1];
-        Display.getDefault().syncExec(new Runnable() {
+        Display.getDefault().syncExec(() -> {
+            IWorkbenchPart editor = getActiveEditor(true);
+            if (editor instanceof JavaDecompilerClassFileEditor) {
+                editors[0] = (JavaDecompilerClassFileEditor) editor;
+            } else {
+                IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 
-            @Override
-            public void run() {
-                IWorkbenchPart editor = getActiveEditor(true);
-                if (editor instanceof JavaDecompilerClassFileEditor) {
-                    editors[0] = (JavaDecompilerClassFileEditor) editor;
-                } else {
-                    IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+                if (window != null) {
+                    IWorkbenchPage pg = window.getActivePage();
 
-                    if (window != null) {
-                        IWorkbenchPage pg = window.getActivePage();
-
-                        if (pg != null) {
-                            IEditorPart editorPart = pg.getActiveEditor();
-                            if (editorPart instanceof JavaDecompilerClassFileEditor) {
-                                editors[0] = (JavaDecompilerClassFileEditor) editorPart;
-                            }
+                    if (pg != null) {
+                        IEditorPart editorPart = pg.getActiveEditor();
+                        if (editorPart instanceof JavaDecompilerClassFileEditor) {
+                            editors[0] = (JavaDecompilerClassFileEditor) editorPart;
                         }
                     }
                 }
@@ -76,14 +72,10 @@ public class UIUtil {
 
     public static JavaDecompilerClassFileEditor getActiveDecompilerEditor() {
         final JavaDecompilerClassFileEditor[] editors = new JavaDecompilerClassFileEditor[1];
-        Display.getDefault().syncExec(new Runnable() {
-
-            @Override
-            public void run() {
-                IWorkbenchPart editor = getActiveEditor(true);
-                if (editor instanceof JavaDecompilerClassFileEditor) {
-                    editors[0] = (JavaDecompilerClassFileEditor) editor;
-                }
+        Display.getDefault().syncExec(() -> {
+            IWorkbenchPart editor = getActiveEditor(true);
+            if (editor instanceof JavaDecompilerClassFileEditor) {
+                editors[0] = (JavaDecompilerClassFileEditor) editor;
             }
         });
         return editors[0];
@@ -100,35 +92,31 @@ public class UIUtil {
 
     private static String getActivePerspectiveId() {
         final String[] ids = new String[1];
-        Display.getDefault().syncExec(new Runnable() {
-
-            @Override
-            public void run() {
-                IWorkbench wb = PlatformUI.getWorkbench();
-                if (wb == null) {
-                    ids[0] = null;
-                    return;
-                }
-
-                IWorkbenchWindow win = wb.getActiveWorkbenchWindow();
-                if (win == null) {
-                    ids[0] = null;
-                    return;
-                }
-                IWorkbenchPage page = win.getActivePage();
-                if (page == null) {
-                    ids[0] = null;
-                    return;
-                }
-
-                IPerspectiveDescriptor perspective = page.getPerspective();
-                if (perspective == null) {
-                    ids[0] = null;
-                    return;
-                }
-                ids[0] = perspective.getId();
-
+        Display.getDefault().syncExec(() -> {
+            IWorkbench wb = PlatformUI.getWorkbench();
+            if (wb == null) {
+                ids[0] = null;
+                return;
             }
+
+            IWorkbenchWindow win = wb.getActiveWorkbenchWindow();
+            if (win == null) {
+                ids[0] = null;
+                return;
+            }
+            IWorkbenchPage page = win.getActivePage();
+            if (page == null) {
+                ids[0] = null;
+                return;
+            }
+
+            IPerspectiveDescriptor perspective = page.getPerspective();
+            if (perspective == null) {
+                ids[0] = null;
+                return;
+            }
+            ids[0] = perspective.getId();
+
         });
         return ids[0];
     }
@@ -138,12 +126,12 @@ public class UIUtil {
                 .equals(getActivePerspectiveId());
     }
 
-    private static List getSelectedElements(ISelectionService selService, Class eleClass) {
+    private static List getSelectedElements(ISelectionService selService, Class<?> eleClass) {
 
         Iterator selections = getSelections(selService);
         List elements = new ArrayList();
 
-        while ((selections != null) && selections.hasNext()) {
+        while (selections != null && selections.hasNext()) {
             Object select = selections.next();
 
             if (eleClass.isInstance(select)) {
@@ -157,8 +145,7 @@ public class UIUtil {
     private static Iterator getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
-        if ((selection != null) && (selection instanceof IStructuredSelection)) {
-            IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+        if (selection instanceof IStructuredSelection structuredSelection) {
             return structuredSelection.iterator();
         }
 
@@ -174,10 +161,9 @@ public class UIUtil {
 
                 if (pg != null) {
                     IWorkbenchPart activePart = pg.getActivePart();
-                    if (!(activePart instanceof ContentOutline)) {
+                    if (!(activePart instanceof ContentOutline outline)) {
                         return activePart;
                     }
-                    ContentOutline outline = (ContentOutline) activePart;
                     IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
                             "getCurrentContributingPart"); //$NON-NLS-1$
                     if (part == null) {
@@ -286,13 +272,9 @@ public class UIUtil {
                 return false;
             }
 
-            if (stacks[i].getClassName().indexOf("JavadocHover") != -1 //$NON-NLS-1$
-                    && "getHoverInfo2".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
-                return true;
-            }
-
-            if (stacks[i].getClassName().indexOf("JavaSourceHover") != -1 //$NON-NLS-1$
-                    && "getHoverInfo".equals(stacks[i].getMethodName())) { //$NON-NLS-1$
+            if ((stacks[i].getClassName().indexOf("JavadocHover") != -1 //$NON-NLS-1$
+                    && "getHoverInfo2".equals(stacks[i].getMethodName())) || (stacks[i].getClassName().indexOf("JavaSourceHover") != -1 //$NON-NLS-1$
+                    && "getHoverInfo".equals(stacks[i].getMethodName()))) { //$NON-NLS-1$
                 return true;
             }
 

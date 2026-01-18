@@ -1,5 +1,0 @@
-Icon source:
-https://github.com/Earthcomputer/quiltflower-intellij-plugin/blob/main/src/main/resources/META-INF/pluginIcon.svg
-https://github.com/QuiltMC/art/tree/master/brand
-
-License: Creative Commons Legal Code CC0 1.0 Universal
