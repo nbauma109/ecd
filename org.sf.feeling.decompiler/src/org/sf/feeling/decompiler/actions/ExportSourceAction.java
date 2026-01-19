@@ -48,7 +48,7 @@ import org.sf.feeling.decompiler.util.UIUtil;
 
 public class ExportSourceAction extends Action {
 
-	private static final String[] ZIP_FILTER = { "*.zip" };
+    private static final String[] ZIP_FILTER = { "*.zip" };
 
     private List<?> selection = null;
     private boolean isFlat = false;
@@ -83,7 +83,7 @@ public class ExportSourceAction extends Action {
                 fileName = fileName.substring(0, index);
             }
             dialog.setFileName(fileName + "-src"); //$NON-NLS-1$
-			dialog.setFilterExtensions(ZIP_FILTER);
+            dialog.setFilterExtensions(ZIP_FILTER);
             String file = dialog.open();
             if (file == null || file.trim().isEmpty()) {
                 return;
@@ -113,7 +113,7 @@ public class ExportSourceAction extends Action {
                 fileName = fileName.substring(0, index);
             }
             dialog.setFileName(fileName + "-src"); //$NON-NLS-1$
-			dialog.setFilterExtensions(ZIP_FILTER);
+            dialog.setFilterExtensions(ZIP_FILTER);
             String file = dialog.open();
             if (file == null || file.trim().isEmpty()) {
                 return;
