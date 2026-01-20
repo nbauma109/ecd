@@ -78,11 +78,11 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
         for (Object obj : selection) {
             IPackageFragmentRoot packRoot = null;
             switch (obj) {
-              case IPackageFragment packageFragment -> packRoot = (IPackageFragmentRoot) packageFragment.getParent();
-              case IClassFile classFile -> packRoot = (IPackageFragmentRoot) classFile.getParent().getParent();
-              default -> {
-                  return false;
-              }
+                case IPackageFragment packageFragment -> packRoot = (IPackageFragmentRoot) packageFragment.getParent();
+                case IClassFile classFile -> packRoot = (IPackageFragmentRoot) classFile.getParent().getParent();
+                default -> {
+                    return false;
+                }
             }
             if (root == null) {
                 root = packRoot;

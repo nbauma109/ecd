@@ -191,7 +191,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     }
 
     public boolean isDisplayLineNumber() {
-        return Boolean.valueOf(getPreferenceStore().getBoolean(PREF_DISPLAY_LINE_NUMBERS));
+        return Boolean.parseBoolean(getPreferenceStore().getBoolean(PREF_DISPLAY_LINE_NUMBERS));
     }
 
     public boolean isDebug() {

@@ -72,7 +72,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
     protected BaseDecompilerSourceMapper(IPath sourcePath, String rootPath) {
         this(sourcePath, rootPath, compilerOptions);
     }
-    
+
     protected BaseDecompilerSourceMapper(IPath sourcePath, String rootPath, Map<String, String> options) {
         super(sourcePath, rootPath, options);
     }
@@ -337,7 +337,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             if (displayNumber != null) {
                 JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
             }
-            
+
             if (decompilationResult.getDecompiledOutput() == null || decompilationResult.getDecompiledOutput().isEmpty()) {
                 return null;
             }
