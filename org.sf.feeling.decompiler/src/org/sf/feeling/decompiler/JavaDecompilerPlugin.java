@@ -28,6 +28,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.sf.feeling.decompiler.actions.BaseDecompilerHandler;
+import org.sf.feeling.decompiler.editor.BaseDecompilerSourceMapper;
 import org.sf.feeling.decompiler.editor.DecompilerSourceMapper;
 import org.sf.feeling.decompiler.editor.JavaDecompilerBufferManager;
 import org.sf.feeling.decompiler.extension.DecompilerAdapterManager;
@@ -36,8 +37,6 @@ import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.Logger;
 import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.UIUtil;
-
-import org.sf.feeling.decompiler.editor.BaseDecompilerSourceMapper;
 
 public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyChangeListener {
 
@@ -191,7 +190,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     }
 
     public boolean isDisplayLineNumber() {
-        return Boolean.valueOf(getPreferenceStore().getBoolean(PREF_DISPLAY_LINE_NUMBERS));
+        return getPreferenceStore().getBoolean(PREF_DISPLAY_LINE_NUMBERS);
     }
 
     public boolean isDebug() {
@@ -199,7 +198,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     }
 
     public void displayLineNumber(Boolean display) {
-        getPreferenceStore().setValue(PREF_DISPLAY_LINE_NUMBERS, display.booleanValue());
+        getPreferenceStore().setValue(PREF_DISPLAY_LINE_NUMBERS, display);
     }
 
     public void setExportEncoding(String encoding) {
@@ -219,7 +218,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
     public Thread attachSource(IPackageFragmentRoot library, boolean force) {
         Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
-        if ((attachSourceAdapter instanceof IAttachSourceHandler) && (!libraries.contains(library.getPath().toOSString()) || force)) {
+        if (attachSourceAdapter instanceof IAttachSourceHandler && (!libraries.contains(library.getPath().toOSString()) || force)) {
             libraries.add(library.getPath().toOSString());
             return ((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
         }
