@@ -64,7 +64,6 @@ import org.eclipse.ui.texteditor.IncrementalFindAction;
 import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 import org.sf.feeling.decompiler.actions.DecompileActionGroup;
 import org.sf.feeling.decompiler.util.ClassUtil;
-import org.sf.feeling.decompiler.util.CommentUtil;
 import org.sf.feeling.decompiler.util.DecompileUtil;
 import org.sf.feeling.decompiler.util.FileUtil;
 import org.sf.feeling.decompiler.util.Logger;
@@ -74,6 +73,7 @@ import org.sf.feeling.decompiler.util.UIUtil;
 public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file"; //$NON-NLS-1$
+    private static final Pattern LINE_NUMBER_COMMENT = Pattern.compile("/\\*\\s*\\d+\\s*\\*/");
 
     private IBuffer classBuffer;
     private boolean sourceShown = false;
@@ -201,8 +201,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (source == null) {
             return false;
         }
-        Pattern pattern = CommentUtil.LINE_NUMBER_COMMENT; // $NON-NLS-1$
-        Matcher matcher = pattern.matcher(source);
+        Matcher matcher = LINE_NUMBER_COMMENT.matcher(source);
         return matcher.find() || source.indexOf(NO_LINE_NUMBER) != -1;
     }
 
