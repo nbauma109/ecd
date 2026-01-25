@@ -46,6 +46,7 @@ import org.sf.feeling.decompiler.util.ReflectionUtils;
 import org.sf.feeling.decompiler.util.SortMemberUtil;
 import org.sf.feeling.decompiler.util.SourceMapperUtil;
 import org.sf.feeling.decompiler.util.UIUtil;
+import org.sf.feeling.decompiler.util.UnicodeUtil;
 
 import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
 import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
@@ -197,7 +198,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             return null;
         }
 
-        String code = res.getDecompiledOutput();
+        String code = UnicodeUtil.decode(res.getDecompiledOutput());
 
         boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
 
@@ -345,7 +346,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             exceptions.add(e);
         }
 
-        String code = decompilationResult == null ? "" : decompilationResult.getDecompiledOutput();
+        String code = decompilationResult == null ? "" : UnicodeUtil.decode(decompilationResult.getDecompiledOutput());
 
         boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
 
