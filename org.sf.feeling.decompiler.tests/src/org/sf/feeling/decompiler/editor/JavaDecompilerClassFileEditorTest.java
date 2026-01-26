@@ -59,12 +59,12 @@ import org.sf.feeling.decompiler.JavaDecompilerPlugin;
 
 public class JavaDecompilerClassFileEditorTest {
 
+    private static final String CLASS = ".class";
     private static final String TEST_BUNDLE_ID = "org.sf.feeling.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
 
     private IProject project;
-    private IJavaProject javaProject;
     private IPackageFragmentRoot jarRoot;
     private File jarFileOnDisk;
     private File tempDir;
@@ -95,7 +95,7 @@ public class JavaDecompilerClassFileEditorTest {
         description.setNatureIds(new String[] { JavaCore.NATURE_ID });
         project.setDescription(description, null);
 
-        javaProject = JavaCore.create(project);
+        IJavaProject javaProject = JavaCore.create(project);
         configureClasspathWithJre(javaProject);
 
         jarRoot = addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
@@ -204,8 +204,7 @@ public class JavaDecompilerClassFileEditorTest {
         IConfigurationElement[] elements = registry.getConfigurationElementsFor("org.eclipse.ui.editors"); //$NON-NLS-1$
         String expectedClassName = JavaDecompilerClassFileEditor.class.getName();
 
-        for (int i = 0; i < elements.length; i++) {
-            IConfigurationElement e = elements[i];
+        for (IConfigurationElement e : elements) {
             if (!"editor".equals(e.getName())) { //$NON-NLS-1$
                 continue;
             }
@@ -227,10 +226,10 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     private static ITextEditor adaptToTextEditor(IEditorPart editor) {
-        if (editor instanceof ITextEditor) {
-            return (ITextEditor) editor;
+        if (editor instanceof ITextEditor textEditor) {
+            return textEditor;
         }
-        return (ITextEditor) editor.getAdapter(ITextEditor.class);
+        return editor.getAdapter(ITextEditor.class);
     }
 
     private static String waitForNonEmptyDocument(IDocument document) throws InterruptedException {
@@ -270,7 +269,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     private static void configureClasspathWithJre(IJavaProject project) throws Exception {
-        IClasspathEntry[] classpath = new IClasspathEntry[] { JavaRuntime.getDefaultJREContainerEntry() };
+        IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
         project.setRawClasspath(classpath, null);
     }
 
@@ -289,8 +288,7 @@ public class JavaDecompilerClassFileEditorTest {
         project.setRawClasspath(updated, null);
 
         IPackageFragmentRoot[] roots = project.getAllPackageFragmentRoots();
-        for (int r = 0; r < roots.length; r++) {
-            IPackageFragmentRoot root = roots[r];
+        for (IPackageFragmentRoot root : roots) {
             IPath rootPath = root.getPath();
             if (rootPath != null && rootPath.equals(jarPath)) {
                 root.open(null);
@@ -322,7 +320,7 @@ public class JavaDecompilerClassFileEditorTest {
                     continue;
                 }
                 String name = entry.getName();
-                if (name != null && name.endsWith(".class")) { //$NON-NLS-1$
+                if (name != null && name.endsWith(CLASS)) { //$NON-NLS-1$
                     classEntries.add(name);
                 }
             }
@@ -354,8 +352,8 @@ public class JavaDecompilerClassFileEditorTest {
         if (name == null) {
             return ""; //$NON-NLS-1$
         }
-        if (name.endsWith(".class")) { //$NON-NLS-1$
-            return name.substring(0, name.length() - ".class".length()); //$NON-NLS-1$
+        if (name.endsWith(CLASS)) { //$NON-NLS-1$
+            return name.substring(0, name.length() - CLASS.length()); //$NON-NLS-1$
         }
         return name;
     }
