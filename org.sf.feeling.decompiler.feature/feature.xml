@@ -19,8 +19,8 @@
    </license>
 
    <url>
-      <update label="Enhanced Class Decompiler Updates" url="https://ecd-plugin.github.io/update"/>
-      <discovery label="%updateSiteName" url="https://ecd-plugin.github.io/update"/>
+      <update label="Enhanced Class Decompiler Updates" url="https://nbauma109.github.io/ecd/updates/latest/"/>
+      <discovery label="%updateSiteName" url="https://nbauma109.github.io/ecd/updates/latest/"/>
    </url>
 
    <requires>
