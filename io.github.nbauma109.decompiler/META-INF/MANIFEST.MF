@@ -46,7 +46,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.equinox.p2.metadata;resolution:=optional,
  org.eclipse.help.base
 Bundle-Vendor: ECD Project Team
-Bundle-Version: 2025.12.3
+Bundle-Version: 2025.12.4
 Bundle-ManifestVersion: 2
 Bundle-Activator: io.github.nbauma109.decompiler.JavaDecompilerPlugin
 Bundle-SymbolicName: io.github.nbauma109.decompiler;singleton:=true
