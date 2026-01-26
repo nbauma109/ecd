@@ -320,7 +320,7 @@ public class JavaDecompilerClassFileEditorTest {
                     continue;
                 }
                 String name = entry.getName();
-                if (name != null && name.endsWith(CLASS)) { //$NON-NLS-1$
+                if (name != null && name.endsWith(CLASS)) {
                     classEntries.add(name);
                 }
             }
@@ -352,8 +352,8 @@ public class JavaDecompilerClassFileEditorTest {
         if (name == null) {
             return ""; //$NON-NLS-1$
         }
-        if (name.endsWith(CLASS)) { //$NON-NLS-1$
-            return name.substring(0, name.length() - CLASS.length()); //$NON-NLS-1$
+        if (name.endsWith(CLASS)) {
+            return name.substring(0, name.length() - CLASS.length());
         }
         return name;
     }
