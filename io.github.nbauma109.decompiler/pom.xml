@@ -1,0 +1,59 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.nbauma109</groupId>
+    <artifactId>io.github.nbauma109.ecd</artifactId>
+    <version>2025.12.3</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>io.github.nbauma109.decompiler</artifactId>
+  <packaging>eclipse-plugin</packaging>
+
+  <properties>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.9.0</version>
+        <executions>
+          <execution>
+            <id>copy</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+              <includeScope>compile</includeScope>
+              <excludeScope>provided</excludeScope>
+              <overWriteReleases>true</overWriteReleases>
+              <overWriteSnapshots>true</overWriteSnapshots>
+              <stripVersion>true</stripVersion>
+              <includeArtifactIds>transformer-api,jd-util,jd-core,jd-core-v0,cfr,procyon-decompiler,jadx-java-input,jadx-input-api,jadx-core,jadx-zip,vineflower,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm,asm-tree,slf4j-api</includeArtifactIds>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.nbauma109</groupId>
+      <artifactId>transformer-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.eclipsesource.minimal-json</groupId>
+      <artifactId>minimal-json</artifactId>
+    </dependency>
+  </dependencies>
+</project>

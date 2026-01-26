@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="io.github.nbauma109.decompiler"
+      label="%featureName"
+      version="2025.12.3"
+      provider-name="%providerName"
+      plugin="io.github.nbauma109.decompiler">
+
+   <description url="%aboutURL">
+      %description
+   </description>
+
+   <copyright url="%copyrightURL">
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <url>
+      <update label="Enhanced Class Decompiler Updates" url="https://nbauma109.github.io/ecd/updates/latest/"/>
+      <discovery label="%updateSiteName" url="https://nbauma109.github.io/ecd/updates/latest/"/>
+   </url>
+
+   <requires>
+      <import plugin="org.eclipse.jface"/>
+      <import plugin="org.eclipse.jface.text"/>
+      <import plugin="org.eclipse.ui.editors"/>
+      <import plugin="org.eclipse.ui.workbench.texteditor"/>
+      <import plugin="org.eclipse.jdt.ui"/>
+      <import plugin="org.eclipse.jdt.debug.ui"/>
+      <import plugin="org.eclipse.debug.ui"/>
+      <import plugin="org.eclipse.jdt.launching"/>
+      <import plugin="org.eclipse.ui.navigator"/>
+      <import plugin="org.eclipse.ui.views"/>
+      <import plugin="org.eclipse.search"/>
+      <import plugin="org.eclipse.help.base"/>
+      <import plugin="org.eclipse.core.runtime" version="3.31.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.core.resources" version="3.20.100" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.ui.workbench" version="3.131.100" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.jdt.core" version="3.37.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.jdt.debug" version="3.21.300" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.core.expressions" version="3.9.300" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.core.filesystem" version="1.10.300" match="greaterOrEqual"/>
+   </requires>
+
+   <plugin
+         id="io.github.nbauma109.decompiler"
+         download-size="0"
+         install-size="0"
+         version="2025.12.3"
+         unpack="false"/>
+
+</feature>

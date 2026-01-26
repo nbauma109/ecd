@@ -1,0 +1,86 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Chen Chao and other ECD project contributors.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
+
+package io.github.nbauma109.decompiler.util;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.internal.compiler.env.IBinaryType;
+import org.eclipse.jdt.internal.core.ClassFile;
+import org.eclipse.jdt.internal.core.SourceMapper;
+import org.eclipse.ui.ide.FileStoreEditorInput;
+import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.editor.DecompilerSourceMapper;
+
+public class DecompileUtil {
+
+    private DecompileUtil() {
+    }
+
+    public static String decompile(IClassFile cf, String type, boolean always, boolean reuseBuf, boolean force)
+            throws CoreException {
+        String decompilerType = type;
+        String origSrc = cf.getSource();
+        // have to check our mark since all line comments are stripped
+        // in debug align mode
+        if (origSrc == null || always || !reuseBuf || force) {
+            DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
+            char[] src = sourceMapper.findSource(cf.getType());
+            if (src == null) {
+                return origSrc;
+            }
+            return new String(src);
+        }
+
+        return origSrc;
+    }
+
+    public static String decompiler(FileStoreEditorInput input, String decompilerType) {
+        DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
+        File file = new File(input.getURI());
+        return sourceMapper.decompile(decompilerType, file);
+
+    }
+
+    public static String getPackageName(String source) {
+        Pattern p = Pattern.compile("(?i)package\\s+\\S+"); //$NON-NLS-1$
+
+        Matcher m = p.matcher(source);
+        if (m.find()) {
+            return m.group().replace("package", "") //$NON-NLS-1$ //$NON-NLS-2$
+                    .replace(";", "") //$NON-NLS-1$ //$NON-NLS-2$
+                    .trim();
+        }
+        return null;
+    }
+
+    public static String updateBuffer(IClassFile cf, String origSrc) throws JavaModelException {
+        updateSourceRanges(cf, origSrc);
+        return origSrc;
+    }
+
+    public static void updateSourceRanges(IClassFile cf, String contents) throws JavaModelException {
+        if (cf instanceof ClassFile classFile) {
+            Object info = classFile.getElementInfo();
+            IBinaryType typeInfo = info instanceof IBinaryType ? (IBinaryType) info : null;
+            SourceMapper mapper = classFile.getSourceMapper();
+            IType type = (IType) ReflectionUtils.invokeMethod(classFile, "getOuterMostEnclosingType", //$NON-NLS-1$
+                    new Class[0], new Object[0]);
+            HashMap sourceRange = (HashMap) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
+            sourceRange.remove(type);
+            SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
+        }
+    }
+}

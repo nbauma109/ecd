@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
     <!-- Decompiler -->
-    <feature url="features/org.sf.feeling.decompiler_${project.version}.jar" id="org.sf.feeling.decompiler" version="${project.version}">
-        <category name="org.sf.feeling.decompiler"/>
+    <feature url="features/io.github.nbauma109.decompiler_${project.version}.jar" id="io.github.nbauma109.decompiler" version="${project.version}">
+        <category name="io.github.nbauma109.decompiler"/>
     </feature>
-    <category-def name="org.sf.feeling.decompiler" label="Enhanced Class Decompiler Plug-in"/>
+    <category-def name="io.github.nbauma109.decompiler" label="Enhanced Class Decompiler Plug-in"/>
     <!-- Source attachment -->
-    <feature url="features/org.sf.feeling.decompiler.source_${project.version}.jar" id="org.sf.feeling.decompiler.source" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.source"/>
+    <feature url="features/io.github.nbauma109.decompiler.source_${project.version}.jar" id="io.github.nbauma109.decompiler.source" version="${project.version}">
+        <category name="io.github.nbauma109.decompiler.source"/>
     </feature>
-    <category-def name="org.sf.feeling.decompiler.source" label="Source Attachment Plug-in for Enhanced Class Decompiler"/>
+    <category-def name="io.github.nbauma109.decompiler.source" label="Source Attachment Plug-in for Enhanced Class Decompiler"/>
 </site>

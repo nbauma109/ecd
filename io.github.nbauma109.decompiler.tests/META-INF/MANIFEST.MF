@@ -1,0 +1,38 @@
+Manifest-Version: 1.0
+Bundle-ClassPath: .
+Bundle-Name: Enhanced Class Decompiler
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.core.resources,
+ org.eclipse.jface,
+ org.eclipse.jface.text,
+ org.eclipse.ui.editors,
+ org.eclipse.ui.workbench,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.jdt.core,
+ org.eclipse.jdt.ui,
+ org.eclipse.jdt.debug,
+ org.eclipse.jdt.debug.ui,
+ org.eclipse.debug.ui,
+ org.eclipse.jdt.launching,
+ org.eclipse.core.expressions,
+ org.eclipse.ui.navigator,
+ org.eclipse.ui.views,
+ org.eclipse.ui.ide;resolution:=optional,
+ org.eclipse.search,
+ org.eclipse.core.filesystem,
+ org.eclipse.equinox.p2.metadata;resolution:=optional,
+ org.eclipse.help.base,
+ org.apache.commons.commons-io,
+ org.junit,
+ org.eclipse.jdt.junit4.runtime,
+ org.eclipse.jdt.junit.core,
+ org.eclipse.jdt.junit.runtime,
+ io.github.nbauma109.decompiler
+Bundle-Vendor: ECD Project Team
+Bundle-Version: 2025.12.3
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: io.github.nbauma109.decompiler.tests;singleton:=true
+Eclipse-ExtensibleAPI: true
+Automatic-Module-Name: io.github.nbauma109.decompiler.tests
+

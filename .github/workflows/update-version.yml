@@ -34,7 +34,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          export VERSION=$(grep Bundle-Version org.sf.feeling.decompiler/META-INF/MANIFEST.MF | cut -d: -f2 | xargs)
+          export VERSION=$(grep Bundle-Version io.github.nbauma109.decompiler/META-INF/MANIFEST.MF | cut -d: -f2 | xargs)
           export MAJOR=$(echo $VERSION | cut -d. -f1)
           export MINOR=$(echo $VERSION | cut -d. -f2)
           export PATCH=$(echo $VERSION | cut -d. -f3)

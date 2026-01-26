@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+###############################################################################
+# Copyright (c) 2017 Chen Chao and other ECD project contributors.
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# https://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+-->
+<plugin>
+  <extension point="org.eclipse.ui.menus">
+    <menuContribution
+            allPopups="false"
+            class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceContributionFactory"
+            locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?before=group.edit">
+      </menuContribution>
+      <menuContribution
+            allPopups="false"
+            class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceContributionFactory"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?before=group.edit">
+      </menuContribution>      
+  </extension>
+  <extension
+        point="io.github.nbauma109.decompiler.decompilerAdapters">
+       <adaptable
+           class="io.github.nbauma109.decompiler.JavaDecompilerPlugin">
+           <adapter
+                 class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
+                 id="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
+                 singleton="true"
+                 type="io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler">
+           </adapter>
+       </adaptable>
+    </extension>
+    <extension point="org.eclipse.ui.editorActions">
+      <editorContribution id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesContribution"
+                          targetID="io.github.nbauma109.decompiler.ClassFileEditor">
+         <action id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesAction"
+              class="io.github.nbauma109.decompiler.source.attach.m2e.DownloadSourcesActionDelegate"
+              label="%action.label" style="push"/>
+      </editorContribution>
+   </extension>
+</plugin>

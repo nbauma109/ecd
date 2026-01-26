@@ -1,0 +1,32 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Enhanced Class Decompiler Source Attach
+Bundle-SymbolicName: io.github.nbauma109.decompiler.source.attach;singleton:=true
+Bundle-Version: 2025.12.3
+Bundle-Activator: io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin
+Bundle-Localization: plugin
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.core.expressions,
+ org.eclipse.jdt.core,
+ org.eclipse.jdt.ui,
+ org.eclipse.core.resources,
+ org.eclipse.core.databinding,
+ org.eclipse.jface.databinding,
+ org.eclipse.core.databinding.beans,
+ io.github.nbauma109.decompiler,
+ org.apache.ant,
+ org.eclipse.jgit;resolution:=optional,
+ com.jcraft.jsch;resolution:=optional,
+ org.eclipse.m2e.jdt;resolution:=optional
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-ActivationPolicy: lazy
+Bundle-Vendor: ECD Project Team
+Bundle-ClassPath: target/lib/commons-io.jar,
+ .
+Export-Package: io.github.nbauma109.decompiler.source.attach,
+ io.github.nbauma109.decompiler.source.attach.attacher,
+ io.github.nbauma109.decompiler.source.attach.finder,
+ io.github.nbauma109.decompiler.source.attach.handler,
+ io.github.nbauma109.decompiler.source.attach.utils
+Automatic-Module-Name: io.github.nbauma109.decompiler.source.attach

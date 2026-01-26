@@ -3,12 +3,12 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.ecd-plugin</groupId>
-  <artifactId>com.github.ecd-plugin.ecd</artifactId>
+  <groupId>io.github.nbauma109</groupId>
+  <artifactId>io.github.nbauma109.ecd</artifactId>
   <version>2025.12.3</version>
   <packaging>pom</packaging>
 
-  <name>com.github.ecd-plugin.ecd</name>
+  <name>io.github.nbauma109.ecd</name>
   <url>https://github.com/nbauma109/ecd</url>
 
   <properties>
@@ -19,13 +19,13 @@
   </properties>
 
   <modules>
-    <module>org.sf.feeling.decompiler</module>
-    <module>org.sf.feeling.decompiler.tests</module>
-    <module>org.sf.feeling.decompiler.feature</module>
-    <module>org.sf.feeling.decompiler.source.attach</module>
-    <module>org.sf.feeling.decompiler.source.attach.tests</module>
-    <module>org.sf.feeling.decompiler.source.feature</module>
-    <module>org.sf.feeling.decompiler.assembly</module>
+    <module>io.github.nbauma109.decompiler</module>
+    <module>io.github.nbauma109.decompiler.tests</module>
+    <module>io.github.nbauma109.decompiler.feature</module>
+    <module>io.github.nbauma109.decompiler.source.attach</module>
+    <module>io.github.nbauma109.decompiler.source.attach.tests</module>
+    <module>io.github.nbauma109.decompiler.source.feature</module>
+    <module>io.github.nbauma109.decompiler.assembly</module>
   </modules>
 
   <scm>
