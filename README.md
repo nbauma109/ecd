@@ -20,7 +20,7 @@ Downloads from Jitpack :
 # Enhanced Class Decompiler
 Enhanced Class Decompiler integrates **JD**, **Fernflower**, **Vineflower**, **CFR**, **Procyon** seamlessly with Eclipse and allows Java developers to **debug class files without source code directly**. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, **byte code view** and the syntax of JDK8 **lambda** expression.
 
-<p align="center"><img src="https://ecd-plugin.github.io/ecd/doc/o_debug_class.png"></p>
+<img width="720" height="357" alt="image" src="https://github.com/user-attachments/assets/69c2bff3-7109-4286-9482-1a98dc4ae541" />
 
 ## Description
 Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates JD, Fernflower, Vineflower, CFR, Procyon seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
