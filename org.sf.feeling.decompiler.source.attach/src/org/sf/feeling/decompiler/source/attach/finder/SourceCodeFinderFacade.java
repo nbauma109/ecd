@@ -20,6 +20,7 @@ import org.sf.feeling.decompiler.util.Logger;
 public class SourceCodeFinderFacade implements SourceCodeFinder {
 
     static final String HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY = "https://repository.cloudera.com";
+    static final String HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML = "https://nexus.xwiki.org/nexus";
     static final String HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML = "https://maven.alfresco.com/nexus";
     static final String HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML = "https://repository.apache.org";
     static final String HTTPS_REPO_GRAILS_ORG_GRAILS = "https://repo.grails.org/grails/webapp/home.html";
@@ -44,6 +45,9 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
         }
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO)) {
             finders.add(new NexusSourceCodeFinder(HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML));
+        }
+        if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG)) {
+            finders.add(new NexusSourceCodeFinder(HTTPS_NEXUS_XWIKI_ORG_NEXUS_INDEX_HTML));
         }
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA)) {
             finders.add(new NexusSourceCodeFinder(HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY));
