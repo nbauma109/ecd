@@ -121,11 +121,6 @@
             categoryId="org.sf.feeling.decompiler"  
             id="org.sf.feeling.decompiler.decompile">  
       </command>  
-      <command  
-            name="Decompile With Fernflower"  
-            categoryId="org.sf.feeling.decompiler"  
-            id="org.sf.feeling.decompiler.decompile.fernflower">  
-      </command>  
    </extension> 
    <extension
      point="org.eclipse.ui.bindings">
