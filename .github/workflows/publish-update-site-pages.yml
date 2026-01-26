@@ -1,0 +1,77 @@
+name: Publish update site to GitHub Pages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build-pages-content:
+    if: ${{ github.event.release.prerelease == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download update site zip from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf release-assets
+          mkdir -p release-assets
+
+          gh release download "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "enhanced-class-decompiler-*.zip" \
+            --dir release-assets
+
+          zip_path="$(ls -1 release-assets/enhanced-class-decompiler-*.zip | head -n 1)"
+          if [ -z "${zip_path}" ]; then
+            echo "No enhanced-class-decompiler-*.zip asset found on the release."
+            exit 1
+          fi
+
+          echo "UPDATE_ZIP=${zip_path}" >> "$GITHUB_ENV"
+
+      - name: Extract and validate update site structure
+        run: |
+          set -euo pipefail
+          rm -rf extracted public
+          mkdir -p extracted public/updates/latest
+
+          unzip -q "${UPDATE_ZIP}" -d extracted
+
+          if [ ! -f extracted/site.xml ]; then
+            echo "Expected extracted/site.xml at zip root."
+            echo "Zip contents:"
+            unzip -Z1 "${UPDATE_ZIP}" | head -n 200
+            exit 1
+          fi
+          if [ ! -d extracted/features ] || [ ! -d extracted/plugins ]; then
+            echo "Expected extracted/features/ and extracted/plugins/ at zip root."
+            exit 1
+          fi
+
+          rsync -a --delete extracted/ public/updates/latest/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build-pages-content
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
