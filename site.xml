@@ -1,30 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-    <!-- CFR -->
-    <feature url="features/org.sf.feeling.decompiler.cfr_${project.version}.jar" id="org.sf.feeling.decompiler.cfr" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.cfr"/>
-    </feature>
-    <category-def name="org.sf.feeling.decompiler.cfr" label="CFR Plug-in for Enhanced Class Decompiler"/>
-    <!-- Procyon -->
-    <feature url="features/org.sf.feeling.decompiler.procyon_${project.version}.jar" id="org.sf.feeling.decompiler.procyon" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.procyon"/>
-    </feature>
-    <category-def name="org.sf.feeling.decompiler.procyon" label="Procyon Plug-in for Enhanced Class Decompiler"/>
-    <!-- JD -->
-    <feature url="features/org.sf.feeling.decompiler.jd_${project.version}.jar" id="org.sf.feeling.decompiler.jd" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.jd"/>
-    </feature>
-    <category-def name="org.sf.feeling.decompiler.jd" label="JD Plug-in for Enhanced Class Decompiler"/>
-    <!-- Vineflower -->
-    <feature url="features/org.sf.feeling.decompiler.vineflower_${project.version}.jar" id="org.sf.feeling.decompiler.vineflower" version="${project.version}">
-        <category name="org.sf.feeling.decompiler.vineflower"/>
-    </feature>
-    <category-def name="org.sf.feeling.decompiler.vineflower" label="Vineflower Plug-in for Enhanced Class Decompiler"/>
-    <!-- Fernflower -->
+    <!-- Decompiler -->
     <feature url="features/org.sf.feeling.decompiler_${project.version}.jar" id="org.sf.feeling.decompiler" version="${project.version}">
         <category name="org.sf.feeling.decompiler"/>
     </feature>
-    <category-def name="org.sf.feeling.decompiler" label="Fernflower Plug-in for Enhanced Class Decompiler"/>
+    <category-def name="org.sf.feeling.decompiler" label="Enhanced Class Decompiler Plug-in"/>
     <!-- Source attachment -->
     <feature url="features/org.sf.feeling.decompiler.source_${project.version}.jar" id="org.sf.feeling.decompiler.source" version="${project.version}">
         <category name="org.sf.feeling.decompiler.source"/>

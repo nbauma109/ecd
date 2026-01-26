@@ -40,10 +40,6 @@
       <useAllReactorProjects>true</useAllReactorProjects>
       <includes>
         <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler</include>
-        <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.cfr</include>
-        <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.jd</include>
-        <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.vineflower</include>
-        <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.procyon</include>
         <include>com.github.ecd-plugin.features:org.sf.feeling.decompiler.source</include>
       </includes>
       <binaries>
@@ -64,10 +60,6 @@
       <useAllReactorProjects>true</useAllReactorProjects>
       <includes>
         <include>com.github.ecd-plugin:org.sf.feeling.decompiler</include>
-        <include>com.github.ecd-plugin:org.sf.feeling.decompiler.cfr</include>
-        <include>com.github.ecd-plugin:org.sf.feeling.decompiler.jd</include>
-        <include>com.github.ecd-plugin:org.sf.feeling.decompiler.vineflower</include>
-        <include>com.github.ecd-plugin:org.sf.feeling.decompiler.procyon</include>
         <include>com.github.ecd-plugin:org.sf.feeling.decompiler.source.attach</include>
       </includes>
       <binaries>
