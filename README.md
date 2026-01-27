@@ -17,8 +17,8 @@ Downloads from Jitpack :
 
 [![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
-# Enhanced Class Decompiler
-Enhanced Class Decompiler integrates multiple decompilers provided by [transformer-api](https://github.com/nbauma109/transformer-api) :
+# ECD++ - Fork of Enhanced Class Decompiler ([ECD](https://github.com/ecd-plugin/ecd))
+ECD++ integrates multiple decompilers provided by [transformer-api](https://github.com/nbauma109/transformer-api) :
 - Fernflower
 - Vineflower (fork of Fernflower)
 - Procyon
