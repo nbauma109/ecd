@@ -408,7 +408,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         source.append(currentDecompiler.getDecompilationTime());
         source.append(" ms\n\t"); //$NON-NLS-1$
         logExceptions(exceptions, source);
-        String decompiler = currentDecompiler.getClass().getSimpleName();
+        String decompiler = currentDecompiler.getName();
         String ver = currentDecompiler.getDecompilerVersion();
         if (decompiler != null) {
             source.append("\n\tDecompiled with "); //$NON-NLS-1$
