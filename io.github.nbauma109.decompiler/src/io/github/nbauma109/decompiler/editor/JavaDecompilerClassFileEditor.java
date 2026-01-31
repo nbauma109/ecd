@@ -63,8 +63,6 @@ import org.eclipse.ui.texteditor.IWorkbenchActionDefinitionIds;
 import org.eclipse.ui.texteditor.IncrementalFindAction;
 
 import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
-import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
-
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.actions.DecompileActionGroup;
 import io.github.nbauma109.decompiler.util.ClassUtil;
