@@ -61,6 +61,10 @@ import org.eclipse.ui.texteditor.ITextEditorActionConstants;
 import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 import org.eclipse.ui.texteditor.IWorkbenchActionDefinitionIds;
 import org.eclipse.ui.texteditor.IncrementalFindAction;
+
+import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
+import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
+
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.actions.DecompileActionGroup;
 import io.github.nbauma109.decompiler.util.ClassUtil;
@@ -360,7 +364,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (decompilerType == null || title == null || title.endsWith("]")) {
             return title;
         }
-        return title + " [" + decompilerType + "]";
+        return title + " [" + Decompilers.valueOf(decompilerType).getName() + "]";
     }
 
     @Override
