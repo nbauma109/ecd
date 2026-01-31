@@ -19,6 +19,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IPath;
@@ -39,6 +40,10 @@ import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.jd.core.v1.parser.ParseException;
 import org.jd.core.v1.util.ParserRealigner;
+
+import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
+import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
+
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.util.DecompileUtil;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -47,10 +52,6 @@ import io.github.nbauma109.decompiler.util.SortMemberUtil;
 import io.github.nbauma109.decompiler.util.SourceMapperUtil;
 import io.github.nbauma109.decompiler.util.UIUtil;
 import io.github.nbauma109.decompiler.util.UnicodeUtil;
-
-import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
-import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
-
 import jd.core.DecompilationResult;
 
 public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
@@ -147,16 +148,16 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
         isAttachedSource = false;
 
-        if (JavaDecompilerPlugin.getDefault().isAutoAttachSource()) {
+        String[] excludedPackages = prefs.getString(JavaDecompilerPlugin.EXCLUDE_PACKAGES).split(",");
+        if (JavaDecompilerPlugin.getDefault().isAutoAttachSource() && isSourceLookupEligible(type, excludedPackages)) {
             boolean waitForSources = prefs.getBoolean(JavaDecompilerPlugin.WAIT_FOR_SOURCES);
             Thread attachSourceThread = JavaDecompilerPlugin.getDefault().attachSource(root, false);
-            if (!always && waitForSources && attachSourceThread != null && root instanceof PackageFragmentRoot) {
+            if (!always && waitForSources && attachSourceThread != null && root instanceof PackageFragmentRoot pfr) {
                 try {
                     long t0 = System.nanoTime();
                     attachSourceThread.join(10000);
                     long t1 = System.nanoTime();
                     Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
-                    PackageFragmentRoot pfr = (PackageFragmentRoot) root;
                     SourceMapper sourceMapper = pfr.getSourceMapper();
                     if (sourceMapper != null && !(sourceMapper instanceof DecompilerSourceMapper)) {
                         attachedSource = sourceMapper.findSource(type, info);
@@ -248,6 +249,34 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
         updateSourceRanges(type, sourceAsCharArray);
         return sourceAsCharArray;
+    }
+
+    public boolean isSourceLookupEligible(IType type, String[] excludedPackages) {
+        String packageName = "";
+        if (type != null) {
+            packageName = Optional.ofNullable(type.getPackageFragment().getElementName()).orElse("");
+        }
+
+        for (String excludedPackage : excludedPackages) {
+            if (excludedPackage.isEmpty()) {
+                continue;
+            }
+
+            if (packageName.equals(excludedPackage) || packageName.startsWith(excludedPackage + ".")) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean isSourceLookupEligible(IType type, String excludedPackages) {
+        if (excludedPackages == null || excludedPackages.isEmpty()) {
+            return true;
+        }
+
+        String[] packages = excludedPackages.split("\\s*,\\s*");
+        return isSourceLookupEligible(type, packages);
     }
 
     private void updateSourceRanges(IType type, char[] attachedSource) {

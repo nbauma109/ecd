@@ -56,6 +56,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     public static final String EXPORT_ENCODING = "io.github.nbauma109.decompiler.export.encoding"; //$NON-NLS-1$ ;
     public static final String ATTACH_SOURCE = "io.github.nbauma109.decompiler.attach_source"; //$NON-NLS-1$ ;
     public static final String WAIT_FOR_SOURCES = "io.github.nbauma109.decompiler.wait_for_sources"; //$NON-NLS-1$ ;
+    public static final String EXCLUDE_PACKAGES = "io.github.nbauma109.decompiler.exclude_packages"; //$NON-NLS-1$ ;
 
     private static final String classFileAttributePreferencesPrefix = "CLASS_FILE_ATTR_"; //$NON-NLS-1$
     private static final String CLASS_FILE_ATTR_SHOW_CONSTANT_POOL = classFileAttributePreferencesPrefix

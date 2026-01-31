@@ -10,6 +10,7 @@ package io.github.nbauma109.decompiler.preferences;
 
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -18,6 +19,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
+
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.editor.DecompilerType;
 import io.github.nbauma109.decompiler.i18n.Messages;
@@ -78,6 +80,7 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
         if (JavaDecompilerPlugin.getDefault().enableAttachSourceSetting()) {
             createAttachSourceFieldEditor(basicGroup);
             createWaitForSourcesFieldEditor(basicGroup);
+            createExcludePackagesFieldEditor(basicGroup);
         }
 
         BooleanFieldEditor alwaysUse = new BooleanFieldEditor(JavaDecompilerPlugin.IGNORE_EXISTING,
@@ -166,6 +169,13 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
                 Messages.getString("JavaDecompilerPreferencePage.Label.Attach.WaitForSources"), //$NON-NLS-1$
                 group);
         addField(waitForSources);
+    }
+
+    private void createExcludePackagesFieldEditor(Group group) {
+    	StringFieldEditor excludePackages = new StringFieldEditor(JavaDecompilerPlugin.EXCLUDE_PACKAGES,
+    			Messages.getString("JavaDecompilerPreferencePage.Label.Attach.ExcludePackages"), //$NON-NLS-1$
+    			group);
+    	addField(excludePackages);
     }
 
     private void createEncodingFieldEditor(Composite composite) {
