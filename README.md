@@ -45,15 +45,33 @@ This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by r
 
 ## How to install Enhanced Class Decompiler?
 
-Drag and Drop installation: 
-
 _If you have currently the "Eclipse" Class Decompiler installed, it is recommended to uninstall that plug-in first and remove the corresponding update site from your Eclipse installation._
+
+Use one of the following options to install:
+
+# Install with Eclipse Marketplace
+
+In Eclipse, click on _"Help > Eclipse Marketplace..."_, search and install ecd++, or drag this button to the Marketplace popup.
+
+[![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg)](/marketplace-client-intro?mpc_install=7323104"Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
+
+# Install with update site URL
+  1. Launch _Eclipse_,
+  2. Click on _"Help > Install New Software..."_,
+  3. Use the update site URL https://nbauma109.github.io/ecd/updates/latest/
+  4. Check the components to install,
+  5. Click on "Next" and "Finish" buttons.
+  6. A warning dialog windows appear because plug-in is not signed. Click on "Install anyway" button.
+
+# Drag and Drop installation: 
   1. Launch _Eclipse_,
   2. Click on _"Help > Install New Software..."_,
   3. Drag and Drop enhanced-class-decompiler-x.y.z.zip
   4. Check the components to install,
   5. Click on "Next" and "Finish" buttons.
   6. A warning dialog windows appear because plug-in is not signed. Click on "Install anyway" button.
+
+/!\ Drag and Drop is blocked in some corporate contexts. In this case, in _"Help > Install New Software..."_, click _"Add.."_ and then _"Archive.."_ to select enhanced-class-decompiler-x.y.z.zip
 
 ## How to check the file associations?
   1. Click on _"Window > Preferences > General > Editors > File Associations"_
