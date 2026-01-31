@@ -49,13 +49,11 @@ _If you have currently the "Eclipse" Class Decompiler installed, it is recommend
 
 Use one of the following options to install:
 
-# Install with Eclipse Marketplace
+### Install with Eclipse Marketplace
 
-In Eclipse, click on _"Help > Eclipse Marketplace..."_, search and install ecd++, or drag this button to the Marketplace popup.
+In Eclipse, click on _"Help > Eclipse Marketplace..."_, search and install ecd++
 
-[![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg)](/marketplace-client-intro?mpc_install=7323104"Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
-
-# Install with update site URL
+### Install with update site URL
   1. Launch _Eclipse_,
   2. Click on _"Help > Install New Software..."_,
   3. Use the update site URL https://nbauma109.github.io/ecd/updates/latest/
@@ -63,7 +61,7 @@ In Eclipse, click on _"Help > Eclipse Marketplace..."_, search and install ecd++
   5. Click on "Next" and "Finish" buttons.
   6. A warning dialog windows appear because plug-in is not signed. Click on "Install anyway" button.
 
-# Drag and Drop installation: 
+### Drag and Drop installation: 
   1. Launch _Eclipse_,
   2. Click on _"Help > Install New Software..."_,
   3. Drag and Drop enhanced-class-decompiler-x.y.z.zip
