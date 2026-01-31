@@ -172,10 +172,10 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
     }
 
     private void createExcludePackagesFieldEditor(Group group) {
-    	StringFieldEditor excludePackages = new StringFieldEditor(JavaDecompilerPlugin.EXCLUDE_PACKAGES,
-    			Messages.getString("JavaDecompilerPreferencePage.Label.Attach.ExcludePackages"), //$NON-NLS-1$
-    			group);
-    	addField(excludePackages);
+        StringFieldEditor excludePackages = new StringFieldEditor(JavaDecompilerPlugin.EXCLUDE_PACKAGES,
+                Messages.getString("JavaDecompilerPreferencePage.Label.Attach.ExcludePackages"), //$NON-NLS-1$
+                group);
+        addField(excludePackages);
     }
 
     private void createEncodingFieldEditor(Composite composite) {
