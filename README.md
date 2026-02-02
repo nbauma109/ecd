@@ -31,7 +31,7 @@ It also allows Java developers to **debug class files without source code direct
 <img width="720" height="357" alt="image" src="https://github.com/user-attachments/assets/69c2bff3-7109-4286-9482-1a98dc4ae541" />
 
 ## Description
-Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates mutliple decompilers seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
+Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates multiple decompilers seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
 ## Why a fork?
   * Compatibility with latest version of Eclipse over backward compatibility : upstream project aims at supporting all versions of Eclipse which is not maintainable from my point of view ([2b13e85](https://github.com/ecd-plugin/ecd/commit/2b13e856e0e557b155d658e5077c05efa8218e9c), [b518dd3](https://github.com/ecd-plugin/ecd/commit/b518dd30c4a045621f7a7e8c3b38ebedefb4cd09), [f2b6022](https://github.com/ecd-plugin/ecd/commit/f2b6022063dec1b4e15d9ddc7a31524240da1481), [8538745](https://github.com/ecd-plugin/ecd/commit/8538745e48485482bb8e0abc3fecc00f62527ca0), [8b47e95](https://github.com/ecd-plugin/ecd/commit/8b47e959916c337991c8ff4fe4637538df339565))
