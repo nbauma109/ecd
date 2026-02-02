@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Enhanced Class Decompiler Source Attach
 Bundle-SymbolicName: io.github.nbauma109.decompiler.source.attach.tests;singleton:=true
-Bundle-Version: 2025.12.5
+Bundle-Version: 2025.12.6
 Bundle-Activator: io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
