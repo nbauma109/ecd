@@ -18,6 +18,16 @@ Downloads from Jitpack :
 
 [![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
 
+Downloads from Eclipse Marketplace :
+
+[![Eclipse Marketplace](https://img.shields.io/eclipse-marketplace/v/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
+[![Eclipse Marketplace downloads](https://img.shields.io/eclipse-marketplace/dt/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
+[![Eclipse Marketplace monthly downloads](https://img.shields.io/eclipse-marketplace/dm/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
+[![Eclipse Marketplace favorites](https://img.shields.io/eclipse-marketplace/favorites/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
+[![Eclipse Marketplace last update](https://img.shields.io/eclipse-marketplace/last-update/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
+
+[![Drag to your running Eclipse workspace to install](https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg)](https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=7323104)
+
 # ECD++ - Fork of Enhanced Class Decompiler ([ECD](https://github.com/ecd-plugin/ecd))
 ECD++ integrates multiple decompilers provided by [transformer-api](https://github.com/nbauma109/transformer-api) :
 - Fernflower
