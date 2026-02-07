@@ -16,7 +16,14 @@ Downloads from Jitpack :
 [![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/month.svg)](https://jitpack.io/#nbauma109/ecd)
 [![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/week.svg)](https://jitpack.io/#nbauma109/ecd)
 
-[![Download from Jitpack](https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c)](https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip)
+<a href="https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip">
+  <img
+    src="https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c"
+    alt="Download from Jitpack"
+    width="128"
+    height="53"
+  />
+</a>
 
 Downloads from Eclipse Marketplace :
 
@@ -26,10 +33,14 @@ Downloads from Eclipse Marketplace :
 [![Eclipse Marketplace favorites](https://img.shields.io/eclipse-marketplace/favorites/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
 [![Eclipse Marketplace last update](https://img.shields.io/eclipse-marketplace/last-update/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
 
-[<img src="https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg"
-      alt="Drag to your running Eclipse workspace to install"
-      width="160"
-      height="66">](https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=7323104)
+<a href="https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=7323104">
+  <img
+    src="https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg"
+    alt="Drag to your running Eclipse workspace to install"
+    width="128"
+    height="53"
+  />
+</a>
 
 # ECD++ - Fork of Enhanced Class Decompiler ([ECD](https://github.com/ecd-plugin/ecd))
 ECD++ integrates multiple decompilers provided by [transformer-api](https://github.com/nbauma109/transformer-api) :
