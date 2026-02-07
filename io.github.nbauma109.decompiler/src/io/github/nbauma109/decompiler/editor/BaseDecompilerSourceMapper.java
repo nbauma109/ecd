@@ -10,9 +10,12 @@ package io.github.nbauma109.decompiler.editor;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
+import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.Manifest;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -203,6 +207,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
         boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
 
+        String realignReport = null;
         boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
         boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
         if ((showLineNumber && align)
@@ -210,8 +215,10 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
                 || UIUtil.isDebugPerspective()) {
             try {
                 code = new ParserRealigner().realign(code);
+                realignReport = buildRealignSuccessReport();
             } catch (ParseException e) {
                 exceptions.add(e);
+                realignReport = "Please report to https://github.com/nbauma109/jd-util/issues";
             }
         }
 
@@ -236,7 +243,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
 
         if (showReport) {
-            printDecompileReport(source, classLocation, exceptions);
+            printDecompileReport(source, classLocation, exceptions, realignReport);
         }
 
         char[] sourceAsCharArray = source.toString().toCharArray();
@@ -379,6 +386,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
         boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
 
+        String realignReport = null;
         boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
         boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
         if ((showLineNumber && align)
@@ -386,8 +394,10 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
                 || UIUtil.isDebugPerspective()) {
             try {
                 code = new ParserRealigner().realign(code);
+                realignReport = buildRealignSuccessReport();
             } catch (ParseException e) {
                 exceptions.add(e);
+                realignReport = "Please report to https://github.com/nbauma109/jd-util/issues";
             }
         }
 
@@ -400,7 +410,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
 
         if (showReport) {
-            printDecompileReport(source, file.getAbsolutePath(), exceptions);
+            printDecompileReport(source, file.getAbsolutePath(), exceptions, realignReport);
         }
 
         return source.toString();
@@ -427,7 +437,8 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
     }
 
-    protected void printDecompileReport(StringBuilder source, String fileLocation, Collection<Exception> exceptions) {
+    public void printDecompileReport(StringBuilder source, String fileLocation, Collection<Exception> exceptions,
+            String realignReport) {
         source.append("\n\n/*"); //$NON-NLS-1$
         source.append("\n\tDECOMPILATION REPORT\n"); //$NON-NLS-1$
 
@@ -437,6 +448,11 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         source.append(currentDecompiler.getDecompilationTime());
         source.append(" ms\n\t"); //$NON-NLS-1$
         logExceptions(exceptions, source);
+        if (realignReport != null && !realignReport.isEmpty()) {
+            source.append("\n\t"); //$NON-NLS-1$
+            source.append(realignReport);
+            source.append("\n"); //$NON-NLS-1$
+        }
         String decompiler = currentDecompiler.getName();
         String ver = currentDecompiler.getDecompilerVersion();
         if (decompiler != null) {
@@ -450,4 +466,44 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
         source.append("*/"); //$NON-NLS-1$
     }
+
+    public static String buildRealignSuccessReport() {
+        String version = readJdUtilVersion();
+        if (version == null || version.isBlank()) {
+            version = "unknown";
+        }
+        return "Parsed and realigned by jd-util " + version;
+    }
+
+    private static String readJdUtilVersion() {
+        try {
+            URL location = ParserRealigner.class.getProtectionDomain().getCodeSource().getLocation();
+            if (location == null) {
+                return null;
+            }
+            String url = location.toString();
+            if (!url.endsWith(".jar") && !url.contains(".jar!")) {
+                return null;
+            }
+            if (url.endsWith(".jar")) {
+                url = "jar:" + url + "!/META-INF/MANIFEST.MF";
+            } else if (!url.contains("!/META-INF/MANIFEST.MF")) {
+                url = url.substring(0, url.indexOf("!") + 1) + "/META-INF/MANIFEST.MF";
+            }
+            try (InputStream in = URI.create(url).toURL().openStream()) {
+                Manifest manifest = new Manifest(in);
+                return manifest.getMainAttributes().getValue("JD-Util-Version");
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+	public String getDecompilerName() {
+		return currentDecompiler.getName();
+	}
+
+	public String getDecompilerVersion() {
+		return currentDecompiler.getDecompilerVersion();
+	}
 }
