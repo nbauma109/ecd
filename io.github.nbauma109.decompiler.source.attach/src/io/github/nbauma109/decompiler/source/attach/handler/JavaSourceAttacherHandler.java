@@ -312,15 +312,15 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         cachedAttacher = null;
     }
 
-	public static void clearRequests() {
-		requests.clear();
-	}
+    public static void clearRequests() {
+        requests.clear();
+    }
 
-	public static void putRequest(String binFile, IPackageFragmentRoot root) {
-		requests.put(binFile, root);
-	}
+    public static void putRequest(String binFile, IPackageFragmentRoot root) {
+        requests.put(binFile, root);
+    }
 
-	public static boolean containsRequest(String binFile) {
-		return requests.containsKey(binFile);
-	}
+    public static boolean containsRequest(String binFile) {
+        return requests.containsKey(binFile);
+    }
 }
