@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.source.attach.handler;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -26,9 +27,11 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -143,6 +146,42 @@ public class JavaSourceAttacherHandlerTest {
         assertTrue(notProcessed.contains(binFile));
         IPath attachedPath = root.getSourceAttachmentPath();
         assertTrue(attachedPath == null || !attachedPath.toFile().exists());
+    }
+
+    @Test
+    public void testUpdateSourceAttachmentsReturnsOkAndClearsRequests() throws Exception {
+        File jar = resolveTestJar();
+        JavaProjectSetup setup = createJavaProjectWithLibraries(
+                "update-source-attachments-" + UUID.randomUUID(), //$NON-NLS-1$
+                new LibrarySpec(jar, null));
+
+        IPackageFragmentRoot root = setup.roots().get(0);
+        List<IPackageFragmentRoot> roots = new ArrayList<>();
+        roots.add(root);
+
+        Status status = (Status) JavaSourceAttacherHandler.updateSourceAttachments(roots, null);
+        assertTrue(status.isOK());
+
+        String binFile = jar.getCanonicalPath();
+        assertTrue(!JavaSourceAttacherHandler.containsRequest(binFile));
+    }
+
+    @Test
+    public void testUpdateSourceAttachmentsReturnsCancelWhenDuplicateRequest() throws Exception {
+        File jar = resolveTestJar();
+        JavaProjectSetup setup = createJavaProjectWithLibraries(
+                "update-source-attachments-dup-" + UUID.randomUUID(), //$NON-NLS-1$
+                new LibrarySpec(jar, null));
+
+        IPackageFragmentRoot root = setup.roots().get(0);
+        List<IPackageFragmentRoot> roots = new ArrayList<>();
+        roots.add(root);
+
+        String binFile = jar.getCanonicalPath();
+        JavaSourceAttacherHandler.putRequest(binFile, root);
+
+        Status status = (Status) JavaSourceAttacherHandler.updateSourceAttachments(roots, new CanceledMonitor());
+        assertEquals(Status.CANCEL_STATUS, status);
     }
 
     private static IPath waitForSourceAttachment(IPackageFragmentRoot root, int attempts, long delayMs)
@@ -277,6 +316,41 @@ public class JavaSourceAttacherHandlerTest {
         @Override
         public String getDownloadUrl() {
             return null;
+        }
+    }
+
+    private static final class CanceledMonitor implements IProgressMonitor {
+        @Override
+        public void beginTask(String name, int totalWork) {
+        }
+
+        @Override
+        public void done() {
+        }
+
+        @Override
+        public void internalWorked(double work) {
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return true;
+        }
+
+        @Override
+        public void setCanceled(boolean value) {
+        }
+
+        @Override
+        public void setTaskName(String name) {
+        }
+
+        @Override
+        public void subTask(String name) {
+        }
+
+        @Override
+        public void worked(int work) {
         }
     }
 }
