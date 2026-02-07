@@ -209,6 +209,17 @@
                tooltip="%Decompiler">
          </action>
          <action
+               class="io.github.nbauma109.decompiler.actions.ProjectHomePageAction"
+               enablesFor="*"
+               hoverIcon="icons/github.png"
+               icon="icons/github.png"
+               id="io.github.nbauma109.decompiler.actions.ProjectHomePage"
+               label="%ProjectHomePage"
+               style="push"
+               toolbarPath="org.eclipse.ui.edit.text.actionSet.presentation/Decompiler"
+               tooltip="%ProjectHomePageTooltip">
+         </action>
+         <action
                class="io.github.nbauma109.decompiler.actions.ExportSourceMenuItemAction"
                enablesFor="*"
                hoverIcon="icons/etool16/export_wiz.png"
