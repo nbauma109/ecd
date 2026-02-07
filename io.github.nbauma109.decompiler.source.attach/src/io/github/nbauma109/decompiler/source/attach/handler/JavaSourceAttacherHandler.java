@@ -197,7 +197,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         return Status.OK_STATUS;
     }
 
-    private static void processLibSources(final Set<String> notProcessedLibs, final List<SourceFileResult> responses) {
+    public static void processLibSources(final Set<String> notProcessedLibs, final List<SourceFileResult> responses) {
 
         while (!responses.isEmpty()) {
             final SourceFileResult response = responses.remove(0);
@@ -307,4 +307,20 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
             return null;
         }
     }
+
+    public static void resetSourceAttacherForTests() {
+        cachedAttacher = null;
+    }
+
+	public static void clearRequests() {
+		requests.clear();
+	}
+
+	public static void putRequest(String binFile, IPackageFragmentRoot root) {
+		requests.put(binFile, root);
+	}
+
+	public static boolean containsRequest(String binFile) {
+		return requests.containsKey(binFile);
+	}
 }
