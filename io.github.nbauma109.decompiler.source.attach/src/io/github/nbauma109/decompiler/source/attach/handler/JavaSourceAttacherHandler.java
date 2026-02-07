@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
@@ -48,8 +49,8 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public class JavaSourceAttacherHandler extends AbstractHandler {
 
-    private static final String PREVIOUS_ATTEMPT_FAILED = "Previous attempt failed:  ";
     static final Map<String, IPackageFragmentRoot> requests = new HashMap<>();
+    private static volatile SourceAttacher cachedAttacher;
 
     @Override
     public Object execute(final ExecutionEvent event) throws ExecutionException {
@@ -263,51 +264,19 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     }
 
     public static boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) throws Exception {
-        boolean attached = false;
+        final SourceAttacher attacher = getSourceAttacher();
+        if (attacher == null) {
+            Logger.info("No SourceAttacher implementation found for " + sourcePath); //$NON-NLS-1$
+            return false;
+        }
+        Logger.debug("Trying (using " + attacher.getClass().getSimpleName() + "):  " + sourcePath, null); //$NON-NLS-1$
+        boolean attached;
         try {
-            final SourceAttacher attacher = (SourceAttacher) Class
-                    .forName("io.github.nbauma109.decompiler.source.attach.attacher.InternalBasedSourceAttacherImpl36") //$NON-NLS-1$
-                    .newInstance();
-            Logger.debug("Trying (using InternalBasedSourceAttacherImpl36):  " + sourcePath, null); //$NON-NLS-1$
             attached = attacher.attachSource(root, sourcePath);
         } catch (Throwable e) {
-            Logger.debug("Exception when trying InternalBasedSourceAttacherImpl36 to attach to " + sourcePath, e); //$NON-NLS-1$
-        }
-        if (!attached) {
-            Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
-            try {
-                final SourceAttacher attacher = (SourceAttacher) Class
-                        .forName("io.github.nbauma109.decompiler.source.attach.attacher.InternalBasedSourceAttacherImpl35") //$NON-NLS-1$
-                        .newInstance();
-                Logger.debug("Trying (using InternalBasedSourceAttacherImpl35):  " + sourcePath, null); //$NON-NLS-1$
-                attached = attacher.attachSource(root, sourcePath);
-            } catch (Throwable e) {
-                Logger.debug("Exception when trying InternalBasedSourceAttacherImpl35 to attach to " + sourcePath, e); //$NON-NLS-1$
-            }
-        }
-        if (!attached) {
-            Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
-            try {
-                final SourceAttacher attacher = (SourceAttacher) Class
-                        .forName("io.github.nbauma109.decompiler.source.attach.attacher.MySourceAttacher") //$NON-NLS-1$
-                        .newInstance();
-                Logger.debug("Trying (using MySourceAttacher):  " + sourcePath, null); //$NON-NLS-1$
-                attached = attacher.attachSource(root, sourcePath);
-            } catch (Throwable e) {
-                Logger.debug("Exception when trying MySourceAttacher to attach to " + sourcePath, e); //$NON-NLS-1$
-            }
-        }
-        if (!attached) {
-            Logger.debug(PREVIOUS_ATTEMPT_FAILED + sourcePath, null); // $NON-NLS-1$
-            try {
-                final SourceAttacher attacher = (SourceAttacher) Class
-                        .forName("io.github.nbauma109.decompiler.source.attach.attacher.MySourceAttacher2") //$NON-NLS-1$
-                        .newInstance();
-                Logger.debug("Trying (using MySourceAttacher2):  " + sourcePath, null); //$NON-NLS-1$
-                attached = attacher.attachSource(root, sourcePath);
-            } catch (Throwable e) {
-                Logger.debug("Exception when trying MySourceAttacher2 to attach to " + sourcePath, e); //$NON-NLS-1$
-            }
+            Logger.debug("Exception when trying " + attacher.getClass().getSimpleName()
+                    + " to attach to " + sourcePath, e); //$NON-NLS-1$
+            attached = false;
         }
         if (attached) {
             SourceAttachUtil.updateSourceAttachStatus(root);
@@ -317,5 +286,25 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         }
 
         return attached;
+    }
+
+    private static SourceAttacher getSourceAttacher() {
+        SourceAttacher result = cachedAttacher;
+        if (result != null) {
+            return result;
+        }
+        synchronized (JavaSourceAttacherHandler.class) {
+            result = cachedAttacher;
+            if (result != null) {
+                return result;
+            }
+            final ServiceLoader<SourceAttacher> loader = ServiceLoader.load(SourceAttacher.class,
+                    JavaSourceAttacherHandler.class.getClassLoader());
+            for (SourceAttacher attacher : loader) {
+                cachedAttacher = attacher;
+                return attacher;
+            }
+            return null;
+        }
     }
 }
