@@ -26,7 +26,10 @@ Downloads from Eclipse Marketplace :
 [![Eclipse Marketplace favorites](https://img.shields.io/eclipse-marketplace/favorites/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
 [![Eclipse Marketplace last update](https://img.shields.io/eclipse-marketplace/last-update/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
 
-[![Drag to your running Eclipse workspace to install](https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg)](https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=7323104)
+[<img src="https://marketplace.eclipse.org/modules/custom/eclipsefdn/eclipsefdn_marketplace/images/btn-install.svg"
+      alt="Drag to your running Eclipse workspace to install"
+      width="160"
+      height="66">](https://marketplace.eclipse.org/marketplace-client-intro?mpc_install=7323104)
 
 # ECD++ - Fork of Enhanced Class Decompiler ([ECD](https://github.com/ecd-plugin/ecd))
 ECD++ integrates multiple decompilers provided by [transformer-api](https://github.com/nbauma109/transformer-api) :
