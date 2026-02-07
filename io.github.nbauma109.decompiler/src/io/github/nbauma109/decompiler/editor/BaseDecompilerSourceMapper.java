@@ -499,11 +499,11 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
     }
 
-	public String getDecompilerName() {
-		return currentDecompiler.getName();
-	}
+    public String getDecompilerName() {
+        return currentDecompiler.getName();
+    }
 
-	public String getDecompilerVersion() {
-		return currentDecompiler.getDecompilerVersion();
-	}
+    public String getDecompilerVersion() {
+        return currentDecompiler.getDecompilerVersion();
+    }
 }

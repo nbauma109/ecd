@@ -104,27 +104,27 @@ public class BaseDecompilerSourceMapperTest {
 
     @Test
     public void testBuildRealignSuccessReport() throws Exception {
-    	assertTrue(BaseDecompilerSourceMapper.buildRealignSuccessReport().matches("Parsed and realigned by jd-util \\d+\\.\\d+\\.\\d+"));
+        assertTrue(BaseDecompilerSourceMapper.buildRealignSuccessReport().matches("Parsed and realigned by jd-util \\d+\\.\\d+\\.\\d+"));
     }
 
     @Test
     public void testPrintDecompileReport() throws Exception {
-    	StringBuilder source = new StringBuilder("class A {}");
-    	subject.printDecompileReport(source, "path/to/file", Collections.emptyList(), null);
-    	assertEquals("class A {}\n"
-    			+ "\n"
-    			+ "/*\n"
-    			+ "	DECOMPILATION REPORT\n"
-    			+ "\n"
-    			+ "	Decompiled from: path/to/file\n"
-    			+ "	Total time: 0 ms\n"
-    			+ "	\n"
-    			+ "	Decompiled with "
-    			+ subject.getDecompilerName()
-    			+ " version "
-    			+ subject.getDecompilerVersion()
-    			+ ".\n"
-    			+ "*/", source.toString());
+        StringBuilder source = new StringBuilder("class A {}");
+        subject.printDecompileReport(source, "path/to/file", Collections.emptyList(), null);
+        assertEquals("class A {}\n"
+                + "\n"
+                + "/*\n"
+                + "	DECOMPILATION REPORT\n"
+                + "\n"
+                + "	Decompiled from: path/to/file\n"
+                + "	Total time: 0 ms\n"
+                + "	\n"
+                + "	Decompiled with "
+                + subject.getDecompilerName()
+                + " version "
+                + subject.getDecompilerVersion()
+                + ".\n"
+                + "*/", source.toString());
     }
 
     private IType createType(String packageName, String typeName) throws Exception {
