@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler;
 
+import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -27,11 +28,11 @@ import org.eclipse.ui.internal.IPreferenceConstants;
 import org.eclipse.ui.internal.WorkbenchPlugin;
 import org.eclipse.ui.internal.registry.EditorRegistry;
 import org.eclipse.ui.internal.registry.FileEditorMapping;
+
 import io.github.nbauma109.decompiler.actions.DecompileAction;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.util.ClassUtil;
 import io.github.nbauma109.decompiler.util.Logger;
-import io.github.nbauma109.decompiler.util.ReflectionUtils;
 import io.github.nbauma109.decompiler.util.UIUtil;
 
 public class SetupRunnable implements Runnable {
@@ -136,9 +137,9 @@ public class SetupRunnable implements Runnable {
                 window.addPerspectiveListener(perspectiveListener);
                 IWorkbenchPage[] pages = window.getPages();
                 if (pages != null) {
-                    for (int i = 0; i < pages.length; i++) {
-                        pages[i].removePartListener(partListener);
-                        pages[i].addPartListener(partListener);
+                    for (IWorkbenchPage page : pages) {
+                        page.removePartListener(partListener);
+                        page.addPartListener(partListener);
                     }
                 }
             }
@@ -163,9 +164,9 @@ public class SetupRunnable implements Runnable {
                 window.addPerspectiveListener(perspectiveListener);
                 IWorkbenchPage[] pages = window.getPages();
                 if (pages != null) {
-                    for (int i = 0; i < pages.length; i++) {
-                        pages[i].removePartListener(partListener);
-                        pages[i].addPartListener(partListener);
+                    for (IWorkbenchPage page : pages) {
+                        page.removePartListener(partListener);
+                        page.addPartListener(partListener);
                     }
                 }
             }
@@ -223,8 +224,8 @@ public class SetupRunnable implements Runnable {
         IFileEditorMapping classNoSource = null;
         IFileEditorMapping classPlain = null;
 
-        for (int i = 0; i < mappings.length; i++) {
-            IFileEditorMapping mapping = mappings[i];
+        // Search Class file editor mappings
+        for (IFileEditorMapping mapping : mappings) {
             if (mapping.getExtension().equals("class without source")) //$NON-NLS-1$
             {
                 classNoSource = mapping;
@@ -234,45 +235,28 @@ public class SetupRunnable implements Runnable {
             }
         }
 
-        IFileEditorMapping[] classMappings = new IFileEditorMapping[] { classNoSource, classPlain };
+        if (classPlain instanceof FileEditorMapping c && classNoSource != null) {
+            // Search ECD editor descriptor on "class" extension
+            for (IEditorDescriptor descriptor : classPlain.getEditors()) {
+                if (descriptor.getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
+                    // Remove ECD editor on "class" extension
+                    c.removeEditor(descriptor);
 
-        boolean needUpdate = checkDefaultEditor(classMappings);
-        if (needUpdate) {
-            for (int i = 0; i < classMappings.length; i++) {
-                IFileEditorMapping mapping = classMappings[i];
-                for (int j = 0; j < mapping.getEditors().length; j++) {
-                    IEditorDescriptor editor = mapping.getEditors()[j];
-                    if (editor.getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
-                        try {
-                            ReflectionUtils.invokeMethod(mapping, "setDefaultEditor", //$NON-NLS-1$
-                                    new Class[] { Class.forName("org.eclipse.ui.IEditorDescriptor") //$NON-NLS-1$
-                            }, new Object[] { editor });
-                        } catch (ClassNotFoundException e) {
-                        }
-
-                        try {
-                            ReflectionUtils.invokeMethod(mapping, "setDefaultEditor", //$NON-NLS-1$
-                                    new Class[] { Class.forName("org.eclipse.ui.internal.registry.EditorDescriptor") //$NON-NLS-1$
-                            }, new Object[] { editor });
-                        } catch (ClassNotFoundException e) {
-                        }
-                    }
+                    // Set ECD as default editor on "class without source" extension
+                    registry.setDefaultEditor("." + classNoSource.getExtension(), descriptor.getId());
+                    break;
                 }
+            }
+
+            // Restore the default editor for "class" extension
+            IEditorDescriptor defaultClassFileEditor = registry.findEditor(JavaUI.ID_CF_EDITOR);
+
+            if (defaultClassFileEditor != null) {
+                registry.setDefaultEditor("." + classPlain.getExtension(), JavaUI.ID_CF_EDITOR);
             }
 
             registry.setFileEditorMappings((FileEditorMapping[]) mappings);
             registry.saveAssociations();
         }
-    }
-
-    protected boolean checkDefaultEditor(IFileEditorMapping[] classMappings) {
-        for (int i = 0; i < classMappings.length; i++) {
-            IFileEditorMapping mapping = classMappings[i];
-            if (mapping.getDefaultEditor() != null
-                    && !mapping.getDefaultEditor().getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
