@@ -11,15 +11,8 @@ package io.github.nbauma109.decompiler.editor;
 import java.util.Enumeration;
 
 import org.eclipse.jdt.core.IBuffer;
-import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IOpenable;
-import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.BufferManager;
-import org.eclipse.jdt.internal.core.ClassFile;
-import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
-import org.eclipse.swt.widgets.Display;
 import io.github.nbauma109.decompiler.util.Logger;
-import io.github.nbauma109.decompiler.util.UIUtil;
 
 /**
  * This class is a hack that replaces JDT <code>BufferManager</code> in order to
@@ -80,63 +73,5 @@ public class JavaDecompilerBufferManager extends BufferManager {
     @Override
     public void removeBuffer(IBuffer buffer) {
         super.removeBuffer(buffer);
-    }
-
-    @Override
-    public IBuffer getBuffer(final IOpenable owner) {
-        IBuffer buffer = super.getBuffer(owner);
-        final IBuffer[] buffers = new IBuffer[] { buffer };
-
-        if (UIUtil.requestFromJavadocHover()) {
-
-            if (buffers[0] == null || buffers[0].getContents() == null) {
-                buffers[0] = null;
-
-                Display.getDefault().asyncExec(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-                        if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
-                            IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
-                            if (owner.equals(input)) {
-                                buffers[0] = editor.getClassBuffer();
-                                JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
-                            }
-                        }
-                    }
-                });
-            }
-        } else if (UIUtil.requestCreateBuffer()) {
-
-            JavaDecompilerClassFileEditor editor = UIUtil.getActiveEditor();
-            if (editor != null && editor.getEditorInput() instanceof IClassFileEditorInput) {
-                IClassFile input = ((IClassFileEditorInput) editor.getEditorInput()).getClassFile();
-                if (owner.equals(input)) {
-                    String content = editor.getDocumentProvider().getDocument(editor.getEditorInput()).get();
-                    if (buffers[0] != null) {
-                        if (!content.equals(buffers[0].getContents())) {
-                            buffers[0].setContents(content);
-                        }
-                    } else {
-                        ClassFile cf = (ClassFile) input;
-                        IBuffer classBuffer = BufferManager.createBuffer(cf);
-                        classBuffer.setContents(content);
-                        editor.getBufferManager().addBuffer(classBuffer);
-
-                        try {
-                            ClassFileSourceMap.updateSource(editor.getBufferManager(), cf, content.toCharArray());
-                        } catch (JavaModelException e) {
-                            Logger.debug(e);
-                        }
-
-                        buffers[0] = classBuffer;
-                        JavaDecompilerBufferManager.this.addBuffer(buffers[0]);
-                    }
-                }
-            }
-        }
-
-        return buffers[0];
     }
 }
