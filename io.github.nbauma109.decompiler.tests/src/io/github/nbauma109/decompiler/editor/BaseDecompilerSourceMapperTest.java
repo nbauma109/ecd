@@ -119,7 +119,7 @@ public class BaseDecompilerSourceMapperTest {
                 + "\n"
                 + "	Decompiled from: path/to/file\n"
                 + "	Total time: "
-                + vineflower.getDecompilationTime() 
+                + vineflower.getDecompilationTime()
                 + " ms\n"
                 + "	\n"
                 + "	Decompiled with "
