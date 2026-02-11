@@ -494,7 +494,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
     public String getDecompilerVersion() {
         return currentDecompiler.getDecompilerVersion();
     }
-    
+
     public long getDecompilationTime() {
         return currentDecompiler.getDecompilationTime();
     }

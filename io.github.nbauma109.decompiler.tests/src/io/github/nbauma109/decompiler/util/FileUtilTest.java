@@ -101,7 +101,7 @@ public class FileUtilTest {
         File src = resolve("src.bin");
         File dest = resolve("dest.bin");
 
-        byte[] payload = new byte[] { 0, 1, 2, 3, 4, 10, 20, 30, 40, 50, (byte) 255 };
+        byte[] payload = { 0, 1, 2, 3, 4, 10, 20, 30, 40, 50, (byte) 255 };
         writeBytes(src, payload);
 
         boolean result = FileUtil.copyFile(src.getAbsolutePath(), dest.getAbsolutePath());
@@ -243,7 +243,7 @@ public class FileUtilTest {
 
     private static void assertDecodedEqualsUsingCommonCharsets(File file, String expected) throws IOException {
         byte[] bytes = Files.readAllBytes(file.toPath());
-        Charset[] candidates = new Charset[] {
+        Charset[] candidates = {
                 StandardCharsets.UTF_8,
                 StandardCharsets.ISO_8859_1,
                 StandardCharsets.US_ASCII,
