@@ -118,7 +118,9 @@ public class BaseDecompilerSourceMapperTest {
                 + "	DECOMPILATION REPORT\n"
                 + "\n"
                 + "	Decompiled from: path/to/file\n"
-                + "	Total time: 0 ms\n"
+                + "	Total time: "
+                + vineflower.getDecompilationTime() 
+                + " ms\n"
                 + "	\n"
                 + "	Decompiled with "
                 + vineflower.getDecompilerName()
@@ -194,7 +196,9 @@ public class BaseDecompilerSourceMapperTest {
                 + " as part of transformer-api "
                 + vineflower.getVersion("transformer-api-version")
                 + " (https://github.com/nbauma109/transformer-api).\n"
-                + "	Parsed and realigned with jd-util 1.3.5 (https://github.com/nbauma109/jd-util).\n"
+                + "	Parsed and realigned with jd-util "
+                + vineflower.getVersion("JD-Util-Version")
+                + " (https://github.com/nbauma109/jd-util).\n"
                 + "*/", decompiledOutput);
     }
 
