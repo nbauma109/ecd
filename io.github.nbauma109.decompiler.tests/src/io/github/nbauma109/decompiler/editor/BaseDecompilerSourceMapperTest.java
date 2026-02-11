@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.util.Collections;
 
 import org.eclipse.core.resources.IFolder;
@@ -18,19 +19,24 @@ import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 
 public class BaseDecompilerSourceMapperTest {
 
     private IProject project;
     private IJavaProject javaProject;
-    private BaseDecompilerSourceMapper subject;
+    private BaseDecompilerSourceMapper vineflower;
+    private BaseDecompilerSourceMapper jdCore;
 
     @Before
     public void setUp() throws Exception {
-        subject = new BaseDecompilerSourceMapper("");
+        vineflower = new BaseDecompilerSourceMapper("");
+        jdCore = new BaseDecompilerSourceMapper("JD-Core");
 
         String projectName = "BaseDecompilerSourceMapperTestProject_" + System.currentTimeMillis();
         IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
@@ -78,16 +84,16 @@ public class BaseDecompilerSourceMapperTest {
     public void testIsSourceLookupEligible() throws Exception {
         IType typeInFooBar = createType("com.example.foo.bar", "SampleOne");
 
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, new String[0]));
-        assertFalse(subject.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo.bar" }));
-        assertFalse(subject.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo" }));
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.food" }));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[0]));
+        assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo.bar" }));
+        assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo" }));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.food" }));
 
         IType typeInFoobar = createType("com.foobar", "SampleTwo");
-        assertTrue(subject.isSourceLookupEligible(typeInFoobar, new String[] { "com.foo" }));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFoobar, new String[] { "com.foo" }));
 
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, new String[] { "", "com.other" }));
-        assertTrue(subject.isSourceLookupEligible(null, new String[] { "com.example" }));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "", "com.other" }));
+        assertTrue(vineflower.isSourceLookupEligible(null, new String[] { "com.example" }));
     }
 
 
@@ -95,22 +101,17 @@ public class BaseDecompilerSourceMapperTest {
     public void testIsSourceLookupEligibleStringOverload() throws Exception {
         IType typeInFooBar = createType("com.example.foo.bar", "SampleThree");
 
-        assertFalse(subject.isSourceLookupEligible(typeInFooBar, "com.other, com.example.foo"));
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, "com.other,com.example.food"));
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, "com.other,"));
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, ""));
-        assertTrue(subject.isSourceLookupEligible(typeInFooBar, (String) null));
-    }
-
-    @Test
-    public void testBuildRealignSuccessReport() throws Exception {
-        assertTrue(BaseDecompilerSourceMapper.buildRealignSuccessReport().matches("Parsed and realigned by jd-util \\d+\\.\\d+\\.\\d+"));
+        assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, "com.other, com.example.foo"));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, "com.other,com.example.food"));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, "com.other,"));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, ""));
+        assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, (String) null));
     }
 
     @Test
     public void testPrintDecompileReport() throws Exception {
         StringBuilder source = new StringBuilder("class A {}");
-        subject.printDecompileReport(source, "path/to/file", Collections.emptyList(), null);
+        vineflower.printDecompileReport(source, "path/to/file", Collections.emptyList(), RealignStatus.PARSE_ERROR);
         assertEquals("class A {}\n"
                 + "\n"
                 + "/*\n"
@@ -120,11 +121,115 @@ public class BaseDecompilerSourceMapperTest {
                 + "	Total time: 0 ms\n"
                 + "	\n"
                 + "	Decompiled with "
-                + subject.getDecompilerName()
+                + vineflower.getDecompilerName()
                 + " version "
-                + subject.getDecompilerVersion()
-                + ".\n"
+                + vineflower.getDecompilerVersion()
+                + " as part of transformer-api 4.2.0 (https://github.com/nbauma109/transformer-api).\n"
+                + "	Parse and realign phase failed with ParseException. Please report issue to https://github.com/nbauma109/jd-util/issues.\n"
                 + "*/", source.toString());
+    }
+
+    @Test
+    public void testDecompileRealignmentTurnedOff() throws Exception {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
+        prefs.setValue(JavaDecompilerPlugin.ALIGN, false);
+        File file = new File("target/classes/HelloWorld.class");
+        String decompiledOutput = vineflower.decompile(file);
+        assertEquals("public class HelloWorld {\r\n"
+                + "	public static void main(String[] args) {\r\n"
+                + "		System.out.println(\"Hello World!\");// 3\r\n"
+                + "	}// 4\r\n"
+                + "}\n"
+                + "\n"
+                + "/*\n"
+                + "	DECOMPILATION REPORT\n"
+                + "\n"
+                + "	Decompiled from: "
+                + file.getAbsolutePath()
+                + "\n"
+                + "	Total time: "
+                + vineflower.getDecompilationTime()
+                + " ms\n"
+                + "	\n"
+                + "	Decompiled with "
+                + vineflower.getDecompilerName()
+                + " version "
+                + vineflower.getDecompilerVersion()
+                + " as part of transformer-api "
+                + vineflower.getVersion("transformer-api-version")
+                + " (https://github.com/nbauma109/transformer-api).\n"
+                + "	Realignment is turned off.\n"
+                + "*/", decompiledOutput);
+    }
+
+    @Test
+    public void testDecompileParsedAndRealigned() throws Exception {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
+        prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
+        File file = new File("target/classes/HelloWorld.class");
+        String decompiledOutput = vineflower.decompile(file);
+        assertEquals("/*   */ public class HelloWorld {\n"
+                + "/*   */   public static void main(String[] args) {\n"
+                + "/* 3 */     System.out.println(\"Hello World!\");\n"
+                + "/*   */   }\n"
+                + "/*   */ }\n"
+                + "\n"
+                + "\n"
+                + "/*\n"
+                + "	DECOMPILATION REPORT\n"
+                + "\n"
+                + "	Decompiled from: "
+                + file.getAbsolutePath()
+                + "\n"
+                + "	Total time: "
+                + vineflower.getDecompilationTime()
+                + " ms\n"
+                + "	\n"
+                + "	Decompiled with "
+                + vineflower.getDecompilerName()
+                + " version "
+                + vineflower.getDecompilerVersion()
+                + " as part of transformer-api "
+                + vineflower.getVersion("transformer-api-version")
+                + " (https://github.com/nbauma109/transformer-api).\n"
+                + "	Parsed and realigned with jd-util 1.3.5 (https://github.com/nbauma109/jd-util).\n"
+                + "*/", decompiledOutput);
+    }
+
+    @Test
+    public void testDecompileNativelyRealigned() throws Exception {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
+        prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
+        File file = new File("target/classes/HelloWorld.class");
+        String decompiledOutput = jdCore.decompile(file);
+        assertEquals("/*   */ public class HelloWorld {\n"
+                + "/*   */   public static void main(String[] args) {\n"
+                + "/* 3 */     System.out.println(\"Hello World!\");\n"
+                + "/*   */   }\n"
+                + "/*   */ }\n"
+                + "\n"
+                + "\n"
+                + "/*\n"
+                + "	DECOMPILATION REPORT\n"
+                + "\n"
+                + "	Decompiled from: "
+                + file.getAbsolutePath()
+                + "\n"
+                + "	Total time: "
+                + jdCore.getDecompilationTime()
+                + " ms\n"
+                + "	\n"
+                + "	Decompiled and natively realigned with "
+                + jdCore.getDecompilerName()
+                + " version "
+                + jdCore.getDecompilerVersion()
+                + " as part of transformer-api "
+                + jdCore.getVersion("transformer-api-version")
+                + " (https://github.com/nbauma109/transformer-api).\n"
+                + "*/", decompiledOutput);
     }
 
     private IType createType(String packageName, String typeName) throws Exception {

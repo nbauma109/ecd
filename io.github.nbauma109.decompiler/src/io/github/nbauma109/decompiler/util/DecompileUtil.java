@@ -48,10 +48,9 @@ public class DecompileUtil {
     }
 
     public static String decompiler(FileStoreEditorInput input, String decompilerType) {
-        DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
         File file = new File(input.getURI());
-        return sourceMapper.decompile(decompilerType, file);
-
+        DecompilerSourceMapper sourceMapper = JavaDecompilerPlugin.getDefault().getSourceMapper(decompilerType);
+        return sourceMapper.decompile(file);
     }
 
     public static String getPackageName(String source) {
