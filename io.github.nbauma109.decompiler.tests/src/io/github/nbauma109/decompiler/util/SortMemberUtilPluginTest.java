@@ -40,14 +40,16 @@ public class SortMemberUtilPluginTest {
     @Test
     public void sortMember_groupsFieldsBeforeMethods_andCleansUpCompilationUnit() throws Exception {
         String input =
-                "package com.example;\n" +
-                "\n" +
-                "public class Example {\n" +
-                "    public void bMethod() {}\n" +
-                "    private int b;\n" +
-                "    public void aMethod() {}\n" +
-                "    private int a;\n" +
-                "}\n";
+                """
+                package com.example;
+
+        public class Example {
+            public void bMethod() {}
+            private int b;
+            public void aMethod() {}
+            private int a;
+        }
+        """;
 
         String sorted = SortMemberUtil.sortMember("com.example", "com/example/Example.class", input);
 

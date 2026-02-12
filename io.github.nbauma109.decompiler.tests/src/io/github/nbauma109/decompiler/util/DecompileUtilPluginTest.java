@@ -65,9 +65,11 @@ public class DecompileUtilPluginTest {
     @Test
     public void getPackageName_returnsPackageName_whenPresent() {
         String source =
-                "/*header*/\n" +
-                "package com.example.test;\n" +
-                "public class A {}\n";
+                """
+                /*header*/
+                package com.example.test;
+        public class A {}
+        """;
 
         assertEquals("com.example.test", DecompileUtil.getPackageName(source));
     }
@@ -122,13 +124,15 @@ public class DecompileUtilPluginTest {
         assertTrue(javaFile.getParentFile().exists() || javaFile.getParentFile().mkdirs());
 
         String javaSource =
-                "package com.example;\n" +
-                "\n" +
-                "public class Lib {\n" +
-                "    public String hello() {\n" +
-                "        return \"hello\";\n" +
-                "    }\n" +
-                "}\n";
+                """
+                package com.example;
+
+        public class Lib {
+            public String hello() {
+                return "hello";
+            }
+        }
+        """;
 
         writeUtf8(javaFile, javaSource);
         compileJava(javaFile, classRoot);
@@ -152,13 +156,15 @@ public class DecompileUtilPluginTest {
         assertTrue(javaFile.getParentFile().exists() || javaFile.getParentFile().mkdirs());
 
         String javaSource =
-                "package com.example;\n" +
-                "\n" +
-                "public class Standalone {\n" +
-                "    public int value() {\n" +
-                "        return 1;\n" +
-                "    }\n" +
-                "}\n";
+                """
+                package com.example;
+
+        public class Standalone {
+            public int value() {
+                return 1;
+            }
+        }
+        """;
 
         writeUtf8(javaFile, javaSource);
         compileJava(javaFile, classRoot);
@@ -203,15 +209,13 @@ public class DecompileUtilPluginTest {
         assertNotNull(compiler);
 
         StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
-        try {
+        try (fileManager) {
             fileManager.setLocation(StandardLocation.CLASS_OUTPUT, java.util.Collections.singletonList(classRoot));
             Iterable<? extends javax.tools.JavaFileObject> units =
                     fileManager.getJavaFileObjectsFromFiles(java.util.Collections.singletonList(javaFile));
 
             Boolean ok = compiler.getTask(null, fileManager, null, null, null, units).call();
             assertTrue(Boolean.TRUE.equals(ok));
-        } finally {
-            fileManager.close();
         }
     }
 
