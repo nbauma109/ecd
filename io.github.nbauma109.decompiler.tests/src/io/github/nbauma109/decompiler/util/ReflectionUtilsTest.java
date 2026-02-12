@@ -58,7 +58,7 @@ public class ReflectionUtilsTest {
         assertNull(ReflectionUtils.getFieldValue(null, "any"));
         assertNull(ReflectionUtils.getFieldValue(subObj, null));
         assertNull(ReflectionUtils.getFieldValue(subObj, "nonExistentField"));
-        
+
         // Ensure setFieldValue handles nulls/missing fields gracefully
         ReflectionUtils.setFieldValue(null, "field", "value");
         ReflectionUtils.setFieldValue(subObj, null, "value");
@@ -86,12 +86,12 @@ public class ReflectionUtilsTest {
         assertNull(ReflectionUtils.invokeMethod(subObj, null, Integer.class, 123));
         assertNull(ReflectionUtils.invokeMethod(null, null, Integer.class, 123));
     }
-    
+
     @Test
     public void testInvokeMethodMultiArgs() {
-        Class<?>[] types = new Class<?>[]{ String.class };
-        Object[] args = new Object[]{ "hello" };
-        
+        Class<?>[] types = { String.class };
+        Object[] args = { "hello" };
+
         // Test inheritance traversal for methods
         Object result = ReflectionUtils.invokeMethod(subObj, "superMethod", types, args);
         assertEquals("super:hello", result);
@@ -99,13 +99,13 @@ public class ReflectionUtilsTest {
 
     @Test
     public void testInvokeMethodNullArgs() {
-        Class<?>[] types = new Class<?>[]{ String.class };
-        Object[] args = new Object[]{ "hello" };
+        Class<?>[] types = { String.class };
+        Object[] args = { "hello" };
         assertNull(ReflectionUtils.invokeMethod(null, "superMethod", types, args));
         assertNull(ReflectionUtils.invokeMethod(subObj, null, types, args));
         assertNull(ReflectionUtils.invokeMethod(null, null, types, args));
     }
-    
+
     @Test
     public void testInvokeMethodDirect() throws Exception {
         Method m = subObj.getClass().getDeclaredMethod("singleArgMethod", Integer.class);
@@ -119,7 +119,7 @@ public class ReflectionUtilsTest {
         assertNull(ReflectionUtils.invokeMethod(null, "method"));
         assertNull(ReflectionUtils.invokeMethod(subObj, null));
         assertNull(ReflectionUtils.getDeclaredMethod(subObj, "nonExistent", null));
-        
+
         // Test invalid method call (wrong params)
         assertNull(ReflectionUtils.invokeMethod(subObj, "singleArgMethod", String.class, "wrongType"));
     }
@@ -128,11 +128,11 @@ public class ReflectionUtilsTest {
     public void testGetDeclaredMethodTraversal() {
         // Test that it stops at Object.class and doesn't crash
         Method m = ReflectionUtils.getDeclaredMethod(subObj, "toString", new Class[0]);
-        // Note: The logic in ReflectionUtils excludes Object.class in the loop: 
+        // Note: The logic in ReflectionUtils excludes Object.class in the loop:
         // clazz != Object.class. So toString() might return null depending on intent.
         assertNull("Should return null as loop stops before Object.class", m);
     }
-    
+
     @Test
     public void testGetDeclaredMethodNullArg() {
         assertNull(ReflectionUtils.getDeclaredMethod(null, "toString", new Class[0]));
