@@ -288,9 +288,8 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
 
     private static SourceAttacher getSourceAttacher() {
         synchronized (JavaSourceAttacherHandler.class) {
-            final ServiceLoader<SourceAttacher> loader = ServiceLoader.load(SourceAttacher.class,
-                    JavaSourceAttacherHandler.class.getClassLoader());
-            return loader.findFirst().orElse(null);
+            return ServiceLoader.load(SourceAttacher.class,
+                    JavaSourceAttacherHandler.class.getClassLoader()).findFirst().orElse(null);
         }
     }
 
