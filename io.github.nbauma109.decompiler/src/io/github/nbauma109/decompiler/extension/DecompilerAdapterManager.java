@@ -65,38 +65,38 @@ public class DecompilerAdapterManager {
         IExtensionPoint extensionPoint = registry.getExtensionPoint(ADAPTERS_EXTENSION_ID);
         if (extensionPoint != null) {
             IConfigurationElement[] elements = extensionPoint.getConfigurationElements();
-            for (int j = 0; j < elements.length; j++) {
-                String adaptableClassName = elements[j].getAttribute("class"); //$NON-NLS-1$
+            for (IConfigurationElement element : elements) {
+                String adaptableClassName = element.getAttribute("class"); //$NON-NLS-1$
                 Class<?> adaptableType = null;
 
-                IConfigurationElement[] adapters = elements[j].getChildren("adapter"); //$NON-NLS-1$
-                for (int k = 0; k < adapters.length; k++) {
+                IConfigurationElement[] adapters = element.getChildren("adapter"); //$NON-NLS-1$
+                for (IConfigurationElement adapterElement : adapters) {
                     String adapterClassName = null;
                     Class<?> adapterType = null;
 
                     try {
                         DecompilerAdapter adapter = new DecompilerAdapter();
-                        adapter.setId(adapters[k].getAttribute("id")); //$NON-NLS-1$
+                        adapter.setId(adapterElement.getAttribute("id")); //$NON-NLS-1$
 
                         adapter.setSingleton(!"false".equals( //$NON-NLS-1$
-                                adapters[k].getAttribute("singleton"))); //$NON-NLS-1$
+                                adapterElement.getAttribute("singleton"))); //$NON-NLS-1$
 
-                        if (adapters[k].getAttribute("class") != null //$NON-NLS-1$
-                                && !adapters[k].getAttribute("class") //$NON-NLS-1$
+                        if (adapterElement.getAttribute("class") != null //$NON-NLS-1$
+                                && !adapterElement.getAttribute("class") //$NON-NLS-1$
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setAdapterInstance(adapters[k].createExecutableExtension("class")); //$NON-NLS-1$
+                            adapter.setAdapterInstance(adapterElement.createExecutableExtension("class")); //$NON-NLS-1$
 
                             if (!adapter.isSingleton()) {
                                 // cache the config element to create new
                                 // instance
-                                adapter.setAdapterConfig(adapters[k]);
+                                adapter.setAdapterConfig(adapterElement);
                             }
-                        } else if (adapters[k].getAttribute("factory") != null //$NON-NLS-1$
-                                && !adapters[k].getAttribute("factory") //$NON-NLS-1$
+                        } else if (adapterElement.getAttribute("factory") != null //$NON-NLS-1$
+                                && !adapterElement.getAttribute("factory") //$NON-NLS-1$
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setFactory((IAdapterFactory) adapters[k].createExecutableExtension("factory")); //$NON-NLS-1$
+                            adapter.setFactory((IAdapterFactory) adapterElement.createExecutableExtension("factory")); //$NON-NLS-1$
                         }
 
                         if (adaptableType == null) {
@@ -106,34 +106,34 @@ public class DecompilerAdapterManager {
 
                         adapter.setAdaptableType(adaptableType);
 
-                        adapterClassName = adapters[k].getAttribute("type"); //$NON-NLS-1$
+                        adapterClassName = adapterElement.getAttribute("type"); //$NON-NLS-1$
 
                         adapterType = classForName(adapterClassName, adapter.getAdapterInstance(),
                                 adapter.getFactory());
 
                         adapter.setAdapterType(adapterType);
 
-                        if (adapters[k].getAttribute("priority") != null //$NON-NLS-1$
-                                && !adapters[k].getAttribute("priority") //$NON-NLS-1$
+                        if (adapterElement.getAttribute("priority") != null //$NON-NLS-1$
+                                && !adapterElement.getAttribute("priority") //$NON-NLS-1$
                                 .equals("")) //$NON-NLS-1$
                         {
                             try {
-                                adapter.setPriority(Integer.parseInt(adapters[k].getAttribute("priority"))); //$NON-NLS-1$
+                                adapter.setPriority(Integer.parseInt(adapterElement.getAttribute("priority"))); //$NON-NLS-1$
                             } catch (NumberFormatException e) {
                             }
                         }
 
-                        if (adapters[k].getAttribute("overwrite") != null //$NON-NLS-1$
-                                && !adapters[k].getAttribute("overwrite") //$NON-NLS-1$
+                        if (adapterElement.getAttribute("overwrite") != null //$NON-NLS-1$
+                                && !adapterElement.getAttribute("overwrite") //$NON-NLS-1$
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setOverwrite(adapters[k].getAttribute("overwrite") //$NON-NLS-1$
+                            adapter.setOverwrite(adapterElement.getAttribute("overwrite") //$NON-NLS-1$
                                     .split(";")); //$NON-NLS-1$
                         }
-                        adapter.setIncludeWorkbenchContribute("true".equals(adapters[k].getAttribute( //$NON-NLS-1$
+                        adapter.setIncludeWorkbenchContribute("true".equals(adapterElement.getAttribute( //$NON-NLS-1$
                                 "includeWorkbenchContribute"))); //$NON-NLS-1$
 
-                        IConfigurationElement[] enablements = adapters[k].getChildren("enablement"); //$NON-NLS-1$
+                        IConfigurationElement[] enablements = adapterElement.getChildren("enablement"); //$NON-NLS-1$
                         if (enablements != null && enablements.length > 0) {
                             adapter.setExpression(ExpressionConverter.getDefault().perform(enablements[0]));
                         }
