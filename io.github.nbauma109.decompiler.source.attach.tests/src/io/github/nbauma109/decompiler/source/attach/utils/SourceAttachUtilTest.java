@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -50,8 +51,7 @@ public class SourceAttachUtilTest {
 
     @After
     public void tearDown() throws Exception {
-        for (int i = 0; i < projectsToDelete.size(); i++) {
-            IProject p = projectsToDelete.get(i);
+        for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
             }
@@ -182,8 +182,7 @@ public class SourceAttachUtilTest {
         IJavaProject javaProject = JavaCore.create(project);
 
         List<IClasspathEntry> entries = new ArrayList<>();
-        for (int i = 0; i < libs.length; i++) {
-            LibrarySpec lib = libs[i];
+        for (LibrarySpec lib : libs) {
             IPath jarPath = new Path(lib.binaryJar().getAbsolutePath());
 
             IPath srcPath = null;
@@ -200,13 +199,12 @@ public class SourceAttachUtilTest {
         List<IPackageFragmentRoot> roots = new ArrayList<>();
         IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
 
-        for (int i = 0; i < libs.length; i++) {
-            File jar = libs[i].binaryJar();
+        for (LibrarySpec lib : libs) {
+            File jar = lib.binaryJar();
             IPath jarPath = new Path(jar.getAbsolutePath());
 
             IPackageFragmentRoot match = null;
-            for (int r = 0; r < allRoots.length; r++) {
-                IPackageFragmentRoot candidate = allRoots[r];
+            for (IPackageFragmentRoot candidate : allRoots) {
                 IPath candidatePath = candidate.getPath();
                 if (candidatePath != null && candidatePath.equals(jarPath)) {
                     match = candidate;
@@ -223,8 +221,8 @@ public class SourceAttachUtilTest {
 
     private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws Exception {
         IJavaElement[] children = root.getChildren();
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] instanceof IPackageFragment pkg) {
+        for (IJavaElement child : children) {
+            if (child instanceof IPackageFragment pkg) {
                 IClassFile[] classFiles = pkg.getClassFiles();
                 if (classFiles != null && classFiles.length > 0) {
                     return classFiles[0];
@@ -236,8 +234,8 @@ public class SourceAttachUtilTest {
 
     private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws Exception {
         IJavaElement[] children = root.getChildren();
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] instanceof IPackageFragment pkg) {
+        for (IJavaElement child : children) {
+            if (child instanceof IPackageFragment pkg) {
                 IClassFile[] classFiles = pkg.getClassFiles();
                 if (classFiles != null && classFiles.length > 0) {
                     return pkg;
