@@ -69,7 +69,6 @@ public class JavaSourceAttacherHandlerTest {
         filesToDelete.clear();
 
         JavaSourceAttacherHandler.clearRequests();
-        JavaSourceAttacherHandler.resetSourceAttacherForTests();
     }
 
     @Test

@@ -50,7 +50,6 @@ import io.github.nbauma109.decompiler.util.Logger;
 public class JavaSourceAttacherHandler extends AbstractHandler {
 
     static final Map<String, IPackageFragmentRoot> requests = new HashMap<>();
-    private static volatile SourceAttacher cachedAttacher;
 
     @Override
     public Object execute(final ExecutionEvent event) throws ExecutionException {
@@ -62,8 +61,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         final List<IPackageFragmentRoot> selections = new ArrayList<>();
         for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext();) {
             IJavaElement aSelection = (IJavaElement) iterator.next();
-            if (aSelection instanceof IPackageFragmentRoot) {
-                final IPackageFragmentRoot pkgRoot = (IPackageFragmentRoot) aSelection;
+            if (aSelection instanceof IPackageFragmentRoot pkgRoot) {
                 selections.add(pkgRoot);
             } else {
                 if (!(aSelection instanceof IJavaProject)) {
@@ -289,27 +287,11 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     }
 
     private static SourceAttacher getSourceAttacher() {
-        SourceAttacher result = cachedAttacher;
-        if (result != null) {
-            return result;
-        }
         synchronized (JavaSourceAttacherHandler.class) {
-            result = cachedAttacher;
-            if (result != null) {
-                return result;
-            }
             final ServiceLoader<SourceAttacher> loader = ServiceLoader.load(SourceAttacher.class,
                     JavaSourceAttacherHandler.class.getClassLoader());
-            for (SourceAttacher attacher : loader) {
-                cachedAttacher = attacher;
-                return attacher;
-            }
-            return null;
+            return loader.findFirst().orElse(null);
         }
-    }
-
-    public static void resetSourceAttacherForTests() {
-        cachedAttacher = null;
     }
 
     public static void clearRequests() {
