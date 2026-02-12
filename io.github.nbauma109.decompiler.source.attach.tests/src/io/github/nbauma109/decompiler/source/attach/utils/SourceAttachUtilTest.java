@@ -40,7 +40,6 @@ import org.junit.After;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
 
-@SuppressWarnings("restriction")
 public class SourceAttachUtilTest {
 
     private static final String TEST_JAR_BUNDLE_ID = "io.github.nbauma109.decompiler.source.attach.tests";
