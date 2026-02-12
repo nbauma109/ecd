@@ -34,12 +34,10 @@ public class AttachSourceAction extends Action {
         }
 
         Object firstElement = selection.get(0);
-        if (selection.size() == 1 && firstElement instanceof IClassFile) {
-            IClassFile classFile = (IClassFile) firstElement;
+        if (selection.size() == 1 && firstElement instanceof IClassFile classFile) {
             IPackageFragmentRoot root = (IPackageFragmentRoot) classFile.getParent().getParent();
             JavaDecompilerPlugin.getDefault().attachSource(root, true);
-        } else if (selection.size() == 1 && firstElement instanceof IPackageFragmentRoot) {
-            IPackageFragmentRoot root = (IPackageFragmentRoot) firstElement;
+        } else if (selection.size() == 1 && firstElement instanceof IPackageFragmentRoot root) {
             JavaDecompilerPlugin.getDefault().attachSource(root, true);
         } else {
             IPackageFragmentRoot root = null;

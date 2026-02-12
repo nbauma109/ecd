@@ -211,17 +211,16 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     }
 
     public boolean enableAttachSourceSetting() {
-        Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
-        return attachSourceAdapter instanceof IAttachSourceHandler;
+        return getAttachSourceHandler() != null;
     }
 
     private Set<String> libraries = new ConcurrentSkipListSet<>();
 
     public Thread attachSource(IPackageFragmentRoot library, boolean force) {
-        Object attachSourceAdapter = DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
-        if (attachSourceAdapter instanceof IAttachSourceHandler && (!libraries.contains(library.getPath().toOSString()) || force)) {
+        final IAttachSourceHandler attachSourceAdapter = getAttachSourceHandler();
+        if (attachSourceAdapter != null && (!libraries.contains(library.getPath().toOSString()) || force)) {
             libraries.add(library.getPath().toOSString());
-            return ((IAttachSourceHandler) attachSourceAdapter).execute(library, force);
+            return attachSourceAdapter.execute(library, force);
         }
         return null;
     }
@@ -232,11 +231,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
                     && !libraries.contains(library.getPath().toOSString())) {
                 final IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
                 if (prefs.getBoolean(JavaDecompilerPlugin.DEFAULT_EDITOR)) {
-                    final Object attachSourceAdapter = DecompilerAdapterManager
-                            .getAdapter(JavaDecompilerPlugin.getDefault(), IAttachSourceHandler.class);
-                    if (attachSourceAdapter instanceof IAttachSourceHandler) {
+                    final IAttachSourceHandler attachSourceAdapter = getAttachSourceHandler();
+                    if (attachSourceAdapter != null) {
                         libraries.add(library.getPath().toOSString());
-                        if (!((IAttachSourceHandler) attachSourceAdapter).syncAttachSource(library)) {
+                        if (!attachSourceAdapter.syncAttachSource(library)) {
                             libraries.remove(library.getPath().toOSString());
                         }
                     }
@@ -245,6 +243,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
         } catch (JavaModelException e) {
             Logger.debug(e);
         }
+    }
+
+    private IAttachSourceHandler getAttachSourceHandler() {
+        return (IAttachSourceHandler) DecompilerAdapterManager.getAdapter(this, IAttachSourceHandler.class);
     }
 
     public boolean isAutoAttachSource() {
