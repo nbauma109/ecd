@@ -27,8 +27,8 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -53,8 +53,7 @@ public class JavaSourceAttacherHandlerTest {
 
     @After
     public void tearDown() throws Exception {
-        for (int i = 0; i < projectsToDelete.size(); i++) {
-            IProject p = projectsToDelete.get(i);
+        for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
             }
@@ -225,8 +224,7 @@ public class JavaSourceAttacherHandlerTest {
         IJavaProject javaProject = JavaCore.create(project);
 
         List<IClasspathEntry> entries = new ArrayList<>();
-        for (int i = 0; i < libs.length; i++) {
-            LibrarySpec lib = libs[i];
+        for (LibrarySpec lib : libs) {
             IPath jarPath = new Path(lib.binaryJar().getAbsolutePath());
             IPath srcPath = null;
             if (lib.sourceJarOrZip() != null) {
@@ -241,13 +239,12 @@ public class JavaSourceAttacherHandlerTest {
         List<IPackageFragmentRoot> roots = new ArrayList<>();
         IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
 
-        for (int i = 0; i < libs.length; i++) {
-            File jar = libs[i].binaryJar();
+        for (LibrarySpec lib : libs) {
+            File jar = lib.binaryJar();
             IPath jarPath = new Path(jar.getAbsolutePath());
 
             IPackageFragmentRoot match = null;
-            for (int r = 0; r < allRoots.length; r++) {
-                IPackageFragmentRoot candidate = allRoots[r];
+            for (IPackageFragmentRoot candidate : allRoots) {
                 IPath candidatePath = candidate.getPath();
                 if (candidatePath != null && candidatePath.equals(jarPath)) {
                     match = candidate;
