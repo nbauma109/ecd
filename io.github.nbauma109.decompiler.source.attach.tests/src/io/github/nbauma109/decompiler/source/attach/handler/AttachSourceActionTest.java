@@ -57,16 +57,14 @@ public class AttachSourceActionTest {
 
     @After
     public void tearDown() throws Exception {
-        for (int i = 0; i < projectsToDelete.size(); i++) {
-            IProject p = projectsToDelete.get(i);
+        for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
             }
         }
         projectsToDelete.clear();
 
-        for (int i = 0; i < filesToDelete.size(); i++) {
-            File f = filesToDelete.get(i);
+        for (File f : filesToDelete) {
             if (f != null && f.exists()) {
                 deleteRecursively(f);
             }
@@ -197,8 +195,7 @@ public class AttachSourceActionTest {
 
     private static IPackageFragmentRoot findRootForJar(IJavaProject javaProject, IPath jarPath) throws Exception {
         IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
-        for (int i = 0; i < allRoots.length; i++) {
-            IPackageFragmentRoot candidate = allRoots[i];
+        for (IPackageFragmentRoot candidate : allRoots) {
             IPath candidatePath = candidate.getPath();
             if (candidatePath != null && candidatePath.equals(jarPath)) {
                 return candidate;
@@ -209,8 +206,8 @@ public class AttachSourceActionTest {
 
     private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws Exception {
         IJavaElement[] children = root.getChildren();
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] instanceof IPackageFragment pkg) {
+        for (IJavaElement child : children) {
+            if (child instanceof IPackageFragment pkg) {
                 IClassFile[] classFiles = pkg.getClassFiles();
                 if (classFiles != null && classFiles.length > 0) {
                     return classFiles[0];
@@ -222,8 +219,8 @@ public class AttachSourceActionTest {
 
     private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws Exception {
         IJavaElement[] children = root.getChildren();
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] instanceof IPackageFragment pkg) {
+        for (IJavaElement child : children) {
+            if (child instanceof IPackageFragment pkg) {
                 IClassFile[] classFiles = pkg.getClassFiles();
                 if (classFiles != null && classFiles.length > 0) {
                     return pkg;
@@ -274,10 +271,7 @@ public class AttachSourceActionTest {
 
     private static void ensureParentDirectory(File file) throws IOException {
         File parent = file.getParentFile();
-        if (parent == null) {
-            return;
-        }
-        if (parent.exists()) {
+        if ((parent == null) || parent.exists()) {
             return;
         }
         if (!parent.mkdirs() && !parent.exists()) {
@@ -313,10 +307,7 @@ public class AttachSourceActionTest {
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 String name = entry.getName();
-                if (name == null) {
-                    continue;
-                }
-                if (!name.startsWith("META-INF/maven/") || !name.endsWith("/pom.properties")) { //$NON-NLS-1$ //$NON-NLS-2$
+                if ((name == null) || !name.startsWith("META-INF/maven/") || !name.endsWith("/pom.properties")) { //$NON-NLS-1$ //$NON-NLS-2$
                     continue;
                 }
 
@@ -355,12 +346,7 @@ public class AttachSourceActionTest {
         }
     }
 
-    private static final class SourceJarCandidates {
-        private final List<File> candidates;
-
-        private SourceJarCandidates(List<File> candidates) {
-            this.candidates = candidates;
-        }
+    private record SourceJarCandidates(List<File> candidates) {
 
         public boolean matches(File attached) throws IOException {
             if (attached == null || !attached.exists()) {
@@ -371,8 +357,7 @@ public class AttachSourceActionTest {
             }
 
             String attachedCanonical = attached.getCanonicalPath();
-            for (int i = 0; i < candidates.size(); i++) {
-                File candidate = candidates.get(i);
+            for (File candidate : candidates) {
                 if (candidate != null && candidate.exists()) {
                     String candidateCanonical = candidate.getCanonicalPath();
                     if (attachedCanonical.equals(candidateCanonical)) {
@@ -384,53 +369,9 @@ public class AttachSourceActionTest {
         }
     }
 
-    private static final class MavenCoordinates {
-        private final String groupId;
-        private final String artifactId;
-        private final String version;
-
-        private MavenCoordinates(String groupId, String artifactId, String version) {
-            this.groupId = groupId;
-            this.artifactId = artifactId;
-            this.version = version;
-        }
-
-        public String groupId() {
-            return groupId;
-        }
-
-        public String artifactId() {
-            return artifactId;
-        }
-
-        public String version() {
-            return version;
-        }
+    private record MavenCoordinates(String groupId, String artifactId, String version) {
     }
 
-    private static final class JavaProjectSetup {
-        private final IProject project;
-        private final IJavaProject javaProject;
-        private final IPackageFragmentRoot root;
-
-        private JavaProjectSetup(IProject project, IJavaProject javaProject, IPackageFragmentRoot root) {
-            this.project = project;
-            this.javaProject = javaProject;
-            this.root = root;
-        }
-
-        @SuppressWarnings("unused")
-        public IProject project() {
-            return project;
-        }
-
-        @SuppressWarnings("unused")
-        public IJavaProject javaProject() {
-            return javaProject;
-        }
-
-        public IPackageFragmentRoot root() {
-            return root;
-        }
+    private record JavaProjectSetup(IProject project, IJavaProject javaProject, IPackageFragmentRoot root) {
     }
 }
