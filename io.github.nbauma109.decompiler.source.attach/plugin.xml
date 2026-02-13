@@ -9,36 +9,50 @@
 ###############################################################################
 -->
 <plugin>
+
   <extension point="org.eclipse.ui.menus">
     <menuContribution
             allPopups="false"
             class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceContributionFactory"
             locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?before=group.edit">
-      </menuContribution>
-      <menuContribution
+    </menuContribution>
+
+    <menuContribution
             allPopups="false"
             class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceContributionFactory"
             locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?before=group.edit">
-      </menuContribution>      
+    </menuContribution>
   </extension>
+
   <extension
         point="io.github.nbauma109.decompiler.decompilerAdapters">
-       <adaptable
-           class="io.github.nbauma109.decompiler.JavaDecompilerPlugin">
-           <adapter
-                 class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
-                 id="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
-                 singleton="true"
-                 type="io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler">
-           </adapter>
-       </adaptable>
-    </extension>
-    <extension point="org.eclipse.ui.editorActions">
-      <editorContribution id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesContribution"
-                          targetID="io.github.nbauma109.decompiler.ClassFileEditor">
-         <action id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesAction"
-              class="io.github.nbauma109.decompiler.source.attach.m2e.DownloadSourcesActionDelegate"
-              label="%action.label" style="push"/>
-      </editorContribution>
-   </extension>
+    <adaptable
+          class="io.github.nbauma109.decompiler.JavaDecompilerPlugin">
+      <adapter
+            class="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
+            id="io.github.nbauma109.decompiler.source.attach.handler.AttachSourceHandler"
+            singleton="true"
+            type="io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler"
+            priority="0">
+
+        <enablement>
+          <instanceof value="io.github.nbauma109.decompiler.JavaDecompilerPlugin"/>
+        </enablement>
+
+      </adapter>
+    </adaptable>
+  </extension>
+
+  <extension point="org.eclipse.ui.editorActions">
+    <editorContribution
+          id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesContribution"
+          targetID="io.github.nbauma109.decompiler.ClassFileEditor">
+      <action
+            id="io.github.nbauma109.decompiler.source.attach.m2e.downloadSourcesAction"
+            class="io.github.nbauma109.decompiler.source.attach.m2e.DownloadSourcesActionDelegate"
+            label="%action.label"
+            style="push"/>
+    </editorContribution>
+  </extension>
+
 </plugin>
