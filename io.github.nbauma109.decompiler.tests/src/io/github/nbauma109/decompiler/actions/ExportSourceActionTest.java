@@ -9,11 +9,16 @@
 package io.github.nbauma109.decompiler.actions;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -22,8 +27,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -31,6 +39,8 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
@@ -48,6 +58,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
 
+import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.util.DecompileUtil;
+
 public class ExportSourceActionTest {
 
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
@@ -58,12 +71,24 @@ public class ExportSourceActionTest {
     private IPackageFragmentRoot jarRoot;
     private File jarFileOnDisk;
 
+    private String originalTempDir;
+    private File tempDirForTest;
+    private final List<File> filesToDelete = new ArrayList<>();
+
     @Before
     public void setUp() throws Exception {
         jarFileOnDisk = resolveTestJar();
         assertNotNull(jarFileOnDisk);
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
+
+        JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
+        assertNotNull(plugin);
+
+        originalTempDir = plugin.getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR);
+        tempDirForTest = new File(System.getProperty("java.io.tmpdir"),
+                "export-source-action-test-" + UUID.randomUUID());
+        plugin.getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR, tempDirForTest.getAbsolutePath());
 
         String projectName = "export-source-action-test-project";
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
@@ -90,9 +115,34 @@ public class ExportSourceActionTest {
 
     @After
     public void tearDown() throws Exception {
+        JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
+        if (plugin != null && originalTempDir != null) {
+            plugin.getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR, originalTempDir);
+        }
+
+        for (File f : filesToDelete) {
+            deleteRecursively(f);
+        }
+        filesToDelete.clear();
+
+        deleteRecursively(tempDirForTest);
+        tempDirForTest = null;
+
         if (project != null && project.exists()) {
             project.delete(true, true, null);
         }
+    }
+
+    @Test
+    public void testIsEnabledSelectionNullIsFalse() {
+        ExportSourceAction action = new ExportSourceAction(null);
+        assertFalse(action.isEnabled());
+    }
+
+    @Test
+    public void testIsEnabledSelectionNonNullIsTrue() {
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        assertTrue(action.isEnabled());
     }
 
     @Test
@@ -154,7 +204,8 @@ public class ExportSourceActionTest {
             assertTrue("Hierarchical mode should include subpackages when present", collected.contains(pair.get().sub));
             assertTrue("Hierarchical mode should collect at least base and subpackage", collected.size() >= 2);
         } else {
-            assertEquals("When no subpackages exist, hierarchical mode should behave like flat collection for the selected package",
+            assertEquals(
+                    "When no subpackages exist, hierarchical mode should behave like flat collection for the selected package",
                     1, collected.size());
         }
     }
@@ -185,6 +236,251 @@ public class ExportSourceActionTest {
         assertNotNull(list);
         assertEquals(1, list.size());
         assertEquals(classFile, list.get(0));
+    }
+
+    @Test
+    public void testCollectClassesAddsToExistingPackageList() throws Exception {
+        IClassFile classFile = anyTopLevelClassFile();
+        IPackageFragment pkg = (IPackageFragment) classFile.getParent();
+
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        action.setFlat(true);
+
+        Map<IJavaElement, List<IJavaElement>> classes = new HashMap<>();
+        action.collectClasses(classFile, classes, new NullProgressMonitor());
+        action.collectClasses(classFile, classes, new NullProgressMonitor());
+
+        assertTrue(classes.containsKey(pkg));
+        List<IJavaElement> list = classes.get(pkg);
+        assertNotNull(list);
+        assertEquals(2, list.size());
+        assertEquals(classFile, list.get(0));
+        assertEquals(classFile, list.get(1));
+    }
+
+    @Test
+    public void testEnsureDirectoryExistsCreatesDirectoryWhenBlockedByFile() throws Exception {
+        File blocked = new File(tempDirForTest, "blocked-dir");
+        ensureParentDirectoryExistsForFile(blocked);
+
+        try (FileOutputStream out = new FileOutputStream(blocked)) {
+            out.write(new byte[] { 0x01 });
+        }
+
+        assertTrue(blocked.exists());
+        assertTrue(blocked.isFile());
+
+        invokeEnsureDirectoryExists(blocked);
+
+        assertTrue(blocked.exists());
+        assertTrue(blocked.isDirectory());
+    }
+
+    @Test
+    public void testEnsureParentDirectoryExistsCreatesParents() throws Exception {
+        File target = new File(tempDirForTest, "a/b/c/out.java");
+        assertFalse(target.getParentFile().exists());
+
+        invokeEnsureParentDirectoryExists(target);
+
+        assertTrue(target.getParentFile().exists());
+        assertTrue(target.getParentFile().isDirectory());
+    }
+
+    @Test
+    public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() throws Exception {
+        try {
+            invokeEnsureParentDirectoryExists(null);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            assertNotNull(cause);
+            assertTrue(cause instanceof java.io.IOException);
+            return;
+        }
+        throw new AssertionError("Expected IOException to be thrown");
+    }
+
+    @Test
+    public void testExportPackageSourcesCanceledDoesNotCreateZip() throws Exception {
+        File zip = createTempZipFile();
+        assertFalse(zip.exists());
+
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        List<IStatus> exceptions = new ArrayList<>();
+
+        invokeExportPackageSources(action, new AlwaysCanceledProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
+                zip.getAbsolutePath(), jarRoot.getChildren(), exceptions);
+
+        assertFalse(zip.exists());
+        assertTrue(exceptions.isEmpty());
+    }
+
+    @Test
+    public void testExportPackageSourcesNoChildrenDoesNotCreateZip() throws Exception {
+        File zip = createTempZipFile();
+        assertFalse(zip.exists());
+
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        List<IStatus> exceptions = new ArrayList<>();
+
+        invokeExportPackageSources(action, new NullProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
+                zip.getAbsolutePath(), new IJavaElement[0], exceptions);
+
+        assertFalse(zip.exists());
+        assertTrue(exceptions.isEmpty());
+    }
+
+    @Test
+    public void testExportPackageSourcesCreatesZipAndCleansExportDirectory() throws Exception {
+        File zip = createTempZipFile();
+        assertFalse(zip.exists());
+
+        ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
+        List<IStatus> exceptions = new ArrayList<>();
+
+        String decompilerType = resolveDecompilerTypeForTest();
+
+        invokeExportPackageSources(action, new NullProgressMonitor(), decompilerType, true, true, zip.getAbsolutePath(),
+                jarRoot.getChildren(), exceptions);
+
+        assertTrue(zip.exists());
+        assertTrue(zip.isFile());
+        assertTrue(zip.length() > 0L);
+
+        List<String> entries = listZipEntries(zip);
+
+        boolean hasJava = false;
+        for (String name : entries) {
+            if (name.endsWith(".java")) {
+                hasJava = true;
+                assertTrue("Our export should skip inner classes", name.indexOf('$') < 0);
+            }
+        }
+
+        if (hasJava) {
+            assertTrue(exceptions.isEmpty());
+        } else {
+            assertTrue("When export could not decompile any class, we expect error statuses", !exceptions.isEmpty());
+        }
+
+        File exportDir = new File(tempDirForTest, "export");
+        assertFalse("Our export should delete the export working directory", exportDir.exists());
+    }
+
+    private File createTempZipFile() throws Exception {
+        File zip = Files.createTempFile("export-source-action-", ".zip").toFile();
+        if (zip.exists()) {
+            assertTrue(zip.delete());
+        }
+        filesToDelete.add(zip);
+        return zip;
+    }
+
+    private String resolveDecompilerTypeForTest() throws Exception {
+        JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
+        if (plugin != null) {
+            String configured = plugin.getPreferenceStore().getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+            Optional<String> working = findWorkingDecompilerType(configured);
+            if (working.isPresent()) {
+                return working.get();
+            }
+        }
+
+        Optional<String> working = findWorkingDecompilerType(null);
+        return working.orElse("");
+    }
+
+    private Optional<String> findWorkingDecompilerType(String preferred) throws Exception {
+        IClassFile cf = anyTopLevelClassFile();
+        cf.open(new NullProgressMonitor());
+
+        List<String> candidates = new ArrayList<>();
+        if (preferred != null && !preferred.trim().isEmpty()) {
+            candidates.add(preferred.trim());
+        }
+
+        candidates.add("cfr");
+        candidates.add("CFR");
+        candidates.add("fernflower");
+        candidates.add("Fernflower");
+        candidates.add("procyon");
+        candidates.add("Procyon");
+        candidates.add("jd-core");
+        candidates.add("jdcore");
+        candidates.add("JD-Core");
+        candidates.add("JAD");
+        candidates.add("jad");
+
+        for (String candidate : candidates) {
+            try {
+                String result = DecompileUtil.decompile(cf, candidate, true, true, true);
+                if (result != null && !result.trim().isEmpty()) {
+                    return Optional.of(candidate);
+                }
+            } catch (Throwable t) {
+                // We keep trying candidates so our tests remain resilient across environments.
+            }
+        }
+        return Optional.empty();
+    }
+
+    private IClassFile anyTopLevelClassFile() throws Exception {
+        JarLayout layout = readJarLayout(jarFileOnDisk);
+        Optional<ClassLocation> anyTopLevel = layout.findAnyTopLevelClass();
+        if (!anyTopLevel.isPresent()) {
+            throw new IllegalStateException("test.jar should contain at least one top-level .class");
+        }
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(anyTopLevel.get().packageName);
+        if (!pkg.exists()) {
+            throw new IllegalStateException("Package does not exist: " + anyTopLevel.get().packageName);
+        }
+
+        IClassFile classFile = pkg.getClassFile(anyTopLevel.get().classFileName);
+        if (classFile == null || !classFile.exists()) {
+            throw new IllegalStateException("Class file does not exist: " + anyTopLevel.get().classFileName);
+        }
+        return classFile;
+    }
+
+    private static List<String> listZipEntries(File zipFile) throws Exception {
+        List<String> entries = new ArrayList<>();
+        try (ZipFile zip = new ZipFile(zipFile)) {
+            Enumeration<? extends ZipEntry> enumeration = zip.entries();
+            while (enumeration.hasMoreElements()) {
+                ZipEntry entry = enumeration.nextElement();
+                entries.add(entry.getName());
+            }
+        }
+        return entries;
+    }
+
+    private static void invokeExportPackageSources(ExportSourceAction action, IProgressMonitor monitor,
+            String decompilerType, boolean reuseBuf, boolean always, String projectFile, IJavaElement[] children,
+            List<IStatus> exceptions) throws Exception {
+        Method method = ExportSourceAction.class.getDeclaredMethod("exportPackageSources", IProgressMonitor.class,
+                String.class, boolean.class, boolean.class, String.class, IJavaElement[].class, List.class);
+        method.setAccessible(true);
+        method.invoke(action, monitor, decompilerType, reuseBuf, always, projectFile, children, exceptions);
+    }
+
+    private static void invokeEnsureParentDirectoryExists(File target) throws Exception {
+        Method method = ExportSourceAction.class.getDeclaredMethod("ensureParentDirectoryExists", File.class);
+        method.setAccessible(true);
+        method.invoke(null, target);
+    }
+
+    private static void invokeEnsureDirectoryExists(File dir) throws Exception {
+        Method method = ExportSourceAction.class.getDeclaredMethod("ensureDirectoryExists", File.class);
+        method.setAccessible(true);
+        method.invoke(null, dir);
+    }
+
+    private static void ensureParentDirectoryExistsForFile(File file) throws Exception {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            assertTrue(parent.mkdirs());
+        }
     }
 
     private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
@@ -268,6 +564,23 @@ public class ExportSourceActionTest {
         }
     }
 
+    private static void deleteRecursively(File file) throws Exception {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        if (!file.delete() && file.exists()) {
+            throw new IllegalStateException("Unable to delete: " + file.getAbsolutePath());
+        }
+    }
+
     private record PackagePair(String base, String sub) {
     }
 
@@ -308,6 +621,42 @@ public class ExportSourceActionTest {
                 return Optional.empty();
             }
             return Optional.of(topLevelClasses.get(0));
+        }
+    }
+
+    private static final class AlwaysCanceledProgressMonitor implements IProgressMonitor {
+
+        @Override
+        public void beginTask(String name, int totalWork) {
+        }
+
+        @Override
+        public void done() {
+        }
+
+        @Override
+        public void internalWorked(double work) {
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return true;
+        }
+
+        @Override
+        public void setCanceled(boolean value) {
+        }
+
+        @Override
+        public void setTaskName(String name) {
+        }
+
+        @Override
+        public void subTask(String name) {
+        }
+
+        @Override
+        public void worked(int work) {
         }
     }
 }
