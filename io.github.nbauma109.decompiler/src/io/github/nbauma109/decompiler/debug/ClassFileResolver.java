@@ -102,7 +102,6 @@ public final class ClassFileResolver {
                 }
             }
         } catch (JavaModelException e) {
-            return Optional.empty();
         }
         return Optional.empty();
     }
