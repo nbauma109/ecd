@@ -13,6 +13,8 @@ import java.io.File;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
+import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
+import io.github.nbauma109.decompiler.source.attach.attacher.SourceAttacher;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 
@@ -29,6 +31,10 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 
     public static SourceAttachPlugin getDefault() {
         return plugin;
+    }
+
+    public SourceAttacher getSourceAttacher() {
+        return (SourceAttacher) DecompilerAdapterManager.getAdapter(this, SourceAttacher.class);
     }
 
     /*

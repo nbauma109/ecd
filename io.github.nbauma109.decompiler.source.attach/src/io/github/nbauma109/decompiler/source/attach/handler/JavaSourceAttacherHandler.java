@@ -35,7 +35,6 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 
-import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
 import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.attacher.SourceAttacher;
 import io.github.nbauma109.decompiler.source.attach.finder.FinderManager;
@@ -264,7 +263,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     }
 
     public static boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) throws Exception {
-        final SourceAttacher attacher = getSourceAttacher();
+        final SourceAttacher attacher = SourceAttachPlugin.getDefault().getSourceAttacher();
         if (attacher == null) {
             Logger.info("No SourceAttacher implementation found for " + sourcePath); //$NON-NLS-1$
             return false;
@@ -286,10 +285,6 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         }
 
         return attached;
-    }
-
-    private static SourceAttacher getSourceAttacher() {
-        return (SourceAttacher) DecompilerAdapterManager.getAdapter(SourceAttachPlugin.getDefault(), SourceAttacher.class);
     }
 
     public static void clearRequests() {
