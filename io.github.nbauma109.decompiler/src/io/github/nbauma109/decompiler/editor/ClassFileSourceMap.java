@@ -70,7 +70,7 @@ public class ClassFileSourceMap {
         bufManager.addBuffer(buffer);
     }
 
-    static void updateSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, char[] markedSrc)
+    public static void updateSource(JavaDecompilerBufferManager bufferManager, ClassFile cf, char[] markedSrc)
             throws JavaModelException {
         IType type = cf.getType();
         if (!type.isBinary()) {
