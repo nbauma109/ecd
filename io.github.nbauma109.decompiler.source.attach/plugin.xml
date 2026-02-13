@@ -41,6 +41,21 @@
 
       </adapter>
     </adaptable>
+    <adaptable
+          class="io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin">
+      <adapter
+            class="io.github.nbauma109.decompiler.source.attach.attacher.InternalBasedSourceAttacherImpl36"
+            id="io.github.nbauma109.decompiler.source.attach.attacher.InternalBasedSourceAttacherImpl36"
+            singleton="true"
+            type="io.github.nbauma109.decompiler.source.attach.attacher.SourceAttacher"
+            priority="0">
+
+        <enablement>
+          <instanceof value="io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin"/>
+        </enablement>
+
+      </adapter>
+    </adaptable>
   </extension>
 
   <extension point="org.eclipse.ui.editorActions">

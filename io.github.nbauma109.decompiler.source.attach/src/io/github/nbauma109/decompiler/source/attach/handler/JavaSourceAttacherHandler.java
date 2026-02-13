@@ -16,7 +16,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
@@ -35,6 +34,9 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
+
+import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.attacher.SourceAttacher;
 import io.github.nbauma109.decompiler.source.attach.finder.FinderManager;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceCheck;
@@ -287,10 +289,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     }
 
     private static SourceAttacher getSourceAttacher() {
-        synchronized (JavaSourceAttacherHandler.class) {
-            return ServiceLoader.load(SourceAttacher.class,
-                    JavaSourceAttacherHandler.class.getClassLoader()).findFirst().orElse(null);
-        }
+        return (SourceAttacher) DecompilerAdapterManager.getAdapter(SourceAttachPlugin.getDefault(), SourceAttacher.class);
     }
 
     public static void clearRequests() {

@@ -12,6 +12,7 @@ import java.io.File;
 
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
+
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 
@@ -19,6 +20,16 @@ import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
  * The activator class controls the plug-in life cycle
  */
 public class SourceAttachPlugin extends AbstractUIPlugin {
+
+    private static SourceAttachPlugin plugin;
+
+    public SourceAttachPlugin() {
+        plugin = this;
+    }
+
+    public static SourceAttachPlugin getDefault() {
+        return plugin;
+    }
 
     /*
      * (non-Javadoc)
@@ -45,4 +56,9 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
         }
     }
 
+    @Override
+    public void stop(BundleContext context) throws Exception {
+        super.stop(context);
+        plugin = null;
+    }
 }
