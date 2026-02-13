@@ -10,8 +10,6 @@ package io.github.nbauma109.decompiler;
 
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IFileEditorMapping;
@@ -30,6 +28,7 @@ import org.eclipse.ui.internal.registry.EditorRegistry;
 import org.eclipse.ui.internal.registry.FileEditorMapping;
 
 import io.github.nbauma109.decompiler.actions.DecompileAction;
+import io.github.nbauma109.decompiler.debug.DecompilerSourceLookupBridge;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.util.ClassUtil;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -42,16 +41,11 @@ public class SetupRunnable implements Runnable {
         try {
             if (PlatformUI.getWorkbench() == null || PlatformUI.getWorkbench().getActiveWorkbenchWindow() == null
                     || PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage() == null) {
-                Display.getDefault().timerExec(1000, new Runnable() {
-
-                    @Override
-                    public void run() {
-                        SetupRunnable.this.run();
-                    }
-                });
+                Display.getDefault().timerExec(1000, SetupRunnable.this::run);
             } else {
                 checkClassFileAssociation();
                 setupPartListener();
+                DecompilerSourceLookupBridge.install();
             }
         } catch (Throwable e) {
             Logger.debug(e);
@@ -204,13 +198,9 @@ public class SetupRunnable implements Runnable {
             updateClassDefaultEditor();
 
             IPreferenceStore store = WorkbenchPlugin.getDefault().getPreferenceStore();
-            store.addPropertyChangeListener(new IPropertyChangeListener() {
-
-                @Override
-                public void propertyChange(PropertyChangeEvent event) {
-                    if (IPreferenceConstants.RESOURCES.equals(event.getProperty())) {
-                        updateClassDefaultEditor();
-                    }
+            store.addPropertyChangeListener(event -> {
+                if (IPreferenceConstants.RESOURCES.equals(event.getProperty())) {
+                    updateClassDefaultEditor();
                 }
             });
         }

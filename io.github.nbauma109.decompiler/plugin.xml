@@ -22,7 +22,7 @@
             symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
             filenames="*.class without source">
             <contentTypeBinding
-               contentTypeId="org.eclipse.jdt.core.javaClass"
+               contentTypeId="org.eclipse.jdt.core.javaClassFile"
             /> 
       </editor>
    </extension>
