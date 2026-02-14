@@ -44,11 +44,6 @@ public final class ClassFileResolver {
         if (breakpoint.isPresent()) {
             return resolveClassFileByTypeName(getBreakpointTypeName(breakpoint.get()));
         }
-
-        Optional<IStackFrame> plain = adapt(debugArtifact, IStackFrame.class);
-        if (plain.isPresent()) {
-            return Optional.empty();
-        }
         return Optional.empty();
     }
 
@@ -120,7 +115,6 @@ public final class ClassFileResolver {
                 }
             }
         } catch (JavaModelException e) {
-            return Optional.empty();
         }
         return Optional.empty();
     }
