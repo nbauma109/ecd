@@ -30,7 +30,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.jdt.junit.runtime,
  io.github.nbauma109.decompiler
 Bundle-Vendor: ECD Project Team
-Bundle-Version: 2025.12.7
+Bundle-Version: 2025.12.8
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: io.github.nbauma109.decompiler.tests;singleton:=true
 Eclipse-ExtensibleAPI: true
