@@ -88,8 +88,8 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void partBroughtToTop(IWorkbenchPart part) {
-                if (part instanceof JavaDecompilerClassFileEditor) {
-                    String code = ((JavaDecompilerClassFileEditor) part).getViewer().getDocument().get();
+                if (part instanceof JavaDecompilerClassFileEditor editor) {
+                    String code = editor.getViewer().getDocument().get();
                     if (ClassUtil.isDebug() != JavaDecompilerClassFileEditor.isDebug(code)) {
                         ((JavaDecompilerClassFileEditor) part).doSetInput(false);
                     }

@@ -233,8 +233,8 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
     }
 
     private IClassFile extractClassFile(Object sourceElement) {
-        if (sourceElement instanceof DecompiledClassFileSourceElement classFileSourceElement) {
-            return classFileSourceElement.classFile();
+        if (sourceElement instanceof DecompiledClassFileSourceElement(IClassFile classFile)) {
+            return classFile;
         }
         if (sourceElement instanceof IClassFile classFile) {
             return classFile;
@@ -243,8 +243,8 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
     }
 
     private Object unwrapSourceElement(Object sourceElement) {
-        if (sourceElement instanceof DecompiledClassFileSourceElement classFileSourceElement) {
-            return classFileSourceElement.classFile();
+        if (sourceElement instanceof DecompiledClassFileSourceElement(IClassFile classFile)) {
+            return classFile;
         }
         return sourceElement;
     }
@@ -261,16 +261,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         return Optional.empty();
     }
 
-    private static final class DecompiledClassFileSourceElement {
-        private final IClassFile classFile;
-
-        private DecompiledClassFileSourceElement(IClassFile classFile) {
-            this.classFile = classFile;
-        }
-
-        private IClassFile classFile() {
-            return classFile;
-        }
+    private record DecompiledClassFileSourceElement(IClassFile classFile) {
     }
 
     // --- delegate everything else to preserve source lookup behavior ---
