@@ -47,7 +47,6 @@ public final class ClassFileResolver {
 
         Optional<IStackFrame> plain = adapt(debugArtifact, IStackFrame.class);
         if (plain.isPresent()) {
-            return Optional.empty();
         }
         return Optional.empty();
     }
@@ -120,7 +119,6 @@ public final class ClassFileResolver {
                 }
             }
         } catch (JavaModelException e) {
-            return Optional.empty();
         }
         return Optional.empty();
     }
