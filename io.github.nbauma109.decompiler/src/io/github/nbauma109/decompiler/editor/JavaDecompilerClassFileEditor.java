@@ -24,6 +24,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.ISourceReference;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
@@ -359,10 +361,29 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     private String getPartTitle(String title) {
-        if (decompilerType == null || title == null || title.endsWith("]")) {
+        if (decompilerType == null || title == null || title.endsWith("]") || !shouldShowDecompilerInTitle()) {
             return title;
         }
         return title + " [" + Decompilers.valueOf(decompilerType).getName() + "]";
+    }
+
+    private boolean shouldShowDecompilerInTitle() {
+        if (!(getEditorInput() instanceof IClassFileEditorInput in)) {
+            return true;
+        }
+        IClassFile classFile = in.getClassFile();
+        if (classFile == null || !classFile.exists()) {
+            return true;
+        }
+        IJavaElement root = classFile.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
+        if (!(root instanceof IPackageFragmentRoot packageRoot)) {
+            return true;
+        }
+        try {
+            return packageRoot.getSourceAttachmentPath() == null;
+        } catch (JavaModelException e) {
+            return true;
+        }
     }
 
     @Override
