@@ -12,15 +12,19 @@ import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.model.IStackFrame;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaModel;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 
 public final class ClassFileResolver {
@@ -32,24 +36,44 @@ public final class ClassFileResolver {
 
     public static Optional<IClassFile> resolveClassFile(Object debugArtifact) {
         Optional<IJavaStackFrame> frame = adapt(debugArtifact, IJavaStackFrame.class);
-        if (!frame.isPresent()) {
-            Optional<IStackFrame> plain = adapt(debugArtifact, IStackFrame.class);
-            if (plain.isPresent()) {
-                return Optional.empty();
-            }
-            return Optional.empty();
+        if (frame.isPresent()) {
+            return resolveClassFileByTypeName(getDeclaringTypeName(frame.get()));
         }
 
-        String declaringTypeName;
-        try {
-            declaringTypeName = frame.get().getDeclaringTypeName();
-        } catch (DebugException e) {
-            return Optional.empty();
+        Optional<IJavaBreakpoint> breakpoint = adapt(debugArtifact, IJavaBreakpoint.class);
+        if (breakpoint.isPresent()) {
+            return resolveClassFileByTypeName(getBreakpointTypeName(breakpoint.get()));
         }
 
+        Optional<IStackFrame> plain = adapt(debugArtifact, IStackFrame.class);
+        if (plain.isPresent()) {
+            return Optional.empty();
+        }
+        return Optional.empty();
+    }
+
+    public static Optional<IClassFile> resolveClassFileByTypeName(String declaringTypeName) {
+        if (declaringTypeName == null || declaringTypeName.isBlank()) {
+            return Optional.empty();
+        }
         List<String> candidates = typeNameCandidates(declaringTypeName);
-
         return findBinaryClassFileInWorkspace(candidates);
+    }
+
+    private static String getDeclaringTypeName(IJavaStackFrame frame) {
+        try {
+            return frame.getDeclaringTypeName();
+        } catch (DebugException e) {
+            return null;
+        }
+    }
+
+    private static String getBreakpointTypeName(IJavaBreakpoint breakpoint) {
+        try {
+            return breakpoint.getTypeName();
+        } catch (CoreException e) {
+            return null;
+        }
     }
 
     public static boolean hasRealSource(IClassFile classFile) {
@@ -65,6 +89,21 @@ public final class ClassFileResolver {
                 return true;
             }
             return !source.trim().isEmpty();
+        } catch (JavaModelException e) {
+            return false;
+        }
+    }
+
+    public static boolean hasAttachedSource(IClassFile classFile) {
+        if (classFile == null || !classFile.exists()) {
+            return false;
+        }
+        IJavaElement root = classFile.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
+        if (!(root instanceof IPackageFragmentRoot packageRoot)) {
+            return false;
+        }
+        try {
+            return packageRoot.getSourceAttachmentPath() != null;
         } catch (JavaModelException e) {
             return false;
         }

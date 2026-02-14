@@ -28,6 +28,7 @@ import org.eclipse.ui.internal.registry.EditorRegistry;
 import org.eclipse.ui.internal.registry.FileEditorMapping;
 
 import io.github.nbauma109.decompiler.actions.DecompileAction;
+import io.github.nbauma109.decompiler.debug.BreakpointPresentationBridge;
 import io.github.nbauma109.decompiler.debug.DecompilerSourceLookupBridge;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.util.ClassUtil;
@@ -46,6 +47,7 @@ public class SetupRunnable implements Runnable {
                 checkClassFileAssociation();
                 setupPartListener();
                 DecompilerSourceLookupBridge.install();
+                BreakpointPresentationBridge.install();
             }
         } catch (Throwable e) {
             Logger.debug(e);

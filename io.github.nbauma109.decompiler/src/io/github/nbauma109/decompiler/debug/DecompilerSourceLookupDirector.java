@@ -16,15 +16,26 @@ import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupParticipant;
 import org.eclipse.debug.core.sourcelookup.ISourcePathComputer;
+import org.eclipse.debug.ui.DebugUITools;
+import org.eclipse.debug.ui.IDebugModelPresentation;
+import org.eclipse.debug.ui.ISourcePresentation;
 import org.eclipse.debug.ui.sourcelookup.CommonSourceNotFoundEditorInput;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
+import org.eclipse.ui.IEditorInput;
 
-public final class DecompilerSourceLookupDirector implements ISourceLookupDirector {
+import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+
+public final class DecompilerSourceLookupDirector implements ISourceLookupDirector, ISourcePresentation {
+
+    private static final String JAVA_DEBUG_MODEL_ID = "org.eclipse.jdt.debug"; //$NON-NLS-1$
 
     private final ISourceLookupDirector delegate;
+    private final ISourcePresentation delegatePresentation;
 
     public DecompilerSourceLookupDirector(ISourceLookupDirector delegate) {
         this.delegate = delegate;
+        this.delegatePresentation = delegate instanceof ISourcePresentation presentation ? presentation : null;
     }
 
     @Override
@@ -35,6 +46,9 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
 
         Optional<IClassFile> classFile = ClassFileResolver.resolveClassFile(stackFrame);
+        if (!classFile.isPresent() && fromDelegate instanceof IClassFile fromDelegateClassFile) {
+            classFile = Optional.of(fromDelegateClassFile);
+        }
         if (!classFile.isPresent()) {
             return fromDelegate;
         }
@@ -44,9 +58,9 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
 
         boolean decompiled = DecompileBufferPopulator.ensureDecompiled(classFile.get());
-        if (decompiled && ClassFileResolver.hasRealSource(classFile.get())) {
+        if (decompiled) {
             delegate.clearSourceElements(stackFrame);
-            return classFile.get();
+            return new DecompiledClassFileSourceElement(classFile.get());
         }
 
         return fromDelegate;
@@ -60,6 +74,9 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
 
         Optional<IClassFile> classFile = ClassFileResolver.resolveClassFile(element);
+        if (!classFile.isPresent() && fromDelegate instanceof IClassFile fromDelegateClassFile) {
+            classFile = Optional.of(fromDelegateClassFile);
+        }
         if (!classFile.isPresent()) {
             return fromDelegate;
         }
@@ -69,9 +86,9 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
 
         boolean decompiled = DecompileBufferPopulator.ensureDecompiled(classFile.get());
-        if (decompiled && ClassFileResolver.hasRealSource(classFile.get())) {
+        if (decompiled) {
             delegate.clearSourceElements(element);
-            return classFile.get();
+            return new DecompiledClassFileSourceElement(classFile.get());
         }
 
         return fromDelegate;
@@ -86,6 +103,9 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
 
         Optional<IClassFile> classFile = ClassFileResolver.resolveClassFile(object);
         if (!classFile.isPresent()) {
+            classFile = firstClassFile(fromDelegate);
+        }
+        if (!classFile.isPresent()) {
             return fromDelegate;
         }
 
@@ -94,12 +114,80 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
 
         boolean decompiled = DecompileBufferPopulator.ensureDecompiled(classFile.get());
-        if (decompiled && ClassFileResolver.hasRealSource(classFile.get())) {
+        if (decompiled) {
             delegate.clearSourceElements(object);
-            return new Object[] { classFile.get() };
+            return new Object[] { new DecompiledClassFileSourceElement(classFile.get()) };
         }
 
         return fromDelegate;
+    }
+
+    @Override
+    public IEditorInput getEditorInput(Object sourceElement) {
+        IClassFile classFile = extractClassFile(sourceElement);
+        if (shouldUseDecompilerEditor(sourceElement) && classFile != null) {
+            IEditorInput editorInput = EditorUtility.getEditorInput(classFile);
+            if (editorInput != null) {
+                return editorInput;
+            }
+        }
+
+        Object unwrappedSourceElement = unwrapSourceElement(sourceElement);
+        if (delegatePresentation != null) {
+            IEditorInput editorInput = delegatePresentation.getEditorInput(unwrappedSourceElement);
+            if (editorInput != null) {
+                return editorInput;
+            }
+        }
+
+        IDebugModelPresentation modelPresentation = DebugUITools.newDebugModelPresentation(JAVA_DEBUG_MODEL_ID);
+        try {
+            IEditorInput editorInput = modelPresentation.getEditorInput(unwrappedSourceElement);
+            if (editorInput != null) {
+                return editorInput;
+            }
+        } finally {
+            modelPresentation.dispose();
+        }
+
+        modelPresentation = DebugUITools.newDebugModelPresentation();
+        try {
+            return modelPresentation.getEditorInput(unwrappedSourceElement);
+        } finally {
+            modelPresentation.dispose();
+        }
+    }
+
+    @Override
+    public String getEditorId(IEditorInput editorInput, Object sourceElement) {
+        if (shouldUseDecompilerEditor(sourceElement)) {
+            return JavaDecompilerPlugin.EDITOR_ID;
+        }
+
+        Object unwrappedSourceElement = unwrapSourceElement(sourceElement);
+        if (delegatePresentation != null) {
+            String editorId = delegatePresentation.getEditorId(editorInput, unwrappedSourceElement);
+            if (editorId != null) {
+                return editorId;
+            }
+        }
+
+        IDebugModelPresentation modelPresentation = DebugUITools.newDebugModelPresentation(JAVA_DEBUG_MODEL_ID);
+        try {
+            String editorId = modelPresentation.getEditorId(editorInput, unwrappedSourceElement);
+            if (editorId != null) {
+                return editorId;
+            }
+        } finally {
+            modelPresentation.dispose();
+        }
+
+        modelPresentation = DebugUITools.newDebugModelPresentation();
+        try {
+            return modelPresentation.getEditorId(editorInput, unwrappedSourceElement);
+        } finally {
+            modelPresentation.dispose();
+        }
     }
 
     private boolean containsRealSourceResult(Object[] elements) {
@@ -119,11 +207,70 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
             return false;
         }
 
+        if (result instanceof DecompiledClassFileSourceElement) {
+            return true;
+        }
+
         if (result instanceof IClassFile classFile) {
-            return ClassFileResolver.hasRealSource(classFile);
+            return ClassFileResolver.hasRealSource(classFile) || DecompileBufferPopulator.wasDecompiled(classFile);
+        }
+
+        if (result.getClass().getName().endsWith(".SourceNotFoundEditorInput")) { //$NON-NLS-1$
+            return false;
         }
 
         return !(result instanceof CommonSourceNotFoundEditorInput);
+    }
+
+    private boolean shouldUseDecompilerEditor(Object sourceElement) {
+        if (sourceElement instanceof DecompiledClassFileSourceElement) {
+            return true;
+        }
+        if (sourceElement instanceof IClassFile classFile) {
+            return DecompileBufferPopulator.wasDecompiled(classFile) || !ClassFileResolver.hasAttachedSource(classFile);
+        }
+        return false;
+    }
+
+    private IClassFile extractClassFile(Object sourceElement) {
+        if (sourceElement instanceof DecompiledClassFileSourceElement classFileSourceElement) {
+            return classFileSourceElement.classFile();
+        }
+        if (sourceElement instanceof IClassFile classFile) {
+            return classFile;
+        }
+        return null;
+    }
+
+    private Object unwrapSourceElement(Object sourceElement) {
+        if (sourceElement instanceof DecompiledClassFileSourceElement classFileSourceElement) {
+            return classFileSourceElement.classFile();
+        }
+        return sourceElement;
+    }
+
+    private Optional<IClassFile> firstClassFile(Object[] sourceElements) {
+        if (sourceElements == null || sourceElements.length == 0) {
+            return Optional.empty();
+        }
+        for (Object sourceElement : sourceElements) {
+            if (sourceElement instanceof IClassFile classFile) {
+                return Optional.of(classFile);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static final class DecompiledClassFileSourceElement {
+        private final IClassFile classFile;
+
+        private DecompiledClassFileSourceElement(IClassFile classFile) {
+            this.classFile = classFile;
+        }
+
+        private IClassFile classFile() {
+            return classFile;
+        }
     }
 
     // --- delegate everything else to preserve source lookup behavior ---

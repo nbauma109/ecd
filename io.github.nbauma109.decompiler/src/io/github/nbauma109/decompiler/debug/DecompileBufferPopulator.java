@@ -7,6 +7,9 @@
  *******************************************************************************/
 package io.github.nbauma109.decompiler.debug;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.JavaModelException;
@@ -19,6 +22,8 @@ import io.github.nbauma109.decompiler.editor.DecompilerSourceMapper;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerBufferManager;
 
 public final class DecompileBufferPopulator {
+
+    private static final Set<String> DECOMPILED_CLASSFILES = ConcurrentHashMap.newKeySet();
 
     private DecompileBufferPopulator() {
     }
@@ -54,11 +59,16 @@ public final class DecompileBufferPopulator {
                 ClassFileSourceMap.updateSource(bufferManager, cf, source);
             }
 
+            DECOMPILED_CLASSFILES.add(classFile.getHandleIdentifier());
             return true;
         } catch (JavaModelException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "");
             return false;
         }
+    }
+
+    public static boolean wasDecompiled(IClassFile classFile) {
+        return classFile != null && DECOMPILED_CLASSFILES.contains(classFile.getHandleIdentifier());
     }
 
     private static JavaDecompilerBufferManager bufferManager() {
