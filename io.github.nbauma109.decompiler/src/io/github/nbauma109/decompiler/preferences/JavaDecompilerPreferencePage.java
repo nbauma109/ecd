@@ -10,9 +10,11 @@ package io.github.nbauma109.decompiler.preferences;
 
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -21,10 +23,21 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.actions.DecompileAction;
+import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.editor.DecompilerType;
 import io.github.nbauma109.decompiler.i18n.Messages;
+import io.github.nbauma109.decompiler.util.UIUtil;
 
 public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
+
+    private static final String[] REFRESHABLE_PREFERENCES = {
+            JavaDecompilerPlugin.DECOMPILER_TYPE, JavaDecompilerPlugin.REUSE_BUFFER, JavaDecompilerPlugin.ATTACH_SOURCE,
+            JavaDecompilerPlugin.WAIT_FOR_SOURCES, JavaDecompilerPlugin.EXCLUDE_PACKAGES,
+            JavaDecompilerPlugin.IGNORE_EXISTING, JavaDecompilerPlugin.PREF_DISPLAY_METADATA,
+            JavaDecompilerPlugin.USE_ECLIPSE_FORMATTER, JavaDecompilerPlugin.USE_ECLIPSE_SORTER,
+            JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS, JavaDecompilerPlugin.ALIGN,
+            JavaDecompilerPlugin.EXPORT_ENCODING, JavaDecompilerPlugin.DEFAULT_EDITOR };
 
     private CheckFieldEditor optionLncEditor;
     private CheckFieldEditor alignEditor;
@@ -227,6 +240,44 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
                 JavaDecompilerPlugin.getDefault().getDefaultExportEncoding());
         encodingEditor.load();
         encodingEditor.loadDefault();
+    }
+
+    @Override
+    protected void performApply() {
+        String previousSnapshot = getPreferenceSnapshot();
+        super.performApply();
+        refreshDecompiledSource(previousSnapshot);
+    }
+
+    @Override
+    public boolean performOk() {
+        String previousSnapshot = getPreferenceSnapshot();
+        boolean result = super.performOk();
+        if (result) {
+            refreshDecompiledSource(previousSnapshot);
+        }
+        return result;
+    }
+
+    private String getPreferenceSnapshot() {
+        IPreferenceStore store = getPreferenceStore();
+        StringBuilder snapshot = new StringBuilder();
+        for (String preferenceKey : REFRESHABLE_PREFERENCES) {
+            snapshot.append(preferenceKey).append('=').append(store.getString(preferenceKey)).append(';');
+        }
+        return snapshot.toString();
+    }
+
+    private void refreshDecompiledSource(String previousSnapshot) {
+        if (!previousSnapshot.equals(getPreferenceSnapshot())) {
+            new DecompileAction().run();
+            Display.getDefault().asyncExec(() -> {
+                JavaDecompilerClassFileEditor editor = UIUtil.getActiveDecompilerEditor();
+                if (editor != null) {
+                    editor.refreshSemanticHighlighting();
+                }
+            });
+        }
     }
 
     @Override
