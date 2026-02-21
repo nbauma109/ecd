@@ -8,7 +8,6 @@
 
 package io.github.nbauma109.decompiler.extension;
 
-import java.lang.reflect.Proxy;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -227,8 +226,7 @@ public class DecompilerAdapterManager {
         if (adapterObjects.size() == 1) {
             return adapterObjects.get(0);
         }
-        return Proxy.newProxyInstance(adapterType.getClassLoader(), new Class[] { adapterType },
-                new DecompilerAdapterInvocationHandler(adapterObjects));
+        throw new IllegalStateException("Multiple adapters are not supported");
     }
 
     private static List getAdapterList(Object adaptableObject, Class<?> adapterType) {
