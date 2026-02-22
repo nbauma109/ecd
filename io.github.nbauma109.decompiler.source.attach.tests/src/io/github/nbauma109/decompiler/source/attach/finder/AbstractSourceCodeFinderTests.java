@@ -2,6 +2,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,7 +39,19 @@ public abstract class AbstractSourceCodeFinderTests {
         testFind(serviceUrl, gavUrl, fileName);
     }
 
+    protected void testFindOsgiServiceEventWithLeadingZeroSha1(String serviceUrl) throws IOException {
+        String gavUrl = "https://repo1.maven.org/maven2/org/osgi/org.osgi.service.event/1.4.1/";
+        String fileName = "org.osgi.service.event-1.4.1";
+        String expectedBinSha1 = "0f6d98f06834a911d04be512b751de3563d6b909";
+        testFind(serviceUrl, gavUrl, fileName, expectedBinSha1);
+    }
+
     protected void testFind(String serviceUrl, String gavUrl, String fileName)
+            throws IOException {
+        testFind(serviceUrl, gavUrl, fileName, null);
+    }
+
+    protected void testFind(String serviceUrl, String gavUrl, String fileName, String expectedBinSha1)
             throws IOException {
         AbstractSourceCodeFinder directLinkSourceCodeFinder = newSourceCodeFinder(serviceUrl);
         List<SourceFileResult> results = new ArrayList<>();
@@ -51,6 +64,10 @@ public abstract class AbstractSourceCodeFinderTests {
         FileUtils.copyURLToFile(srcUrl, srcFile);
         if (jarFile.exists()) {
             String sha1 = HashUtils.sha1Hash(jarFile);
+            if (expectedBinSha1 != null) {
+                assertEquals(expectedBinSha1, sha1);
+                assertTrue("Expected SHA-1 to start with 0 but was " + sha1, sha1.startsWith("0"));
+            }
             directLinkSourceCodeFinder.find(jarFile.getAbsolutePath(), sha1, results);
             assertNotNull(results);
             assertEquals(1, results.size());
