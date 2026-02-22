@@ -30,6 +30,7 @@ import org.osgi.framework.BundleContext;
 import io.github.nbauma109.decompiler.actions.BaseDecompilerHandler;
 import io.github.nbauma109.decompiler.editor.BaseDecompilerSourceMapper;
 import io.github.nbauma109.decompiler.editor.DecompilerSourceMapper;
+import io.github.nbauma109.decompiler.editor.DecompilerType;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerBufferManager;
 import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
 import io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler;
@@ -140,6 +141,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
         store.setDefault(IGNORE_EXISTING, false);
         store.setDefault(USE_ECLIPSE_FORMATTER, true);
         store.setDefault(USE_ECLIPSE_SORTER, false);
+        store.setDefault(DECOMPILER_TYPE, DecompilerType.getDefault()); //$NON-NLS-1$
         store.setDefault(PREF_DISPLAY_METADATA, false);
         store.setDefault(DEFAULT_EDITOR, true);
         store.setDefault(ATTACH_SOURCE, true);

@@ -11,6 +11,7 @@ package io.github.nbauma109.decompiler.editor;
 import java.util.Set;
 
 import com.heliosdecompiler.transformerapi.StandardTransformers;
+import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
 
 public class DecompilerType {
 
@@ -20,4 +21,8 @@ public class DecompilerType {
     public static Set<String> getDecompilerTypes() {
         return StandardTransformers.Decompilers.AVAILABLE_DECOMPILERS;
     }
+
+    public static String getDefault() {
+		return Decompilers.valueOf("").getName();
+	}
 }
