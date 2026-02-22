@@ -33,6 +33,8 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL)) {
             finders.add(new MavenRepoSourceCodeFinder());
+        }
+        if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_SONATYPE_CENTRAL)) {
             finders.add(new SonatypeSourceCodeFinder());
         }
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_OSS_SONATYPE_ORG)) {
