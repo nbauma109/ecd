@@ -11,6 +11,11 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
         testFindAsmUtil(null);
     }
 
+    @Test
+    public void testFindWithLeadingZeroSha1() throws IOException {
+        testFindAsmAnalysis(null);
+    }
+
     @Override
     protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
         return new MavenRepoSourceCodeFinder();

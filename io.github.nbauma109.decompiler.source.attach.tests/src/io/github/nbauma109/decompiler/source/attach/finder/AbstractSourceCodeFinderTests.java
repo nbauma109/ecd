@@ -2,6 +2,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +36,12 @@ public abstract class AbstractSourceCodeFinderTests {
     protected void testFindJunit(String serviceUrl) throws IOException {
         String gavUrl = "https://maven.alfresco.com/nexus/content/groups/public/junit/junit/4.11-20120805-1225/";
         String fileName = "junit-4.11-20120805-1225";
+        testFind(serviceUrl, gavUrl, fileName);
+    }
+
+    protected void testFindAsmAnalysis(String serviceUrl) throws IOException {
+        String gavUrl = "https://repo1.maven.org/maven2/org/ow2/asm/asm-analysis/9.9/";
+        String fileName = "asm-analysis-9.9";
         testFind(serviceUrl, gavUrl, fileName);
     }
 
