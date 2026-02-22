@@ -39,9 +39,9 @@ public abstract class AbstractSourceCodeFinderTests {
         testFind(serviceUrl, gavUrl, fileName);
     }
 
-    protected void testFindOsgiServiceEventWithLeadingZeroSha1(String serviceUrl) throws IOException {
-        String gavUrl = "https://repo1.maven.org/maven2/org/osgi/org.osgi.service.event/1.4.1/";
-        String fileName = "org.osgi.service.event-1.4.1";
+    protected void testFindAsmAnalysis(String serviceUrl) throws IOException {
+        String gavUrl = "https://repo1.maven.org/maven2/org/ow2/asm/asm-analysis/9.9/";
+        String fileName = "asm-analysis-9.9";
         testFind(serviceUrl, gavUrl, fileName);
     }
 

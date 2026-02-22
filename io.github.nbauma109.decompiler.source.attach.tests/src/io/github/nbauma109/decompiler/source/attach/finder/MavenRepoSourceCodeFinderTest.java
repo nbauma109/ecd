@@ -13,7 +13,7 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
 
     @Test
     public void testFindWithLeadingZeroSha1() throws IOException {
-        testFindOsgiServiceEventWithLeadingZeroSha1(null);
+        testFindAsmAnalysis(null);
     }
 
     @Override
