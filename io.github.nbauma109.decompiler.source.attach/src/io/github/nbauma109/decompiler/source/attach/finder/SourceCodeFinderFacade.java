@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 Chen Chao and other ECD project contributors.
+ * Copyright (c) 2026 nbauma109.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,6 +33,7 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL)) {
             finders.add(new MavenRepoSourceCodeFinder());
+            finders.add(new SonatypeSourceCodeFinder());
         }
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_OSS_SONATYPE_ORG)) {
             finders.add(new NexusSourceCodeFinder(HTTPS_OSS_SONATYPE_ORG_INDEX_HTML));
