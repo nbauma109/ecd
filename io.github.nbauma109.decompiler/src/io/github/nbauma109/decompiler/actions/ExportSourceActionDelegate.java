@@ -20,8 +20,8 @@ public class ExportSourceActionDelegate extends ActionDelegate implements IEdito
 
     @Override
     public void setActiveEditor(IAction action, IEditorPart targetEditor) {
-        if (targetEditor instanceof JavaDecompilerClassFileEditor) {
-            editor = (JavaDecompilerClassFileEditor) targetEditor;
+        if (targetEditor instanceof JavaDecompilerClassFileEditor javaDecompilerClassFileEditor) {
+            editor = javaDecompilerClassFileEditor;
         }
     }
 

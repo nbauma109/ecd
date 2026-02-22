@@ -395,8 +395,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     protected JavaDecompilerBufferManager getBufferManager() {
         JavaDecompilerBufferManager manager;
         BufferManager defManager = BufferManager.getDefaultBufferManager();
-        if (defManager instanceof JavaDecompilerBufferManager) {
-            manager = (JavaDecompilerBufferManager) defManager;
+        if (defManager instanceof JavaDecompilerBufferManager javaDecompilerBufferManager) {
+            manager = javaDecompilerBufferManager;
         } else {
             manager = new JavaDecompilerBufferManager(defManager);
         }

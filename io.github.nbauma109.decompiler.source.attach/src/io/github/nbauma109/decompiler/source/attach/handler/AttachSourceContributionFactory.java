@@ -33,7 +33,7 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
 
     @Override
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
-        final ISelectionService selService = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+        final ISelectionService selService = serviceLocator.getService(ISelectionService.class);
         final List selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
         boolean attachRoot = (selectedJars.size() == 1);
         if (attachRoot) {
@@ -100,8 +100,7 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
     private Iterator getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
-        if ((selection != null) && (selection instanceof IStructuredSelection)) {
-            IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+        if ((selection != null) && (selection instanceof IStructuredSelection structuredSelection)) {
             return structuredSelection.iterator();
         }
 

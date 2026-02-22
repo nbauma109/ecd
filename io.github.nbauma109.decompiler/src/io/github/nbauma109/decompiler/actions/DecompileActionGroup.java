@@ -9,7 +9,6 @@
 package io.github.nbauma109.decompiler.actions;
 
 import java.util.Arrays;
-import java.util.Iterator;
 
 import org.eclipse.core.runtime.PerformanceStats;
 import org.eclipse.jdt.core.ITypeRoot;
@@ -19,7 +18,6 @@ import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IContributionItem;
-import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
@@ -97,13 +95,7 @@ public class DecompileActionGroup extends ActionGroup {
         if (fEditor != null) {
             final ITypeRoot element = getEditorInput();
             if (element != null && ActionUtil.isOnBuildPath(element)) {
-                mainSubmenu.addMenuListener(new IMenuListener() {
-
-                    @Override
-                    public void menuAboutToShow(IMenuManager manager) {
-                        showMenu(manager);
-                    }
-                });
+                mainSubmenu.addMenuListener(this::showMenu);
                 menu.appendToGroup(fGroupName, new Separator());
                 menu.appendToGroup(fGroupName, mainSubmenu);
                 menu.appendToGroup(fGroupName, new Separator());
@@ -119,13 +111,7 @@ public class DecompileActionGroup extends ActionGroup {
         if (fEditor != null) {
             final ITypeRoot element = getEditorInput();
             if (element != null && ActionUtil.isOnBuildPath(element)) {
-                sourceSubmenu.addMenuListener(new IMenuListener() {
-
-                    @Override
-                    public void menuAboutToShow(IMenuManager manager) {
-                        showMenu(manager);
-                    }
-                });
+                sourceSubmenu.addMenuListener(this::showMenu);
                 menu.appendToGroup(fGroupName, new Separator());
                 menu.appendToGroup(fGroupName, sourceSubmenu);
                 menu.appendToGroup(fGroupName, new Separator());
@@ -134,12 +120,11 @@ public class DecompileActionGroup extends ActionGroup {
     }
 
     private void showMenu(IMenuManager submenu) {
-        for (Iterator<IContributionItem> iter = Arrays.asList(submenu.getItems()).iterator(); iter.hasNext();) {
-            IContributionItem item = iter.next();
-            if (item instanceof ActionContributionItem) {
-                IAction action = ((ActionContributionItem) item).getAction();
-                if (action instanceof IUpdate) {
-                    ((IUpdate) action).update();
+        for (IContributionItem item : Arrays.asList(submenu.getItems())) {
+            if (item instanceof ActionContributionItem actionContributionItem) {
+                IAction action = actionContributionItem.getAction();
+                if (action instanceof IUpdate iUpdate) {
+                    iUpdate.update();
                 }
             }
         }

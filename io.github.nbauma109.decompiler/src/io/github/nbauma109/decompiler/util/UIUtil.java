@@ -211,7 +211,7 @@ public class UIUtil {
         try {
             IWorkbenchPart view = getActiveEditor(true);
             if (view != null) {
-                if (view.getSite().getId().equals("org.eclipse.ui.navigator.ProjectExplorer")) //$NON-NLS-1$
+                if ("org.eclipse.ui.navigator.ProjectExplorer".equals(view.getSite().getId())) //$NON-NLS-1$
                 {
                     CommonNavigator explorer = (CommonNavigator) view;
                     Field field = CommonNavigator.class.getDeclaredField("commonManager"); //$NON-NLS-1$
@@ -227,7 +227,7 @@ public class UIUtil {
                             isFlat = model.getBooleanProperty(Values.IS_LAYOUT_FLAT);
                         }
                     }
-                } else if (view.getSite().getId().equals("org.eclipse.jdt.ui.PackageExplorer")) //$NON-NLS-1$
+                } else if ("org.eclipse.jdt.ui.PackageExplorer".equals(view.getSite().getId())) //$NON-NLS-1$
                 {
                     PackageExplorerPart explorer = (PackageExplorerPart) view;
                     isFlat = explorer.isFlatLayout();

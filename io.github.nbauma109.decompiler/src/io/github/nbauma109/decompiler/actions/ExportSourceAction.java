@@ -98,10 +98,10 @@ public class ExportSourceAction extends Action {
             }
         } else {
             IPackageFragmentRoot root = null;
-            if (firstElement instanceof IClassFile) {
-                root = (IPackageFragmentRoot) ((IClassFile) firstElement).getParent().getParent();
-            } else if (firstElement instanceof IPackageFragment) {
-                root = (IPackageFragmentRoot) ((IPackageFragment) firstElement).getParent();
+            if (firstElement instanceof IClassFile iClassFile) {
+                root = (IPackageFragmentRoot) iClassFile.getParent().getParent();
+            } else if (firstElement instanceof IPackageFragment iPackageFragment) {
+                root = (IPackageFragmentRoot) iPackageFragment.getParent();
             }
             if (root == null) {
                 return;
