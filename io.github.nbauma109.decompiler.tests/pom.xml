@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.nbauma109</groupId>
     <artifactId>io.github.nbauma109.ecd</artifactId>
-    <version>2025.12.9</version>
+    <version>2025.12.10</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
