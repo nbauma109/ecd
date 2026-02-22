@@ -1,7 +1,8 @@
-jdk:
-  - openjdk21
-
 install:
+  - . ~/.sdkman/bin/sdkman-init.sh
+  - sdk install java 21.0.10-oracle
+  - sdk use java 21.0.10-oracle
+  - export JAVA_HOME=~/.sdkman/candidates/java/current
   - export M3_VERSION=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/apache/maven/releases/latest | sed 's,https://github.com/apache/maven/releases/tag/maven-,,g')
   - export MVN_DIR="/home/jitpack/tools/apache-maven-${M3_VERSION}"
   - mkdir -p "$MVN_DIR"
