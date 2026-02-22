@@ -11,12 +11,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class HashUtils {
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     public static String sha1Hash(File file) {
         if (file != null) {
@@ -30,12 +30,20 @@ public class HashUtils {
     }
 
     private static String hexDigestOfStream(InputStream in, MessageDigest digest) throws IOException {
-        DigestInputStream din = new DigestInputStream(in, digest);
-        byte[] buffer = new byte[4096 * 8];
-        while (din.read(buffer) >= 0) {
-
+        try (DigestInputStream din = new DigestInputStream(in, digest)) {
+            byte[] buffer = new byte[4096 * 8];
+            while (din.read(buffer) >= 0) {
+                // consume stream to update digest
+            }
         }
-        return new BigInteger(1, digest.digest()).toString(16);
+        byte[] hash = digest.digest();
+        char[] hex = new char[hash.length * 2];
+        for (int i = 0; i < hash.length; i++) {
+            int v = hash[i] & 0xFF;
+            hex[i * 2] = HEX[v >>> 4];
+            hex[i * 2 + 1] = HEX[v & 0x0F];
+        }
+        return new String(hex);
     }
 
 }
