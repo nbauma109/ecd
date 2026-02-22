@@ -2,7 +2,7 @@
 <feature
       id="io.github.nbauma109.decompiler"
       label="%featureName"
-      version="2025.12.8"
+      version="2025.12.9"
       provider-name="%providerName"
       plugin="io.github.nbauma109.decompiler">
 
@@ -49,7 +49,7 @@
          id="io.github.nbauma109.decompiler"
          download-size="0"
          install-size="0"
-         version="2025.12.8"
+         version="2025.12.9"
          unpack="false"/>
 
 </feature>
