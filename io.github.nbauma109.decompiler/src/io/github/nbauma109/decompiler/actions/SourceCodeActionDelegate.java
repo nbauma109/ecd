@@ -20,8 +20,8 @@ public class SourceCodeActionDelegate extends ActionDelegate implements IEditorA
 
     @Override
     public void setActiveEditor(IAction action, IEditorPart targetEditor) {
-        if (targetEditor instanceof JavaDecompilerClassFileEditor) {
-            editor = (JavaDecompilerClassFileEditor) targetEditor;
+        if (targetEditor instanceof JavaDecompilerClassFileEditor javaDecompilerClassFileEditor) {
+            editor = javaDecompilerClassFileEditor;
             action.setChecked(true);
         }
     }

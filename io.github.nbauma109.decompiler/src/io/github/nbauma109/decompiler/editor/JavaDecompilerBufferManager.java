@@ -22,11 +22,11 @@ public class JavaDecompilerBufferManager extends BufferManager {
 
     public static void closeDecompilerBuffers(boolean all) {
         BufferManager manager = BufferManager.getDefaultBufferManager();
-        if (manager instanceof JavaDecompilerBufferManager) {
+        if (manager instanceof JavaDecompilerBufferManager javaDecompilerBufferManager) {
             Enumeration enumeration = manager.getOpenBuffers();
             while (enumeration.hasMoreElements()) {
                 IBuffer buffer = (IBuffer) enumeration.nextElement();
-                ((JavaDecompilerBufferManager) manager).removeBuffer(buffer);
+                javaDecompilerBufferManager.removeBuffer(buffer);
             }
         }
     }
