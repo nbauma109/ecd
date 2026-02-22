@@ -23,6 +23,6 @@ public class DecompilerType {
     }
 
     public static String getDefault() {
-		return Decompilers.valueOf("").getName();
+		return Decompilers.getDefault().getName();
 	}
 }
