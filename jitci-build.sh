@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-export JAVA_HOME="/home/jitpack/tools/jdk21"
+export JAVA_HOME=~/.sdkman/candidates/java/current
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 
