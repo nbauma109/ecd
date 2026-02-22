@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-export JAVA_HOME="/home/jitpack/tools/jdk21"
+. ~/.sdkman/bin/sdkman-init.sh
+sdk install java 21.0.10-oracle
+sdk use java 21.0.10-oracle
+
 echo "JAVA_HOME=$JAVA_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
