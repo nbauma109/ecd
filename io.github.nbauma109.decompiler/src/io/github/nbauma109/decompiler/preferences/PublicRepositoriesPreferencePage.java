@@ -21,6 +21,7 @@ import io.github.nbauma109.decompiler.i18n.Messages;
 public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
     private static final String HTTPS_SEARCH_MAVEN_ORG = "https://search.maven.org"; // $NON-NLS-1$
+    private static final String HTTPS_CENTRAL_SONATYPE_ORG = "https://sonatype.central.com"; // $NON-NLS-1$
     private static final String HTTPS_REPOSITORY_CLOUDERA = "https://repository.cloudera.com/artifactory/webapp/home.html"; // $NON-NLS-1$
     private static final String HTTPS_NEXUS_XWIKI_ORG = "https://nexus.xwiki.org/nexus"; // $NON-NLS-1$
     private static final String HTTPS_MAVEN_ALFRESCO = "https://maven.alfresco.com/nexus"; // $NON-NLS-1$
@@ -41,6 +42,7 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
         g.setLayoutData(gd);
 
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL, HTTPS_SEARCH_MAVEN_ORG, g));
+        addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_SONATYPE_CENTRAL, HTTPS_CENTRAL_SONATYPE_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA, HTTPS_REPOSITORY_CLOUDERA, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG, HTTPS_NEXUS_XWIKI_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO, HTTPS_MAVEN_ALFRESCO, g));

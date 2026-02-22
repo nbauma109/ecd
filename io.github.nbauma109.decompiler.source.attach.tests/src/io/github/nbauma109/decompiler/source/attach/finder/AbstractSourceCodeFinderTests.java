@@ -2,7 +2,6 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +44,13 @@ public abstract class AbstractSourceCodeFinderTests {
         testFind(serviceUrl, gavUrl, fileName);
     }
 
-    protected void testFind(String serviceUrl, String gavUrl, String fileName)
+    protected void testFindOSGIServiceEvent(String serviceUrl) throws IOException {
+        String gavUrl = "https://repo1.maven.org/maven2/org/osgi/org.osgi.service.event/1.4.1/"; //$NON-NLS-1$
+        String fileName = "org.osgi.service.event-1.4.1"; //$NON-NLS-1$
+        testFind(serviceUrl, gavUrl, fileName);
+    }
+
+   protected void testFind(String serviceUrl, String gavUrl, String fileName)
             throws IOException {
         AbstractSourceCodeFinder directLinkSourceCodeFinder = newSourceCodeFinder(serviceUrl);
         List<SourceFileResult> results = new ArrayList<>();
