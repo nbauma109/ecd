@@ -126,7 +126,9 @@ public class BaseDecompilerSourceMapperTest {
                 + vineflower.getDecompilerName()
                 + " version "
                 + vineflower.getDecompilerVersion()
-                + " as part of transformer-api 4.2.0 (https://github.com/nbauma109/transformer-api).\n"
+                + " as part of transformer-api "
+                + vineflower.getVersion("transformer-api-version")
+                + " (https://github.com/nbauma109/transformer-api).\n"
                 + "	Parse and realign phase failed with ParseException. Please report issue to https://github.com/nbauma109/jd-util/issues.\n"
                 + "*/", source.toString());
     }
