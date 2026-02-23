@@ -50,7 +50,7 @@ public abstract class AbstractSourceCodeFinderTests {
         testFind(serviceUrl, gavUrl, fileName);
     }
 
-   protected void testFind(String serviceUrl, String gavUrl, String fileName)
+    protected void testFind(String serviceUrl, String gavUrl, String fileName)
             throws IOException {
         AbstractSourceCodeFinder directLinkSourceCodeFinder = newSourceCodeFinder(serviceUrl);
         List<SourceFileResult> results = new ArrayList<>();
