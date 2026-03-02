@@ -25,6 +25,15 @@ Downloads from Jitpack :
   />
 </a>
 
+Downloads from Sourceforge :
+
+[![Download ecd](https://img.shields.io/sourceforge/dt/ecdfork.svg)](https://sourceforge.net/projects/ecdfork/files/latest/download)
+[![Download ecd](https://img.shields.io/sourceforge/dd/ecdfork.svg)](https://sourceforge.net/projects/ecdfork/files/latest/download)
+[![Download ecd](https://img.shields.io/sourceforge/dw/ecdfork.svg)](https://sourceforge.net/projects/ecdfork/files/latest/download)
+[![Download ecd](https://img.shields.io/sourceforge/dm/ecdfork.svg)](https://sourceforge.net/projects/ecdfork/files/latest/download)
+
+[![Download ecd](https://a.fsdn.com/con/app/sf-download-button)](https://sourceforge.net/projects/ecdfork/files/latest/download)
+
 Downloads from Eclipse Marketplace :
 
 [![Eclipse Marketplace](https://img.shields.io/eclipse-marketplace/v/ecd-fork-enhanced-class-decompiler.svg)](https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler)
