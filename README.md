@@ -16,7 +16,7 @@ Downloads from Jitpack :
 [![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/month.svg)](https://jitpack.io/#nbauma109/ecd)
 [![Jitpack Downloads](https://jitpack.io/v/nbauma109/ecd/week.svg)](https://jitpack.io/#nbauma109/ecd)
 
-<a href="https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/master-SNAPSHOT/enhanced-class-decompiler-master-SNAPSHOT.zip">
+<a href="https://jitpack.io/com/github/nbauma109/ecd/enhanced-class-decompiler/2025.12.10/enhanced-class-decompiler-2025.12.10.zip">
   <img
     src="https://github.com/nbauma109/ecd/assets/9403560/1bf8a2c6-b09a-442e-9888-5aa618f2558c"
     alt="Download from Jitpack"
