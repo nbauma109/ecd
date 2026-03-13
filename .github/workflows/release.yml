@@ -6,6 +6,9 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 jobs:
   tagged-release:
     name: "Github Release"
@@ -19,8 +22,82 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-    - name: Build with Maven
+    - name: Prepare signing configuration
+      id: signing
+      shell: bash
+      env:
+        ECD_SIGNING_KEYSTORE_BASE64: ${{ secrets.ECD_SIGNING_KEYSTORE_BASE64 }}
+        ECD_SIGNING_STORETYPE: ${{ secrets.ECD_SIGNING_STORETYPE }}
+        ECD_SIGNING_ALIAS: ${{ secrets.ECD_SIGNING_ALIAS }}
+        ECD_SIGNING_STOREPASS: ${{ secrets.ECD_SIGNING_STOREPASS }}
+      run: |
+        set -euo pipefail
+
+        required=(
+          ECD_SIGNING_KEYSTORE_BASE64
+          ECD_SIGNING_STORETYPE
+          ECD_SIGNING_ALIAS
+          ECD_SIGNING_STOREPASS
+        )
+
+        any_present=false
+        for name in "${required[@]}"; do
+          if [ -n "${!name:-}" ]; then
+            any_present=true
+            break
+          fi
+        done
+
+        if [ "$any_present" = false ]; then
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        missing=()
+        for name in "${required[@]}"; do
+          if [ -z "${!name:-}" ]; then
+            missing+=("$name")
+          fi
+        done
+
+        if [ "${#missing[@]}" -gt 0 ]; then
+          printf 'Missing required signing secrets: %s\n' "${missing[*]}" >&2
+          exit 1
+        fi
+
+        keystore_path="$RUNNER_TEMP/ecd-signing-keystore"
+        printf '%s' "$ECD_SIGNING_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+
+        echo "enabled=true" >> "$GITHUB_OUTPUT"
+        echo "keystore_path=$keystore_path" >> "$GITHUB_OUTPUT"
+
+    - name: Build unsigned release archive
+      if: ${{ steps.signing.outputs.enabled != 'true' }}
       run: ./build.sh
+
+    - name: Build signed release archive
+      if: ${{ steps.signing.outputs.enabled == 'true' }}
+      shell: bash
+      env:
+        ECD_SIGNING_STORETYPE: ${{ secrets.ECD_SIGNING_STORETYPE }}
+        ECD_SIGNING_ALIAS: ${{ secrets.ECD_SIGNING_ALIAS }}
+        ECD_SIGNING_STOREPASS: ${{ secrets.ECD_SIGNING_STOREPASS }}
+      run: |
+        set -euo pipefail
+        args=(
+          clean
+          verify
+          -DskipTests
+          -Dsigning.disabled=false
+          "-Dsigning.keystore=${{ steps.signing.outputs.keystore_path }}"
+          "-Dsigning.storetype=${ECD_SIGNING_STORETYPE}"
+          "-Dsigning.alias=${ECD_SIGNING_ALIAS}"
+          "-Dsigning.storepass=${ECD_SIGNING_STOREPASS}"
+          --no-transfer-progress
+        )
+
+        ./mvnw "${args[@]}"
+
     - name: Create release
       uses: "marvinpinto/action-automatic-releases@latest"
       with:

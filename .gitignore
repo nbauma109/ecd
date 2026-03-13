@@ -21,3 +21,10 @@ mvnw.cmd
 
 # VS Code settings
 .vscode/
+
+# Local signing material
+.signing.properties
+*.jks
+*.keystore
+*.p12
+*.pfx

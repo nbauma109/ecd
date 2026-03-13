@@ -16,6 +16,11 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <tycho.version>5.0.2</tycho.version>
+    <signing.disabled>true</signing.disabled>
+    <signing.keystore></signing.keystore>
+    <signing.storetype>PKCS12</signing.storetype>
+    <signing.alias></signing.alias>
+    <signing.storepass></signing.storepass>
   </properties>
 
   <modules>
@@ -126,6 +131,33 @@
             </environment>
           </environments>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jarsigner-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <keystore>${signing.keystore}</keystore>
+          <storetype>${signing.storetype}</storetype>
+          <alias>${signing.alias}</alias>
+          <storepass>${signing.storepass}</storepass>
+          <verbose>true</verbose>
+          <certs>true</certs>
+          <removeExistingSignatures>true</removeExistingSignatures>
+        </configuration>
+        <executions>
+          <execution>
+            <id>sign</id>
+            <phase>package</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+            <configuration>
+              <skip>${signing.disabled}</skip>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
