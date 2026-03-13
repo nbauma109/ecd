@@ -9,6 +9,7 @@
 package io.github.nbauma109.decompiler.editor;
 
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.heliosdecompiler.transformerapi.StandardTransformers;
 import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
@@ -19,7 +20,7 @@ public class DecompilerType {
     }
 
     public static Set<String> getDecompilerTypes() {
-        return StandardTransformers.Decompilers.AVAILABLE_DECOMPILERS;
+        return new TreeSet<>(StandardTransformers.Decompilers.AVAILABLE_DECOMPILERS);
     }
 
     public static String getDefault() {
