@@ -96,7 +96,7 @@ jobs:
           --no-transfer-progress
         )
 
-        ./mvnw "${args[@]}"
+        mvn "${args[@]}"
 
     - name: Create release
       uses: "marvinpinto/action-automatic-releases@latest"
