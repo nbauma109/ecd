@@ -16,14 +16,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract repository info
-        id: repo
-        run: |
-          OWNER="${GITHUB_REPOSITORY%%/*}"
-          REPO="${GITHUB_REPOSITORY##*/}"
-          echo "owner=$OWNER" >> $GITHUB_OUTPUT
-          echo "repo=$REPO" >> $GITHUB_OUTPUT
-
       - name: Determine latest release version
         id: version
         run: |
@@ -33,8 +25,6 @@ jobs:
 
       - name: Update download links
         run: |
-          OWNER=${{ steps.repo.outputs.owner }}
-          REPO=${{ steps.repo.outputs.repo }}
           VERSION=${{ steps.version.outputs.version }}
 
           update_file() {
