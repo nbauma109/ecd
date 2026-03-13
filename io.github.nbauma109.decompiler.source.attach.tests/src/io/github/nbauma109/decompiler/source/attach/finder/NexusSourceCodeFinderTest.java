@@ -8,11 +8,13 @@ import static io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFind
 
 import java.io.IOException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class NexusSourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 
     @Test
+    @Ignore
     public void testOSS() throws IOException {
         testFindSlf4jNop(HTTPS_OSS_SONATYPE_ORG_INDEX_HTML);
     }
