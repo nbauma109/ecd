@@ -217,7 +217,7 @@ public class SetupRunnable implements Runnable {
         IFileEditorMapping classPlain = null;
         EditorDescriptor decompilerEditor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID) instanceof EditorDescriptor descriptor
                 ? descriptor
-                : null;
+                        : null;
 
         // Search Class file editor mappings
         for (IFileEditorMapping mapping : mappings) {
