@@ -42,7 +42,7 @@ jobs:
           export NEW_VERSION=$MAJOR.$MINOR.$NEW_PATCH
           chmod u+x ./update-version.sh
           ./update-version.sh $NEW_VERSION
-          sed -E -i "s#[0-9]+\.[0-9]+\.[0-9]+#${NEW_VERSION}#g" README.md
+          sed -E -i "s#${VERSION}#${NEW_VERSION}#g" README.md
           git commit -a -m "[update version] $VERSION -> $NEW_VERSION"
           git push
           git tag -a $NEW_VERSION -m "$NEW_VERSION"
