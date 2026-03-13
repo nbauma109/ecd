@@ -22,8 +22,10 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.resource.ImageRegistry;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
@@ -284,6 +286,27 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
     public static ImageDescriptor getDecompilerImageDescriptor(String decompilerType) {
         return getImageDescriptor("icons/" + decompilerType.toLowerCase().replace(' ', '_') + "_16.png");
+    }
+
+    public static Image getDecompilerImage(String decompilerType) {
+        if (decompilerType == null) {
+            return null;
+        }
+
+        ImageRegistry imageRegistry = JavaDecompilerPlugin.getDefault().getImageRegistry();
+        String key = "decompiler." + decompilerType.toLowerCase().replace(' ', '_'); //$NON-NLS-1$
+        Image image = imageRegistry.get(key);
+        if (image != null) {
+            return image;
+        }
+
+        ImageDescriptor descriptor = getDecompilerImageDescriptor(decompilerType);
+        if (descriptor == null) {
+            return null;
+        }
+
+        imageRegistry.put(key, descriptor);
+        return imageRegistry.get(key);
     }
 
 }

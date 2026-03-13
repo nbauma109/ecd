@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.editor;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -149,6 +150,8 @@ public class JavaDecompilerClassFileEditorTest {
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
         assertTrue(contents.contains("class")); //$NON-NLS-1$
+        assertFalse(openedEditor.getTitle().contains(" [" + DECOMPILER_FERNFLOWER + "]")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
     }
 
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {

@@ -64,7 +64,6 @@ import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 import org.eclipse.ui.texteditor.IWorkbenchActionDefinitionIds;
 import org.eclipse.ui.texteditor.IncrementalFindAction;
 
-import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.actions.DecompileActionGroup;
 import io.github.nbauma109.decompiler.util.ClassUtil;
@@ -84,6 +83,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private boolean selectionChange = false;
     private ISourceReference selectedElement = null;
     private String decompilerType = null;
+    private Image defaultTitleImage = null;
 
     public ISourceReference getSelectedElement() {
         return selectedElement;
@@ -216,6 +216,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private void callSuperDoSetInput(IEditorInput input) throws CoreException {
         super.doSetInput(input);
         refreshSemanticHighlighting();
+        updateTitleImage();
     }
 
     /**
@@ -258,7 +259,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             }
             case FileStoreEditorInput storeInput -> {
                 IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-                String source = DecompileUtil.decompiler(storeInput, prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE));
+                decompilerType = prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+                String source = DecompileUtil.decompiler(storeInput, decompilerType);
 
                 if (source != null) {
                     String packageName = DecompileUtil.getPackageName(source);
@@ -285,8 +287,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
                         ReflectionUtils.invokeMethod(editor, "setTitleImage", //$NON-NLS-1$
                                 new Class[] { Image.class },
-                                new Object[] { JavaDecompilerPlugin.getImageDescriptor("icons/decompiler.png") //$NON-NLS-1$
-                                        .createImage() });
+                                new Object[] { resolveDecompilerTitleImage() });
 
                         ReflectionUtils.setFieldValue(editor, "fIsEditingDerivedFileAllowed", //$NON-NLS-1$
                                 Boolean.valueOf(false));
@@ -361,10 +362,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     private String getPartTitle(String title) {
-        if (decompilerType == null || title == null || title.endsWith("]") || !shouldShowDecompilerInTitle()) {
-            return title;
-        }
-        return title + " [" + Decompilers.valueOf(decompilerType).getName() + "]";
+        return title;
     }
 
     private boolean shouldShowDecompilerInTitle() {
@@ -384,6 +382,32 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         } catch (JavaModelException e) {
             return true;
         }
+    }
+
+    private void updateTitleImage() {
+        Image currentTitleImage = getTitleImage();
+        if (defaultTitleImage == null && currentTitleImage != null) {
+            defaultTitleImage = currentTitleImage;
+        }
+
+        Image decompilerTitleImage = resolveDecompilerTitleImage();
+        if (decompilerTitleImage != null) {
+            if (currentTitleImage != decompilerTitleImage) {
+                setTitleImage(decompilerTitleImage);
+            }
+            return;
+        }
+
+        if (defaultTitleImage != null && currentTitleImage != defaultTitleImage) {
+            setTitleImage(defaultTitleImage);
+        }
+    }
+
+    private Image resolveDecompilerTitleImage() {
+        if (decompilerType == null || !shouldShowDecompilerInTitle()) {
+            return null;
+        }
+        return JavaDecompilerPlugin.getDecompilerImage(decompilerType);
     }
 
     @Override
