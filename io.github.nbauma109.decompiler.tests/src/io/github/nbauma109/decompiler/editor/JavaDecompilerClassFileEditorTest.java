@@ -57,6 +57,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.SetupRunnable;
 
 public class JavaDecompilerClassFileEditorTest {
 
@@ -73,6 +74,8 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Before
     public void setUp() throws Exception {
+        refreshDecompilerEditorAssociations();
+
         jarFileOnDisk = resolveTestJar();
         assertNotNull(jarFileOnDisk);
         assertTrue(jarFileOnDisk.exists());
@@ -154,6 +157,38 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
     }
 
+    @Test
+    public void testReopenClassFileUsesDecompilerEditorAfterSourceWasCached() throws Exception {
+        ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
+                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        ITextEditor initialTextEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(initialTextEditor);
+
+        IDocument initialDocument = initialTextEditor.getDocumentProvider().getDocument(initialTextEditor.getEditorInput());
+        assertNotNull(initialDocument);
+        String initialContents = waitForNonEmptyDocument(initialDocument);
+        assertTrue(initialContents.contains(stripClassExtension(classInJar.classFileName())));
+
+        // The first open seeds JDT's cached source for this binary class. Reopening through the normal Java path
+        // used to switch to the stock class editor because the file no longer looked like "without source".
+        closeOpenedEditor();
+
+        openedEditor = openDefault(classFile);
+        assertTrue("Expected reopen to use JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
+                openedEditor instanceof JavaDecompilerClassFileEditor);
+        assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
+    }
+
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {
         return runInUiThreadWithResult(() -> {
             IWorkbenchWindow window = resolveWorkbenchWindow();
@@ -174,6 +209,17 @@ public class JavaDecompilerClassFileEditorTest {
 
             IEditorPart editor = IDE.openEditor(page, input, editorId, true);
             page.activate(editor);
+            return editor;
+        });
+    }
+
+    private static IEditorPart openDefault(IClassFile classFile) throws Exception {
+        return runInUiThreadWithResult(() -> {
+            IEditorPart editor = JavaUI.openInEditor(classFile, true, true);
+            if (editor == null) {
+                throw new IllegalStateException("Unable to open default editor for class file"); //$NON-NLS-1$
+            }
+            editor.getSite().getPage().activate(editor);
             return editor;
         });
     }
@@ -430,12 +476,22 @@ public class JavaDecompilerClassFileEditorTest {
         return results.get(0);
     }
 
+    private static void refreshDecompilerEditorAssociations() throws Exception {
+        runInUiThread(() -> new SetupRunnableAccessor().apply());
+    }
+
     private interface UiRunnable {
         void run() throws Exception;
     }
 
     private interface UiSupplier<T> {
         T get() throws Exception;
+    }
+
+    private static final class SetupRunnableAccessor extends SetupRunnable {
+        private void apply() {
+            updateClassDefaultEditor();
+        }
     }
 
     public record ClassInJar(String packageName, String classFileName) {

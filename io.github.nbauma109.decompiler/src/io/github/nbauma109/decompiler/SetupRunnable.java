@@ -8,7 +8,6 @@
 
 package io.github.nbauma109.decompiler;
 
-import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorDescriptor;
@@ -24,6 +23,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.internal.IPreferenceConstants;
 import org.eclipse.ui.internal.WorkbenchPlugin;
+import org.eclipse.ui.internal.registry.EditorDescriptor;
 import org.eclipse.ui.internal.registry.EditorRegistry;
 import org.eclipse.ui.internal.registry.FileEditorMapping;
 
@@ -215,6 +215,9 @@ public class SetupRunnable implements Runnable {
 
         IFileEditorMapping classNoSource = null;
         IFileEditorMapping classPlain = null;
+        EditorDescriptor decompilerEditor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID) instanceof EditorDescriptor descriptor
+                ? descriptor
+                : null;
 
         // Search Class file editor mappings
         for (IFileEditorMapping mapping : mappings) {
@@ -227,28 +230,29 @@ public class SetupRunnable implements Runnable {
             }
         }
 
-        if (classPlain instanceof FileEditorMapping c && classNoSource != null) {
-            // Search ECD editor descriptor on "class" extension
-            for (IEditorDescriptor descriptor : classPlain.getEditors()) {
-                if (descriptor.getId().equals(JavaDecompilerPlugin.EDITOR_ID)) {
-                    // Remove ECD editor on "class" extension
-                    c.removeEditor(descriptor);
-
-                    // Set ECD as default editor on "class without source" extension
-                    registry.setDefaultEditor("." + classNoSource.getExtension(), descriptor.getId());
-                    break;
-                }
+        if (decompilerEditor != null && classNoSource != null && classPlain instanceof FileEditorMapping plainMapping) {
+            if (!containsEditor(classPlain, decompilerEditor.getId())) {
+                // Once ECD has populated source, JDT starts treating the same class as a plain ".class" file.
+                // Keeping the ECD editor in that mapping prevents reopen from falling back to the stock editor.
+                plainMapping.addEditor(decompilerEditor);
             }
 
-            // Restore the default editor for "class" extension
-            IEditorDescriptor defaultClassFileEditor = registry.findEditor(JavaUI.ID_CF_EDITOR);
-
-            if (defaultClassFileEditor != null) {
-                registry.setDefaultEditor("." + classPlain.getExtension(), JavaUI.ID_CF_EDITOR);
-            }
-
+            // Use ECD for both cases:
+            // - "class without source" on the first open
+            // - plain "class" after decompiled source has been cached by JDT
+            registry.setDefaultEditor("." + classNoSource.getExtension(), decompilerEditor.getId());
+            registry.setDefaultEditor("." + classPlain.getExtension(), decompilerEditor.getId());
             registry.setFileEditorMappings((FileEditorMapping[]) mappings);
             registry.saveAssociations();
         }
+    }
+
+    private boolean containsEditor(IFileEditorMapping mapping, String editorId) {
+        for (IEditorDescriptor descriptor : mapping.getEditors()) {
+            if (descriptor.getId().equals(editorId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
