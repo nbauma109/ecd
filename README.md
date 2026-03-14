@@ -62,7 +62,7 @@ ECD++ integrates multiple decompilers provided by [transformer-api](https://gith
 
 It also allows Java developers to **debug class files without source code directly**. Contrary to original [ECD](https://github.com/cpupk/ecd), it uses [jd-util](https://github.com/nbauma109/jd-util)'s [JAVACC](https://javacc.github.io/javacc/) parser to parse decompiled code into its own model and its code presentation technical stack to realign code. It also integrates with the eclipse class editor, m2e plugin, supports **Javadoc**,  **reference search**, **library source attaching**, and the syntax of JDK8 **lambda** expression.
 
-<img width="720" height="357" alt="image" src="https://github.com/user-attachments/assets/69c2bff3-7109-4286-9482-1a98dc4ae541" />
+![image](https://javadecompiler.org/ecd/debug.png)
 
 ## Description
 Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates multiple decompilers seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
