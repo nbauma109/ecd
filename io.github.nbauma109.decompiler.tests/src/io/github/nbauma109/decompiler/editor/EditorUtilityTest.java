@@ -1,0 +1,88 @@
+package io.github.nbauma109.decompiler.editor;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileStore;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import io.github.nbauma109.decompiler.Startup;
+
+public class EditorUtilityTest {
+
+    private File testRoot;
+
+    @Before
+    public void setUp() {
+        File targetDir = new File("target");
+        assertTrue(targetDir.exists() || targetDir.mkdirs());
+
+        testRoot = new File(targetDir, "editor-utility-tests" + File.separator + System.nanoTime());
+        assertTrue(testRoot.mkdirs());
+    }
+
+    @After
+    public void tearDown() {
+        deleteRecursively(testRoot);
+    }
+
+    @Test
+    public void decompilerType_containsDefaultDecompilerInSortedSet() {
+        assertFalse(DecompilerType.getDecompilerTypes().isEmpty());
+        assertTrue(DecompilerType.getDecompilerTypes().contains(DecompilerType.getDefault()));
+    }
+
+    @Test
+    public void decompilerClassEditorInput_usesCustomTooltipWhenProvided() throws Exception {
+        File file = new File(testRoot, "Demo.class");
+        Files.writeString(file.toPath(), "bytes", StandardCharsets.UTF_8);
+        IFileStore store = EFS.getLocalFileSystem().fromLocalFile(file);
+        DecompilerClassEditorInput input = new DecompilerClassEditorInput(store);
+
+        assertTrue(input.getToolTipText().contains("Demo.class"));
+
+        input.setToolTipText("custom tooltip");
+
+        assertEquals("custom tooltip", input.getToolTipText());
+    }
+
+    @Test
+    public void realignStatus_exposesExpectedEnumValues() {
+        assertArrayEquals(new RealignStatus[] {
+                RealignStatus.TURNED_OFF,
+                RealignStatus.NATIVELY_REALIGNED,
+                RealignStatus.PARSED_AND_REALIGNED,
+                RealignStatus.PARSE_ERROR
+        }, RealignStatus.values());
+        assertEquals(RealignStatus.PARSE_ERROR, RealignStatus.valueOf("PARSE_ERROR"));
+    }
+
+    @Test
+    public void startup_earlyStartupIsNoOp() {
+        new Startup().earlyStartup();
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        file.delete();
+    }
+}
