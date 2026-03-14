@@ -44,7 +44,7 @@ public class GAVTest {
         assertEquals(left.hashCode(), right.hashCode());
         assertFalse(left.equals(different));
         assertFalse(left.equals(null));
-        assertFalse(left.equals("demo"));
+        assertFalse("demo".equals(left));
         assertTrue(left.toString().contains("groupId=org.example"));
         assertTrue(left.toString().contains("artifactId=demo"));
     }
