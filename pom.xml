@@ -5,7 +5,7 @@
 
   <groupId>io.github.nbauma109</groupId>
   <artifactId>io.github.nbauma109.ecd</artifactId>
-  <version>2025.12.14</version>
+  <version>2026.3.0</version>
   <packaging>pom</packaging>
 
   <name>io.github.nbauma109.ecd</name>
@@ -196,9 +196,9 @@
 
   <repositories>
     <repository>
-      <id>eclipse-2025-12</id>
+      <id>eclipse-2026-03</id>
       <layout>p2</layout>
-      <url>https://download.eclipse.org/releases/2025-12/</url>
+      <url>https://download.eclipse.org/releases/2026-03/</url>
     </repository>
     <repository>
       <id>jitpack</id>
