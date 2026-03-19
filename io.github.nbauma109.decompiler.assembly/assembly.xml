@@ -11,8 +11,13 @@
   <includeBaseDirectory>false</includeBaseDirectory>
 
   <fileSets>
+    <fileSet>
+      <directory>../io.github.nbauma109.decompiler.repository/target/repository</directory>
+      <filtered>false</filtered>
+      <outputDirectory>/</outputDirectory>
+    </fileSet>
 
-    <!-- Site and metadata files -->
+    <!-- Keep the legacy site descriptor alongside the generated p2 metadata. -->
     <fileSet>
       <directory>..</directory>
       <filtered>true</filtered>
@@ -31,48 +36,5 @@
         <include>AUDIT*</include>
       </includes>
     </fileSet>
-
   </fileSets>
-
-  <!-- === Feature Modules === -->
-  <moduleSets>
-    <moduleSet>
-      <useAllReactorProjects>true</useAllReactorProjects>
-      <includes>
-        <include>io.github.nbauma109.features:io.github.nbauma109.decompiler</include>
-        <include>io.github.nbauma109.features:io.github.nbauma109.decompiler.source</include>
-      </includes>
-      <binaries>
-        <includeDependencies>false</includeDependencies>
-        <dependencySets>
-          <dependencySet>
-            <useTransitiveDependencies>false</useTransitiveDependencies>
-          </dependencySet>
-        </dependencySets>
-        <outputFileNameMapping>${module.artifactId}_${module.version}${dashClassifier?}.${module.extension}</outputFileNameMapping>
-        <outputDirectory>features</outputDirectory>
-        <unpack>false</unpack>
-      </binaries>
-    </moduleSet>
-
-    <!-- === Plugin Modules === -->
-    <moduleSet>
-      <useAllReactorProjects>true</useAllReactorProjects>
-      <includes>
-        <include>io.github.nbauma109:io.github.nbauma109.decompiler</include>
-        <include>io.github.nbauma109:io.github.nbauma109.decompiler.source.attach</include>
-      </includes>
-      <binaries>
-        <includeDependencies>false</includeDependencies>
-        <dependencySets>
-          <dependencySet>
-            <useTransitiveDependencies>false</useTransitiveDependencies>
-          </dependencySet>
-        </dependencySets>
-        <outputFileNameMapping>${module.artifactId}_${module.version}${dashClassifier?}.${module.extension}</outputFileNameMapping>
-        <outputDirectory>plugins</outputDirectory>
-        <unpack>false</unpack>
-      </binaries>
-    </moduleSet>
-  </moduleSets>
 </assembly>
