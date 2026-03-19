@@ -31,7 +31,6 @@
     <module>io.github.nbauma109.decompiler.source.attach.tests</module>
     <module>io.github.nbauma109.decompiler.source.feature</module>
     <module>io.github.nbauma109.decompiler.repository</module>
-    <module>io.github.nbauma109.decompiler.assembly</module>
   </modules>
 
   <scm>
@@ -44,10 +43,6 @@
   <build>
     <pluginManagement>
       <plugins>
-        <plugin>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.8.0</version>
-        </plugin>
         <plugin>
           <groupId>org.eclipse.tycho</groupId>
           <artifactId>tycho-p2-director-plugin</artifactId>

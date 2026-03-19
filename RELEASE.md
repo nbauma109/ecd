@@ -3,7 +3,7 @@
     mvn clean package
 
 This command will create the release repository ZIP file in
-`io.github.nbauma109.decompiler.assembly/target/enhanced-class-decompiler-<version>.zip`
+`io.github.nbauma109.decompiler.repository/target/enhanced-class-decompiler-<version>.zip`
 
 # GitHub release signing
 

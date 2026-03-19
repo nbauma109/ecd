@@ -10,7 +10,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>io.github.nbauma109.decompiler.repository</artifactId>
+  <artifactId>enhanced-class-decompiler</artifactId>
   <packaging>eclipse-repository</packaging>
 
   <build>

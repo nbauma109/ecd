@@ -104,4 +104,4 @@ jobs:
         repo_token: "${{ secrets.PAT_TOKEN }}"
         prerelease: false
         files: |
-          **/*.zip
+          io.github.nbauma109.decompiler.repository/target/enhanced-class-decompiler-*.zip
