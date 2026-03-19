@@ -47,14 +47,20 @@ jobs:
 
           unzip -q "${UPDATE_ZIP}" -d extracted
 
-          if [ ! -f extracted/site.xml ]; then
-            echo "Expected extracted/site.xml at zip root."
+          if [ ! -d extracted/features ] || [ ! -d extracted/plugins ]; then
+            echo "Expected extracted/features/ and extracted/plugins/ at zip root."
+            exit 1
+          fi
+          if [ ! -f extracted/content.jar ] && [ ! -f extracted/content.xml ] && [ ! -f extracted/content.xml.xz ]; then
+            echo "Expected p2 content metadata at zip root."
             echo "Zip contents:"
             unzip -Z1 "${UPDATE_ZIP}" | head -n 200
             exit 1
           fi
-          if [ ! -d extracted/features ] || [ ! -d extracted/plugins ]; then
-            echo "Expected extracted/features/ and extracted/plugins/ at zip root."
+          if [ ! -f extracted/artifacts.jar ] && [ ! -f extracted/artifacts.xml ] && [ ! -f extracted/artifacts.xml.xz ]; then
+            echo "Expected p2 artifact metadata at zip root."
+            echo "Zip contents:"
+            unzip -Z1 "${UPDATE_ZIP}" | head -n 200
             exit 1
           fi
 

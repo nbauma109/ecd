@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+    <feature id="io.github.nbauma109.decompiler">
+        <category name="io.github.nbauma109.decompiler"/>
+    </feature>
+    <category-def name="io.github.nbauma109.decompiler" label="Enhanced Class Decompiler Plug-in"/>
+    <feature id="io.github.nbauma109.decompiler.source">
+        <category name="io.github.nbauma109.decompiler.source"/>
+    </feature>
+    <category-def name="io.github.nbauma109.decompiler.source" label="Source Attachment Plug-in for Enhanced Class Decompiler"/>
+</site>

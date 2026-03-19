@@ -30,6 +30,7 @@
     <module>io.github.nbauma109.decompiler.source.attach</module>
     <module>io.github.nbauma109.decompiler.source.attach.tests</module>
     <module>io.github.nbauma109.decompiler.source.feature</module>
+    <module>io.github.nbauma109.decompiler.repository</module>
     <module>io.github.nbauma109.decompiler.assembly</module>
   </modules>
 
