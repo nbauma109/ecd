@@ -386,7 +386,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private void updateTitleImage() {
         Image currentTitleImage = getTitleImage();
-        if (defaultTitleImage == null && currentTitleImage != null) {
+        if ((defaultTitleImage == null || defaultTitleImage.isDisposed()) && currentTitleImage != null) {
             defaultTitleImage = currentTitleImage;
         }
 
