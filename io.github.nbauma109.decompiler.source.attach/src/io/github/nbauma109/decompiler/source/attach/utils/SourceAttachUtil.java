@@ -77,7 +77,13 @@ public class SourceAttachUtil {
                 }
             }
             JavaSourceAttacherHandler.attachSource(pkgRoot, tempFile);
-            tempFile.deleteOnExit();
+
+            // Only mark for deletion if not in Maven repo
+            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+            if (!isInMavenRepo) {
+                tempFile.deleteOnExit();
+            }
+
             String sha = HashUtils.sha1Hash(SourceAttachUtil.getBinFile(pkgRoot));
             SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, downloadUrl, tempFile);
             return true;
@@ -120,7 +126,13 @@ public class SourceAttachUtil {
                         .replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
                 FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
                 JavaSourceAttacherHandler.attachSource(root, tempFile);
-                tempFile.deleteOnExit();
+
+                // Only mark for deletion if not in Maven repo
+                boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+                if (!isInMavenRepo) {
+                    tempFile.deleteOnExit();
+                }
+
                 SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
 
                 if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
@@ -167,7 +179,13 @@ public class SourceAttachUtil {
             File tempFile = new File(files[1]);
             if (files[1] != null && tempFile.exists()) {
                 JavaSourceAttacherHandler.attachSource(root, tempFile);
-                tempFile.deleteOnExit();
+
+                // Only mark for deletion if not in Maven repo
+                boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+                if (!isInMavenRepo) {
+                    tempFile.deleteOnExit();
+                }
+
                 SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
                 return true;
             }
@@ -177,7 +195,13 @@ public class SourceAttachUtil {
                     .replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
             FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
             JavaSourceAttacherHandler.attachSource(root, tempFile);
-            tempFile.deleteOnExit();
+
+            // Only mark for deletion if not in Maven repo
+            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+            if (!isInMavenRepo) {
+                tempFile.deleteOnExit();
+            }
+
             SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
             return true;
         } catch (Exception e) {

@@ -224,23 +224,37 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                     File sourceFile;
                     if (tempSource == null || !new File(tempSource).exists()) {
                         File tempFile = new File(source);
-                        sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
-                        if (!sourceFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceFile);
-                        }
 
-                        sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
-                        if (!sourceTempFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceTempFile);
-                        }
-                        sourceTempFile.deleteOnExit();
-                        if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                            tempFile.delete();
+                        // Check if the source file is already in the Maven local repo
+                        boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+
+                        if (isInMavenRepo) {
+                            // Source is already in Maven repo, use it directly without copying
+                            sourceFile = tempFile;
+                            sourceTempFile = tempFile;
+                        } else {
+                            // Source is not in Maven repo, copy to .decompiler dir as before
+                            sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
+                            if (!sourceFile.exists()) {
+                                FileUtils.copyFile(tempFile, sourceFile);
+                            }
+
+                            sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
+                            if (!sourceTempFile.exists()) {
+                                FileUtils.copyFile(tempFile, sourceTempFile);
+                            }
+                            sourceTempFile.deleteOnExit();
+                            if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
+                                tempFile.delete();
+                            }
                         }
                     } else {
                         sourceFile = new File(source);
                         sourceTempFile = new File(tempSource);
-                        if (sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+
+                        // Only mark for deletion if not in Maven repo
+                        boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+                        if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
                             sourceTempFile.deleteOnExit();
                         }
                     }
