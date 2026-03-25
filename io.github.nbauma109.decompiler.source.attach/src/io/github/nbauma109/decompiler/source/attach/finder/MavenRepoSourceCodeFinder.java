@@ -80,12 +80,19 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             GAV gav = entry.getKey();
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
-            // Check if already downloaded to Maven repo
+            // Check if already downloaded to Maven repo and validate it
             if (mavenRepoSourceFile.exists()) {
-                SourceFileResult result = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
-                results.add(result);
-                setDownloadUrl(entry.getValue());
-                return;
+                try {
+                    if (SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFile)) {
+                        SourceFileResult result = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
+                        results.add(result);
+                        setDownloadUrl(entry.getValue());
+                        return;
+                    }
+                } catch (Exception e) {
+                    Logger.debug(e);
+                }
+                // If validation fails or throws, fall through to try other strategies
             }
 
             try {
