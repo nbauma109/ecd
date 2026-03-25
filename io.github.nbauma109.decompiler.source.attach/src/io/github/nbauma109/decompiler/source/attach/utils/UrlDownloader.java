@@ -73,8 +73,13 @@ public class UrlDownloader {
         final File file = targetFile != null ? targetFile : File.createTempFile(SourceConstants.TEMP_SOURCE_PREFIX, ".tmp"); //$NON-NLS-1$
         try {
             // Create parent directories if needed
-            if (targetFile != null && !file.getParentFile().exists()) {
-                file.getParentFile().mkdirs();
+            if (targetFile != null) {
+                final File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    if (!parent.mkdirs() && !parent.exists()) {
+                        throw new IOException("Failed to create directory: " + parent);
+                    }
+                }
             }
             final URLConnection conn = new URL(url).openConnection();
             if (serviceUser != null && servicePassword != null) {
