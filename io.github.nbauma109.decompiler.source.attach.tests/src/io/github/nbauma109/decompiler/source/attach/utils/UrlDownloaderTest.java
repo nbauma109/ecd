@@ -1,0 +1,151 @@
+/*******************************************************************************
+ * Copyright (c) 2026.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
+
+package io.github.nbauma109.decompiler.source.attach.utils;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.UUID;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class UrlDownloaderTest {
+
+    private File testRoot;
+
+    @Before
+    public void setUp() throws IOException {
+        File targetDir = new File("target");
+        assertTrue(targetDir.exists() || targetDir.mkdirs());
+        testRoot = new File(targetDir, "url-downloader-tests-" + System.nanoTime());
+        assertTrue(testRoot.mkdirs());
+    }
+
+    @After
+    public void tearDown() {
+        deleteRecursively(testRoot);
+    }
+
+    @Test
+    public void download_toTargetFile_downloadsContentToSpecifiedPath() throws Exception {
+        // Create a source file with known content
+        File sourceFile = new File(testRoot, "source.txt");
+        byte[] content = "test content for download".getBytes(StandardCharsets.UTF_8);
+        try (FileOutputStream fos = new FileOutputStream(sourceFile)) {
+            fos.write(content);
+        }
+
+        // Target in a new subdirectory (parent does not exist yet)
+        File targetDir = new File(testRoot, "sub-" + UUID.randomUUID());
+        File targetFile = new File(targetDir, "downloaded.txt");
+
+        String result = new UrlDownloader().download(sourceFile.toURI().toURL().toString(), targetFile);
+
+        assertNotNull(result);
+        assertEquals(targetFile.getAbsolutePath(), result);
+        assertTrue(targetFile.exists());
+        byte[] actualContent = Files.readAllBytes(targetFile.toPath());
+        assertEquals(new String(content, StandardCharsets.UTF_8), new String(actualContent, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void download_toTargetFileWithExistingParent_downloadsContentSuccessfully() throws Exception {
+        // Create a source file
+        File sourceFile = new File(testRoot, "source2.txt");
+        byte[] content = "another test content".getBytes(StandardCharsets.UTF_8);
+        try (FileOutputStream fos = new FileOutputStream(sourceFile)) {
+            fos.write(content);
+        }
+
+        // Target in an already-existing directory
+        File targetFile = new File(testRoot, "already-there.txt");
+
+        String result = new UrlDownloader().download(sourceFile.toURI().toURL().toString(), targetFile);
+
+        assertNotNull(result);
+        assertEquals(targetFile.getAbsolutePath(), result);
+        assertTrue(targetFile.exists());
+    }
+
+    @Test
+    public void download_withNullTargetFile_downloadsTempFile() throws Exception {
+        // Create a source file
+        File sourceFile = new File(testRoot, "source3.txt");
+        byte[] content = "temp content".getBytes(StandardCharsets.UTF_8);
+        try (FileOutputStream fos = new FileOutputStream(sourceFile)) {
+            fos.write(content);
+        }
+
+        String result = new UrlDownloader().download(sourceFile.toURI().toURL().toString(), null);
+
+        assertNotNull(result);
+        File downloadedFile = new File(result);
+        assertTrue(downloadedFile.exists());
+        downloadedFile.delete();
+    }
+
+    @Test
+    public void download_withInvalidUrl_returnsPathAndDoesNotThrow() throws Exception {
+        File targetFile = new File(testRoot, "should-not-exist.txt");
+
+        String result = new UrlDownloader().download("http://localhost:0/no-such-file.jar", targetFile);
+
+        // Should return the file path (even if download failed and file was deleted)
+        assertNotNull(result);
+    }
+
+    @Test
+    public void download_withScmUrl_throwsUnsupportedOperationException() {
+        try {
+            new UrlDownloader().download("scm:git:https://example.com/repo.git", null);
+            org.junit.Assert.fail("Expected UnsupportedOperationException"); //$NON-NLS-1$
+        } catch (UnsupportedOperationException e) {
+            // expected
+        } catch (Exception e) {
+            org.junit.Assert.fail("Expected UnsupportedOperationException but got " + e.getClass()); //$NON-NLS-1$
+        }
+    }
+
+    @Test
+    public void download_withExistingLocalFile_returnsPathDirectly() throws Exception {
+        // Create a local file
+        File localFile = new File(testRoot, "local.txt");
+        try (FileOutputStream fos = new FileOutputStream(localFile)) {
+            fos.write("local".getBytes(StandardCharsets.UTF_8));
+        }
+
+        // When URL is a path to an existing file, it should return that path without downloading
+        String result = new UrlDownloader().download(localFile.getAbsolutePath(), null);
+
+        assertEquals(localFile.getAbsolutePath(), result);
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        file.delete();
+    }
+}

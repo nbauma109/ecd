@@ -45,15 +45,37 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
     }
 
     /**
-     * Calculate the Maven local repository path for a source JAR
+     * Calculate the Maven local repository path for a source JAR.
+     * Returns null if the GAV coordinates contain path traversal characters.
      */
     private File getMavenRepoSourceFile(GAV gav) {
         String groupId = gav.getGroupId();
         String artifactId = gav.getArtifactId();
         String version = gav.getVersion();
+        if (groupId == null || artifactId == null || version == null) {
+            return null;
+        }
+        // Reject coordinates containing path traversal or separator characters
+        if (groupId.contains("..") || groupId.contains("/") || groupId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                || artifactId.contains("..") || artifactId.contains("/") || artifactId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                || version.contains("..") || version.contains("/") || version.contains("\\")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            return null;
+        }
         String sourceFileName = artifactId + '-' + version + SOURCES_JAR;
         File groupIdDir = new File(SourceConstants.USER_M2_REPO_DIR, groupId.replace('.', File.separatorChar));
-        return new File(groupIdDir, String.join(File.separator, artifactId, version, sourceFileName));
+        File result = new File(groupIdDir, String.join(File.separator, artifactId, version, sourceFileName));
+        // Ensure the resolved path stays within the Maven repo directory
+        try {
+            String repoCanonical = SourceConstants.USER_M2_REPO_DIR.getCanonicalPath();
+            String resultCanonical = result.getCanonicalPath();
+            if (!resultCanonical.startsWith(repoCanonical + File.separator) && !resultCanonical.equals(repoCanonical)) {
+                return null;
+            }
+        } catch (Exception e) {
+            Logger.debug(e);
+            return null;
+        }
+        return result;
     }
 
     @Override
@@ -81,7 +103,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
             // Check if already downloaded to Maven repo and validate it
-            if (mavenRepoSourceFile.exists()) {
+            if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()) {
                 try {
                     if (SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFile)) {
                         SourceFileResult result = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
@@ -114,12 +136,14 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
             try {
-                // Download directly to Maven local repo location
+                // Download directly to Maven local repo location (or temp if path rejected)
                 String tmpFile = new UrlDownloader().download(entry.getValue(), mavenRepoSourceFile);
                 if (tmpFile != null && new File(tmpFile).exists()
                         && SourceAttachUtil.isSourceCodeFor(tmpFile, binFile)) {
                     setDownloadUrl(entry.getValue());
-                    SourceFileResult object = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
+                    File downloadedFile = new File(tmpFile);
+                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
+                    SourceFileResult object = new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100);
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
                     results.add(object);
 
