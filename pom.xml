@@ -21,6 +21,7 @@
     <signing.storetype>PKCS12</signing.storetype>
     <signing.alias></signing.alias>
     <signing.storepass></signing.storepass>
+    <sonar.organization>nbauma109</sonar.organization>
   </properties>
 
   <modules>
