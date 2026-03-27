@@ -266,8 +266,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                     String packageName = DecompileUtil.getPackageName(source);
                     String classFullName = packageName == null ? storeInput.getName()
                             : packageName + "." //$NON-NLS-1$
-                                    + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
-                                            ""); //$NON-NLS-1$
+                            + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
+                                    ""); //$NON-NLS-1$
 
                     File file = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
                             storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
@@ -568,9 +568,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             }
         };
         incrementalFindReverseAction
-                .setHelpContextId(IAbstractTextEditorHelpContextIds.FIND_INCREMENTAL_REVERSE_ACTION);
+        .setHelpContextId(IAbstractTextEditorHelpContextIds.FIND_INCREMENTAL_REVERSE_ACTION);
         incrementalFindReverseAction.setActionDefinitionId(IWorkbenchActionDefinitionIds.FIND_INCREMENTAL_REVERSE);
-        setAction(ITextEditorActionConstants.FIND_INCREMENTAL_REVERSE, incrementalFindAction);
+        setAction(ITextEditorActionConstants.FIND_INCREMENTAL_REVERSE, incrementalFindReverseAction);
 
         setAction(ITextEditorActionConstants.GOTO_LINE, null);
         GotoLineAction gotoAction = new GotoLineAction(fgBundleForConstructedKeys, "Editor.GotoLine.", this) { //$NON-NLS-1$
