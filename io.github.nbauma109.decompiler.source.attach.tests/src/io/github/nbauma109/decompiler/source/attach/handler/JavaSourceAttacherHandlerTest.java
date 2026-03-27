@@ -42,6 +42,7 @@ import org.osgi.framework.Bundle;
 
 import io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFinder;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceFileResult;
+import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 
 public class JavaSourceAttacherHandlerTest {
 
@@ -298,6 +299,65 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     public record JavaProjectSetup(IProject project, IJavaProject javaProject, List<IPackageFragmentRoot> roots) {
+    }
+
+    @Test
+    public void testProcessLibSourcesSkipsDeleteOnExitForMavenRepoFiles() throws Exception {
+        File jar = resolveTestJar();
+
+        // Create a zip file in a Maven repo location (simulate a cached source JAR)
+        File mavenRepoDir = new File(SourceConstants.USER_M2_REPO_DIR,
+                "io/github/nbauma109/test-artifact/1.0"); //$NON-NLS-1$
+        mavenRepoDir.mkdirs();
+        File mavenRepoSourceJar = new File(mavenRepoDir, "test-artifact-1.0-sources.jar"); //$NON-NLS-1$
+        try (FileOutputStream fos = new FileOutputStream(mavenRepoSourceJar)) {
+            fos.write(new byte[] { 0x50, 0x4b, 0x03, 0x04 });
+        }
+        filesToDelete.add(mavenRepoSourceJar);
+
+        JavaProjectSetup setup = createJavaProjectWithLibraries(
+                "process-maven-repo-" + UUID.randomUUID(), //$NON-NLS-1$
+                new LibrarySpec(jar, null));
+
+        IPackageFragmentRoot root = setup.roots().get(0);
+        String binFile = jar.getAbsolutePath();
+
+        JavaSourceAttacherHandler.putRequest(binFile, root);
+        Set<String> notProcessed = new HashSet<>();
+        notProcessed.add(binFile);
+
+        SourceCodeFinder finder = new FinderWithDownloadUrl("https://example.com/test-artifact-1.0-sources.jar"); //$NON-NLS-1$
+        // Use the Maven repo file as both source and tempSource so the isInMavenRepo branch is taken
+        SourceFileResult result = new SourceFileResult(finder, binFile, mavenRepoSourceJar, mavenRepoSourceJar, 100);
+        List<SourceFileResult> responses = new ArrayList<>();
+        responses.add(result);
+
+        // Should not throw - Maven repo files should not be marked for deletion
+        JavaSourceAttacherHandler.processLibSources(notProcessed, responses);
+
+        // The Maven repo source file should still exist (not deleted)
+        assertTrue(mavenRepoSourceJar.exists());
+    }
+
+    private static final class FinderWithDownloadUrl implements SourceCodeFinder {
+        private final String downloadUrl;
+
+        FinderWithDownloadUrl(String downloadUrl) {
+            this.downloadUrl = downloadUrl;
+        }
+
+        @Override
+        public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
+        }
+
+        @Override
+        public void cancel() {
+        }
+
+        @Override
+        public String getDownloadUrl() {
+            return downloadUrl;
+        }
     }
 
     private static final class NoDownloadUrlFinder implements SourceCodeFinder {

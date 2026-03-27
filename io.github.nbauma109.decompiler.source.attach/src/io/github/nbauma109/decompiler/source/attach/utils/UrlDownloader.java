@@ -29,6 +29,10 @@ public class UrlDownloader {
     private String servicePassword;
 
     public String download(final String url) throws Exception {
+        return download(url, null);
+    }
+
+    public String download(final String url, final File targetFile) throws Exception {
         String result;
         if (url != null && url.startsWith("scm:")) //$NON-NLS-1$
         {
@@ -37,7 +41,7 @@ public class UrlDownloader {
         if (new File(url).exists()) {
             result = url;
         } else {
-            result = this.downloadFromUrl(url);
+            result = this.downloadFromUrl(url, targetFile);
         }
         return result;
     }
@@ -65,9 +69,18 @@ public class UrlDownloader {
         delete.execute();
     }
 
-    private String downloadFromUrl(final String url) throws IOException {
-        final File file = File.createTempFile(SourceConstants.TEMP_SOURCE_PREFIX, ".tmp"); //$NON-NLS-1$
+    private String downloadFromUrl(final String url, final File targetFile) throws IOException {
+        final File file = targetFile != null ? targetFile : File.createTempFile(SourceConstants.TEMP_SOURCE_PREFIX, ".tmp"); //$NON-NLS-1$
         try {
+            // Create parent directories if needed
+            if (targetFile != null) {
+                final File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    if (!parent.mkdirs() && !parent.exists()) {
+                        throw new IOException("Failed to create directory: " + parent);
+                    }
+                }
+            }
             final URLConnection conn = new URL(url).openConnection();
             if (serviceUser != null && servicePassword != null) {
                 ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {

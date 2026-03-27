@@ -224,6 +224,8 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                     File sourceFile;
                     if (tempSource == null || !new File(tempSource).exists()) {
                         File tempFile = new File(source);
+
+                        // Always copy the source to the persistent and temp locations
                         sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
                         if (!sourceFile.exists()) {
                             FileUtils.copyFile(tempFile, sourceFile);
@@ -240,7 +242,10 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                     } else {
                         sourceFile = new File(source);
                         sourceTempFile = new File(tempSource);
-                        if (sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+
+                        // Only mark for deletion if not in Maven repo
+                        boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+                        if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
                             sourceTempFile.deleteOnExit();
                         }
                     }

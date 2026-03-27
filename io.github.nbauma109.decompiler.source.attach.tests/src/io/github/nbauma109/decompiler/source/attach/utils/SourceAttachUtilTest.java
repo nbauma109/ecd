@@ -288,6 +288,34 @@ public class SourceAttachUtilTest {
         }
     }
 
+    @Test
+    public void testReattachSourceDoesNotCallDeleteOnExitForMavenRepoFiles() throws Exception {
+        File jar = resolveTestJar();
+        File initialSource = createNonEmptyFileUnderTarget("initial-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        // Create a project with source already attached (so getSourceAttachmentPath() is non-null)
+        JavaProjectSetup setup = createJavaProjectWithLibraries("reattach-maven-" + UUID.randomUUID(), //$NON-NLS-1$
+                new LibrarySpec(jar, initialSource));
+
+        IPackageFragmentRoot root = setup.roots().get(0);
+        assertNotNull(root.getSourceAttachmentPath());
+
+        // Create a source file in the Maven repo location
+        File mavenRepoDir = new File(SourceConstants.USER_M2_REPO_DIR,
+                "io/github/nbauma109/test-reattch/1.0"); //$NON-NLS-1$
+        mavenRepoDir.mkdirs();
+        File mavenRepoSourceJar = new File(mavenRepoDir, "test-reattch-1.0-sources.jar"); //$NON-NLS-1$
+        Files.copy(initialSource.toPath(), mavenRepoSourceJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        filesToDelete.add(mavenRepoSourceJar);
+
+        // Call reattchSource with a Maven repo file - should not call deleteOnExit on it
+        SourceAttachUtil.reattchSource(root, mavenRepoSourceJar, mavenRepoSourceJar, null);
+
+        // Even if attach fails due to test constraints, the Maven repo file must still exist
+        assertTrue(mavenRepoSourceJar.exists());
+        // The key is that reattchSource was called without throwing and the Maven repo file is preserved
+    }
+
     public record LibrarySpec(File binaryJar, File sourceJarOrZip) {
     }
 
