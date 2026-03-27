@@ -570,7 +570,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         incrementalFindReverseAction
         .setHelpContextId(IAbstractTextEditorHelpContextIds.FIND_INCREMENTAL_REVERSE_ACTION);
         incrementalFindReverseAction.setActionDefinitionId(IWorkbenchActionDefinitionIds.FIND_INCREMENTAL_REVERSE);
-        setAction(ITextEditorActionConstants.FIND_INCREMENTAL_REVERSE, incrementalFindAction);
+        setAction(ITextEditorActionConstants.FIND_INCREMENTAL_REVERSE, incrementalFindReverseAction);
 
         setAction(ITextEditorActionConstants.GOTO_LINE, null);
         GotoLineAction gotoAction = new GotoLineAction(fgBundleForConstructedKeys, "Editor.GotoLine.", this) { //$NON-NLS-1$
