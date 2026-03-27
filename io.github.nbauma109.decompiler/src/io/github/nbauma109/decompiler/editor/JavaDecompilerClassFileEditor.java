@@ -23,9 +23,9 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
@@ -266,8 +266,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                     String packageName = DecompileUtil.getPackageName(source);
                     String classFullName = packageName == null ? storeInput.getName()
                             : packageName + "." //$NON-NLS-1$
-                            + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
-                                    ""); //$NON-NLS-1$
+                                    + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
+                                            ""); //$NON-NLS-1$
 
                     File file = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
                             storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
@@ -285,9 +285,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                         ReflectionUtils.invokeMethod(editor, "setPartName", //$NON-NLS-1$
                                 new Class[] { String.class }, new String[] { getPartTitle(storeInput.getName()) });
 
-                        ReflectionUtils.invokeMethod(editor, "setTitleImage", //$NON-NLS-1$
-                                new Class[] { Image.class },
-                                new Object[] { resolveDecompilerTitleImage() });
+                        Image decompilerImage = resolveDecompilerTitleImage();
+                        if (isUsableImage(decompilerImage)) {
+                            ReflectionUtils.invokeMethod(editor, "setTitleImage", //$NON-NLS-1$
+                                    new Class[] { Image.class },
+                                    new Object[] { decompilerImage });
+                        }
 
                         ReflectionUtils.setFieldValue(editor, "fIsEditingDerivedFileAllowed", //$NON-NLS-1$
                                 Boolean.valueOf(false));
@@ -386,21 +389,25 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private void updateTitleImage() {
         Image currentTitleImage = getTitleImage();
-        if ((defaultTitleImage == null || defaultTitleImage.isDisposed()) && currentTitleImage != null) {
+        if (defaultTitleImage == null && isUsableImage(currentTitleImage)) {
             defaultTitleImage = currentTitleImage;
         }
 
         Image decompilerTitleImage = resolveDecompilerTitleImage();
-        if (decompilerTitleImage != null) {
+        if (isUsableImage(decompilerTitleImage)) {
             if (currentTitleImage != decompilerTitleImage) {
                 setTitleImage(decompilerTitleImage);
             }
             return;
         }
 
-        if (defaultTitleImage != null && currentTitleImage != defaultTitleImage) {
+        if (isUsableImage(defaultTitleImage) && currentTitleImage != defaultTitleImage) {
             setTitleImage(defaultTitleImage);
         }
+    }
+
+    private boolean isUsableImage(Image image) {
+        return image != null && !image.isDisposed();
     }
 
     private Image resolveDecompilerTitleImage() {
@@ -561,7 +568,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             }
         };
         incrementalFindReverseAction
-        .setHelpContextId(IAbstractTextEditorHelpContextIds.FIND_INCREMENTAL_REVERSE_ACTION);
+                .setHelpContextId(IAbstractTextEditorHelpContextIds.FIND_INCREMENTAL_REVERSE_ACTION);
         incrementalFindReverseAction.setActionDefinitionId(IWorkbenchActionDefinitionIds.FIND_INCREMENTAL_REVERSE);
         setAction(ITextEditorActionConstants.FIND_INCREMENTAL_REVERSE, incrementalFindAction);
 

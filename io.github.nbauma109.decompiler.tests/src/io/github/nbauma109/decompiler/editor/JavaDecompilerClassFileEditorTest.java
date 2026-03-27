@@ -10,10 +10,13 @@ package io.github.nbauma109.decompiler.editor;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -44,6 +47,7 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
@@ -56,6 +60,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
+
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
 
@@ -187,6 +192,65 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue("Expected reopen to use JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
                 openedEditor instanceof JavaDecompilerClassFileEditor);
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
+    }
+
+    @Test
+    public void testUpdateTitleImageDoesNotUseDisposedDefaultImage() throws Exception {
+        ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
+                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        Image decompilerImage = JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER);
+        assertSame(decompilerImage, editor.getTitleImage());
+
+        Image disposedImage = createDisposedImage();
+
+        runInUiThread(() -> {
+            setPrivateField(editor, "defaultTitleImage", disposedImage); //$NON-NLS-1$
+            setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
+            invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
+        });
+
+        assertSame(decompilerImage, editor.getTitleImage());
+    }
+
+    @Test
+    public void testUpdateTitleImageDoesNotReplaceDisposedDefaultImageWithDecompilerImage() throws Exception {
+        ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
+                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        Image decompilerImage = JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER);
+        assertSame(decompilerImage, editor.getTitleImage());
+
+        Image disposedImage = createDisposedImage();
+
+        runInUiThread(() -> {
+            setPrivateField(editor, "defaultTitleImage", disposedImage); //$NON-NLS-1$
+            invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
+        });
+
+        Image storedDefaultImage = runInUiThreadWithResult(
+                () -> (Image) getPrivateField(editor, "defaultTitleImage")); //$NON-NLS-1$
+        assertSame(disposedImage, storedDefaultImage);
     }
 
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {
@@ -478,6 +542,57 @@ public class JavaDecompilerClassFileEditorTest {
 
     private static void refreshDecompilerEditorAssociations() throws Exception {
         runInUiThread(() -> new SetupRunnableAccessor().apply());
+    }
+
+    private static Image createDisposedImage() throws Exception {
+        return runInUiThreadWithResult(() -> {
+            Display display = Display.getDefault();
+            Image image = new Image(display, 1, 1);
+            image.dispose();
+            return image;
+        });
+    }
+
+    private static Object getPrivateField(Object target, String fieldName) throws Exception {
+        Field field = findField(target.getClass(), fieldName);
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    private static void setPrivateField(Object target, String fieldName, Object value) throws Exception {
+        Field field = findField(target.getClass(), fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private static void invokePrivateMethod(Object target, String methodName) throws Exception {
+        Method method = findMethod(target.getClass(), methodName);
+        method.setAccessible(true);
+        method.invoke(target);
+    }
+
+    private static Field findField(Class<?> type, String fieldName) throws Exception {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName);
+    }
+
+    private static Method findMethod(Class<?> type, String methodName) throws Exception {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredMethod(methodName);
+            } catch (NoSuchMethodException e) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchMethodException(methodName);
     }
 
     private interface UiRunnable {
