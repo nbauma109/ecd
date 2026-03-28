@@ -15,6 +15,9 @@ import org.junit.Test;
 
 public class LocalSourceFinderTest {
 
+    private static final String BIN_JAR_NAME = "demo.jar";
+    private static final String IGNORED_SHA1 = "ignored";
+
     private File testRoot;
 
     @Before
@@ -33,14 +36,14 @@ public class LocalSourceFinderTest {
 
     @Test
     public void find_registersAdjacentSourcesJar() throws Exception {
-        File binJar = new File(testRoot, "demo.jar");
+        File binJar = new File(testRoot, BIN_JAR_NAME);
         File srcJar = new File(testRoot, "demo-sources.jar");
         Files.writeString(binJar.toPath(), "bin", StandardCharsets.UTF_8);
         Files.writeString(srcJar.toPath(), "src", StandardCharsets.UTF_8);
         LocalSourceFinder finder = new LocalSourceFinder();
         List<SourceFileResult> results = new ArrayList<>();
 
-        finder.find(binJar.getAbsolutePath(), "ignored", results);
+        finder.find(binJar.getAbsolutePath(), IGNORED_SHA1, results);
 
         assertEquals(1, results.size());
         assertEquals(srcJar.getAbsolutePath(), results.get(0).getSource());
@@ -52,7 +55,7 @@ public class LocalSourceFinderTest {
 
     @Test
     public void find_returnsNothingWhenCanceled() throws Exception {
-        File binJar = new File(testRoot, "demo.jar");
+        File binJar = new File(testRoot, BIN_JAR_NAME);
         File srcJar = new File(testRoot, "demo-sources.jar");
         Files.writeString(binJar.toPath(), "bin", StandardCharsets.UTF_8);
         Files.writeString(srcJar.toPath(), "src", StandardCharsets.UTF_8);
@@ -60,19 +63,19 @@ public class LocalSourceFinderTest {
         List<SourceFileResult> results = new ArrayList<>();
 
         finder.cancel();
-        finder.find(binJar.getAbsolutePath(), "ignored", results);
+        finder.find(binJar.getAbsolutePath(), IGNORED_SHA1, results);
 
         assertTrue(results.isEmpty());
     }
 
     @Test
     public void find_returnsNothingWhenNoAdjacentSourceOrGavIsAvailable() throws Exception {
-        File binJar = new File(testRoot, "demo.jar");
+        File binJar = new File(testRoot, BIN_JAR_NAME);
         Files.writeString(binJar.toPath(), "not a jar with pom properties", StandardCharsets.UTF_8);
         LocalSourceFinder finder = new LocalSourceFinder();
         List<SourceFileResult> results = new ArrayList<>();
 
-        finder.find(binJar.getAbsolutePath(), "ignored", results);
+        finder.find(binJar.getAbsolutePath(), IGNORED_SHA1, results);
 
         assertTrue(results.isEmpty());
     }

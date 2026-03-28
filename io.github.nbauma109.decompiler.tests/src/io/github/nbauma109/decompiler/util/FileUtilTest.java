@@ -29,6 +29,8 @@ import org.junit.Test;
 
 public class FileUtilTest {
 
+    private static final String KEEP1_TXT = "keep1.txt";
+
     private File testRoot;
 
     @Before
@@ -151,7 +153,7 @@ public class FileUtilTest {
         File sub = new File(root, "sub");
         assertTrue(sub.mkdirs());
 
-        File keep1 = new File(root, "keep1.txt");
+        File keep1 = new File(root, KEEP1_TXT);
         File keep2 = new File(sub, "keep2.txt");
         File skip = new File(sub, "skip.tmp");
 
@@ -169,11 +171,11 @@ public class FileUtilTest {
 
         Map<String, byte[]> entries = readZipEntries(zipFile);
 
-        assertTrue(entries.containsKey("keep1.txt"));
+        assertTrue(entries.containsKey(KEEP1_TXT));
         assertTrue(entries.containsKey("sub/keep2.txt"));
         assertFalse(entries.containsKey("sub/skip.tmp"));
 
-        assertEquals("one", new String(entries.get("keep1.txt"), StandardCharsets.UTF_8));
+        assertEquals("one", new String(entries.get(KEEP1_TXT), StandardCharsets.UTF_8));
         assertEquals("two", new String(entries.get("sub/keep2.txt"), StandardCharsets.UTF_8));
     }
 

@@ -77,6 +77,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file"; //$NON-NLS-1$
     private static final Pattern LINE_NUMBER_COMMENT = Pattern.compile("/\\*\\s*\\d+\\s*\\*/");
+    private static final String FIND_TARGET_FIELD = "fTarget"; //$NON-NLS-1$
 
     private IBuffer classBuffer;
     private boolean sourceShown = false;
@@ -485,7 +486,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
             @Override
             public void run() {
-                ReflectionUtils.setFieldValue(this, "fTarget", //$NON-NLS-1$
+                ReflectionUtils.setFieldValue(this, FIND_TARGET_FIELD,
                         JavaDecompilerClassFileEditor.this.getAdapter(IFindReplaceTarget.class));
 
                 super.run();
@@ -501,7 +502,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
             @Override
             public void run() {
-                ReflectionUtils.setFieldValue(this, "fTarget", //$NON-NLS-1$
+                ReflectionUtils.setFieldValue(this, FIND_TARGET_FIELD,
                         JavaDecompilerClassFileEditor.this.getAdapter(IFindReplaceTarget.class));
 
                 super.run();
@@ -517,7 +518,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
             @Override
             public void run() {
-                ReflectionUtils.setFieldValue(this, "fTarget", //$NON-NLS-1$
+                ReflectionUtils.setFieldValue(this, FIND_TARGET_FIELD,
                         JavaDecompilerClassFileEditor.this.getAdapter(IFindReplaceTarget.class));
 
                 super.run();
@@ -536,7 +537,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             public void run() {
                 try {
                     Class<?> clazz = Class.forName("org.eclipse.ui.texteditor.IncrementalFindTarget"); //$NON-NLS-1$
-                    ReflectionUtils.setFieldValue(this, "fTarget", //$NON-NLS-1$
+                    ReflectionUtils.setFieldValue(this, FIND_TARGET_FIELD,
                             JavaDecompilerClassFileEditor.this.getAdapter(clazz));
                 } catch (ClassNotFoundException e) {
                     Logger.debug(e);
@@ -558,7 +559,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             public void run() {
                 try {
                     Class<?> clazz = Class.forName("org.eclipse.ui.texteditor.IncrementalFindTarget"); //$NON-NLS-1$
-                    ReflectionUtils.setFieldValue(this, "fTarget", //$NON-NLS-1$
+                    ReflectionUtils.setFieldValue(this, FIND_TARGET_FIELD,
                             JavaDecompilerClassFileEditor.this.getAdapter(clazz));
                 } catch (ClassNotFoundException e) {
                     Logger.debug(e);

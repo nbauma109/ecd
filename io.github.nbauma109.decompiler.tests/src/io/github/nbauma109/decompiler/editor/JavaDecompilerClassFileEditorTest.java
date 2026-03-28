@@ -70,6 +70,8 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
+    private static final String NO_CLASS_ENTRY_FOUND = "No .class entry found in test.jar"; //$NON-NLS-1$
+    private static final String DEFAULT_TITLE_IMAGE_FIELD = "defaultTitleImage"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -131,7 +133,7 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue(!editorId.trim().isEmpty());
 
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
-                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
         IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
         assertTrue(pkg.exists());
@@ -165,7 +167,7 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testReopenClassFileUsesDecompilerEditorAfterSourceWasCached() throws Exception {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
-                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
         IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
         assertTrue(pkg.exists());
@@ -197,7 +199,7 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testUpdateTitleImageDoesNotUseDisposedDefaultImage() throws Exception {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
-                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
         IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
         assertTrue(pkg.exists());
@@ -215,7 +217,7 @@ public class JavaDecompilerClassFileEditorTest {
         Image disposedImage = createDisposedImage();
 
         runInUiThread(() -> {
-            setPrivateField(editor, "defaultTitleImage", disposedImage); //$NON-NLS-1$
+            setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
             setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
             invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
         });
@@ -226,7 +228,7 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testUpdateTitleImageDoesNotReplaceDisposedDefaultImageWithDecompilerImage() throws Exception {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
-                () -> new IllegalStateException("No .class entry found in test.jar")); //$NON-NLS-1$
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
         IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
         assertTrue(pkg.exists());
@@ -244,12 +246,12 @@ public class JavaDecompilerClassFileEditorTest {
         Image disposedImage = createDisposedImage();
 
         runInUiThread(() -> {
-            setPrivateField(editor, "defaultTitleImage", disposedImage); //$NON-NLS-1$
+            setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
             invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
         });
 
         Image storedDefaultImage = runInUiThreadWithResult(
-                () -> (Image) getPrivateField(editor, "defaultTitleImage")); //$NON-NLS-1$
+                () -> (Image) getPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD));
         assertSame(disposedImage, storedDefaultImage);
     }
 

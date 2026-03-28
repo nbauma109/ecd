@@ -8,6 +8,10 @@ import java.lang.reflect.Method;
 
 public class ReflectionUtilsTest {
 
+    private static final String SUB_FIELD = "subField";
+    private static final String VALUE = "value";
+    private static final String SINGLE_ARG_METHOD = "singleArgMethod";
+
     private TestSubClass subObj;
     private TestSuperClass superObj;
 
@@ -45,8 +49,8 @@ public class ReflectionUtilsTest {
     @Test
     public void testSetAndGetFieldValue() {
         // Test SubClass field
-        ReflectionUtils.setFieldValue(subObj, "subField", "changedSub");
-        assertEquals("changedSub", ReflectionUtils.getFieldValue(subObj, "subField"));
+        ReflectionUtils.setFieldValue(subObj, SUB_FIELD, "changedSub");
+        assertEquals("changedSub", ReflectionUtils.getFieldValue(subObj, SUB_FIELD));
 
         // Test SuperClass field (traversal)
         ReflectionUtils.setFieldValue(subObj, "superField", "changedSuper");
@@ -60,9 +64,9 @@ public class ReflectionUtilsTest {
         assertNull(ReflectionUtils.getFieldValue(subObj, "nonExistentField"));
 
         // Ensure setFieldValue handles nulls/missing fields gracefully
-        ReflectionUtils.setFieldValue(null, "field", "value");
-        ReflectionUtils.setFieldValue(subObj, null, "value");
-        ReflectionUtils.setFieldValue(subObj, "nonExistentField", "value");
+        ReflectionUtils.setFieldValue(null, "field", VALUE);
+        ReflectionUtils.setFieldValue(subObj, null, VALUE);
+        ReflectionUtils.setFieldValue(subObj, "nonExistentField", VALUE);
     }
 
     // --- METHOD TESTS ---
@@ -71,18 +75,18 @@ public class ReflectionUtilsTest {
     public void testInvokeMethodNoArgs() {
         // Package-private method test
         ReflectionUtils.invokeMethod(subObj, "noArgMethod");
-        assertEquals("noArgCalled", ReflectionUtils.getFieldValue(subObj, "subField"));
+        assertEquals("noArgCalled", ReflectionUtils.getFieldValue(subObj, SUB_FIELD));
     }
 
     @Test
     public void testInvokeMethodSingleArg() {
-        Object result = ReflectionUtils.invokeMethod(subObj, "singleArgMethod", Integer.class, 123);
+        Object result = ReflectionUtils.invokeMethod(subObj, SINGLE_ARG_METHOD, Integer.class, 123);
         assertEquals("val:123", result);
     }
 
     @Test
     public void testInvokeMethodNullArg() {
-        assertNull(ReflectionUtils.invokeMethod(null, "singleArgMethod", Integer.class, 123));
+        assertNull(ReflectionUtils.invokeMethod(null, SINGLE_ARG_METHOD, Integer.class, 123));
         assertNull(ReflectionUtils.invokeMethod(subObj, null, Integer.class, 123));
         assertNull(ReflectionUtils.invokeMethod(null, null, Integer.class, 123));
     }
@@ -108,7 +112,7 @@ public class ReflectionUtilsTest {
 
     @Test
     public void testInvokeMethodDirect() throws Exception {
-        Method m = subObj.getClass().getDeclaredMethod("singleArgMethod", Integer.class);
+        Method m = subObj.getClass().getDeclaredMethod(SINGLE_ARG_METHOD, Integer.class);
         Object result = ReflectionUtils.invokeMethod(m, subObj, new Object[]{ 456 });
         assertEquals("val:456", result);
     }
@@ -121,7 +125,7 @@ public class ReflectionUtilsTest {
         assertNull(ReflectionUtils.getDeclaredMethod(subObj, "nonExistent", null));
 
         // Test invalid method call (wrong params)
-        assertNull(ReflectionUtils.invokeMethod(subObj, "singleArgMethod", String.class, "wrongType"));
+        assertNull(ReflectionUtils.invokeMethod(subObj, SINGLE_ARG_METHOD, String.class, "wrongType"));
     }
 
     @Test

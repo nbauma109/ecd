@@ -57,6 +57,9 @@ import com.eclipsesource.json.JsonValue;
 
 public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements SourceCodeFinder {
 
+    private static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
+    private static final String VERSION_FIELD = "version"; //$NON-NLS-1$
+
     // ---------------------------------------------------------------------------------
     // Configuration supplied by the caller
     // ---------------------------------------------------------------------------------
@@ -258,8 +261,8 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         Map<GAV, String> upgraded = new LinkedHashMap<>();
         for (Map.Entry<GAV, String> e : out.entrySet()) {
             String url = e.getValue();
-            if (url != null && url.endsWith(".jar") && !url.endsWith("-sources.jar")) {
-                String candidate = url.substring(0, url.length() - 4) + "-sources.jar";
+            if (url != null && url.endsWith(".jar") && !url.endsWith(SOURCES_JAR)) {
+                String candidate = url.substring(0, url.length() - 4) + SOURCES_JAR;
                 candidate = normalizeSchemeByPort(candidate);
                 if (httpExists(candidate)) {
                     upgraded.put(e.getKey(), candidate);
@@ -308,7 +311,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     gav.setArtifactLink(download);
                 }
                 // Prefer sources
-                boolean isSources = path.endsWith("-sources.jar") || path.endsWith(".src.zip");
+                boolean isSources = path.endsWith(SOURCES_JAR) || path.endsWith(".src.zip");
                 if (isSources || !sink.containsKey(gav)) {
                     sink.put(gav, download);
                 }
@@ -346,7 +349,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 JsonObject comp = v.asObject();
                 String group = jsonString(comp, "group");
                 String name = jsonString(comp, "name");
-                String version = jsonString(comp, "version");
+                String version = jsonString(comp, VERSION_FIELD);
 
                 Set<String> assetUrls = new LinkedHashSet<>();
                 JsonArray assets = jsonArray(comp, "assets");
@@ -369,7 +372,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     }
                     // Prefer sources asset if present
                     String chosen = chooseSourcesFirst(assetUrls);
-                    if (!sink.containsKey(gav) || chosen.endsWith("-sources.jar")) {
+                    if (!sink.containsKey(gav) || chosen.endsWith(SOURCES_JAR)) {
                         sink.put(gav, chosen);
                     }
                 }
@@ -403,7 +406,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 String repoId     = jsonStringAny(root, "repoId", "repositoryId");
                 String groupId    = jsonString(root, "groupId");
                 String artifactId = jsonString(root, "artifactId");
-                String version    = jsonString(root, "version");
+                String version    = jsonString(root, VERSION_FIELD);
                 String classifier = jsonString(root, "classifier");
                 String ext        = firstNonEmpty(jsonString(root, "extension"), "jar");
 
@@ -442,7 +445,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     JsonObject item = v.asObject();
                     String groupId    = jsonString(item, "groupId");
                     String artifactId = jsonString(item, "artifactId");
-                    String version    = jsonString(item, "version");
+                    String version    = jsonString(item, VERSION_FIELD);
                     // Primary field is latestReleaseRepositoryId; fallbacks are tolerated for compatibility
                     String repoId     = jsonStringAny(item, "latestReleaseRepositoryId", "repositoryId", "repoId");
 
@@ -461,7 +464,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                         g.setArtifactId(artifactId);
                         g.setVersion(version);
                         g.setArtifactLink(chosen);
-                        if (!sink.containsKey(g) || chosen.endsWith("-sources.jar")) {
+                        if (!sink.containsKey(g) || chosen.endsWith(SOURCES_JAR)) {
                             sink.put(g, chosen);
                         }
                     }
@@ -520,7 +523,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 
     private String chooseSourcesFirst(Set<String> urls) {
         for (String u : urls) {
-            if (u.endsWith("-sources.jar") || u.endsWith(".src.zip")) {
+            if (u.endsWith(SOURCES_JAR) || u.endsWith(".src.zip")) {
                 return u;
             }
         }

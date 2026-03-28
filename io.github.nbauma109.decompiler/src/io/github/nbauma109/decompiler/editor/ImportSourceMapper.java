@@ -41,6 +41,8 @@ import io.github.nbauma109.decompiler.util.SourceMapperUtil;
 
 public class ImportSourceMapper extends SourceMapper {
 
+    private static final String CHILDREN_FIELD = "children"; //$NON-NLS-1$
+
     private static Map<String, String> compilerOptions = new HashMap<>();
     static {
         compilerOptions = new CompilerOptions().getMap();
@@ -103,10 +105,10 @@ public class ImportSourceMapper extends SourceMapper {
 
     @Override
     public void exitCompilationUnit(int declarationEnd) {
-        IJavaElement[] oldChildren = (IJavaElement[]) ReflectionUtils.getFieldValue(this.unitInfo, "children"); //$NON-NLS-1$
+        IJavaElement[] oldChildren = (IJavaElement[]) ReflectionUtils.getFieldValue(this.unitInfo, CHILDREN_FIELD);
 
         if (this.importContainerInfo != null) {
-            ReflectionUtils.setFieldValue(this.importContainerInfo, "children", getChildren(this.importContainerInfo)); //$NON-NLS-1$
+            ReflectionUtils.setFieldValue(this.importContainerInfo, CHILDREN_FIELD, getChildren(this.importContainerInfo));
         }
 
         List<IJavaElement> children = new ArrayList<>();
@@ -121,7 +123,7 @@ public class ImportSourceMapper extends SourceMapper {
 
         children.addAll(Arrays.asList(getChildren(this.unitInfo)));
 
-        ReflectionUtils.setFieldValue(this.unitInfo, "children", children.toArray(new IJavaElement[0])); //$NON-NLS-1$
+        ReflectionUtils.setFieldValue(this.unitInfo, CHILDREN_FIELD, children.toArray(new IJavaElement[0]));
 
         if (this.importContainer != null) {
             manager.getTemporaryCache().put(this.importContainer, this.importContainerInfo);

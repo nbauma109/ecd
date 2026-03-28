@@ -16,6 +16,9 @@ import org.junit.Test;
 
 public class SourceCheckTest {
 
+    private static final String BIN_JAR_NAME = "demo.jar";
+    private static final String SOURCE_JAR_NAME = "demo-sources.jar";
+
     private File testRoot;
 
     @Before
@@ -36,24 +39,24 @@ public class SourceCheckTest {
 
     @Test
     public void isWrongSource_returnsTrueWhenBinaryHasClassesButSourceHasNoJavaFiles() throws Exception {
-        File binJar = createZip("demo.jar", "pkg/Demo.class", "bytecode");
-        File srcJar = createZip("demo-sources.jar", "META-INF/MANIFEST.MF", "manifest");
+        File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
+        File srcJar = createZip(SOURCE_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
 
         assertTrue(SourceCheck.isWrongSource(srcJar, binJar));
     }
 
     @Test
     public void isWrongSource_returnsFalseWhenSourceContainsJavaFiles() throws Exception {
-        File binJar = createZip("demo.jar", "pkg/Demo.class", "bytecode");
-        File srcJar = createZip("demo-sources.jar", "pkg/Demo.java", "class Demo {}");
+        File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
+        File srcJar = createZip(SOURCE_JAR_NAME, "pkg/Demo.java", "class Demo {}");
 
         assertFalse(SourceCheck.isWrongSource(srcJar, binJar));
     }
 
     @Test
     public void isWrongSource_returnsFalseWhenBinaryHasNoClasses() throws Exception {
-        File binJar = createZip("demo.jar", "META-INF/MANIFEST.MF", "manifest");
-        File srcJar = createZip("demo-sources.jar", "docs/readme.txt", "text");
+        File binJar = createZip(BIN_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
+        File srcJar = createZip(SOURCE_JAR_NAME, "docs/readme.txt", "text");
 
         assertFalse(SourceCheck.isWrongSource(srcJar, binJar));
     }

@@ -37,6 +37,10 @@ import org.eclipse.core.runtime.Platform;
 public class DecompilerAdapterManager {
 
     private static final String ADAPTERS_EXTENSION_ID = "io.github.nbauma109.decompiler.decompilerAdapters"; //$NON-NLS-1$
+    private static final String CLASS_ATTRIBUTE = "class"; //$NON-NLS-1$
+    private static final String FACTORY_ATTRIBUTE = "factory"; //$NON-NLS-1$
+    private static final String PRIORITY_ATTRIBUTE = "priority"; //$NON-NLS-1$
+    private static final String OVERWRITE_ATTRIBUTE = "overwrite"; //$NON-NLS-1$
 
     protected static final Logger logger = Logger.getLogger(DecompilerAdapterManager.class.getName());
 
@@ -65,7 +69,7 @@ public class DecompilerAdapterManager {
         if (extensionPoint != null) {
             IConfigurationElement[] elements = extensionPoint.getConfigurationElements();
             for (IConfigurationElement element : elements) {
-                String adaptableClassName = element.getAttribute("class"); //$NON-NLS-1$
+                String adaptableClassName = element.getAttribute(CLASS_ATTRIBUTE);
                 Class<?> adaptableType = null;
 
                 IConfigurationElement[] adapters = element.getChildren("adapter"); //$NON-NLS-1$
@@ -80,22 +84,22 @@ public class DecompilerAdapterManager {
                         adapter.setSingleton(!"false".equals( //$NON-NLS-1$
                                 adapterElement.getAttribute("singleton"))); //$NON-NLS-1$
 
-                        if (adapterElement.getAttribute("class") != null //$NON-NLS-1$
-                                && !adapterElement.getAttribute("class") //$NON-NLS-1$
+                        if (adapterElement.getAttribute(CLASS_ATTRIBUTE) != null
+                                && !adapterElement.getAttribute(CLASS_ATTRIBUTE)
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setAdapterInstance(adapterElement.createExecutableExtension("class")); //$NON-NLS-1$
+                            adapter.setAdapterInstance(adapterElement.createExecutableExtension(CLASS_ATTRIBUTE));
 
                             if (!adapter.isSingleton()) {
                                 // cache the config element to create new
                                 // instance
                                 adapter.setAdapterConfig(adapterElement);
                             }
-                        } else if (adapterElement.getAttribute("factory") != null //$NON-NLS-1$
-                                && !adapterElement.getAttribute("factory") //$NON-NLS-1$
+                        } else if (adapterElement.getAttribute(FACTORY_ATTRIBUTE) != null
+                                && !adapterElement.getAttribute(FACTORY_ATTRIBUTE)
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setFactory((IAdapterFactory) adapterElement.createExecutableExtension("factory")); //$NON-NLS-1$
+                            adapter.setFactory((IAdapterFactory) adapterElement.createExecutableExtension(FACTORY_ATTRIBUTE));
                         }
 
                         if (adaptableType == null) {
@@ -112,21 +116,21 @@ public class DecompilerAdapterManager {
 
                         adapter.setAdapterType(adapterType);
 
-                        if (adapterElement.getAttribute("priority") != null //$NON-NLS-1$
-                                && !adapterElement.getAttribute("priority") //$NON-NLS-1$
+                        if (adapterElement.getAttribute(PRIORITY_ATTRIBUTE) != null
+                                && !adapterElement.getAttribute(PRIORITY_ATTRIBUTE)
                                 .equals("")) //$NON-NLS-1$
                         {
                             try {
-                                adapter.setPriority(Integer.parseInt(adapterElement.getAttribute("priority"))); //$NON-NLS-1$
+                                adapter.setPriority(Integer.parseInt(adapterElement.getAttribute(PRIORITY_ATTRIBUTE)));
                             } catch (NumberFormatException e) {
                             }
                         }
 
-                        if (adapterElement.getAttribute("overwrite") != null //$NON-NLS-1$
-                                && !adapterElement.getAttribute("overwrite") //$NON-NLS-1$
+                        if (adapterElement.getAttribute(OVERWRITE_ATTRIBUTE) != null
+                                && !adapterElement.getAttribute(OVERWRITE_ATTRIBUTE)
                                 .equals("")) //$NON-NLS-1$
                         {
-                            adapter.setOverwrite(adapterElement.getAttribute("overwrite") //$NON-NLS-1$
+                            adapter.setOverwrite(adapterElement.getAttribute(OVERWRITE_ATTRIBUTE)
                                     .split(";")); //$NON-NLS-1$
                         }
                         adapter.setIncludeWorkbenchContribute("true".equals(adapterElement.getAttribute( //$NON-NLS-1$

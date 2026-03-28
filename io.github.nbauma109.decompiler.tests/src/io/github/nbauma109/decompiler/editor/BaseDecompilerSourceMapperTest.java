@@ -28,6 +28,12 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 
 public class BaseDecompilerSourceMapperTest {
 
+    private static final String PACKAGE_COM_EXAMPLE_FOO_BAR = "com.example.foo.bar";
+    private static final String VERSION_SEPARATOR = " version ";
+    private static final String TRANSFORMER_API_LABEL = " as part of transformer-api ";
+    private static final String TRANSFORMER_API_VERSION_KEY = "transformer-api-version";
+    private static final String HELLO_WORLD_CLASS_PATH = "target/classes/HelloWorld.class";
+
     private IProject project;
     private IJavaProject javaProject;
     private BaseDecompilerSourceMapper vineflower;
@@ -82,10 +88,10 @@ public class BaseDecompilerSourceMapperTest {
 
     @Test
     public void testIsSourceLookupEligible() throws Exception {
-        IType typeInFooBar = createType("com.example.foo.bar", "SampleOne");
+        IType typeInFooBar = createType(PACKAGE_COM_EXAMPLE_FOO_BAR, "SampleOne");
 
         assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[0]));
-        assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo.bar" }));
+        assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { PACKAGE_COM_EXAMPLE_FOO_BAR }));
         assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.foo" }));
         assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[] { "com.example.food" }));
 
@@ -99,7 +105,7 @@ public class BaseDecompilerSourceMapperTest {
 
     @Test
     public void testIsSourceLookupEligibleStringOverload() throws Exception {
-        IType typeInFooBar = createType("com.example.foo.bar", "SampleThree");
+        IType typeInFooBar = createType(PACKAGE_COM_EXAMPLE_FOO_BAR, "SampleThree");
 
         assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, "com.other, com.example.foo"));
         assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, "com.other,com.example.food"));
@@ -124,10 +130,10 @@ public class BaseDecompilerSourceMapperTest {
                 + "	\n"
                 + "	Decompiled with "
                 + vineflower.getDecompilerName()
-                + " version "
+                + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
-                + " as part of transformer-api "
-                + vineflower.getVersion("transformer-api-version")
+                + TRANSFORMER_API_LABEL
+                + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
                 + "	Parse and realign phase failed with ParseException. Please report issue to https://github.com/nbauma109/jd-util/issues.\n"
                 + "*/", source.toString());
@@ -138,7 +144,7 @@ public class BaseDecompilerSourceMapperTest {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, false);
-        File file = new File("target/classes/HelloWorld.class");
+        File file = new File(HELLO_WORLD_CLASS_PATH);
         String decompiledOutput = vineflower.decompile(file);
         assertEquals("public class HelloWorld {\r\n"
                 + "	public static void main(String[] args) {\r\n"
@@ -158,10 +164,10 @@ public class BaseDecompilerSourceMapperTest {
                 + "	\n"
                 + "	Decompiled with "
                 + vineflower.getDecompilerName()
-                + " version "
+                + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
-                + " as part of transformer-api "
-                + vineflower.getVersion("transformer-api-version")
+                + TRANSFORMER_API_LABEL
+                + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
                 + "	Realignment is turned off.\n"
                 + "*/", decompiledOutput);
@@ -172,7 +178,7 @@ public class BaseDecompilerSourceMapperTest {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
-        File file = new File("target/classes/HelloWorld.class");
+        File file = new File(HELLO_WORLD_CLASS_PATH);
         String decompiledOutput = vineflower.decompile(file);
         assertEquals("/*   */ public class HelloWorld {\n"
                 + "/*   */   public static void main(String[] args) {\n"
@@ -193,10 +199,10 @@ public class BaseDecompilerSourceMapperTest {
                 + "	\n"
                 + "	Decompiled with "
                 + vineflower.getDecompilerName()
-                + " version "
+                + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
-                + " as part of transformer-api "
-                + vineflower.getVersion("transformer-api-version")
+                + TRANSFORMER_API_LABEL
+                + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
                 + "	Parsed and realigned with jd-util "
                 + vineflower.getVersion("JD-Util-Version")
@@ -209,7 +215,7 @@ public class BaseDecompilerSourceMapperTest {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
-        File file = new File("target/classes/HelloWorld.class");
+        File file = new File(HELLO_WORLD_CLASS_PATH);
         String decompiledOutput = jdCore.decompile(file);
         assertEquals("/*   */ public class HelloWorld {\n"
                 + "/*   */   public static void main(String[] args) {\n"
@@ -230,10 +236,10 @@ public class BaseDecompilerSourceMapperTest {
                 + "	\n"
                 + "	Decompiled and natively realigned with "
                 + jdCore.getDecompilerName()
-                + " version "
+                + VERSION_SEPARATOR
                 + jdCore.getDecompilerVersion()
-                + " as part of transformer-api "
-                + jdCore.getVersion("transformer-api-version")
+                + TRANSFORMER_API_LABEL
+                + jdCore.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
                 + "*/", decompiledOutput);
     }

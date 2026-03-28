@@ -8,37 +8,40 @@ import org.junit.Test;
 
 public class GAVTest {
 
+    private static final String GROUP_ID = "org.example";
+    private static final String VERSION = "1.0.0";
+
     @Test
     public void gav_isValidOnlyWhenAllCoordinatesArePresent() {
         GAV gav = new GAV();
         assertFalse(gav.isValid());
 
-        gav.setGroupId("org.example");
+        gav.setGroupId(GROUP_ID);
         gav.setArtifactId("demo");
         assertFalse(gav.isValid());
 
-        gav.setVersion("1.0.0");
+        gav.setVersion(VERSION);
         assertTrue(gav.isValid());
     }
 
     @Test
     public void gav_equalsHashCodeAndToStringReflectState() {
         GAV left = new GAV();
-        left.setGroupId("org.example");
+        left.setGroupId(GROUP_ID);
         left.setArtifactId("demo");
-        left.setVersion("1.0.0");
+        left.setVersion(VERSION);
         left.setArtifactLink("https://repo.example.org/demo");
 
         GAV right = new GAV();
-        right.setGroupId("org.example");
+        right.setGroupId(GROUP_ID);
         right.setArtifactId("demo");
-        right.setVersion("1.0.0");
+        right.setVersion(VERSION);
         right.setArtifactLink("https://repo.example.org/demo");
 
         GAV different = new GAV();
-        different.setGroupId("org.example");
+        different.setGroupId(GROUP_ID);
         different.setArtifactId("other");
-        different.setVersion("1.0.0");
+        different.setVersion(VERSION);
 
         assertEquals(left, right);
         assertEquals(left.hashCode(), right.hashCode());

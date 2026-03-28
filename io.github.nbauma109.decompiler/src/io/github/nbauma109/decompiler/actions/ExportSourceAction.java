@@ -49,6 +49,8 @@ import io.github.nbauma109.decompiler.util.UIUtil;
 public class ExportSourceAction extends Action {
 
     private static final String[] ZIP_FILTER = { "*.zip" };
+    private static final String ERROR_DIALOG_TITLE_KEY = "ExportSourceAction.ErrorDialog.Title"; //$NON-NLS-1$
+    private static final String DECOMPILE_FAILED_KEY = "ExportSourceAction.Status.Error.DecompileFailed"; //$NON-NLS-1$
 
     private List<?> selection = null;
     private boolean isFlat = false;
@@ -93,7 +95,7 @@ public class ExportSourceAction extends Action {
                 final IJavaElement[] children = root.getChildren();
                 exportPackagesSource(decompilerType, reuseBuf, always, projectFile, children);
             } catch (CoreException e) {
-                ExceptionHandler.handle(e, Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
+                ExceptionHandler.handle(e, Messages.getString(ERROR_DIALOG_TITLE_KEY),
                         Messages.getString("ExportSourceAction.ErrorDialog.Message.CollectClassInfo")); //$NON-NLS-1$
             }
         } else {
@@ -184,7 +186,7 @@ public class ExportSourceAction extends Action {
             IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
                     Messages.getString("ExportSourceAction.Status.Error.DecompileAndExport"), //$NON-NLS-1$
                     e);
-            ExceptionHandler.handle(status, Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
+            ExceptionHandler.handle(status, Messages.getString(ERROR_DIALOG_TITLE_KEY),
                     status.getMessage());
         }
     }
@@ -262,7 +264,7 @@ public class ExportSourceAction extends Action {
                         String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
                         if (result == null) {
                             IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
-                                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                                    Messages.getFormattedString(DECOMPILE_FAILED_KEY,
                                             new String[] { className }));
                             throw new CoreException(status);
                         }
@@ -280,7 +282,7 @@ public class ExportSourceAction extends Action {
                         FileUtil.writeToFile(target, result);
                     } catch (Exception e) {
                         IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
-                                Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                                Messages.getFormattedString(DECOMPILE_FAILED_KEY,
                                         new String[] { className }),
                                 e);
                         exceptions.add(status);
@@ -378,7 +380,7 @@ public class ExportSourceAction extends Action {
             String result = DecompileUtil.decompile(cf, decompilerType, always, reuseBuf, true);
             if (result == null) {
                 IStatus status = new Status(IStatus.ERROR, JavaDecompilerPlugin.PLUGIN_ID,
-                        Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                        Messages.getFormattedString(DECOMPILE_FAILED_KEY,
                                 new String[] { className }));
                 throw new CoreException(status);
             }
@@ -387,8 +389,8 @@ public class ExportSourceAction extends Action {
             FileUtil.writeToFile(target, result);
         } catch (CoreException | IOException e) {
             MessageDialog.openError(Display.getDefault().getActiveShell(),
-                    Messages.getString("ExportSourceAction.ErrorDialog.Title"), //$NON-NLS-1$
-                    Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed", //$NON-NLS-1$
+                    Messages.getString(ERROR_DIALOG_TITLE_KEY),
+                    Messages.getFormattedString(DECOMPILE_FAILED_KEY,
                             new String[] { className }));
         }
     }

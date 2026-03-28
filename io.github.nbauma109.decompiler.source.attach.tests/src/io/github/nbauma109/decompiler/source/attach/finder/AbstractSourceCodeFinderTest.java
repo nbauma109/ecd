@@ -28,6 +28,8 @@ import org.junit.Test;
 
 public class AbstractSourceCodeFinderTest {
 
+    private static final String HELLO_FINDER = "Hello finder";
+
     private File testRoot;
 
     @Before
@@ -106,7 +108,7 @@ public class AbstractSourceCodeFinderTest {
     @Test
     public void getText_returnsSelectedHtmlText() throws Exception {
         HTMLDocument doc = new HTMLDocument();
-        doc.insertString(0, "Hello finder", null);
+        doc.insertString(0, HELLO_FINDER, null);
         HTMLDocument.Iterator iterator = new HTMLDocument.Iterator() {
             @Override
             public AttributeSet getAttributes() {
@@ -120,7 +122,7 @@ public class AbstractSourceCodeFinderTest {
 
             @Override
             public int getEndOffset() {
-                return "Hello finder".length();
+                return HELLO_FINDER.length();
             }
 
             @Override
@@ -140,7 +142,7 @@ public class AbstractSourceCodeFinderTest {
 
         String text = new ExposedFinder().exposeGetText(doc, iterator);
 
-        assertEquals("Hello finder", text);
+        assertEquals(HELLO_FINDER, text);
     }
 
     private File createZip(String name, Map<String, String> entries) throws Exception {
