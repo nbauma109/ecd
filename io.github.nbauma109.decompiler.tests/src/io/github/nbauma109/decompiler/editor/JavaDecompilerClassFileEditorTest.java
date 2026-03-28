@@ -70,7 +70,6 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_JAR_PATH = "resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String NO_CLASS_ENTRY_FOUND = "No .class entry found in test.jar"; //$NON-NLS-1$
-    private static final String DEFAULT_TITLE_IMAGE_FIELD = "defaultTitleImage"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -196,7 +195,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testUpdateTitleImageDoesNotUseDisposedDefaultImage() throws Exception {
+    public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable() throws Exception {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -213,19 +212,22 @@ public class JavaDecompilerClassFileEditorTest {
         Image decompilerImage = JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER);
         assertSame(decompilerImage, editor.getTitleImage());
 
-        Image disposedImage = createDisposedImage();
+        Image customImage = runInUiThreadWithResult(() -> new Image(Display.getDefault(), 1, 1));
+        try {
+            runInUiThread(() -> {
+                editor.setTitleImage(customImage);
+                setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
+                editor.updateTitleImage();
+            });
 
-        runInUiThread(() -> {
-            setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
-            setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
-            editor.updateTitleImage();
-        });
-
-        assertSame(decompilerImage, editor.getTitleImage());
+            assertSame(customImage, editor.getTitleImage());
+        } finally {
+            runInUiThread(() -> customImage.dispose());
+        }
     }
 
     @Test
-    public void testUpdateTitleImageDoesNotReplaceDisposedDefaultImageWithDecompilerImage() throws Exception {
+    public void testUpdateTitleImageRestoresDecompilerImageWhenAvailable() throws Exception {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -242,16 +244,18 @@ public class JavaDecompilerClassFileEditorTest {
         Image decompilerImage = JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER);
         assertSame(decompilerImage, editor.getTitleImage());
 
-        Image disposedImage = createDisposedImage();
+        Image customImage = runInUiThreadWithResult(() -> new Image(Display.getDefault(), 1, 1));
+        try {
+            runInUiThread(() -> {
+                editor.setTitleImage(customImage);
+                setPrivateField(editor, "decompilerType", DECOMPILER_FERNFLOWER); //$NON-NLS-1$
+                editor.updateTitleImage();
+            });
 
-        runInUiThread(() -> {
-            setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
-            editor.updateTitleImage();
-        });
-
-        Image storedDefaultImage = runInUiThreadWithResult(
-                () -> (Image) getPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD));
-        assertSame(disposedImage, storedDefaultImage);
+            assertSame(decompilerImage, editor.getTitleImage());
+        } finally {
+            runInUiThread(() -> customImage.dispose());
+        }
     }
 
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {
@@ -543,21 +547,6 @@ public class JavaDecompilerClassFileEditorTest {
 
     private static void refreshDecompilerEditorAssociations() throws Exception {
         runInUiThread(() -> new SetupRunnableAccessor().apply());
-    }
-
-    private static Image createDisposedImage() throws Exception {
-        return runInUiThreadWithResult(() -> {
-            Display display = Display.getDefault();
-            Image image = new Image(display, 1, 1);
-            image.dispose();
-            return image;
-        });
-    }
-
-    private static Object getPrivateField(Object target, String fieldName) throws Exception {
-        Field field = findField(target.getClass(), fieldName);
-        field.setAccessible(true);
-        return field.get(target);
     }
 
     private static void setPrivateField(Object target, String fieldName, Object value) throws Exception {

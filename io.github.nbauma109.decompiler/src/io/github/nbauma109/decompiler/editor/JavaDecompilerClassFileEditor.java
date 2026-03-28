@@ -84,7 +84,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private boolean selectionChange = false;
     private ISourceReference selectedElement = null;
     private String decompilerType = null;
-    private Image defaultTitleImage = null;
 
     public ISourceReference getSelectedElement() {
         return selectedElement;
@@ -389,21 +388,14 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     public void updateTitleImage() {
-        Image currentTitleImage = getTitleImage();
-        if (defaultTitleImage == null && isUsableImage(currentTitleImage)) {
-            defaultTitleImage = currentTitleImage;
-        }
-
         Image decompilerTitleImage = resolveDecompilerTitleImage();
-        if (isUsableImage(decompilerTitleImage)) {
-            if (currentTitleImage != decompilerTitleImage) {
-                setTitleImage(decompilerTitleImage);
-            }
+        if (!isUsableImage(decompilerTitleImage)) {
             return;
         }
 
-        if (isUsableImage(defaultTitleImage) && currentTitleImage != defaultTitleImage) {
-            setTitleImage(defaultTitleImage);
+        Image currentTitleImage = getTitleImage();
+        if (currentTitleImage != decompilerTitleImage) {
+            setTitleImage(decompilerTitleImage);
         }
     }
 
@@ -618,4 +610,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         sourceShown = true;
     }
 
+    @Override
+    public void setTitleImage(Image titleImage) {
+        super.setTitleImage(titleImage);
+    }
 }
