@@ -63,6 +63,7 @@ public final class DecompilerSourceLookupBridge {
 
         @Override
         public void launchRemoved(ILaunch launch) {
+            // We only install the bridge on active launches, so removal does not need follow-up work.
         }
     }
 }

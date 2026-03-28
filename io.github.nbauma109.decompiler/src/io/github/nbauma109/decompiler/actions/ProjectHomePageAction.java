@@ -37,13 +37,16 @@ public class ProjectHomePageAction implements IWorkbenchWindowActionDelegate {
 
     @Override
     public void selectionChanged(IAction action, ISelection selection) {
+        // This action is global and does not depend on the current workbench selection.
     }
 
     @Override
     public void dispose() {
+        // This action does not keep resources that need explicit disposal.
     }
 
     @Override
     public void init(IWorkbenchWindow window) {
+        // This action has no window-specific state to initialize.
     }
 }

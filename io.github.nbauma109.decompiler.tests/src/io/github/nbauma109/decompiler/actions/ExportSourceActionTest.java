@@ -603,14 +603,17 @@ public class ExportSourceActionTest {
 
         @Override
         public void beginTask(String name, int totalWork) {
+            // This monitor only simulates a canceled state, so progress callbacks are ignored.
         }
 
         @Override
         public void done() {
+            // No completion bookkeeping is needed for this test monitor.
         }
 
         @Override
         public void internalWorked(double work) {
+            // Fractional progress is irrelevant for this cancellation-focused test monitor.
         }
 
         @Override
@@ -620,18 +623,22 @@ public class ExportSourceActionTest {
 
         @Override
         public void setCanceled(boolean value) {
+            // The monitor is intentionally hard-coded as canceled regardless of caller input.
         }
 
         @Override
         public void setTaskName(String name) {
+            // Task names are not observed in these tests.
         }
 
         @Override
         public void subTask(String name) {
+            // Subtask names are not observed in these tests.
         }
 
         @Override
         public void worked(int work) {
+            // Worked units are not observed in these tests.
         }
     }
 }

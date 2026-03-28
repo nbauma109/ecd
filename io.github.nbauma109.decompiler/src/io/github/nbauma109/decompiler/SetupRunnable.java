@@ -59,6 +59,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void perspectiveChanged(IWorkbenchPage page, IPerspectiveDescriptor perspective, String changeId) {
+                // We only react to perspective activation; intermediate changes do not require action.
             }
 
             @Override
@@ -73,17 +74,17 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void partOpened(IWorkbenchPart part) {
-
+                // Opening a part does not require any decompiler-specific adjustment.
             }
 
             @Override
             public void partDeactivated(IWorkbenchPart part) {
-
+                // Deactivation does not require any decompiler-specific adjustment.
             }
 
             @Override
             public void partClosed(IWorkbenchPart part) {
-
+                // Closing a part does not require any decompiler-specific cleanup here.
             }
 
             @Override
@@ -98,7 +99,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void partActivated(IWorkbenchPart part) {
-
+                // Activation alone is not enough; we only refresh when a part is brought to the top.
             }
         };
 
@@ -113,7 +114,7 @@ public class SetupRunnable implements Runnable {
             @Override
             public void pageClosed(IWorkbenchPage page) {
                 page.removePartListener(partListener);
-
+                // Removing the listener is the only cleanup needed when a page closes.
             }
 
             @Override

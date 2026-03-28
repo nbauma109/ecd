@@ -30,11 +30,12 @@ public class PreferenceMenuItemAction implements IWorkbenchWindowPulldownDelegat
 
     @Override
     public void init(IWorkbenchWindow window) {
-
+        // This pulldown action has no window-specific state to initialize.
     }
 
     @Override
     public void dispose() {
+        // This pulldown action does not hold resources that need explicit disposal.
     }
 
     @Override
@@ -45,6 +46,6 @@ public class PreferenceMenuItemAction implements IWorkbenchWindowPulldownDelegat
 
     @Override
     public void selectionChanged(IAction action, ISelection selection) {
-
+        // Preferences are always available, so selection changes do not affect this action.
     }
 }

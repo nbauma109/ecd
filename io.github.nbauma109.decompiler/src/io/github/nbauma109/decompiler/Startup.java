@@ -14,5 +14,6 @@ public class Startup implements IStartup {
 
     @Override
     public void earlyStartup() {
+        // Startup side effects are registered through plugin initialization, so no eager work is needed here.
     }
 }

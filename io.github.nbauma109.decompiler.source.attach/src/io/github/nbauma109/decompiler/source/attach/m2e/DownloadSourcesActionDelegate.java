@@ -27,9 +27,11 @@ public class DownloadSourcesActionDelegate implements IEditorActionDelegate {
 
     @Override
     public void run(IAction action) {
+        // The download is triggered from setActiveEditor when the editor becomes applicable.
     }
 
     @Override
     public void selectionChanged(IAction action, ISelection selection) {
+        // Selection changes do not affect this delegate because availability depends on the active editor.
     }
 }

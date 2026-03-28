@@ -137,6 +137,7 @@ public class AbstractSourceCodeFinderTest {
 
             @Override
             public void next() {
+                // The test only needs a single iterator position, so advancing is intentionally a no-op.
             }
         };
 
@@ -190,10 +191,12 @@ public class AbstractSourceCodeFinderTest {
 
         @Override
         public void find(String binFile, String sha1, java.util.List<SourceFileResult> resultList) {
+            // These tests exercise inherited helper methods directly, not the finder contract.
         }
 
         @Override
         public void cancel() {
+            // This test double never starts asynchronous work, so there is nothing to cancel.
         }
     }
 }

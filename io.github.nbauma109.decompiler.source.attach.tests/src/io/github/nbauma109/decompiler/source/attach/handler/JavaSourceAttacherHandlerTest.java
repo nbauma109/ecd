@@ -348,10 +348,12 @@ public class JavaSourceAttacherHandlerTest {
 
         @Override
         public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
+            // This test double only exposes a download URL and never needs to populate results.
         }
 
         @Override
         public void cancel() {
+            // The test finder performs no background work, so there is nothing to cancel.
         }
 
         @Override
@@ -363,10 +365,12 @@ public class JavaSourceAttacherHandlerTest {
     private static final class NoDownloadUrlFinder implements SourceCodeFinder {
         @Override
         public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
+            // This test double exists only to model a finder without a download URL.
         }
 
         @Override
         public void cancel() {
+            // The test finder performs no background work, so there is nothing to cancel.
         }
 
         @Override
@@ -378,14 +382,17 @@ public class JavaSourceAttacherHandlerTest {
     private static final class CanceledMonitor implements IProgressMonitor {
         @Override
         public void beginTask(String name, int totalWork) {
+            // The monitor only reports cancellation for tests, so progress callbacks are ignored.
         }
 
         @Override
         public void done() {
+            // No completion bookkeeping is needed for this always-canceled monitor.
         }
 
         @Override
         public void internalWorked(double work) {
+            // Fractional progress is irrelevant for this cancellation-focused test monitor.
         }
 
         @Override
@@ -395,18 +402,22 @@ public class JavaSourceAttacherHandlerTest {
 
         @Override
         public void setCanceled(boolean value) {
+            // The monitor is intentionally hard-coded as canceled regardless of caller input.
         }
 
         @Override
         public void setTaskName(String name) {
+            // Task names are not observed in these tests.
         }
 
         @Override
         public void subTask(String name) {
+            // Subtask names are not observed in these tests.
         }
 
         @Override
         public void worked(int work) {
+            // Worked units are not observed in these tests.
         }
     }
 }

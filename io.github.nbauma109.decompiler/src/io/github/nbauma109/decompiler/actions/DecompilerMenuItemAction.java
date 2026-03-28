@@ -30,11 +30,12 @@ public class DecompilerMenuItemAction implements IWorkbenchWindowPulldownDelegat
 
     @Override
     public void init(IWorkbenchWindow window) {
-
+        // This pulldown action has no window-specific state to initialize.
     }
 
     @Override
     public void dispose() {
+        // This pulldown action does not hold resources that need explicit disposal.
     }
 
     @Override
