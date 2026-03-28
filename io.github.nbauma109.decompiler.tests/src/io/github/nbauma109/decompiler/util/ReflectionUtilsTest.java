@@ -1,10 +1,12 @@
 package io.github.nbauma109.decompiler.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.lang.reflect.Method;
+
 import org.junit.Before;
 import org.junit.Test;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 
 public class ReflectionUtilsTest {
 
@@ -31,17 +33,6 @@ public class ReflectionUtilsTest {
     public void setUp() {
         subObj = new TestSubClass();
         superObj = new TestSuperClass();
-    }
-
-    /**
-     * Tests the private constructor for 100% coverage.
-     */
-    @Test
-    public void testConstructorIsPrivate() throws Exception {
-        Constructor<ReflectionUtils> constructor = ReflectionUtils.class.getDeclaredConstructor();
-        assertTrue(java.lang.reflect.Modifier.isPrivate(constructor.getModifiers()));
-        constructor.setAccessible(true);
-        constructor.newInstance();
     }
 
     // --- FIELD TESTS ---

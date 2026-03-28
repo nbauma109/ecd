@@ -3,8 +3,6 @@ package io.github.nbauma109.decompiler.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.lang.reflect.Field;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -24,7 +22,7 @@ public class SortMemberUtilPluginTest {
 
     @Before
     public void setUp() throws Exception {
-        resetCachedDecompilerSourceFolder();
+        SortMemberUtil.resetCachedDecompilerSourceFolder();
         deleteDecompilerProjectIfPresent();
         configureMemberSortPreferences();
         waitForWorkspaceJobs();
@@ -33,7 +31,7 @@ public class SortMemberUtilPluginTest {
     @After
     public void tearDown() throws Exception {
         deleteDecompilerProjectIfPresent();
-        resetCachedDecompilerSourceFolder();
+        SortMemberUtil.resetCachedDecompilerSourceFolder();
         waitForWorkspaceJobs();
     }
 
@@ -114,12 +112,6 @@ public class SortMemberUtilPluginTest {
             project.close(new NullProgressMonitor());
         }
         project.delete(true, true, new NullProgressMonitor());
-    }
-
-    private static void resetCachedDecompilerSourceFolder() throws Exception {
-        Field field = SortMemberUtil.class.getDeclaredField("decompilerSourceFolder");
-        field.setAccessible(true);
-        field.set(null, null);
     }
 
     private static void waitForWorkspaceJobs() throws Exception {

@@ -180,4 +180,8 @@ public final class SortMemberUtil {
         }
         return null;
     }
+
+    public static void resetCachedDecompilerSourceFolder() {
+        decompilerSourceFolder = null;
+    }
 }

@@ -15,7 +15,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -216,7 +215,7 @@ public class JavaDecompilerClassFileEditorTest {
         try {
             runInUiThread(() -> {
                 editor.setTitleImage(customImage);
-                setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
+                editor.setDecompilerType(null);
                 editor.updateTitleImage();
             });
 
@@ -248,7 +247,7 @@ public class JavaDecompilerClassFileEditorTest {
         try {
             runInUiThread(() -> {
                 editor.setTitleImage(customImage);
-                setPrivateField(editor, "decompilerType", DECOMPILER_FERNFLOWER); //$NON-NLS-1$
+                editor.setDecompilerType(DECOMPILER_FERNFLOWER);
                 editor.updateTitleImage();
             });
 
@@ -547,24 +546,6 @@ public class JavaDecompilerClassFileEditorTest {
 
     private static void refreshDecompilerEditorAssociations() throws Exception {
         runInUiThread(() -> new SetupRunnableAccessor().apply());
-    }
-
-    private static void setPrivateField(Object target, String fieldName, Object value) throws Exception {
-        Field field = findField(target.getClass(), fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
-    private static Field findField(Class<?> type, String fieldName) throws Exception {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
     }
 
     private interface UiRunnable {
