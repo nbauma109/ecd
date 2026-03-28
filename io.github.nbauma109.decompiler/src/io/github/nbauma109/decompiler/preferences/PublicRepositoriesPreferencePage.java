@@ -23,11 +23,9 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
     private static final String HTTPS_SEARCH_MAVEN_ORG = "https://search.maven.org"; // $NON-NLS-1$
     private static final String HTTPS_CENTRAL_SONATYPE_ORG = "https://sonatype.central.com"; // $NON-NLS-1$
     private static final String HTTPS_REPOSITORY_CLOUDERA = "https://repository.cloudera.com/artifactory/webapp/home.html"; // $NON-NLS-1$
-    private static final String HTTPS_NEXUS_XWIKI_ORG = "https://nexus.xwiki.org/nexus"; // $NON-NLS-1$
     private static final String HTTPS_MAVEN_ALFRESCO = "https://maven.alfresco.com/nexus"; // $NON-NLS-1$
     private static final String HTTPS_REPOSITORY_APACHE_ORG = "https://repository.apache.org"; // $NON-NLS-1$
     private static final String HTTPS_REPO_GRAILS_ORG = "https://repo.grails.org/grails/webapp/home.html"; // $NON-NLS-1$
-    private static final String HTTPS_OSS_SONATYPE_ORG = "https://oss.sonatype.org"; // $NON-NLS-1$
 
     public PublicRepositoriesPreferencePage() {
         super(FieldEditorPreferencePage.GRID);
@@ -44,11 +42,9 @@ public class PublicRepositoriesPreferencePage extends FieldEditorPreferencePage 
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL, HTTPS_SEARCH_MAVEN_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_SONATYPE_CENTRAL, HTTPS_CENTRAL_SONATYPE_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA, HTTPS_REPOSITORY_CLOUDERA, g));
-        addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_NEXUS_XWIKI_ORG, HTTPS_NEXUS_XWIKI_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO, HTTPS_MAVEN_ALFRESCO, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_APACHE_ORG, HTTPS_REPOSITORY_APACHE_ORG, g));
         addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_GRAILS_ORG, HTTPS_REPO_GRAILS_ORG, g));
-        addField(new CheckFieldEditor(JavaDecompilerPlugin.PUBLIC_REPO_OSS_SONATYPE_ORG, HTTPS_OSS_SONATYPE_ORG, g));
 
         GridLayout layout = (GridLayout) g.getLayout();
         layout.marginWidth = layout.marginHeight = 5;
