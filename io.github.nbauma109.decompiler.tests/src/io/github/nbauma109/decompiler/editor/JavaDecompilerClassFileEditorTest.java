@@ -15,7 +15,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -25,25 +24,21 @@ import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
@@ -59,10 +54,10 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.osgi.framework.Bundle;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 
 public class JavaDecompilerClassFileEditorTest {
 
@@ -82,7 +77,7 @@ public class JavaDecompilerClassFileEditorTest {
     public void setUp() throws IOException, CoreException {
         refreshDecompilerEditorAssociations();
 
-        jarFileOnDisk = resolveTestJar();
+        jarFileOnDisk = DecompilerTestSupport.resolveBundleEntryAsFile(TEST_BUNDLE_ID, TEST_JAR_PATH);
         assertNotNull(jarFileOnDisk);
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
@@ -106,9 +101,9 @@ public class JavaDecompilerClassFileEditorTest {
         project.setDescription(description, null);
 
         IJavaProject javaProject = JavaCore.create(project);
-        configureClasspathWithJre(javaProject);
+        DecompilerTestSupport.configureClasspathWithJre(javaProject);
 
-        jarRoot = addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
+        jarRoot = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
         assertNotNull(jarRoot);
         assertTrue(jarRoot.exists());
     }
@@ -121,7 +116,7 @@ public class JavaDecompilerClassFileEditorTest {
             project.delete(true, true, null);
         }
         if (tempDir != null && tempDir.exists()) {
-            deleteRecursively(tempDir);
+            FileUtils.deleteQuietly(tempDir);
         }
     }
 
@@ -391,49 +386,6 @@ public class JavaDecompilerClassFileEditorTest {
         openedEditor = null;
     }
 
-    private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
-        IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
-        project.setRawClasspath(classpath, null);
-    }
-
-    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar)
-            throws JavaModelException {
-        IPath jarPath = new Path(jar.getAbsolutePath());
-
-        IClasspathEntry[] existing = project.getRawClasspath();
-        IClasspathEntry[] updated = new IClasspathEntry[existing.length + 1];
-
-        int i = 0;
-        for (; i < existing.length; i++) {
-            updated[i] = existing[i];
-        }
-        updated[i] = JavaCore.newLibraryEntry(jarPath, null, null);
-
-        project.setRawClasspath(updated, null);
-
-        IPackageFragmentRoot[] roots = project.getAllPackageFragmentRoots();
-        for (IPackageFragmentRoot root : roots) {
-            IPath rootPath = root.getPath();
-            if (rootPath != null && rootPath.equals(jarPath)) {
-                root.open(null);
-                return root;
-            }
-        }
-        throw new IllegalStateException("Unable to locate package fragment root for jar: " + jarPath.toOSString()); //$NON-NLS-1$
-    }
-
-    private static File resolveTestJar() throws IOException {
-        Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
-        assertNotNull(bundle);
-
-        URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull(entry);
-
-        URL resolved = FileLocator.toFileURL(entry);
-        IPath path = new Path(resolved.getPath());
-        return path.toFile();
-    }
-
     private static Optional<ClassInJar> findPreferredClass(File jarFile) throws IOException {
         Set<String> classEntries = new HashSet<>();
         try (JarFile jar = new JarFile(jarFile)) {
@@ -493,23 +445,6 @@ public class JavaDecompilerClassFileEditorTest {
             throw new IOException("Unable to create temp directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
         }
         return dir;
-    }
-
-    private static void deleteRecursively(File file) throws IOException {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath()); //$NON-NLS-1$
-        }
     }
 
     private static void runInUiThread(UiRunnable runnable) throws CoreException {

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +35,7 @@ public class SourceCheckTest {
     @After
     public void tearDown() {
         if (testRoot != null) {
-            deleteRecursively(testRoot);
+            FileUtils.deleteQuietly(testRoot);
         }
     }
 
@@ -73,20 +74,5 @@ public class SourceCheckTest {
             zos.closeEntry();
         }
         return zip;
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

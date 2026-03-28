@@ -15,7 +15,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -27,26 +26,19 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Test;
-import org.osgi.framework.Bundle;
+
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.LibrarySpec;
 
 public class AttachSourceActionTest {
 
@@ -67,7 +59,7 @@ public class AttachSourceActionTest {
 
         for (File f : filesToDelete) {
             if (f != null && f.exists()) {
-                deleteRecursively(f);
+                FileUtils.deleteQuietly(f);
             }
         }
         filesToDelete.clear();
@@ -77,10 +69,10 @@ public class AttachSourceActionTest {
 
     @Test
     public void testRunWithRootSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
-        JavaProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-root-" + UUID.randomUUID(), jar); //$NON-NLS-1$
+        SingleJarProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-root-" + UUID.randomUUID(), jar); //$NON-NLS-1$
         IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
@@ -98,15 +90,15 @@ public class AttachSourceActionTest {
 
     @Test
     public void testRunWithClassFileSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
-        JavaProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-classfile-" + UUID.randomUUID(), jar); //$NON-NLS-1$
+        SingleJarProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-classfile-" + UUID.randomUUID(), jar); //$NON-NLS-1$
         IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
 
-        IClassFile classFile = findAnyClassFileInRoot(root);
+        IClassFile classFile = SourceAttachTestSupport.findAnyClassFileInRoot(root);
 
         List<Object> selection = new ArrayList<>();
         selection.add(classFile);
@@ -121,15 +113,15 @@ public class AttachSourceActionTest {
 
     @Test
     public void testRunWithPackageFragmentSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
-        JavaProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-package-" + UUID.randomUUID(), jar); //$NON-NLS-1$
+        SingleJarProjectSetup setup = createJavaProjectWithLibrary("attach-source-action-package-" + UUID.randomUUID(), jar); //$NON-NLS-1$
         IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
 
-        IPackageFragment pkg = findAnyPackageWithClasses(root);
+        IPackageFragment pkg = SourceAttachTestSupport.findAnyPackageWithClasses(root);
 
         List<Object> selection = new ArrayList<>();
         selection.add(pkg);
@@ -153,82 +145,10 @@ public class AttachSourceActionTest {
         return attached;
     }
 
-    private File resolveTestJar() throws IOException {
-        Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
-        assertNotNull(bundle);
-
-        URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull(entry);
-
-        URL resolved = FileLocator.toFileURL(entry);
-        IPath path = new Path(resolved.getPath());
-        File file = path.toFile();
-        assertTrue(file.exists());
-        return file;
-    }
-
-    private JavaProjectSetup createJavaProjectWithLibrary(String projectName, File binaryJar) throws CoreException {
-        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-        IProject project = root.getProject(projectName);
-
-        if (project.exists()) {
-            project.delete(true, true, null);
-        }
-        project.create(null);
-        project.open(null);
-        projectsToDelete.add(project);
-
-        IProjectDescription description = project.getDescription();
-        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
-        project.setDescription(description, null);
-
-        IJavaProject javaProject = JavaCore.create(project);
-
-        IPath jarPath = new Path(binaryJar.getAbsolutePath());
-        IClasspathEntry entry = JavaCore.newLibraryEntry(jarPath, null, null);
-        javaProject.setRawClasspath(new IClasspathEntry[] { entry }, null);
-
-        IPackageFragmentRoot jarRoot = findRootForJar(javaProject, jarPath);
-        jarRoot.open(null);
-
-        return new JavaProjectSetup(project, javaProject, jarRoot);
-    }
-
-    private static IPackageFragmentRoot findRootForJar(IJavaProject javaProject, IPath jarPath) throws JavaModelException {
-        IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
-        for (IPackageFragmentRoot candidate : allRoots) {
-            IPath candidatePath = candidate.getPath();
-            if (candidatePath != null && candidatePath.equals(jarPath)) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("No package fragment root for jar: " + jarPath.toOSString()); //$NON-NLS-1$
-    }
-
-    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws JavaModelException {
-        IJavaElement[] children = root.getChildren();
-        for (IJavaElement child : children) {
-            if (child instanceof IPackageFragment pkg) {
-                IClassFile[] classFiles = pkg.getClassFiles();
-                if (classFiles != null && classFiles.length > 0) {
-                    return classFiles[0];
-                }
-            }
-        }
-        throw new IllegalStateException("No class file found in root: " + root.getElementName()); //$NON-NLS-1$
-    }
-
-    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws JavaModelException {
-        IJavaElement[] children = root.getChildren();
-        for (IJavaElement child : children) {
-            if (child instanceof IPackageFragment pkg) {
-                IClassFile[] classFiles = pkg.getClassFiles();
-                if (classFiles != null && classFiles.length > 0) {
-                    return pkg;
-                }
-            }
-        }
-        throw new IllegalStateException("No package with class files found in root: " + root.getElementName()); //$NON-NLS-1$
+    private SingleJarProjectSetup createJavaProjectWithLibrary(String projectName, File binaryJar) throws CoreException {
+        SourceAttachTestSupport.JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(projectName,
+                projectsToDelete, new LibrarySpec(binaryJar, null));
+        return new SingleJarProjectSetup(setup.project(), setup.roots().get(0));
     }
 
     private SourceJarCandidates prepareSourceJarCandidates(File binaryJar) {
@@ -330,23 +250,6 @@ public class AttachSourceActionTest {
         }
     }
 
-    private static void deleteRecursively(File file) throws IOException {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath()); //$NON-NLS-1$
-        }
-    }
-
     private record SourceJarCandidates(List<File> candidates) {
 
         public boolean matches(File attached) throws IOException {
@@ -373,6 +276,6 @@ public class AttachSourceActionTest {
     private record MavenCoordinates(String groupId, String artifactId, String version) {
     }
 
-    private record JavaProjectSetup(IProject project, IJavaProject javaProject, IPackageFragmentRoot root) {
+    private record SingleJarProjectSetup(IProject project, IPackageFragmentRoot root) {
     }
 }

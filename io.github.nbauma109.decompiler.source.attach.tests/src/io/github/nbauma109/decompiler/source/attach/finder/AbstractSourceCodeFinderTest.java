@@ -25,6 +25,7 @@ import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.AttributeSet;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +47,7 @@ public class AbstractSourceCodeFinderTest {
 
     @After
     public void tearDown() {
-        deleteRecursively(testRoot);
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -163,22 +164,6 @@ public class AbstractSourceCodeFinderTest {
         }
         return zip;
     }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
-    }
-
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
         Optional<GAV> exposeFindGavFromFile(String binFile) throws IOException {
             return findGAVFromFile(binFile);

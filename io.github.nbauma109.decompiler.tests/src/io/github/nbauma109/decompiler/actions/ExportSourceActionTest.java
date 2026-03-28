@@ -16,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -32,33 +31,28 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.launching.JavaRuntime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.osgi.framework.Bundle;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.util.DecompileUtil;
 
 public class ExportSourceActionTest {
@@ -77,7 +71,7 @@ public class ExportSourceActionTest {
 
     @Before
     public void setUp() throws IOException, CoreException {
-        jarFileOnDisk = resolveTestJar();
+        jarFileOnDisk = DecompilerTestSupport.resolveBundleEntryAsFile(TEST_BUNDLE_ID, TEST_JAR_PATH);
         assertNotNull(jarFileOnDisk);
         assertTrue(jarFileOnDisk.exists());
         assertTrue(jarFileOnDisk.isFile());
@@ -106,9 +100,9 @@ public class ExportSourceActionTest {
         project.setDescription(description, null);
 
         javaProject = JavaCore.create(project);
-        configureClasspathWithJre(javaProject);
+        DecompilerTestSupport.configureClasspathWithJre(javaProject);
 
-        jarRoot = addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
+        jarRoot = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
         assertNotNull(jarRoot);
         assertTrue(jarRoot.exists());
     }
@@ -121,11 +115,11 @@ public class ExportSourceActionTest {
         }
 
         for (File f : filesToDelete) {
-            deleteRecursively(f);
+            FileUtils.deleteQuietly(f);
         }
         filesToDelete.clear();
 
-        deleteRecursively(tempDirForTest);
+        FileUtils.deleteQuietly(tempDirForTest);
         tempDirForTest = null;
 
         if (project != null && project.exists()) {
@@ -459,55 +453,6 @@ public class ExportSourceActionTest {
         }
     }
 
-    private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
-        IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
-        project.setRawClasspath(classpath, null);
-    }
-
-    private static File resolveTestJar() throws IOException {
-        Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
-        assertNotNull("Test bundle must be available: " + TEST_BUNDLE_ID, bundle);
-
-        URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull("Missing test.jar at: " + TEST_JAR_PATH, entry);
-
-        URL resolved = FileLocator.toFileURL(entry);
-        IPath path = new Path(resolved.getPath());
-        return path.toFile();
-    }
-
-    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar)
-            throws JavaModelException {
-        IPath jarPath = new Path(jar.getAbsolutePath());
-
-        IClasspathEntry[] existing = project.getRawClasspath();
-        IClasspathEntry[] updated = new IClasspathEntry[existing.length + 1];
-
-        int i = 0;
-        for (; i < existing.length; i++) {
-            updated[i] = existing[i];
-        }
-        updated[i] = JavaCore.newLibraryEntry(jarPath, null, null);
-
-        project.setRawClasspath(updated, null);
-
-        return findJarPackageFragmentRoot(project, jarPath).orElseThrow(() -> new IllegalStateException(
-                "Unable to locate package fragment root for jar: " + jarPath.toOSString()));
-    }
-
-    private static Optional<IPackageFragmentRoot> findJarPackageFragmentRoot(IJavaProject project, IPath jarPath)
-            throws JavaModelException {
-        IPackageFragmentRoot[] roots = project.getAllPackageFragmentRoots();
-        for (IPackageFragmentRoot root : roots) {
-            IPath rootPath = root.getPath();
-            if (rootPath != null && rootPath.equals(jarPath)) {
-                root.open(null);
-                return Optional.of(root);
-            }
-        }
-        return Optional.empty();
-    }
-
     private static JarLayout readJarLayout(File jarFile) throws IOException {
         try (JarFile jar = new JarFile(jarFile)) {
             Set<String> packages = new HashSet<>();
@@ -538,23 +483,6 @@ public class ExportSourceActionTest {
             }
 
             return new JarLayout(packages, topLevelClasses);
-        }
-    }
-
-    private static void deleteRecursively(File file) throws IOException {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath());
         }
     }
 

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
 import org.junit.After;
@@ -17,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.github.nbauma109.decompiler.Startup;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 
 public class EditorUtilityTest {
 
@@ -33,7 +35,7 @@ public class EditorUtilityTest {
 
     @After
     public void tearDown() {
-        deleteRecursively(testRoot);
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -70,20 +72,5 @@ public class EditorUtilityTest {
     @Test
     public void startupEarlyStartupIsNoOp() {
         new Startup().earlyStartup();
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

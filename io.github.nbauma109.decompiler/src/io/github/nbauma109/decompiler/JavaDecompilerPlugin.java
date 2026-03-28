@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -36,7 +37,6 @@ import io.github.nbauma109.decompiler.editor.DecompilerType;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerBufferManager;
 import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
 import io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler;
-import io.github.nbauma109.decompiler.util.FileUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.SortMemberUtil;
 import io.github.nbauma109.decompiler.util.UIUtil;
@@ -184,7 +184,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
     @Override
     public void stop(BundleContext context) throws Exception {
-        FileUtil.deltree(new File(getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)));
+        FileUtils.deleteQuietly(new File(getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)));
 
         super.stop(context);
 

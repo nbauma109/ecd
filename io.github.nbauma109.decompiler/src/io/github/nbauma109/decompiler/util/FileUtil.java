@@ -28,6 +28,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
@@ -272,23 +273,4 @@ public class FileUtil {
         }
     }
 
-    public static void deltree(File root) {
-        if (root == null || !root.exists()) {
-            return;
-        }
-
-        if (root.isFile()) {
-            root.delete();
-            return;
-        }
-
-        File[] children = root.listFiles();
-        if (children != null) {
-            for (File child : children) {
-                deltree(child);
-            }
-        }
-
-        root.delete();
-    }
 }

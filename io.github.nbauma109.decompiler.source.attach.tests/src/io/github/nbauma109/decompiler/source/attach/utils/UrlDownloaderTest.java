@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,8 +38,8 @@ public class UrlDownloaderTest {
     }
 
     @After
-    public void tearDown() {
-        deleteRecursively(testRoot);
+    public void tearDown() throws IOException {
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -133,20 +134,5 @@ public class UrlDownloaderTest {
         String result = new UrlDownloader().download(localFile.getAbsolutePath(), null);
 
         assertEquals(localFile.getAbsolutePath(), result);
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

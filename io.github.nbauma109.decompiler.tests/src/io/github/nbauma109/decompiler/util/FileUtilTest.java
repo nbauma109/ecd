@@ -24,6 +24,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +47,7 @@ public class FileUtilTest {
     @After
     public void tearDown() {
         if (testRoot != null) {
-            FileUtil.deltree(testRoot);
+            FileUtils.deleteQuietly(testRoot);
         }
     }
 
@@ -133,7 +134,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void deltreeDeletesRecursively() throws IOException {
+    public void deleteQuietlyDeletesRecursively() throws IOException {
         File dir = resolve("tree");
         File nested = new File(dir, "p/q");
         assertTrue(nested.mkdirs());
@@ -143,7 +144,7 @@ public class FileUtilTest {
 
         assertTrue(dir.exists());
 
-        FileUtil.deltree(dir);
+        FileUtils.deleteQuietly(dir);
 
         assertFalse(dir.exists());
     }

@@ -15,35 +15,28 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Test;
-import org.osgi.framework.Bundle;
 
 import io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFinder;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceFileResult;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.JavaProjectSetup;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.LibrarySpec;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 
 public class JavaSourceAttacherHandlerTest {
@@ -65,7 +58,7 @@ public class JavaSourceAttacherHandlerTest {
 
         for (File f : filesToDelete) {
             if (f != null && f.exists()) {
-                deleteRecursively(f);
+                FileUtils.deleteQuietly(f);
             }
         }
         filesToDelete.clear();
@@ -75,11 +68,12 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testAttachSourceSetsAttachmentPath() throws IOException, CoreException, InterruptedException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File sourceJar = createZipUnderTarget("source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "attach-source-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
@@ -97,12 +91,13 @@ public class JavaSourceAttacherHandlerTest {
     @Test
     public void testProcessLibSourcesSkipsWhenDownloadUrlMissingAndFinderNotFacade()
             throws IOException, CoreException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File sourceJar = createZipUnderTarget("source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
         File tempSourceJar = createZipUnderTarget("temp-source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "process-skip-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
@@ -125,10 +120,11 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testProcessLibSourcesIgnoresNullSource() throws IOException, CoreException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "process-null-source-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
@@ -152,9 +148,10 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testUpdateSourceAttachmentsReturnsOkAndClearsRequests() throws IOException, CoreException {
-        File jar = resolveTestJar();
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "update-source-attachments-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
@@ -170,9 +167,10 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testUpdateSourceAttachmentsReturnsCancelWhenDuplicateRequest() throws IOException, CoreException {
-        File jar = resolveTestJar();
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "update-source-attachments-dup-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);
@@ -196,76 +194,8 @@ public class JavaSourceAttacherHandlerTest {
         return attached;
     }
 
-    private File resolveTestJar() throws IOException {
-        Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
-        assertNotNull(bundle);
-
-        URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull(entry);
-
-        URL resolved = FileLocator.toFileURL(entry);
-        IPath path = new Path(resolved.getPath());
-        File file = path.toFile();
-        assertTrue(file.exists());
-        return file;
-    }
-
-    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs)
-            throws CoreException {
-        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-        IProject project = root.getProject(projectName);
-
-        if (project.exists()) {
-            project.delete(true, true, null);
-        }
-        project.create(null);
-        project.open(null);
-        projectsToDelete.add(project);
-
-        IProjectDescription description = project.getDescription();
-        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
-        project.setDescription(description, null);
-
-        IJavaProject javaProject = JavaCore.create(project);
-
-        List<IClasspathEntry> entries = new ArrayList<>();
-        for (LibrarySpec lib : libs) {
-            IPath jarPath = new Path(lib.binaryJar().getAbsolutePath());
-            IPath srcPath = null;
-            if (lib.sourceJarOrZip() != null) {
-                srcPath = new Path(lib.sourceJarOrZip().getAbsolutePath());
-            }
-            IClasspathEntry libEntry = JavaCore.newLibraryEntry(jarPath, srcPath, null);
-            entries.add(libEntry);
-        }
-
-        javaProject.setRawClasspath(entries.toArray(new IClasspathEntry[0]), null);
-
-        List<IPackageFragmentRoot> roots = new ArrayList<>();
-        IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
-
-        for (LibrarySpec lib : libs) {
-            File jar = lib.binaryJar();
-            IPath jarPath = new Path(jar.getAbsolutePath());
-
-            IPackageFragmentRoot match = null;
-            for (IPackageFragmentRoot candidate : allRoots) {
-                IPath candidatePath = candidate.getPath();
-                if (candidatePath != null && candidatePath.equals(jarPath)) {
-                    match = candidate;
-                    break;
-                }
-            }
-            assertNotNull("No package fragment root for jar: " + jar.getAbsolutePath(), match); //$NON-NLS-1$
-            match.open(null);
-            roots.add(match);
-        }
-
-        return new JavaProjectSetup(project, javaProject, roots);
-    }
-
     private File createZipUnderTarget(String name) throws IOException {
-        File targetDir = ensureTargetDir();
+        File targetDir = SourceAttachTestSupport.ensureTargetDir();
         File out = new File(targetDir, name);
         try (FileOutputStream fos = new FileOutputStream(out)) {
             fos.write(new byte[] { 0x50, 0x4b, 0x03, 0x04 });
@@ -274,40 +204,9 @@ public class JavaSourceAttacherHandlerTest {
         return out;
     }
 
-    private static File ensureTargetDir() throws IOException {
-        File target = new File("target"); //$NON-NLS-1$
-        if (!target.exists() && !target.mkdirs() && !target.exists()) {
-            throw new IOException("Unable to create target directory: " + target.getAbsolutePath()); //$NON-NLS-1$
-        }
-        return target;
-    }
-
-    private static void deleteRecursively(File file) throws IOException {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath()); //$NON-NLS-1$
-        }
-    }
-
-    public record LibrarySpec(File binaryJar, File sourceJarOrZip) {
-    }
-
-    public record JavaProjectSetup(IProject project, IJavaProject javaProject, List<IPackageFragmentRoot> roots) {
-    }
-
     @Test
     public void testProcessLibSourcesSkipsDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
 
         // Create a zip file in a Maven repo location (simulate a cached source JAR)
         File mavenRepoDir = new File(SourceConstants.USER_M2_REPO_DIR,
@@ -319,8 +218,9 @@ public class JavaSourceAttacherHandlerTest {
         }
         filesToDelete.add(mavenRepoSourceJar);
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries(
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
                 "process-maven-repo-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, null));
 
         IPackageFragmentRoot root = setup.roots().get(0);

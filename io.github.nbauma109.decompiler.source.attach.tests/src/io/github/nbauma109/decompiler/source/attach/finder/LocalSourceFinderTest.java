@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +33,7 @@ public class LocalSourceFinderTest {
 
     @After
     public void tearDown() {
-        deleteRecursively(testRoot);
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -79,20 +80,5 @@ public class LocalSourceFinderTest {
         finder.find(binJar.getAbsolutePath(), IGNORED_SHA1, results);
 
         assertTrue(results.isEmpty());
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }
