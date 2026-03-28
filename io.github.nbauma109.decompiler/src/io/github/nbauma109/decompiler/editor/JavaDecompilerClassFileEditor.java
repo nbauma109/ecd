@@ -93,7 +93,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         this.decompilerType = decompilerType;
     }
 
-    void setEditorTitleImage(Image image) {
+    public void setEditorTitleImage(Image image) {
         super.setTitleImage(image);
     }
 
