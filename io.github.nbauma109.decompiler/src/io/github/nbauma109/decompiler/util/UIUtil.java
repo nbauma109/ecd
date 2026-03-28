@@ -81,9 +81,9 @@ public class UIUtil {
         return editors[0];
     }
 
-    public static List getActiveSelection() {
+    public static List<IClassFile> getActiveSelection() {
         IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-        final List classes = getSelectedElements(window.getSelectionService(), IClassFile.class);
+        final List<IClassFile> classes = getSelectedElements(window.getSelectionService(), IClassFile.class);
         if (classes != null && !classes.isEmpty()) {
             return classes;
         }
@@ -126,23 +126,23 @@ public class UIUtil {
                 .equals(getActivePerspectiveId());
     }
 
-    private static List getSelectedElements(ISelectionService selService, Class<?> eleClass) {
+    private static <T> List<T> getSelectedElements(ISelectionService selService, Class<T> eleClass) {
 
-        Iterator selections = getSelections(selService);
-        List elements = new ArrayList();
+        Iterator<?> selections = getSelections(selService);
+        List<T> elements = new ArrayList<>();
 
         while (selections != null && selections.hasNext()) {
             Object select = selections.next();
 
             if (eleClass.isInstance(select)) {
-                elements.add(select);
+                elements.add(eleClass.cast(select));
             }
         }
 
         return elements;
     }
 
-    private static Iterator getSelections(ISelectionService selService) {
+    private static Iterator<?> getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
         if (selection instanceof IStructuredSelection structuredSelection) {
@@ -185,9 +185,9 @@ public class UIUtil {
         return null;
     }
 
-    public static List getExportSelections() {
+    public static List<?> getExportSelections() {
         IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-        final List selectedJars = getSelectedElements(window.getSelectionService(), IPackageFragmentRoot.class);
+        final List<IPackageFragmentRoot> selectedJars = getSelectedElements(window.getSelectionService(), IPackageFragmentRoot.class);
         if (selectedJars.size() == 1) {
             return selectedJars;
         }
@@ -196,8 +196,8 @@ public class UIUtil {
             return null;
         }
 
-        final List selectedPackages = getSelectedElements(window.getSelectionService(), IPackageFragment.class);
-        final List selectedClasses = getSelectedElements(window.getSelectionService(), IClassFile.class);
+        final List<IPackageFragment> selectedPackages = getSelectedElements(window.getSelectionService(), IPackageFragment.class);
+        final List<Object> selectedClasses = new ArrayList<>(getSelectedElements(window.getSelectionService(), IClassFile.class));
         selectedClasses.addAll(selectedPackages);
         if (!selectedClasses.isEmpty()) {
             return selectedClasses;

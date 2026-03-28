@@ -44,19 +44,19 @@ public class DecompilerAdapterManager {
 
     protected static final Logger logger = Logger.getLogger(DecompilerAdapterManager.class.getName());
 
-    private static Map adaptersMap = new HashMap() {
+    private static Map<Class<?>, ElementAdapterSet> adaptersMap = new HashMap<>() {
 
         private static final long serialVersionUID = 534728316184090251L;
 
         @Override
-        public Object get(Object key) {
-            Object obj = super.get(key);
-            if (obj == null) {
+        public ElementAdapterSet get(Object key) {
+            ElementAdapterSet obj = super.get(key);
+            if (obj == null && key instanceof Class<?>) {
                 obj = new ElementAdapterSet();
                 // need sync?
                 // obj = Collections.synchronizedSortedSet( new
                 // ElementAdapterSet( ) );
-                put(key, obj);
+                put((Class<?>) key, obj);
             }
             return obj;
         }
@@ -199,7 +199,7 @@ public class DecompilerAdapterManager {
 
     private static void registerAdapter(Class<?> adaptableType, DecompilerAdapter adapter) {
         synchronized (adaptersMap) {
-            Set adapterSet = (Set) adaptersMap.get(adaptableType);
+            Set<DecompilerAdapter> adapterSet = adaptersMap.get(adaptableType);
             adapterSet.add(adapter);
             // if ( adapterSet.add( adapter ) )
             // System.out.println( "Register adapter for "
@@ -215,7 +215,7 @@ public class DecompilerAdapterManager {
     }
 
     public static Object[] getAdapters(Object adaptableObject, Class<?> adapterType) {
-        List adapterObjects = getAdapterList(adaptableObject, adapterType);
+        List<Object> adapterObjects = getAdapterList(adaptableObject, adapterType);
 
         return (adapterObjects != null && !adapterObjects.isEmpty())
                 ? adapterObjects.toArray(Object[]::new)
@@ -223,7 +223,7 @@ public class DecompilerAdapterManager {
     }
 
     public static Object getAdapter(Object adaptableObject, Class<?> adapterType) {
-        List adapterObjects = getAdapterList(adaptableObject, adapterType);
+        List<Object> adapterObjects = getAdapterList(adaptableObject, adapterType);
         if (adapterObjects == null || adapterObjects.isEmpty()) {
             return null;
         }
@@ -233,15 +233,15 @@ public class DecompilerAdapterManager {
         throw new IllegalStateException("Multiple adapters are not supported");
     }
 
-    private static List getAdapterList(Object adaptableObject, Class<?> adapterType) {
-        Set adapters = getAdapters(adaptableObject);
+    private static List<Object> getAdapterList(Object adaptableObject, Class<?> adapterType) {
+        Set<DecompilerAdapter> adapters = getAdapters(adaptableObject);
         if (adapters == null) {
             return null;
         }
 
-        List adapterObjects = new ArrayList();
-        l: for (Iterator iter = adapters.iterator(); iter.hasNext();) {
-            DecompilerAdapter adapter = (DecompilerAdapter) iter.next();
+        List<Object> adapterObjects = new ArrayList<>();
+        l: for (Iterator<DecompilerAdapter> iter = adapters.iterator(); iter.hasNext();) {
+            DecompilerAdapter adapter = iter.next();
             if (adapter.getExpression() != null) {
                 EvaluationContext context = new EvaluationContext(null, adaptableObject);
                 context.setAllowPluginActivation(true);
@@ -261,18 +261,18 @@ public class DecompilerAdapterManager {
         return adapterObjects;
     }
 
-    private static Set getAdapters(Object adaptableObject) {
-        Set keys = adaptersMap.keySet();
+    private static Set<DecompilerAdapter> getAdapters(Object adaptableObject) {
+        Set<Class<?>> keys = adaptersMap.keySet();
         ElementAdapterSet adapters = null;
-        for (Iterator iter = keys.iterator(); iter.hasNext();) {
-            Class<?> clazz = (Class<?>) iter.next();
+        for (Iterator<Class<?>> iter = keys.iterator(); iter.hasNext();) {
+            Class<?> clazz = iter.next();
             // adaptable is the instance of the key class or its subclass.
             if (clazz.isAssignableFrom(adaptableObject.getClass())) {
                 if (adapters == null) {
                     adapters = new ElementAdapterSet();
                 }
-                Set set = (Set) adaptersMap.get(clazz);
-                for (Iterator iterator = set.iterator(); iterator.hasNext();) {
+                Set<DecompilerAdapter> set = adaptersMap.get(clazz);
+                for (Iterator<DecompilerAdapter> iterator = set.iterator(); iterator.hasNext();) {
                     adapters.add(iterator.next());
                 }
             }
@@ -288,22 +288,19 @@ public class DecompilerAdapterManager {
 /**
  * ElementAdapterSet
  */
-class ElementAdapterSet extends TreeSet {
+class ElementAdapterSet extends TreeSet<DecompilerAdapter> {
 
     private static final long serialVersionUID = -3451274084543012212L;
 
-    private static Comparator comparator = (o1, o2) -> {
-        if (o1 instanceof DecompilerAdapter adapter1 && o2 instanceof DecompilerAdapter adapter2) {
-            if (adapter1.equals(adapter2)) {
-                return 0;
-            }
-            int value = adapter1.getPriority() - adapter2.getPriority();
-            return value == 0 ? 1 : value;
+    private static Comparator<DecompilerAdapter> comparator = (adapter1, adapter2) -> {
+        if (adapter1.equals(adapter2)) {
+            return 0;
         }
-        return 0;
+        int value = adapter1.getPriority() - adapter2.getPriority();
+        return value == 0 ? 1 : value;
     };
 
-    private transient List overwriteList;
+    private transient List<String> overwriteList;
 
     private boolean isReset;
 
@@ -315,17 +312,16 @@ class ElementAdapterSet extends TreeSet {
     }
 
     @Override
-    public boolean add(Object o) {
-        if (o instanceof DecompilerAdapter adapter) {
-            // cached overwritten adapters
+    public boolean add(DecompilerAdapter adapter) {
+        if (adapter != null) {
             String[] overwriteIds = adapter.getOverwrite();
             if (overwriteIds != null && overwriteIds.length > 0) {
                 if (this.overwriteList == null) {
-                    this.overwriteList = new ArrayList();
+                    this.overwriteList = new ArrayList<>();
                 }
                 this.overwriteList.addAll(Arrays.asList(overwriteIds));
             }
-            return super.add(o);
+            return super.add(adapter);
         }
         return false;
     }
@@ -335,8 +331,8 @@ class ElementAdapterSet extends TreeSet {
      */
     public void reset() {
         if (!isReset && this.overwriteList != null) {
-            for (Iterator iterator = this.iterator(); iterator.hasNext();) {
-                DecompilerAdapter adapter = (DecompilerAdapter) iterator.next();
+            for (Iterator<DecompilerAdapter> iterator = this.iterator(); iterator.hasNext();) {
+                DecompilerAdapter adapter = iterator.next();
                 if (this.overwriteList.contains(adapter.getId())) {
                     iterator.remove();
                     DecompilerAdapterManager.logger.log(Level.FINE, "<" + adapter.getId() + "> is overwritten."); //$NON-NLS-1$ //$NON-NLS-2$

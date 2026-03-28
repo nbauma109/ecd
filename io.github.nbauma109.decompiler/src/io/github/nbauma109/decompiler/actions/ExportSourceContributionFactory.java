@@ -17,6 +17,7 @@ import org.eclipse.core.expressions.Expression;
 import org.eclipse.core.expressions.IEvaluationContext;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -32,7 +33,7 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
     @Override
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
         final ISelectionService selService = serviceLocator.getService(ISelectionService.class);
-        final List selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
+        final List<IPackageFragmentRoot> selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
         boolean exportRoot = selectedJars.size() == 1;
         if (exportRoot) {
             additions.addContributionItem(new ActionContributionItem(new ExportSourceAction(selectedJars)),
@@ -50,8 +51,8 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
             return;
         }
 
-        final List selectedPackages = getSelectedElements(selService, IPackageFragment.class);
-        final List selectedClasses = getSelectedElements(selService, IClassFile.class);
+        final List<IPackageFragment> selectedPackages = getSelectedElements(selService, IPackageFragment.class);
+        final List<IJavaElement> selectedClasses = new ArrayList<>(getSelectedElements(selService, IClassFile.class));
         selectedClasses.addAll(selectedPackages);
         boolean exportClasses = !selectedClasses.isEmpty();
         if (exportClasses) {
@@ -73,7 +74,7 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
 
     }
 
-    private boolean isMenuVisible(List selection) {
+    private boolean isMenuVisible(List<?> selection) {
         IPackageFragmentRoot root = null;
         for (Object obj : selection) {
             IPackageFragmentRoot packRoot = null;
@@ -93,23 +94,23 @@ public class ExportSourceContributionFactory extends ExtensionContributionFactor
         return true;
     }
 
-    private List<Object> getSelectedElements(ISelectionService selService, Class<?> eleClass) {
+    private <T> List<T> getSelectedElements(ISelectionService selService, Class<T> eleClass) {
 
         Iterator<?> selections = getSelections(selService);
-        List<Object> elements = new ArrayList<>();
+        List<T> elements = new ArrayList<>();
 
         while (selections != null && selections.hasNext()) {
             Object select = selections.next();
 
             if (eleClass.isInstance(select)) {
-                elements.add(select);
+                elements.add(eleClass.cast(select));
             }
         }
 
         return elements;
     }
 
-    private Iterator<Object> getSelections(ISelectionService selService) {
+    private Iterator<?> getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
         if (selection instanceof IStructuredSelection structuredSelection) {

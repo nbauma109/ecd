@@ -10,6 +10,7 @@ package io.github.nbauma109.decompiler.actions;
 
 import java.util.List;
 
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IEditorRegistry;
 import org.eclipse.ui.PlatformUI;
@@ -21,7 +22,7 @@ import io.github.nbauma109.decompiler.util.UIUtil;
 public class BaseDecompilerHandler extends DecompileHandler {
 
     public Object handleDecompile(String decompilerType) {
-        final List classes = UIUtil.getActiveSelection();
+        final List<IClassFile> classes = UIUtil.getActiveSelection();
         if (classes != null && !classes.isEmpty()) {
             IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
             IEditorDescriptor editorDescriptor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);

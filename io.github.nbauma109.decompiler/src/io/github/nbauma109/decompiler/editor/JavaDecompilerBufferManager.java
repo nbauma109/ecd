@@ -23,7 +23,7 @@ public class JavaDecompilerBufferManager extends BufferManager {
     public static void closeDecompilerBuffers(boolean all) {
         BufferManager manager = BufferManager.getDefaultBufferManager();
         if (manager instanceof JavaDecompilerBufferManager javaDecompilerBufferManager) {
-            Enumeration enumeration = manager.getOpenBuffers();
+            Enumeration<?> enumeration = manager.getOpenBuffers();
             while (enumeration.hasMoreElements()) {
                 IBuffer buffer = (IBuffer) enumeration.nextElement();
                 javaDecompilerBufferManager.removeBuffer(buffer);
@@ -33,7 +33,7 @@ public class JavaDecompilerBufferManager extends BufferManager {
 
     public JavaDecompilerBufferManager(BufferManager manager) {
         synchronized (BufferManager.class) {
-            Enumeration enumeration = manager.getOpenBuffers();
+            Enumeration<?> enumeration = manager.getOpenBuffers();
             while (enumeration.hasMoreElements()) {
                 IBuffer buffer = (IBuffer) enumeration.nextElement();
                 addBuffer(buffer);

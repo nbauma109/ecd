@@ -102,7 +102,7 @@ public class SubMenuCreator implements IMenuCreator {
 
             dropDownMenuMgr.add(new Separator());
 
-            List list = UIUtil.getExportSelections();
+            List<?> list = UIUtil.getExportSelections();
             if (list != null) {
                 dropDownMenuMgr.add(new ExportSourceAction(list));
             } else {

@@ -9,7 +9,7 @@
 package io.github.nbauma109.decompiler.util;
 
 import java.io.File;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -77,7 +77,7 @@ public class DecompileUtil {
             SourceMapper mapper = classFile.getSourceMapper();
             IType type = (IType) ReflectionUtils.invokeMethod(classFile, "getOuterMostEnclosingType", //$NON-NLS-1$
                     new Class[0], new Object[0]);
-            HashMap sourceRange = (HashMap) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
+            Map<?, ?> sourceRange = (Map<?, ?>) ReflectionUtils.getFieldValue(mapper, "sourceRanges"); //$NON-NLS-1$
             sourceRange.remove(type);
             SourceMapperUtil.mapSource(mapper, type, contents.toCharArray(), typeInfo);
         }

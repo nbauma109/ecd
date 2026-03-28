@@ -13,6 +13,7 @@ import java.util.List;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IEditorRegistry;
@@ -26,7 +27,7 @@ public class DecompileHandler extends AbstractHandler {
 
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
-        final List classes = UIUtil.getActiveSelection();
+        final List<IClassFile> classes = UIUtil.getActiveSelection();
         if (classes != null && !classes.isEmpty() && PlatformUI.getWorkbench() != null) {
             IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
             IEditorDescriptor editor = registry.findEditor(JavaDecompilerPlugin.EDITOR_ID);

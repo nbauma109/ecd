@@ -52,10 +52,10 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
     public static final class OpenClassesAction extends Action {
 
         private final IEditorDescriptor classEditor;
-        private final List classes;
+        private final List<IClassFile> classes;
         private String decompilerType;
 
-        public OpenClassesAction(IEditorDescriptor classEditor, List classes, String decompilerType) {
+        public OpenClassesAction(IEditorDescriptor classEditor, List<IClassFile> classes, String decompilerType) {
             this.classEditor = classEditor;
             this.classes = classes;
             this.decompilerType = decompilerType;
@@ -84,8 +84,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
             }
 
             // Load each IClassFile into the selected editor
-            for (int i = 0; i < classes.size(); i++) {
-                IClassFile classfile = (IClassFile) classes.get(i);
+            for (IClassFile classfile : classes) {
                 // Convert the IClassFile to an IEditorInput
                 IEditorInput input = EditorUtility.getEditorInput(classfile);
 
@@ -126,12 +125,12 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
                 IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
 
                 // Get the current selections and return if nothing is selected
-                Iterator<Object> selections = getSelections(selService);
+                Iterator<?> selections = getSelections(selService);
                 if (selections == null) {
                     return new IContributionItem[0];
                 }
 
-                final List<Object> classes = getSelectedElements(selService, IClassFile.class);
+                final List<IClassFile> classes = getSelectedElements(selService, IClassFile.class);
 
                 // List of menu items
                 List<ActionContributionItem> list = new ArrayList<>();
@@ -150,7 +149,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
         };
 
         // Determine menu name
-        List selectedClasses = getSelectedElements(selService, IClassFile.class);
+        List<IClassFile> selectedClasses = getSelectedElements(selService, IClassFile.class);
         boolean openClassWith = (selectedClasses.size() == 1);
         if (openClassWith) {
 
@@ -179,7 +178,7 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
 
     private boolean isMenuVisible(ISelectionService selService) {
 
-        Iterator selections = getSelections(selService);
+        Iterator<?> selections = getSelections(selService);
 
         boolean atLeastOneSelection = false;
         boolean allClasses = true;
@@ -207,23 +206,23 @@ public class OpenClassWithContributionFactory extends ExtensionContributionFacto
         return false;
     }
 
-    private List getSelectedElements(ISelectionService selService, Class<?> eleClass) {
+    private <T> List<T> getSelectedElements(ISelectionService selService, Class<T> eleClass) {
 
-        Iterator selections = getSelections(selService);
-        List elements = new ArrayList();
+        Iterator<?> selections = getSelections(selService);
+        List<T> elements = new ArrayList<>();
 
         while ((selections != null) && selections.hasNext()) {
             Object select = selections.next();
 
             if (eleClass.isInstance(select)) {
-                elements.add(select);
+                elements.add(eleClass.cast(select));
             }
         }
 
         return elements;
     }
 
-    private Iterator getSelections(ISelectionService selService) {
+    private Iterator<?> getSelections(ISelectionService selService) {
         ISelection selection = selService.getSelection();
 
         if (selection instanceof IStructuredSelection structuredSelection) {

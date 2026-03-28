@@ -55,13 +55,13 @@ public class ImportSourceMapper extends SourceMapper {
         this(sourcePath, rootPath, compilerOptions);
     }
 
-    public ImportSourceMapper(IPath sourcePath, String rootPath, Map options) {
+    public ImportSourceMapper(IPath sourcePath, String rootPath, Map<String, String> options) {
         super(sourcePath, rootPath, options);
     }
 
-    protected Stack infoStack;
-    protected HashMap<Object, List> children;
-    protected Stack handleStack;
+    protected Stack<Object> infoStack;
+    protected HashMap<Object, List<IJavaElement>> children;
+    protected Stack<JavaElement> handleStack;
     protected ClassFile unit;
     protected OpenableElementInfo unitInfo;
     protected ImportContainerInfo importContainerInfo = null;
@@ -128,6 +128,7 @@ public class ImportSourceMapper extends SourceMapper {
         if (this.importContainer != null) {
             manager.getTemporaryCache().put(this.importContainer, this.importContainerInfo);
         }
+        // Reflection can only target the erased Map.class here; the cache value is effectively Map<IJavaElement, Object>.
         ReflectionUtils.invokeMethod(manager, "putInfos", new Class[] { //$NON-NLS-1$
                 IJavaElement.class, Object.class, boolean.class, Map.class },
                 new Object[] { unit, unitInfo, false, manager.getTemporaryCache() });
@@ -146,7 +147,7 @@ public class ImportSourceMapper extends SourceMapper {
     }
 
     private void addToChildren(Object parentInfo, JavaElement handle) {
-        List childrenList = this.children.get(parentInfo);
+        List<IJavaElement> childrenList = this.children.get(parentInfo);
         if (childrenList == null) {
             this.children.put(parentInfo, childrenList = new ArrayList<>());
         }

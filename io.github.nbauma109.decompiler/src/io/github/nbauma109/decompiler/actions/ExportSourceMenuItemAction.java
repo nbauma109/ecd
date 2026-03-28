@@ -46,7 +46,7 @@ public class ExportSourceMenuItemAction implements IWorkbenchWindowPulldownDeleg
             new ExportEditorSourceAction().run();
 
         } else {
-            List list = UIUtil.getExportSelections();
+            List<?> list = UIUtil.getExportSelections();
             if (list != null) {
                 new ExportSourceAction(list).run();
             }
