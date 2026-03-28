@@ -26,6 +26,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -36,6 +37,7 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -53,7 +55,7 @@ public class JavaSourceAttacherHandlerTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws IOException, CoreException {
         for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
@@ -72,7 +74,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testAttachSourceSetsAttachmentPath() throws Exception {
+    public void testAttachSourceSetsAttachmentPath() throws IOException, CoreException, InterruptedException {
         File jar = resolveTestJar();
         File sourceJar = createZipUnderTarget("source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -93,7 +95,8 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testProcessLibSourcesSkipsWhenDownloadUrlMissingAndFinderNotFacade() throws Exception {
+    public void testProcessLibSourcesSkipsWhenDownloadUrlMissingAndFinderNotFacade()
+            throws IOException, CoreException {
         File jar = resolveTestJar();
         File sourceJar = createZipUnderTarget("source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
         File tempSourceJar = createZipUnderTarget("temp-source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -121,7 +124,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testProcessLibSourcesIgnoresNullSource() throws Exception {
+    public void testProcessLibSourcesIgnoresNullSource() throws IOException, CoreException {
         File jar = resolveTestJar();
 
         JavaProjectSetup setup = createJavaProjectWithLibraries(
@@ -148,7 +151,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testUpdateSourceAttachmentsReturnsOkAndClearsRequests() throws Exception {
+    public void testUpdateSourceAttachmentsReturnsOkAndClearsRequests() throws IOException, CoreException {
         File jar = resolveTestJar();
         JavaProjectSetup setup = createJavaProjectWithLibraries(
                 "update-source-attachments-" + UUID.randomUUID(), //$NON-NLS-1$
@@ -166,7 +169,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testUpdateSourceAttachmentsReturnsCancelWhenDuplicateRequest() throws Exception {
+    public void testUpdateSourceAttachmentsReturnsCancelWhenDuplicateRequest() throws IOException, CoreException {
         File jar = resolveTestJar();
         JavaProjectSetup setup = createJavaProjectWithLibraries(
                 "update-source-attachments-dup-" + UUID.randomUUID(), //$NON-NLS-1$
@@ -184,7 +187,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     private static IPath waitForSourceAttachment(IPackageFragmentRoot root, int attempts, long delayMs)
-            throws Exception {
+            throws InterruptedException, JavaModelException {
         IPath attached = root.getSourceAttachmentPath();
         for (int i = 0; i < attempts && (attached == null || !attached.toFile().exists()); i++) {
             Thread.sleep(delayMs);
@@ -193,7 +196,7 @@ public class JavaSourceAttacherHandlerTest {
         return attached;
     }
 
-    private File resolveTestJar() throws Exception {
+    private File resolveTestJar() throws IOException {
         Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
         assertNotNull(bundle);
 
@@ -207,7 +210,8 @@ public class JavaSourceAttacherHandlerTest {
         return file;
     }
 
-    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs) throws Exception {
+    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs)
+            throws CoreException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject project = root.getProject(projectName);
 
@@ -302,7 +306,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testProcessLibSourcesSkipsDeleteOnExitForMavenRepoFiles() throws Exception {
+    public void testProcessLibSourcesSkipsDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
         File jar = resolveTestJar();
 
         // Create a zip file in a Maven repo location (simulate a cached source JAR)

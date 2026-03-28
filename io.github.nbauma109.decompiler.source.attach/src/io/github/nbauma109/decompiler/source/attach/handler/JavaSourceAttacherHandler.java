@@ -267,7 +267,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         }
     }
 
-    public static boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) throws Exception {
+    public static boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) {
         final SourceAttacher attacher = SourceAttachPlugin.getDefault().getSourceAttacher();
         if (attacher == null) {
             Logger.info("No SourceAttacher implementation found for " + sourcePath); //$NON-NLS-1$

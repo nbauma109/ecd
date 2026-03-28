@@ -10,6 +10,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
@@ -44,7 +45,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         this.downloadUrl = downloadUrl;
     }
 
-    protected String getString(URL url) throws Exception {
+    protected String getString(URL url) {
         try {
             URLConnection con = url.openConnection();
             con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
@@ -59,18 +60,18 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                 try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
                     return IOUtils.toString(is, StandardCharsets.UTF_8);
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 if (bytes != null) {
                     return new String(bytes, StandardCharsets.UTF_8);
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.debug(e);
         }
         return "";
     }
 
-    protected Optional<GAV> findGAVFromFile(String binFile) throws Exception {
+    protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {
         Set<GAV> gavs = new HashSet<>();
 
         // META-INF/maven/commons-beanutils/commons-beanutils/pom.properties

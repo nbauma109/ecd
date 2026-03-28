@@ -6,6 +6,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
@@ -42,7 +43,7 @@ public class EditorUtilityTest {
     }
 
     @Test
-    public void decompilerClassEditorInputUsesCustomTooltipWhenProvided() throws Exception {
+    public void decompilerClassEditorInputUsesCustomTooltipWhenProvided() throws IOException {
         File file = new File(testRoot, "Demo.class");
         Files.writeString(file.toPath(), "bytes", StandardCharsets.UTF_8);
         IFileStore store = EFS.getLocalFileSystem().fromLocalFile(file);

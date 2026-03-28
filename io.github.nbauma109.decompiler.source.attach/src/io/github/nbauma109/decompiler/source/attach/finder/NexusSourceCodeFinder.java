@@ -30,6 +30,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -619,7 +620,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                         ).toString();
             }
             return url;
-        } catch (Exception ignore) {
+        } catch (java.net.URISyntaxException ignore) {
             return url; // be conservative on parse errors
         }
     }
@@ -627,7 +628,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // ---------------------------------------------------------------------------------
     // HTTP
     // ---------------------------------------------------------------------------------
-    private int httpStatusCode(String url) throws Exception {
+    private int httpStatusCode(String url) throws IOException {
         HttpURLConnection c = open(url, "GET");
         try {
             c.connect();
@@ -685,7 +686,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         }
     }
 
-    private HttpURLConnection open(String url, String method) throws Exception {
+    private HttpURLConnection open(String url, String method) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setInstanceFollowRedirects(true);
         c.setConnectTimeout(15000);

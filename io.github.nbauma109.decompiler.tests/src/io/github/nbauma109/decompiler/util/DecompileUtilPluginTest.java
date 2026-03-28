@@ -27,6 +27,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IClassFile;
@@ -45,7 +46,7 @@ public class DecompileUtilPluginTest {
     private IProject project;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws InterruptedException {
         File targetDirectory = new File("target");
         assertTrue(targetDirectory.exists() || targetDirectory.mkdirs());
 
@@ -56,7 +57,7 @@ public class DecompileUtilPluginTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws CoreException, InterruptedException {
         deleteProjectIfPresent();
         deleteRecursively(testRootDirectory);
         waitForWorkspaceJobs();
@@ -81,7 +82,7 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
-    public void decompileReturnsExistingSourceWhenReusable() throws Exception {
+    public void decompileReturnsExistingSourceWhenReusable() throws IOException, CoreException, InterruptedException {
         LibraryArtifacts artifacts = createLibraryArtifacts();
 
         String projectName = ".decompileutil-" + System.nanoTime();
@@ -101,7 +102,8 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
-    public void decompilerDecompilesFileFromEditorInputReturnsNonNullStringOrNullWithoutThrowing() throws Exception {
+    public void decompilerDecompilesFileFromEditorInputReturnsNonNullStringOrNullWithoutThrowing()
+            throws IOException, CoreException {
         File classFile = createStandaloneClassFileOnDisk();
 
         IFileStore store = EFS.getStore(URI.create(classFile.toURI().toString()));
@@ -111,7 +113,7 @@ public class DecompileUtilPluginTest {
         assertTrue(result == null || result.length() >= 0);
     }
 
-    private LibraryArtifacts createLibraryArtifacts() throws Exception {
+    private LibraryArtifacts createLibraryArtifacts() throws IOException {
         File sourceRoot = new File(testRootDirectory, "library-source");
         File classRoot = new File(testRootDirectory, "library-classes");
         File jarRoot = new File(testRootDirectory, "library-jars");
@@ -146,7 +148,7 @@ public class DecompileUtilPluginTest {
         return new LibraryArtifacts(binaryJar, sourceJar);
     }
 
-    private File createStandaloneClassFileOnDisk() throws Exception {
+    private File createStandaloneClassFileOnDisk() throws IOException {
         File sourceRoot = new File(testRootDirectory, "standalone-source");
         File classRoot = new File(testRootDirectory, "standalone-classes");
         assertTrue(sourceRoot.mkdirs());
@@ -174,7 +176,8 @@ public class DecompileUtilPluginTest {
         return classFile;
     }
 
-    private IProject createJavaProjectWithLibrary(String projectName, File binaryJar, File sourceJar) throws Exception {
+    private IProject createJavaProjectWithLibrary(String projectName, File binaryJar, File sourceJar)
+            throws CoreException, InterruptedException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject newProject = root.getProject(projectName);
 
@@ -252,7 +255,7 @@ public class DecompileUtilPluginTest {
         }
     }
 
-    private void deleteProjectIfPresent() throws Exception {
+    private void deleteProjectIfPresent() throws CoreException {
         if (project == null) {
             return;
         }
@@ -282,7 +285,7 @@ public class DecompileUtilPluginTest {
         root.delete();
     }
 
-    private static void waitForWorkspaceJobs() throws Exception {
+    private static void waitForWorkspaceJobs() throws InterruptedException {
         Job.getJobManager().join(ResourcesPlugin.FAMILY_AUTO_BUILD, new NullProgressMonitor());
         Job.getJobManager().join(ResourcesPlugin.FAMILY_MANUAL_BUILD, new NullProgressMonitor());
     }

@@ -9,8 +9,11 @@
 package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -71,7 +74,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             if (!resultCanonical.startsWith(repoCanonical + File.separator) && !resultCanonical.equals(repoCanonical)) {
                 return null;
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.debug(e);
             return null;
         }
@@ -83,7 +86,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingMavenCentral(sha1));
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.debug(e);
         }
 
@@ -94,7 +97,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
             sourcesUrls.putAll(findSourcesUsingMavenCentral(gavs));
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.debug(e);
         }
 
@@ -111,7 +114,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                         setDownloadUrl(entry.getValue());
                         return;
                     }
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     Logger.debug(e);
                 }
                 // If validation fails or throws, fall through to try other strategies
@@ -148,13 +151,13 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                     results.add(object);
 
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 Logger.debug(e);
             }
         }
     }
 
-    private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws Exception {
+    private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws IOException {
         Map<GAV, String> results = new HashMap<>();
         for (GAV gav : gavs) {
             if (canceled) {
@@ -169,7 +172,10 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             String url = "https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
                     + URLEncoder.encode(qVal, "UTF-8") //$NON-NLS-1$
                     + "&rows=20&wt=json"; //$NON-NLS-1$
-            String json = IOUtils.toString(new URL(url).openStream());
+            String json;
+            try (InputStream stream = new URL(url).openStream()) {
+                json = IOUtils.toString(stream, StandardCharsets.UTF_8);
+            }
             JsonObject jsonObject = Json.parse(json).asObject();
             JsonObject response = jsonObject.get("response").asObject(); //$NON-NLS-1$
 
@@ -193,11 +199,14 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         return results;
     }
 
-    private Collection<GAV> findArtifactsUsingMavenCentral(String sha1) throws Exception {
+    private Collection<GAV> findArtifactsUsingMavenCentral(String sha1) throws IOException {
         Set<GAV> results = new HashSet<>();
-        String json = IOUtils.toString(new URL("https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
+        String json;
+        try (InputStream stream = new URL("https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
                 + URLEncoder.encode("1:\"" + sha1 + "\"", "UTF-8") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                + "&rows=20&wt=json").openStream()); //$NON-NLS-1$
+                + "&rows=20&wt=json").openStream()) { //$NON-NLS-1$
+            json = IOUtils.toString(stream, StandardCharsets.UTF_8);
+        }
         JsonObject jsonObject = Json.parse(json).asObject();
         JsonObject response = jsonObject.get("response").asObject(); //$NON-NLS-1$
 

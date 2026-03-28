@@ -9,6 +9,7 @@
 package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -57,7 +58,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingSonatype(sha1));
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.debug(e);
         }
 
@@ -111,13 +112,13 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                     results.add(object);
                     return;
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 Logger.debug(e);
             }
         }
     }
 
-    private Collection<GAV> findArtifactsUsingSonatype(String sha1) throws Exception {
+    private Collection<GAV> findArtifactsUsingSonatype(String sha1) throws IOException {
         Set<GAV> results = new HashSet<>();
         if (sha1 == null || sha1.isBlank()) {
             return results;
@@ -159,7 +160,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
         return results;
     }
 
-    private String postJson(String apiUrl, String payload) throws Exception {
+    private String postJson(String apiUrl, String payload) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
         connection.setRequestMethod("POST"); //$NON-NLS-1$
         connection.setRequestProperty("Content-Type", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$

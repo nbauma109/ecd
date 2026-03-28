@@ -36,6 +36,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -75,7 +76,7 @@ public class ExportSourceActionTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws IOException, CoreException {
         jarFileOnDisk = resolveTestJar();
         assertNotNull(jarFileOnDisk);
         assertTrue(jarFileOnDisk.exists());
@@ -113,7 +114,7 @@ public class ExportSourceActionTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws IOException, CoreException {
         JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
         if (plugin != null && originalTempDir != null) {
             plugin.getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR, originalTempDir);
@@ -145,7 +146,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testCollectClassesFromPackageFlat() throws Exception {
+    public void testCollectClassesFromPackageFlat() throws IOException, JavaModelException {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         assertNotNull(layout);
 
@@ -174,7 +175,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testCollectClassesFromPackageHierarchical() throws Exception {
+    public void testCollectClassesFromPackageHierarchical() throws IOException, JavaModelException {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         assertNotNull(layout);
 
@@ -210,7 +211,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testCollectClassesFromSingleClassFile() throws Exception {
+    public void testCollectClassesFromSingleClassFile() throws IOException, JavaModelException {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         assertNotNull(layout);
 
@@ -238,7 +239,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testCollectClassesAddsToExistingPackageList() throws Exception {
+    public void testCollectClassesAddsToExistingPackageList() throws IOException, JavaModelException {
         IClassFile classFile = anyTopLevelClassFile();
         IPackageFragment pkg = (IPackageFragment) classFile.getParent();
 
@@ -258,7 +259,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testEnsureDirectoryExistsCreatesDirectoryWhenBlockedByFile() throws Exception {
+    public void testEnsureDirectoryExistsCreatesDirectoryWhenBlockedByFile() throws IOException {
         File blocked = new File(tempDirForTest, "blocked-dir");
         ensureParentDirectoryExistsForFile(blocked);
 
@@ -276,7 +277,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testEnsureParentDirectoryExistsCreatesParents() throws Exception {
+    public void testEnsureParentDirectoryExistsCreatesParents() throws IOException {
         File target = new File(tempDirForTest, "a/b/c/out.java");
         assertFalse(target.getParentFile().exists());
 
@@ -287,7 +288,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() throws Exception {
+    public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() {
         try {
             ExportSourceAction.ensureParentDirectoryExists(null);
         } catch (IOException e) {
@@ -297,7 +298,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesCanceledDoesNotCreateZip() throws Exception {
+    public void testExportPackageSourcesCanceledDoesNotCreateZip() throws IOException, JavaModelException {
         File zip = createTempZipFile();
         assertFalse(zip.exists());
 
@@ -312,7 +313,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesNoChildrenDoesNotCreateZip() throws Exception {
+    public void testExportPackageSourcesNoChildrenDoesNotCreateZip() throws IOException, JavaModelException {
         File zip = createTempZipFile();
         assertFalse(zip.exists());
 
@@ -327,7 +328,7 @@ public class ExportSourceActionTest {
     }
 
     @Test
-    public void testExportPackageSourcesCreatesZipAndCleansExportDirectory() throws Exception {
+    public void testExportPackageSourcesCreatesZipAndCleansExportDirectory() throws IOException, JavaModelException {
         File zip = createTempZipFile();
         assertFalse(zip.exists());
 
@@ -363,7 +364,7 @@ public class ExportSourceActionTest {
         assertFalse("Our export should delete the export working directory", exportDir.exists());
     }
 
-    private File createTempZipFile() throws Exception {
+    private File createTempZipFile() throws IOException {
         File zip = Files.createTempFile("export-source-action-", ".zip").toFile();
         if (zip.exists()) {
             assertTrue(zip.delete());
@@ -372,7 +373,7 @@ public class ExportSourceActionTest {
         return zip;
     }
 
-    private String resolveDecompilerTypeForTest() throws Exception {
+    private String resolveDecompilerTypeForTest() throws IOException, JavaModelException {
         JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
         if (plugin != null) {
             String configured = plugin.getPreferenceStore().getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
@@ -386,7 +387,7 @@ public class ExportSourceActionTest {
         return working.orElse("");
     }
 
-    private Optional<String> findWorkingDecompilerType(String preferred) throws Exception {
+    private Optional<String> findWorkingDecompilerType(String preferred) throws IOException, JavaModelException {
         IClassFile cf = anyTopLevelClassFile();
         cf.open(new NullProgressMonitor());
 
@@ -420,7 +421,7 @@ public class ExportSourceActionTest {
         return Optional.empty();
     }
 
-    private IClassFile anyTopLevelClassFile() throws Exception {
+    private IClassFile anyTopLevelClassFile() throws IOException {
         JarLayout layout = readJarLayout(jarFileOnDisk);
         Optional<ClassLocation> anyTopLevel = layout.findAnyTopLevelClass();
         if (!anyTopLevel.isPresent()) {
@@ -439,7 +440,7 @@ public class ExportSourceActionTest {
         return classFile;
     }
 
-    private static List<String> listZipEntries(File zipFile) throws Exception {
+    private static List<String> listZipEntries(File zipFile) throws IOException {
         List<String> entries = new ArrayList<>();
         try (ZipFile zip = new ZipFile(zipFile)) {
             Enumeration<? extends ZipEntry> enumeration = zip.entries();
@@ -451,7 +452,7 @@ public class ExportSourceActionTest {
         return entries;
     }
 
-    private static void ensureParentDirectoryExistsForFile(File file) throws Exception {
+    private static void ensureParentDirectoryExistsForFile(File file) {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) {
             assertTrue(parent.mkdirs());
@@ -463,7 +464,7 @@ public class ExportSourceActionTest {
         project.setRawClasspath(classpath, null);
     }
 
-    private static File resolveTestJar() throws Exception {
+    private static File resolveTestJar() throws IOException {
         Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
         assertNotNull("Test bundle must be available: " + TEST_BUNDLE_ID, bundle);
 
@@ -475,7 +476,8 @@ public class ExportSourceActionTest {
         return path.toFile();
     }
 
-    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar) throws Exception {
+    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar)
+            throws JavaModelException {
         IPath jarPath = new Path(jar.getAbsolutePath());
 
         IClasspathEntry[] existing = project.getRawClasspath();
@@ -506,7 +508,7 @@ public class ExportSourceActionTest {
         return Optional.empty();
     }
 
-    private static JarLayout readJarLayout(File jarFile) throws Exception {
+    private static JarLayout readJarLayout(File jarFile) throws IOException {
         try (JarFile jar = new JarFile(jarFile)) {
             Set<String> packages = new HashSet<>();
             List<ClassLocation> topLevelClasses = new ArrayList<>();
@@ -539,7 +541,7 @@ public class ExportSourceActionTest {
         }
     }
 
-    private static void deleteRecursively(File file) throws Exception {
+    private static void deleteRecursively(File file) throws IOException {
         if (file == null || !file.exists()) {
             return;
         }
@@ -552,7 +554,7 @@ public class ExportSourceActionTest {
             }
         }
         if (!file.delete() && file.exists()) {
-            throw new IllegalStateException("Unable to delete: " + file.getAbsolutePath());
+            throw new IOException("Unable to delete: " + file.getAbsolutePath());
         }
     }
 

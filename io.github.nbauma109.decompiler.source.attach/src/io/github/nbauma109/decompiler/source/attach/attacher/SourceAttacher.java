@@ -10,9 +10,10 @@ package io.github.nbauma109.decompiler.source.attach.attacher;
 
 import java.io.File;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 
 public interface SourceAttacher {
 
-    boolean attachSource(IPackageFragmentRoot paramIPackageFragmentRoot, File paramString) throws Exception;
+    boolean attachSource(IPackageFragmentRoot paramIPackageFragmentRoot, File paramString) throws CoreException;
 }

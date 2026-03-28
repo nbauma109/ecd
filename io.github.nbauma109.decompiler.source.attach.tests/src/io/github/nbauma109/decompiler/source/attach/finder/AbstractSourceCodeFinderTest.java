@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.FileWriter;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +19,7 @@ import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.AttributeSet;
@@ -47,7 +49,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void findGavFromFileReturnsParsedCoordinatesForSinglePomProperties() throws Exception {
+    public void findGavFromFileReturnsParsedCoordinatesForSinglePomProperties() throws IOException {
         File jar = createZip("single.jar",
                 Collections.singletonMap("META-INF/maven/org.example/demo/pom.properties",
                         "groupId=org.example\nartifactId=demo\nversion=1.2.3\n"));
@@ -61,7 +63,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void findGavFromFileReturnsEmptyForMergedJarWithMultiplePomProperties() throws Exception {
+    public void findGavFromFileReturnsEmptyForMergedJarWithMultiplePomProperties() throws IOException {
         Map<String, String> entries = new LinkedHashMap<>();
         entries.put("META-INF/maven/org.example/demo/pom.properties",
                 "groupId=org.example\nartifactId=demo\nversion=1.2.3\n");
@@ -75,7 +77,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getStringReadsPlainTextFromFileUrl() throws Exception {
+    public void getStringReadsPlainTextFromFileUrl() throws IOException {
         File file = new File(testRoot, "plain.txt");
         try (FileWriter writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             writer.write("plain text");
@@ -87,7 +89,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getStringReadsGzippedContentFromFileUrl() throws Exception {
+    public void getStringReadsGzippedContentFromFileUrl() throws IOException {
         File file = new File(testRoot, "compressed.bin");
         try (GZIPOutputStream out = new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
             out.write("compressed text".getBytes(StandardCharsets.UTF_8));
@@ -99,14 +101,14 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getStringReturnsEmptyStringWhenUrlCannotBeRead() throws Exception {
+    public void getStringReturnsEmptyStringWhenUrlCannotBeRead() throws IOException {
         URL missing = new File(testRoot, "missing.txt").toURI().toURL();
 
         assertEquals("", new ExposedFinder().exposeGetString(missing));
     }
 
     @Test
-    public void getTextReturnsSelectedHtmlText() throws Exception {
+    public void getTextReturnsSelectedHtmlText() throws BadLocationException {
         HTMLDocument doc = new HTMLDocument();
         doc.insertString(0, HELLO_FINDER, null);
         HTMLDocument.Iterator iterator = new HTMLDocument.Iterator() {
@@ -146,7 +148,7 @@ public class AbstractSourceCodeFinderTest {
         assertEquals(HELLO_FINDER, text);
     }
 
-    private File createZip(String name, Map<String, String> entries) throws Exception {
+    private File createZip(String name, Map<String, String> entries) throws IOException {
         File zip = new File(testRoot, name);
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zip)))) {
             for (Map.Entry<String, String> entry : entries.entrySet()) {
@@ -177,15 +179,15 @@ public class AbstractSourceCodeFinderTest {
     }
 
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
-        Optional<GAV> exposeFindGavFromFile(String binFile) throws Exception {
+        Optional<GAV> exposeFindGavFromFile(String binFile) throws IOException {
             return findGAVFromFile(binFile);
         }
 
-        String exposeGetString(URL url) throws Exception {
+        String exposeGetString(URL url) {
             return getString(url);
         }
 
-        String exposeGetText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws Exception {
+        String exposeGetText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws BadLocationException {
             return getText(doc, iterator);
         }
 

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.eclipse.core.commands.ExecutionException;
 import java.lang.reflect.Proxy;
 
 import org.eclipse.jface.action.Action;
@@ -41,7 +42,7 @@ public class ActionSmokeTest {
     }
 
     @Test
-    public void sourceCodeHandlerExecuteReturnsNullWithoutEditor() throws Exception {
+    public void sourceCodeHandlerExecuteReturnsNullWithoutEditor() throws ExecutionException {
         assertNull(new SourceCodeHandler().execute(null));
     }
 

@@ -29,6 +29,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
@@ -41,6 +42,7 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -77,7 +79,7 @@ public class JavaDecompilerClassFileEditorTest {
     private IEditorPart openedEditor;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws IOException, CoreException {
         refreshDecompilerEditorAssociations();
 
         jarFileOnDisk = resolveTestJar();
@@ -112,7 +114,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws IOException, CoreException {
         closeOpenedEditor();
 
         if (project != null && project.exists()) {
@@ -124,7 +126,8 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testOpenClassFileWithDecompilerEditorIdShowsSource() throws Exception {
+    public void testOpenClassFileWithDecompilerEditorIdShowsSource()
+            throws IOException, CoreException, InterruptedException {
         String editorId = resolveDecompilerEditorIdFromRegistry();
         assertNotNull(editorId);
         assertTrue(!editorId.trim().isEmpty());
@@ -162,7 +165,8 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testReopenClassFileUsesDecompilerEditorAfterSourceWasCached() throws Exception {
+    public void testReopenClassFileUsesDecompilerEditorAfterSourceWasCached()
+            throws IOException, CoreException, InterruptedException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -194,7 +198,8 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable() throws Exception {
+    public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable()
+            throws IOException, CoreException, InterruptedException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -226,7 +231,8 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testUpdateTitleImageRestoresDecompilerImageWhenAvailable() throws Exception {
+    public void testUpdateTitleImageRestoresDecompilerImageWhenAvailable()
+            throws IOException, CoreException, InterruptedException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -257,7 +263,7 @@ public class JavaDecompilerClassFileEditorTest {
         }
     }
 
-    private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws Exception {
+    private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws CoreException {
         return runInUiThreadWithResult(() -> {
             IWorkbenchWindow window = resolveWorkbenchWindow();
             IWorkbenchPage page = resolveWorkbenchPage(window);
@@ -281,7 +287,7 @@ public class JavaDecompilerClassFileEditorTest {
         });
     }
 
-    private static IEditorPart openDefault(IClassFile classFile) throws Exception {
+    private static IEditorPart openDefault(IClassFile classFile) throws CoreException {
         return runInUiThreadWithResult(() -> {
             IEditorPart editor = JavaUI.openInEditor(classFile, true, true);
             if (editor == null) {
@@ -372,7 +378,7 @@ public class JavaDecompilerClassFileEditorTest {
         }
     }
 
-    private void closeOpenedEditor() throws Exception {
+    private void closeOpenedEditor() throws CoreException {
         if (openedEditor == null) {
             return;
         }
@@ -385,12 +391,13 @@ public class JavaDecompilerClassFileEditorTest {
         openedEditor = null;
     }
 
-    private static void configureClasspathWithJre(IJavaProject project) throws Exception {
+    private static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
         IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
         project.setRawClasspath(classpath, null);
     }
 
-    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar) throws Exception {
+    private static IPackageFragmentRoot addJarToClasspathAndGetRoot(IJavaProject project, File jar)
+            throws JavaModelException {
         IPath jarPath = new Path(jar.getAbsolutePath());
 
         IClasspathEntry[] existing = project.getRawClasspath();
@@ -415,7 +422,7 @@ public class JavaDecompilerClassFileEditorTest {
         throw new IllegalStateException("Unable to locate package fragment root for jar: " + jarPath.toOSString()); //$NON-NLS-1$
     }
 
-    private static File resolveTestJar() throws Exception {
+    private static File resolveTestJar() throws IOException {
         Bundle bundle = Platform.getBundle(TEST_BUNDLE_ID);
         assertNotNull(bundle);
 
@@ -427,7 +434,7 @@ public class JavaDecompilerClassFileEditorTest {
         return path.toFile();
     }
 
-    private static Optional<ClassInJar> findPreferredClass(File jarFile) throws Exception {
+    private static Optional<ClassInJar> findPreferredClass(File jarFile) throws IOException {
         Set<String> classEntries = new HashSet<>();
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -505,17 +512,17 @@ public class JavaDecompilerClassFileEditorTest {
         }
     }
 
-    private static void runInUiThread(UiRunnable runnable) throws Exception {
+    private static void runInUiThread(UiRunnable runnable) throws CoreException {
         Display display = Display.getDefault();
         if (display == null) {
             runnable.run();
             return;
         }
-        final ArrayList<Exception> errors = new ArrayList<>();
+        final ArrayList<CoreException> errors = new ArrayList<>();
         display.syncExec(() -> {
             try {
                 runnable.run();
-            } catch (Exception e) {
+            } catch (CoreException e) {
                 errors.add(e);
             }
         });
@@ -524,17 +531,17 @@ public class JavaDecompilerClassFileEditorTest {
         }
     }
 
-    private static <T> T runInUiThreadWithResult(UiSupplier<T> supplier) throws Exception {
+    private static <T> T runInUiThreadWithResult(UiSupplier<T> supplier) throws CoreException {
         Display display = Display.getDefault();
         if (display == null) {
             return supplier.get();
         }
-        final ArrayList<Exception> errors = new ArrayList<>();
+        final ArrayList<CoreException> errors = new ArrayList<>();
         final ArrayList<T> results = new ArrayList<>();
         display.syncExec(() -> {
             try {
                 results.add(supplier.get());
-            } catch (Exception e) {
+            } catch (CoreException e) {
                 errors.add(e);
             }
         });
@@ -544,16 +551,16 @@ public class JavaDecompilerClassFileEditorTest {
         return results.get(0);
     }
 
-    private static void refreshDecompilerEditorAssociations() throws Exception {
+    private static void refreshDecompilerEditorAssociations() throws CoreException {
         runInUiThread(() -> new SetupRunnableAccessor().apply());
     }
 
     private interface UiRunnable {
-        void run() throws Exception;
+        void run() throws CoreException;
     }
 
     private interface UiSupplier<T> {
-        T get() throws Exception;
+        T get() throws CoreException;
     }
 
     private static final class SetupRunnableAccessor extends SetupRunnable {

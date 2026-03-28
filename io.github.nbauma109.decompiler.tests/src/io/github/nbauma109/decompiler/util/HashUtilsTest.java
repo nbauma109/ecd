@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
@@ -33,7 +35,7 @@ public class HashUtilsTest {
     }
 
     @Test
-    public void sha1HashReturnsExpectedDigestForExistingFile() throws Exception {
+    public void sha1HashReturnsExpectedDigestForExistingFile() throws IOException {
         File file = new File(testRoot, "payload.txt");
         Files.writeString(file.toPath(), "hello world", StandardCharsets.UTF_8);
 
@@ -51,12 +53,12 @@ public class HashUtilsTest {
 
         try {
             HashUtils.sha1Hash(missing);
-        } catch (RuntimeException e) {
+        } catch (UncheckedIOException e) {
             assertTrue(e.getCause() instanceof java.io.FileNotFoundException);
             return;
         }
 
-        throw new AssertionError("Expected RuntimeException to be thrown");
+        throw new AssertionError("Expected UncheckedIOException to be thrown");
     }
 
     private static void deleteRecursively(File file) {

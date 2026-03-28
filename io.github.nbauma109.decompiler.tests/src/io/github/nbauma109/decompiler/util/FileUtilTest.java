@@ -50,7 +50,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void writeToFileWithoutEncodingCreatesParentsAndWritesContent() throws Exception {
+    public void writeToFileWithoutEncodingCreatesParentsAndWritesContent() throws IOException {
         File file = resolve("no-encoding/hello.txt");
         String content = "plain-ascii\nsecond-line\n";
 
@@ -61,7 +61,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void writeToFileWithExplicitEncodingCreatesParentsAndWritesContent() throws Exception {
+    public void writeToFileWithExplicitEncodingCreatesParentsAndWritesContent() throws IOException {
         File file = resolve("a/b/c.txt");
         String content = "line1\nline2\n";
 
@@ -72,7 +72,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void getContentTrimsWhitespace() throws Exception {
+    public void getContentTrimsWhitespace() throws IOException {
         File file = resolve("trim.txt");
         FileUtil.writeToFile(file, "  hello  \n", StandardCharsets.UTF_8.name());
 
@@ -86,7 +86,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void isZipFileNullAndNonZipAndZip() throws Exception {
+    public void isZipFileNullAndNonZipAndZip() throws IOException {
         assertFalse(FileUtil.isZipFile(null));
 
         File nonZip = resolve("not-a-zip.txt");
@@ -99,7 +99,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void copyFileCopiesBytesAndReturnsFalse() throws Exception {
+    public void copyFileCopiesBytesAndReturnsFalse() throws IOException {
         File src = resolve("src.bin");
         File dest = resolve("dest.bin");
 
@@ -114,7 +114,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void deleteDirectoryDeletesRecursivelyNoProgressMonitor() throws Exception {
+    public void deleteDirectoryDeletesRecursivelyNoProgressMonitor() throws IOException {
         File dir = resolve("to-delete");
         File nested = new File(dir, "x/y/z");
         assertTrue(nested.mkdirs());
@@ -132,7 +132,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void deltreeDeletesRecursively() throws Exception {
+    public void deltreeDeletesRecursively() throws IOException {
         File dir = resolve("tree");
         File nested = new File(dir, "p/q");
         assertTrue(nested.mkdirs());
@@ -148,7 +148,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void recursiveZipZipsFilteredFilesWithExpectedPathsAndContent() throws Exception {
+    public void recursiveZipZipsFilteredFilesWithExpectedPathsAndContent() throws IOException {
         File root = resolve("zip-root");
         File sub = new File(root, "sub");
         assertTrue(sub.mkdirs());

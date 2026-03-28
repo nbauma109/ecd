@@ -8,6 +8,7 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
@@ -21,7 +22,7 @@ import org.osgi.service.prefs.BackingStoreException;
 public class SortMemberUtilPluginTest {
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws BackingStoreException, CoreException, InterruptedException {
         SortMemberUtil.resetCachedDecompilerSourceFolder();
         deleteDecompilerProjectIfPresent();
         configureMemberSortPreferences();
@@ -29,14 +30,15 @@ public class SortMemberUtilPluginTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws CoreException, InterruptedException {
         deleteDecompilerProjectIfPresent();
         SortMemberUtil.resetCachedDecompilerSourceFolder();
         waitForWorkspaceJobs();
     }
 
     @Test
-    public void sortMemberGroupsFieldsBeforeMethodsAndCleansUpCompilationUnit() throws Exception {
+    public void sortMemberGroupsFieldsBeforeMethodsAndCleansUpCompilationUnit()
+            throws CoreException, InterruptedException {
         String input =
                 """
                 package com.example;
@@ -103,7 +105,7 @@ public class SortMemberUtilPluginTest {
         prefs.flush();
     }
 
-    private static void deleteDecompilerProjectIfPresent() throws Exception {
+    private static void deleteDecompilerProjectIfPresent() throws CoreException {
         IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(".decompiler");
         if (!project.exists()) {
             return;
@@ -114,7 +116,7 @@ public class SortMemberUtilPluginTest {
         project.delete(true, true, new NullProgressMonitor());
     }
 
-    private static void waitForWorkspaceJobs() throws Exception {
+    private static void waitForWorkspaceJobs() throws InterruptedException {
         Job.getJobManager().join(ResourcesPlugin.FAMILY_AUTO_BUILD, new NullProgressMonitor());
         Job.getJobManager().join(ResourcesPlugin.FAMILY_MANUAL_BUILD, new NullProgressMonitor());
     }

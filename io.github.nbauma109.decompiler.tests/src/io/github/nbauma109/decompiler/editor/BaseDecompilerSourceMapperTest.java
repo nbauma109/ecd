@@ -5,8 +5,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -40,7 +42,7 @@ public class BaseDecompilerSourceMapperTest {
     private BaseDecompilerSourceMapper jdCore;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws CoreException {
         vineflower = new BaseDecompilerSourceMapper("");
         jdCore = new BaseDecompilerSourceMapper("JD-Core");
 
@@ -80,14 +82,14 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws CoreException {
         if (project != null && project.exists()) {
             project.delete(true, true, null);
         }
     }
 
     @Test
-    public void testIsSourceLookupEligible() throws Exception {
+    public void testIsSourceLookupEligible() throws CoreException {
         IType typeInFooBar = createType(PACKAGE_COM_EXAMPLE_FOO_BAR, "SampleOne");
 
         assertTrue(vineflower.isSourceLookupEligible(typeInFooBar, new String[0]));
@@ -104,7 +106,7 @@ public class BaseDecompilerSourceMapperTest {
 
 
     @Test
-    public void testIsSourceLookupEligibleStringOverload() throws Exception {
+    public void testIsSourceLookupEligibleStringOverload() throws CoreException {
         IType typeInFooBar = createType(PACKAGE_COM_EXAMPLE_FOO_BAR, "SampleThree");
 
         assertFalse(vineflower.isSourceLookupEligible(typeInFooBar, "com.other, com.example.foo"));
@@ -115,7 +117,7 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     @Test
-    public void testPrintDecompileReport() throws Exception {
+    public void testPrintDecompileReport() {
         StringBuilder source = new StringBuilder("class A {}");
         vineflower.printDecompileReport(source, "path/to/file", Collections.emptyList(), RealignStatus.PARSE_ERROR);
         assertEquals("class A {}\n"
@@ -140,7 +142,7 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     @Test
-    public void testDecompileRealignmentTurnedOff() throws Exception {
+    public void testDecompileRealignmentTurnedOff() {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, false);
@@ -174,7 +176,7 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     @Test
-    public void testDecompileParsedAndRealigned() throws Exception {
+    public void testDecompileParsedAndRealigned() {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
@@ -211,7 +213,7 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     @Test
-    public void testDecompileNativelyRealigned() throws Exception {
+    public void testDecompileNativelyRealigned() {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         prefs.setValue(JavaDecompilerPlugin.PREF_DISPLAY_METADATA, true);
         prefs.setValue(JavaDecompilerPlugin.ALIGN, true);
@@ -244,7 +246,7 @@ public class BaseDecompilerSourceMapperTest {
                 + "*/", decompiledOutput);
     }
 
-    private IType createType(String packageName, String typeName) throws Exception {
+    private IType createType(String packageName, String typeName) throws CoreException {
         IFolder sourceFolder = project.getFolder("src");
         IPackageFragmentRoot root = javaProject.getPackageFragmentRoot(sourceFolder);
 

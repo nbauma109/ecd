@@ -102,7 +102,7 @@ public class ReflectionUtilsTest {
     }
 
     @Test
-    public void testInvokeMethodDirect() throws Exception {
+    public void testInvokeMethodDirect() throws NoSuchMethodException {
         Method m = subObj.getClass().getDeclaredMethod(SINGLE_ARG_METHOD, Integer.class);
         Object result = ReflectionUtils.invokeMethod(m, subObj, new Object[]{ 456 });
         assertEquals("val:456", result);

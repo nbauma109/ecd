@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,7 +39,7 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSourceReturnsTrueWhenBinaryHasClassesButSourceHasNoJavaFiles() throws Exception {
+    public void isWrongSourceReturnsTrueWhenBinaryHasClassesButSourceHasNoJavaFiles() throws IOException {
         File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
         File srcJar = createZip(SOURCE_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
 
@@ -46,7 +47,7 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSourceReturnsFalseWhenSourceContainsJavaFiles() throws Exception {
+    public void isWrongSourceReturnsFalseWhenSourceContainsJavaFiles() throws IOException {
         File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
         File srcJar = createZip(SOURCE_JAR_NAME, "pkg/Demo.java", "class Demo {}");
 
@@ -54,14 +55,14 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSourceReturnsFalseWhenBinaryHasNoClasses() throws Exception {
+    public void isWrongSourceReturnsFalseWhenBinaryHasNoClasses() throws IOException {
         File binJar = createZip(BIN_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
         File srcJar = createZip(SOURCE_JAR_NAME, "docs/readme.txt", "text");
 
         assertFalse(SourceCheck.isWrongSource(srcJar, binJar));
     }
 
-    private File createZip(String name, String entryName, String content) throws Exception {
+    private File createZip(String name, String entryName, String content) throws IOException {
         File zip = new File(testRoot, name);
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zip)))) {
             ZipEntry entry = new ZipEntry(entryName);

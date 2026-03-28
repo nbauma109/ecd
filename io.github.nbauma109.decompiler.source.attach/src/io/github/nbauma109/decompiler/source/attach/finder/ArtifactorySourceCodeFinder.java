@@ -9,6 +9,7 @@
 package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
@@ -115,7 +116,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         }
     }
 
-    protected Map<GAV, String> findSourcesUsingArtifactory(Collection<GAV> gavs) throws Exception {
+    protected Map<GAV, String> findSourcesUsingArtifactory(Collection<GAV> gavs) throws IOException {
         Map<GAV, String> results = new HashMap<>();
         for (GAV gav : gavs) {
             if (canceled) {
@@ -140,7 +141,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
     }
 
     protected Set<GAV> findArtifactsUsingArtifactory(String g, String a, String v, String c, String sha1,
-            boolean getLink) throws Exception {
+            boolean getLink) throws IOException {
         // https://repository.cloudera.com/artifactory/api/search/checksum?sha1=2bf96b7aa8b611c177d329452af1dc933e14501c
         // {"results":[{"uri":"https://repository.cloudera.com/artifactory/api/storage/repo1-cache/commons-cli/commons-cli/1.2/commons-cli-1.2.jar"}]}
         // GET

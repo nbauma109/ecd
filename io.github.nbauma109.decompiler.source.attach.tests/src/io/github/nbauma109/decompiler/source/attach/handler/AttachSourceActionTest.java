@@ -31,6 +31,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -56,7 +57,7 @@ public class AttachSourceActionTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws IOException, CoreException {
         for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
@@ -75,7 +76,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithRootSelectionAttachesSource() throws Exception {
+    public void testRunWithRootSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
         File jar = resolveTestJar();
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -96,7 +97,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithClassFileSelectionAttachesSource() throws Exception {
+    public void testRunWithClassFileSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
         File jar = resolveTestJar();
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -119,7 +120,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithPackageFragmentSelectionAttachesSource() throws Exception {
+    public void testRunWithPackageFragmentSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
         File jar = resolveTestJar();
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -152,7 +153,7 @@ public class AttachSourceActionTest {
         return attached;
     }
 
-    private File resolveTestJar() throws Exception {
+    private File resolveTestJar() throws IOException {
         Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
         assertNotNull(bundle);
 
@@ -166,7 +167,7 @@ public class AttachSourceActionTest {
         return file;
     }
 
-    private JavaProjectSetup createJavaProjectWithLibrary(String projectName, File binaryJar) throws Exception {
+    private JavaProjectSetup createJavaProjectWithLibrary(String projectName, File binaryJar) throws CoreException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject project = root.getProject(projectName);
 
@@ -193,7 +194,7 @@ public class AttachSourceActionTest {
         return new JavaProjectSetup(project, javaProject, jarRoot);
     }
 
-    private static IPackageFragmentRoot findRootForJar(IJavaProject javaProject, IPath jarPath) throws Exception {
+    private static IPackageFragmentRoot findRootForJar(IJavaProject javaProject, IPath jarPath) throws JavaModelException {
         IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
         for (IPackageFragmentRoot candidate : allRoots) {
             IPath candidatePath = candidate.getPath();
@@ -204,7 +205,7 @@ public class AttachSourceActionTest {
         throw new IllegalStateException("No package fragment root for jar: " + jarPath.toOSString()); //$NON-NLS-1$
     }
 
-    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws Exception {
+    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws JavaModelException {
         IJavaElement[] children = root.getChildren();
         for (IJavaElement child : children) {
             if (child instanceof IPackageFragment pkg) {
@@ -217,7 +218,7 @@ public class AttachSourceActionTest {
         throw new IllegalStateException("No class file found in root: " + root.getElementName()); //$NON-NLS-1$
     }
 
-    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws Exception {
+    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws JavaModelException {
         IJavaElement[] children = root.getChildren();
         for (IJavaElement child : children) {
             if (child instanceof IPackageFragment pkg) {

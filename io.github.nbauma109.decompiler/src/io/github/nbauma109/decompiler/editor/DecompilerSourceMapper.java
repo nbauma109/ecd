@@ -79,7 +79,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
 
         try {
             SourceMapperUtil.mapSource(this, type, contents, null);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             // Method was found but invocation failed, this shouldn't happen.
         }
     }
@@ -140,7 +140,7 @@ public abstract class DecompilerSourceMapper extends SourceMapper {
                 archivePath = root.getPath().toOSString();
             }
         } catch (JavaModelException e) {
-            throw new RuntimeException("Unexpected Java model exception: " //$NON-NLS-1$
+            throw new IllegalStateException("Unexpected Java model exception: " //$NON-NLS-1$
                     + e.toString());
         }
         return archivePath;

@@ -26,6 +26,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -37,6 +38,7 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -50,7 +52,7 @@ public class SourceAttachUtilTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws IOException, CoreException {
         for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
@@ -67,7 +69,7 @@ public class SourceAttachUtilTest {
     }
 
     @Test
-    public void testNeedDownloadSourceReturnsTrueForSingleRootSelection() throws Exception {
+    public void testNeedDownloadSourceReturnsTrueForSingleRootSelection() throws IOException, CoreException {
         File jar = resolveTestJar();
         JavaProjectSetup setup = createJavaProjectWithLibraries("need-download-true-" + UUID.randomUUID(), //$NON-NLS-1$
                 new LibrarySpec(jar, null));
@@ -82,7 +84,7 @@ public class SourceAttachUtilTest {
     }
 
     @Test
-    public void testNeedDownloadSourceReturnsFalseForDifferentRoots() throws Exception {
+    public void testNeedDownloadSourceReturnsFalseForDifferentRoots() throws IOException, CoreException {
         File jar1 = resolveTestJar();
         File jar2 = copyJarToTempFile(jar1, "test-copy-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -103,7 +105,8 @@ public class SourceAttachUtilTest {
     }
 
     @Test
-    public void testNeedDownloadSourceReturnsFalseWhenSourceAlreadyAttachedToDifferentExistingFile() throws Exception {
+    public void testNeedDownloadSourceReturnsFalseWhenSourceAlreadyAttachedToDifferentExistingFile()
+            throws IOException, CoreException {
         File jar = resolveTestJar();
         File existingSourceJar = createNonEmptyFileUnderTarget("attached-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -120,7 +123,7 @@ public class SourceAttachUtilTest {
     }
 
     @Test
-    public void testUpdateSourceAttachStatusDoesNotThrow() throws Exception {
+    public void testUpdateSourceAttachStatusDoesNotThrow() throws IOException, CoreException {
         File jar = resolveTestJar();
         JavaProjectSetup setup = createJavaProjectWithLibraries("update-source-attach-" + UUID.randomUUID(), //$NON-NLS-1$
                 new LibrarySpec(jar, null));
@@ -145,12 +148,12 @@ public class SourceAttachUtilTest {
             Class<?> clazz = Class.forName("org.eclipse.m2e.jdt.IClasspathManager"); //$NON-NLS-1$
             Class<?>[] parameterTypes = new Class[] { IPackageFragmentRoot.class, boolean.class, boolean.class };
             return clazz.getMethod("scheduleDownload", parameterTypes) != null; //$NON-NLS-1$
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             return false;
         }
     }
 
-    private File resolveTestJar() throws Exception {
+    private File resolveTestJar() throws IOException {
         Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
         assertNotNull(bundle);
 
@@ -164,7 +167,8 @@ public class SourceAttachUtilTest {
         return file;
     }
 
-    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs) throws Exception {
+    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs)
+            throws CoreException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject project = root.getProject(projectName);
 
@@ -219,7 +223,7 @@ public class SourceAttachUtilTest {
         return new JavaProjectSetup(project, javaProject, roots);
     }
 
-    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws Exception {
+    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws JavaModelException {
         IJavaElement[] children = root.getChildren();
         for (IJavaElement child : children) {
             if (child instanceof IPackageFragment pkg) {
@@ -232,7 +236,7 @@ public class SourceAttachUtilTest {
         throw new IllegalStateException("No class file found in root: " + root.getElementName()); //$NON-NLS-1$
     }
 
-    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws Exception {
+    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws JavaModelException {
         IJavaElement[] children = root.getChildren();
         for (IJavaElement child : children) {
             if (child instanceof IPackageFragment pkg) {
@@ -289,7 +293,7 @@ public class SourceAttachUtilTest {
     }
 
     @Test
-    public void testReattachSourceDoesNotCallDeleteOnExitForMavenRepoFiles() throws Exception {
+    public void testReattachSourceDoesNotCallDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
         File jar = resolveTestJar();
         File initialSource = createNonEmptyFileUnderTarget("initial-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 

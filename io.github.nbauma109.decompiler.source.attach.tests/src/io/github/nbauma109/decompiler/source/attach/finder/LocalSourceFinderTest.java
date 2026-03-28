@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public class LocalSourceFinderTest {
     }
 
     @Test
-    public void findRegistersAdjacentSourcesJar() throws Exception {
+    public void findRegistersAdjacentSourcesJar() throws IOException {
         File binJar = new File(testRoot, BIN_JAR_NAME);
         File srcJar = new File(testRoot, "demo-sources.jar");
         Files.writeString(binJar.toPath(), "bin", StandardCharsets.UTF_8);
@@ -54,7 +55,7 @@ public class LocalSourceFinderTest {
     }
 
     @Test
-    public void findReturnsNothingWhenCanceled() throws Exception {
+    public void findReturnsNothingWhenCanceled() throws IOException {
         File binJar = new File(testRoot, BIN_JAR_NAME);
         File srcJar = new File(testRoot, "demo-sources.jar");
         Files.writeString(binJar.toPath(), "bin", StandardCharsets.UTF_8);
@@ -69,7 +70,7 @@ public class LocalSourceFinderTest {
     }
 
     @Test
-    public void findReturnsNothingWhenNoAdjacentSourceOrGavIsAvailable() throws Exception {
+    public void findReturnsNothingWhenNoAdjacentSourceOrGavIsAvailable() throws IOException {
         File binJar = new File(testRoot, BIN_JAR_NAME);
         Files.writeString(binJar.toPath(), "not a jar with pom properties", StandardCharsets.UTF_8);
         LocalSourceFinder finder = new LocalSourceFinder();

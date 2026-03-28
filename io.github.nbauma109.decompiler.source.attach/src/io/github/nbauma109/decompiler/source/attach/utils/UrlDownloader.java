@@ -28,11 +28,11 @@ public class UrlDownloader {
     private String serviceUser;
     private String servicePassword;
 
-    public String download(final String url) throws Exception {
+    public String download(final String url) throws IOException {
         return download(url, null);
     }
 
-    public String download(final String url, final File targetFile) throws Exception {
+    public String download(final String url, final File targetFile) throws IOException {
         String result;
         if (url != null && url.startsWith("scm:")) //$NON-NLS-1$
         {
@@ -93,7 +93,7 @@ public class UrlDownloader {
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
             PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (Exception ex) {
+        } catch (IOException | RuntimeException ex) {
             Logger.error(ex);
             file.delete();
         }

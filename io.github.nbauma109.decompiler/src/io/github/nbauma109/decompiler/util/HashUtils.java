@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,8 +23,10 @@ public class HashUtils {
         if (file != null) {
             try (InputStream fis = new FileInputStream(file)) {
                 return hexDigestOfStream(fis, MessageDigest.getInstance("SHA-1"));
-            } catch (IOException | NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to compute SHA-1 for " + file, e);
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("SHA-1 algorithm is not available", e);
             }
         }
         return null;
