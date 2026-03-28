@@ -17,7 +17,7 @@ import org.eclipse.ui.IWorkbenchWindowPulldownDelegate;
 import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
 abstract class AbstractPulldownMenuItemAction
-        implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
+implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
 
     @Override
     public Menu getMenu(Control parent) {
