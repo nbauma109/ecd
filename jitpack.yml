@@ -8,4 +8,4 @@ install:
   - mkdir -p "$MVN_DIR"
   - curl -sL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${M3_VERSION}/apache-maven-${M3_VERSION}-bin.tar.gz" | tar xz --strip-components=1 -C "$MVN_DIR"
   - export PATH="$MVN_DIR/bin:$PATH"
-  - mvn -B install -DskipTests -Dsigning.disabled=true --no-transfer-progress
+  - mvn -B install -DskipTests --no-transfer-progress

@@ -191,7 +191,7 @@ public class ExportSourceAction extends Action {
         }
     }
 
-    private void exportPackageSources(IProgressMonitor monitor, final String decompilerType, final boolean reuseBuf,
+    public void exportPackageSources(IProgressMonitor monitor, final String decompilerType, final boolean reuseBuf,
             final boolean always, final String projectFile, final IJavaElement[] children, List<IStatus> exceptions) {
         monitor.beginTask(Messages.getString("ExportSourceAction.Task.Begin"), //$NON-NLS-1$
                 1000000);
@@ -395,7 +395,7 @@ public class ExportSourceAction extends Action {
         }
     }
 
-    private static void ensureParentDirectoryExists(File target) throws IOException {
+    public static void ensureParentDirectoryExists(File target) throws IOException {
         if (target == null) {
             throw new IOException("Target is null"); //$NON-NLS-1$
         }
@@ -406,7 +406,7 @@ public class ExportSourceAction extends Action {
         ensureDirectoryExists(parent);
     }
 
-    private static void ensureDirectoryExists(File dir) throws IOException {
+    public static void ensureDirectoryExists(File dir) throws IOException {
         if (dir == null) {
             throw new IOException("Directory is null"); //$NON-NLS-1$
         }

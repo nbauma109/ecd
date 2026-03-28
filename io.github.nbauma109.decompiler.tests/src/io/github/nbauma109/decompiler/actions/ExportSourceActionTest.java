@@ -15,8 +15,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -270,7 +269,7 @@ public class ExportSourceActionTest {
         assertTrue(blocked.exists());
         assertTrue(blocked.isFile());
 
-        invokeEnsureDirectoryExists(blocked);
+        ExportSourceAction.ensureDirectoryExists(blocked);
 
         assertTrue(blocked.exists());
         assertTrue(blocked.isDirectory());
@@ -281,7 +280,7 @@ public class ExportSourceActionTest {
         File target = new File(tempDirForTest, "a/b/c/out.java");
         assertFalse(target.getParentFile().exists());
 
-        invokeEnsureParentDirectoryExists(target);
+        ExportSourceAction.ensureParentDirectoryExists(target);
 
         assertTrue(target.getParentFile().exists());
         assertTrue(target.getParentFile().isDirectory());
@@ -290,11 +289,8 @@ public class ExportSourceActionTest {
     @Test
     public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() throws Exception {
         try {
-            invokeEnsureParentDirectoryExists(null);
-        } catch (InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            assertNotNull(cause);
-            assertTrue(cause instanceof java.io.IOException);
+            ExportSourceAction.ensureParentDirectoryExists(null);
+        } catch (IOException e) {
             return;
         }
         throw new AssertionError("Expected IOException to be thrown");
@@ -308,7 +304,7 @@ public class ExportSourceActionTest {
         ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
         List<IStatus> exceptions = new ArrayList<>();
 
-        invokeExportPackageSources(action, new AlwaysCanceledProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
+        action.exportPackageSources(new AlwaysCanceledProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
                 zip.getAbsolutePath(), jarRoot.getChildren(), exceptions);
 
         assertFalse(zip.exists());
@@ -323,7 +319,7 @@ public class ExportSourceActionTest {
         ExportSourceAction action = new ExportSourceAction(new ArrayList<>());
         List<IStatus> exceptions = new ArrayList<>();
 
-        invokeExportPackageSources(action, new NullProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
+        action.exportPackageSources(new NullProgressMonitor(), resolveDecompilerTypeForTest(), true, true,
                 zip.getAbsolutePath(), new IJavaElement[0], exceptions);
 
         assertFalse(zip.exists());
@@ -340,7 +336,7 @@ public class ExportSourceActionTest {
 
         String decompilerType = resolveDecompilerTypeForTest();
 
-        invokeExportPackageSources(action, new NullProgressMonitor(), decompilerType, true, true, zip.getAbsolutePath(),
+        action.exportPackageSources(new NullProgressMonitor(), decompilerType, true, true, zip.getAbsolutePath(),
                 jarRoot.getChildren(), exceptions);
 
         assertTrue(zip.exists());
@@ -453,27 +449,6 @@ public class ExportSourceActionTest {
             }
         }
         return entries;
-    }
-
-    private static void invokeExportPackageSources(ExportSourceAction action, IProgressMonitor monitor,
-            String decompilerType, boolean reuseBuf, boolean always, String projectFile, IJavaElement[] children,
-            List<IStatus> exceptions) throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("exportPackageSources", IProgressMonitor.class,
-                String.class, boolean.class, boolean.class, String.class, IJavaElement[].class, List.class);
-        method.setAccessible(true);
-        method.invoke(action, monitor, decompilerType, reuseBuf, always, projectFile, children, exceptions);
-    }
-
-    private static void invokeEnsureParentDirectoryExists(File target) throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("ensureParentDirectoryExists", File.class);
-        method.setAccessible(true);
-        method.invoke(null, target);
-    }
-
-    private static void invokeEnsureDirectoryExists(File dir) throws Exception {
-        Method method = ExportSourceAction.class.getDeclaredMethod("ensureDirectoryExists", File.class);
-        method.setAccessible(true);
-        method.invoke(null, dir);
     }
 
     private static void ensureParentDirectoryExistsForFile(File file) throws Exception {

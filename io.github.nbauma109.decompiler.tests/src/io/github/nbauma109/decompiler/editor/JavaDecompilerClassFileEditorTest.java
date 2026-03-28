@@ -16,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -219,7 +218,7 @@ public class JavaDecompilerClassFileEditorTest {
         runInUiThread(() -> {
             setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
             setPrivateField(editor, "decompilerType", null); //$NON-NLS-1$
-            invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
+            editor.updateTitleImage();
         });
 
         assertSame(decompilerImage, editor.getTitleImage());
@@ -247,7 +246,7 @@ public class JavaDecompilerClassFileEditorTest {
 
         runInUiThread(() -> {
             setPrivateField(editor, DEFAULT_TITLE_IMAGE_FIELD, disposedImage);
-            invokePrivateMethod(editor, "updateTitleImage"); //$NON-NLS-1$
+            editor.updateTitleImage();
         });
 
         Image storedDefaultImage = runInUiThreadWithResult(
@@ -567,12 +566,6 @@ public class JavaDecompilerClassFileEditorTest {
         field.set(target, value);
     }
 
-    private static void invokePrivateMethod(Object target, String methodName) throws Exception {
-        Method method = findMethod(target.getClass(), methodName);
-        method.setAccessible(true);
-        method.invoke(target);
-    }
-
     private static Field findField(Class<?> type, String fieldName) throws Exception {
         Class<?> current = type;
         while (current != null) {
@@ -583,18 +576,6 @@ public class JavaDecompilerClassFileEditorTest {
             }
         }
         throw new NoSuchFieldException(fieldName);
-    }
-
-    private static Method findMethod(Class<?> type, String methodName) throws Exception {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredMethod(methodName);
-            } catch (NoSuchMethodException e) {
-                current = current.getSuperclass();
-            }
-        }
-        throw new NoSuchMethodException(methodName);
     }
 
     private interface UiRunnable {

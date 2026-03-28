@@ -33,4 +33,4 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B -Dgpg.skip=true -DskipTests -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=nbauma109_ecd
+        run: mvn -B -DskipTests -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
