@@ -62,6 +62,9 @@ public class DecompilerAdapterManager {
         }
     };
 
+    private DecompilerAdapterManager() {
+    }
+
     static {
         // initial adaptersMap
         IExtensionRegistry registry = Platform.getExtensionRegistry();

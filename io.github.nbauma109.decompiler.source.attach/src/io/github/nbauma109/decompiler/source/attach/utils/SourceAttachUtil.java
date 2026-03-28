@@ -43,6 +43,9 @@ public class SourceAttachUtil {
     private static final String JAR_REGEX = "(?i)(\\-)*(\\d)*(\\.)jar";
     private static final String ZIP_REGEX = "(?i)(\\-)*(\\d)*(\\.)zip";
 
+    private SourceAttachUtil() {
+    }
+
     private static File getBinFile(IPackageFragmentRoot root) {
         File binFile;
         if (!root.isExternal()) {

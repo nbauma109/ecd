@@ -19,6 +19,9 @@ import org.eclipse.jdt.internal.core.SourceMapper;
 public class SourceMapperUtil {
     private static final String MAP_SOURCE_METHOD_NAME = "mapSource"; //$NON-NLS-1$
 
+    private SourceMapperUtil() {
+    }
+
     public static void mapSource(SourceMapper sourceMapper, IType type, char[] source, IBinaryType info) {
         mapSource(sourceMapper, type, source, info, null);
     }

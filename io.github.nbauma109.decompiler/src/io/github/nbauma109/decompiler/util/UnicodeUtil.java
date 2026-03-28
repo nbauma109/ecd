@@ -15,6 +15,9 @@ public class UnicodeUtil {
 
     static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-zA-Z]{4})"); //$NON-NLS-1$
 
+    private UnicodeUtil() {
+    }
+
     public static String decode(String s) {
         Matcher m = unicodePattern.matcher(s);
         StringBuffer sb = new StringBuffer(s.length());
