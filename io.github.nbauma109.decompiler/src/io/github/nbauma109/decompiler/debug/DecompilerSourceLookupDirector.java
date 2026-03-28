@@ -10,6 +10,7 @@ package io.github.nbauma109.decompiler.debug;
 import java.util.Optional;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.model.IStackFrame;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
@@ -287,7 +288,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
     }
 
     @Override
-    public org.eclipse.debug.core.ILaunchConfiguration getLaunchConfiguration() {
+    public ILaunchConfiguration getLaunchConfiguration() {
         return delegate.getLaunchConfiguration();
     }
 
@@ -342,7 +343,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
     }
 
     @Override
-    public void initializeDefaults(org.eclipse.debug.core.ILaunchConfiguration configuration) throws CoreException {
+    public void initializeDefaults(ILaunchConfiguration configuration) throws CoreException {
         delegate.initializeDefaults(configuration);
     }
 
@@ -357,7 +358,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
     }
 
     @Override
-    public void initializeFromMemento(String memento, org.eclipse.debug.core.ILaunchConfiguration configuration) throws CoreException {
+    public void initializeFromMemento(String memento, ILaunchConfiguration configuration) throws CoreException {
         delegate.initializeFromMemento(memento, configuration);
     }
 }

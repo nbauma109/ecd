@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileOutputStream;
@@ -183,7 +184,7 @@ public class FileUtilTest {
         return new File(testRoot, relativePath);
     }
 
-    private static String readString(File file, java.nio.charset.Charset charset) throws IOException {
+    private static String readString(File file, Charset charset) throws IOException {
         byte[] bytes = Files.readAllBytes(file.toPath());
         return new String(bytes, charset);
     }
@@ -236,7 +237,7 @@ public class FileUtilTest {
     private static byte[] toByteArray(InputStream is) throws IOException {
         byte[] buffer = new byte[4096];
         int read;
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         while ((read = is.read(buffer)) != -1) {
             out.write(buffer, 0, read);
         }

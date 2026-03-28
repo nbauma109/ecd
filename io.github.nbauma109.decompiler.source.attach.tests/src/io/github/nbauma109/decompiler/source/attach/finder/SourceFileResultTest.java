@@ -6,6 +6,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -62,7 +63,7 @@ public class SourceFileResultTest {
 
     private static final class StubSourceCodeFinder implements SourceCodeFinder {
         @Override
-        public void find(String binFile, String sha1, java.util.List<SourceFileResult> resultList) {
+        public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
             // The finder is only stored for identity checks in this test, so no lookup is required.
         }
 

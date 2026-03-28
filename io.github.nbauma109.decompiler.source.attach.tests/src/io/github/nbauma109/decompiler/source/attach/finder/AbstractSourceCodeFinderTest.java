@@ -13,6 +13,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.zip.GZIPOutputStream;
@@ -192,7 +193,7 @@ public class AbstractSourceCodeFinderTest {
         }
 
         @Override
-        public void find(String binFile, String sha1, java.util.List<SourceFileResult> resultList) {
+        public void find(String binFile, String sha1, List<SourceFileResult> resultList) {
             // These tests exercise inherited helper methods directly, not the finder contract.
         }
 

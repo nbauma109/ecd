@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -594,11 +596,11 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             return null;
         }
         try {
-            java.net.URI u = new java.net.URI(url);
+            URI u = new URI(url);
             String scheme = u.getScheme();
             int port = u.getPort(); // -1 means default
             if ("http".equalsIgnoreCase(scheme) && port == 443) {
-                return new java.net.URI(
+                return new URI(
                         "https",
                         u.getUserInfo(),
                         u.getHost(),
@@ -609,7 +611,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                         ).toString();
             }
             if ("https".equalsIgnoreCase(scheme) && port == 80) {
-                return new java.net.URI(
+                return new URI(
                         "http",
                         u.getUserInfo(),
                         u.getHost(),
@@ -620,7 +622,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                         ).toString();
             }
             return url;
-        } catch (java.net.URISyntaxException ignore) {
+        } catch (URISyntaxException ignore) {
             return url; // be conservative on parse errors
         }
     }

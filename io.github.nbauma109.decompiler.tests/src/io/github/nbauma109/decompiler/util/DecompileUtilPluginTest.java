@@ -13,10 +13,12 @@ import java.io.PrintWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
@@ -29,9 +31,11 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.JavaRuntime;
@@ -192,12 +196,12 @@ public class DecompileUtilPluginTest {
         description.setNatureIds(new String[] { JavaCore.NATURE_ID });
         newProject.setDescription(description, new NullProgressMonitor());
 
-        org.eclipse.jdt.core.IJavaProject javaProject = JavaCore.create(newProject);
+        IJavaProject javaProject = JavaCore.create(newProject);
 
         IClasspathEntry jreEntry = JavaCore.newContainerEntry(JavaRuntime.newDefaultJREContainerPath());
         IClasspathEntry libraryEntry = JavaCore.newLibraryEntry(
-                org.eclipse.core.runtime.Path.fromOSString(binaryJar.getAbsolutePath()),
-                org.eclipse.core.runtime.Path.fromOSString(sourceJar.getAbsolutePath()),
+                Path.fromOSString(binaryJar.getAbsolutePath()),
+                Path.fromOSString(sourceJar.getAbsolutePath()),
                 null);
 
         javaProject.setRawClasspath(new IClasspathEntry[] { jreEntry, libraryEntry }, new NullProgressMonitor());
@@ -213,9 +217,9 @@ public class DecompileUtilPluginTest {
 
         StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
         try (fileManager) {
-            fileManager.setLocation(StandardLocation.CLASS_OUTPUT, java.util.Collections.singletonList(classRoot));
-            Iterable<? extends javax.tools.JavaFileObject> units =
-                    fileManager.getJavaFileObjectsFromFiles(java.util.Collections.singletonList(javaFile));
+            fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singletonList(classRoot));
+            Iterable<? extends JavaFileObject> units =
+                    fileManager.getJavaFileObjectsFromFiles(Collections.singletonList(javaFile));
 
             Boolean ok = compiler.getTask(null, fileManager, null, null, null, units).call();
             assertTrue(Boolean.TRUE.equals(ok));
