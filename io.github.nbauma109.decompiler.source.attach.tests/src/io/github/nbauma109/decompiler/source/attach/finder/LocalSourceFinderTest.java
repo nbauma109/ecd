@@ -15,6 +15,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
+
 public class LocalSourceFinderTest {
 
     private static final String BIN_JAR_NAME = "demo.jar";
@@ -24,11 +26,7 @@ public class LocalSourceFinderTest {
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "local-source-finder-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = SourceAttachTestSupport.createTargetTempDir("local-source-finder-tests"); //$NON-NLS-1$
     }
 
     @After

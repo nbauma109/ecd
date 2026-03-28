@@ -16,6 +16,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
+
 public class SourceCheckTest {
 
     private static final String BIN_JAR_NAME = "demo.jar";
@@ -25,11 +27,7 @@ public class SourceCheckTest {
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "sourcecheck-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = SourceAttachTestSupport.createTargetTempDir("sourcecheck-tests"); //$NON-NLS-1$
     }
 
     @After

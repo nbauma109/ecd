@@ -34,6 +34,7 @@ import org.junit.Test;
 import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
 import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.JavaProjectSetup;
 import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.LibrarySpec;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.SingleLibrarySetup;
 
 public class SourceAttachUtilTest {
 
@@ -62,12 +63,13 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testNeedDownloadSourceReturnsTrueForSingleRootSelection() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("need-download-true-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "need-download-true-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         IClassFile classFile = SourceAttachTestSupport.findAnyClassFileInRoot(root);
 
         List<IJavaElement> selection = new ArrayList<>();
@@ -119,12 +121,13 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testUpdateSourceAttachStatusDoesNotThrow() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("update-source-attach-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "update-source-attach-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
 
@@ -169,13 +172,13 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testReattachSourceDoesNotCallDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File initialSource = createNonEmptyFileUnderTarget("initial-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
         // Create a project with source already attached (so getSourceAttachmentPath() is non-null)
         JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("reattach-maven-" + UUID.randomUUID(), //$NON-NLS-1$
                 projectsToDelete,
-                new LibrarySpec(jar, initialSource));
+                new LibrarySpec(SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH),
+                        initialSource));
 
         IPackageFragmentRoot root = setup.roots().get(0);
         assertNotNull(root.getSourceAttachmentPath());

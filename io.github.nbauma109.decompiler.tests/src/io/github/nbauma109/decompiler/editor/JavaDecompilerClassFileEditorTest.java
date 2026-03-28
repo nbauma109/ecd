@@ -26,19 +26,13 @@ import java.util.jar.JarFile;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
@@ -58,6 +52,7 @@ import org.junit.Test;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 
 public class JavaDecompilerClassFileEditorTest {
 
@@ -77,33 +72,16 @@ public class JavaDecompilerClassFileEditorTest {
     public void setUp() throws IOException, CoreException {
         refreshDecompilerEditorAssociations();
 
-        jarFileOnDisk = DecompilerTestSupport.resolveBundleEntryAsFile(TEST_BUNDLE_ID, TEST_JAR_PATH);
-        assertNotNull(jarFileOnDisk);
-        assertTrue(jarFileOnDisk.exists());
-        assertTrue(jarFileOnDisk.isFile());
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "java-decompiler-classfile-editor-test-project"); //$NON-NLS-1$
+        project = setup.project();
+        jarRoot = setup.jarRoot();
+        jarFileOnDisk = setup.jarFile();
 
         tempDir = createTempDirUnderTarget("ecd-test-tmp-" + UUID.randomUUID()); //$NON-NLS-1$
         configurePreferences(tempDir);
-
-        String projectName = "java-decompiler-classfile-editor-test-project"; //$NON-NLS-1$
-        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-        project = root.getProject(projectName);
-
-        if (project.exists()) {
-            project.delete(true, true, null);
-        }
-
-        project.create(null);
-        project.open(null);
-
-        IProjectDescription description = project.getDescription();
-        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
-        project.setDescription(description, null);
-
-        IJavaProject javaProject = JavaCore.create(project);
-        DecompilerTestSupport.configureClasspathWithJre(javaProject);
-
-        jarRoot = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
         assertNotNull(jarRoot);
         assertTrue(jarRoot.exists());
     }

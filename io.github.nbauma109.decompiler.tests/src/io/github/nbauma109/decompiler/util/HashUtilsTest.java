@@ -16,17 +16,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
+
 public class HashUtilsTest {
 
     private File testRoot;
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "hashutils-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = DecompilerTestSupport.createTargetTempDir("hashutils-tests"); //$NON-NLS-1$
     }
 
     @After

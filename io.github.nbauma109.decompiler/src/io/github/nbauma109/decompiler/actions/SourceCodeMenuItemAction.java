@@ -9,42 +9,12 @@
 package io.github.nbauma109.decompiler.actions;
 
 import org.eclipse.jface.action.IAction;
-import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.IWorkbenchWindowPulldownDelegate;
-import org.eclipse.ui.IWorkbenchWindowPulldownDelegate2;
 
-public class SourceCodeMenuItemAction implements IWorkbenchWindowPulldownDelegate, IWorkbenchWindowPulldownDelegate2 {
-
-    @Override
-    public Menu getMenu(Control parent) {
-        return null;
-    }
-
-    @Override
-    public Menu getMenu(Menu parent) {
-        return null;
-    }
-
-    @Override
-    public void init(IWorkbenchWindow window) {
-        // This pulldown action has no window-specific state to initialize.
-    }
-
-    @Override
-    public void dispose() {
-        // This pulldown action does not hold resources that need explicit disposal.
-    }
+public class SourceCodeMenuItemAction extends AbstractPulldownMenuItemAction {
 
     @Override
     public void run(IAction action) {
         new SourceCodeAction().run();
     }
 
-    @Override
-    public void selectionChanged(IAction action, ISelection selection) {
-        // Selection changes do not affect this action because execution decides applicability.
-    }
 }

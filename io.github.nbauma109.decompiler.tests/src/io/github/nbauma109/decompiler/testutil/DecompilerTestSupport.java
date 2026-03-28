@@ -5,6 +5,11 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
 
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -42,6 +47,44 @@ public final class DecompilerTestSupport {
         return file;
     }
 
+    public static File createTargetTempDir(String prefix) {
+        File targetDir = new File("target"); //$NON-NLS-1$
+        if (!targetDir.exists() && !targetDir.mkdirs() && !targetDir.exists()) {
+            throw new IllegalStateException("Unable to create target directory: " + targetDir.getAbsolutePath()); //$NON-NLS-1$
+        }
+
+        File tempDir = new File(targetDir, prefix + File.separator + System.nanoTime());
+        if (!tempDir.mkdirs() && !tempDir.exists()) {
+            throw new IllegalStateException("Unable to create test directory: " + tempDir.getAbsolutePath()); //$NON-NLS-1$
+        }
+        return tempDir;
+    }
+
+    public static BundleJarProjectSetup createJavaProjectWithBundleJar(String bundleId, String entryPath,
+            String projectName) throws IOException, CoreException {
+        File jarFile = resolveBundleEntryAsFile(bundleId, entryPath);
+
+        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+        IProject project = root.getProject(projectName);
+
+        if (project.exists()) {
+            project.delete(true, true, null);
+        }
+
+        project.create(null);
+        project.open(null);
+
+        IProjectDescription description = project.getDescription();
+        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
+        project.setDescription(description, null);
+
+        IJavaProject javaProject = JavaCore.create(project);
+        configureClasspathWithJre(javaProject);
+        IPackageFragmentRoot jarRoot = addJarToClasspathAndGetRoot(javaProject, jarFile);
+
+        return new BundleJarProjectSetup(project, javaProject, jarRoot, jarFile);
+    }
+
     public static void configureClasspathWithJre(IJavaProject project) throws JavaModelException {
         IClasspathEntry[] classpath = { JavaRuntime.getDefaultJREContainerEntry() };
         project.setRawClasspath(classpath, null);
@@ -77,5 +120,9 @@ public final class DecompilerTestSupport {
             }
         }
         return Optional.empty();
+    }
+
+    public record BundleJarProjectSetup(IProject project, IJavaProject javaProject, IPackageFragmentRoot jarRoot,
+            File jarFile) {
     }
 }

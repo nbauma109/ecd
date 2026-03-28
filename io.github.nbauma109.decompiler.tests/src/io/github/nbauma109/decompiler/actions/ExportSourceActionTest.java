@@ -33,19 +33,14 @@ import java.util.zip.ZipFile;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Before;
@@ -53,6 +48,7 @@ import org.junit.Test;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 import io.github.nbauma109.decompiler.util.DecompileUtil;
 
 public class ExportSourceActionTest {
@@ -61,7 +57,6 @@ public class ExportSourceActionTest {
     private static final String TEST_JAR_PATH = "resources/test.jar";
 
     private IProject project;
-    private IJavaProject javaProject;
     private IPackageFragmentRoot jarRoot;
     private File jarFileOnDisk;
 
@@ -71,10 +66,13 @@ public class ExportSourceActionTest {
 
     @Before
     public void setUp() throws IOException, CoreException {
-        jarFileOnDisk = DecompilerTestSupport.resolveBundleEntryAsFile(TEST_BUNDLE_ID, TEST_JAR_PATH);
-        assertNotNull(jarFileOnDisk);
-        assertTrue(jarFileOnDisk.exists());
-        assertTrue(jarFileOnDisk.isFile());
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "export-source-action-test-project");
+        project = setup.project();
+        jarRoot = setup.jarRoot();
+        jarFileOnDisk = setup.jarFile();
 
         JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
         assertNotNull(plugin);
@@ -84,25 +82,6 @@ public class ExportSourceActionTest {
                 "export-source-action-test-" + UUID.randomUUID());
         plugin.getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR, tempDirForTest.getAbsolutePath());
 
-        String projectName = "export-source-action-test-project";
-        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-        project = root.getProject(projectName);
-
-        if (project.exists()) {
-            project.delete(true, true, null);
-        }
-
-        project.create(null);
-        project.open(null);
-
-        IProjectDescription description = project.getDescription();
-        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
-        project.setDescription(description, null);
-
-        javaProject = JavaCore.create(project);
-        DecompilerTestSupport.configureClasspathWithJre(javaProject);
-
-        jarRoot = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jarFileOnDisk);
         assertNotNull(jarRoot);
         assertTrue(jarRoot.exists());
     }

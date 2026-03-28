@@ -50,6 +50,26 @@ public final class SourceAttachTestSupport {
         return file;
     }
 
+    public static File createTargetTempDir(String prefix) {
+        File targetDir = new File("target"); //$NON-NLS-1$
+        if (!targetDir.exists() && !targetDir.mkdirs() && !targetDir.exists()) {
+            throw new IllegalStateException("Unable to create target directory: " + targetDir.getAbsolutePath()); //$NON-NLS-1$
+        }
+
+        File tempDir = new File(targetDir, prefix + File.separator + System.nanoTime());
+        if (!tempDir.mkdirs() && !tempDir.exists()) {
+            throw new IllegalStateException("Unable to create test directory: " + tempDir.getAbsolutePath()); //$NON-NLS-1$
+        }
+        return tempDir;
+    }
+
+    public static SingleLibrarySetup createSingleLibraryProjectFromBundleJar(String bundleId, String entryPath,
+            String projectName, List<IProject> projectsToDelete) throws IOException, CoreException {
+        File binaryJar = resolveBundleEntryAsFile(bundleId, entryPath);
+        JavaProjectSetup setup = createJavaProjectWithLibraries(projectName, projectsToDelete, new LibrarySpec(binaryJar, null));
+        return new SingleLibrarySetup(binaryJar, setup.project(), setup.javaProject(), setup.roots().get(0));
+    }
+
     public static JavaProjectSetup createJavaProjectWithLibraries(String projectName, List<IProject> projectsToDelete,
             LibrarySpec... libs) throws CoreException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
@@ -137,6 +157,10 @@ public final class SourceAttachTestSupport {
     }
 
     public record LibrarySpec(File binaryJar, File sourceJarOrZip) {
+    }
+
+    public record SingleLibrarySetup(File binaryJar, IProject project, IJavaProject javaProject,
+            IPackageFragmentRoot root) {
     }
 
     public record JavaProjectSetup(IProject project, IJavaProject javaProject, List<IPackageFragmentRoot> roots) {

@@ -35,8 +35,7 @@ import org.junit.Test;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFinder;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceFileResult;
 import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
-import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.JavaProjectSetup;
-import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.LibrarySpec;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.SingleLibrarySetup;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 
 public class JavaSourceAttacherHandlerTest {
@@ -68,15 +67,15 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testAttachSourceSetsAttachmentPath() throws IOException, CoreException, InterruptedException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File sourceJar = createZipUnderTarget("source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "attach-source-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
 
@@ -91,17 +90,17 @@ public class JavaSourceAttacherHandlerTest {
     @Test
     public void testProcessLibSourcesSkipsWhenDownloadUrlMissingAndFinderNotFacade()
             throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File sourceJar = createZipUnderTarget("source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
         File tempSourceJar = createZipUnderTarget("temp-source-skip-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "process-skip-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
-        String binFile = jar.getAbsolutePath();
+        IPackageFragmentRoot root = setup.root();
+        String binFile = setup.binaryJar().getAbsolutePath();
 
         JavaSourceAttacherHandler.putRequest(binFile, root);
         Set<String> notProcessed = new HashSet<>();
@@ -120,15 +119,14 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testProcessLibSourcesIgnoresNullSource() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "process-null-source-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
-        String binFile = jar.getAbsolutePath();
+        IPackageFragmentRoot root = setup.root();
+        String binFile = setup.binaryJar().getAbsolutePath();
 
         JavaSourceAttacherHandler.putRequest(binFile, root);
         Set<String> notProcessed = new HashSet<>();
@@ -148,36 +146,36 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testUpdateSourceAttachmentsReturnsOkAndClearsRequests() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "update-source-attachments-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         List<IPackageFragmentRoot> roots = new ArrayList<>();
         roots.add(root);
 
         Status status = (Status) JavaSourceAttacherHandler.updateSourceAttachments(roots, null);
         assertTrue(status.isOK());
 
-        String binFile = jar.getCanonicalPath();
+        String binFile = setup.binaryJar().getCanonicalPath();
         assertTrue(!JavaSourceAttacherHandler.containsRequest(binFile));
     }
 
     @Test
     public void testUpdateSourceAttachmentsReturnsCancelWhenDuplicateRequest() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "update-source-attachments-dup-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         List<IPackageFragmentRoot> roots = new ArrayList<>();
         roots.add(root);
 
-        String binFile = jar.getCanonicalPath();
+        String binFile = setup.binaryJar().getCanonicalPath();
         JavaSourceAttacherHandler.putRequest(binFile, root);
 
         Status status = (Status) JavaSourceAttacherHandler.updateSourceAttachments(roots, new CanceledMonitor());
@@ -206,8 +204,6 @@ public class JavaSourceAttacherHandlerTest {
 
     @Test
     public void testProcessLibSourcesSkipsDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
-        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
-
         // Create a zip file in a Maven repo location (simulate a cached source JAR)
         File mavenRepoDir = new File(SourceConstants.USER_M2_REPO_DIR,
                 "io/github/nbauma109/test-artifact/1.0"); //$NON-NLS-1$
@@ -218,13 +214,14 @@ public class JavaSourceAttacherHandlerTest {
         }
         filesToDelete.add(mavenRepoSourceJar);
 
-        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries(
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
                 "process-maven-repo-" + UUID.randomUUID(), //$NON-NLS-1$
-                projectsToDelete,
-                new LibrarySpec(jar, null));
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
-        String binFile = jar.getAbsolutePath();
+        IPackageFragmentRoot root = setup.root();
+        String binFile = setup.binaryJar().getAbsolutePath();
 
         JavaSourceAttacherHandler.putRequest(binFile, root);
         Set<String> notProcessed = new HashSet<>();
