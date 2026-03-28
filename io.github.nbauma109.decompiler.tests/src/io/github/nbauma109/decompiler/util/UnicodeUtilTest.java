@@ -7,14 +7,14 @@ import org.junit.Test;
 public class UnicodeUtilTest {
 
     @Test
-    public void decode_replacesUnicodeEscapesAndKeepsOtherText() {
+    public void decodeReplacesUnicodeEscapesAndKeepsOtherText() {
         String input = "prefix \\u0041\\u00DF suffix";
 
         assertEquals("prefix Aß suffix", UnicodeUtil.decode(input));
     }
 
     @Test
-    public void decode_leavesStringsWithoutEscapesUnchanged() {
+    public void decodeLeavesStringsWithoutEscapesUnchanged() {
         assertEquals("plain text", UnicodeUtil.decode("plain text"));
     }
 }

@@ -33,7 +33,7 @@ public class HashUtilsTest {
     }
 
     @Test
-    public void sha1Hash_returnsExpectedDigestForExistingFile() throws Exception {
+    public void sha1HashReturnsExpectedDigestForExistingFile() throws Exception {
         File file = new File(testRoot, "payload.txt");
         Files.writeString(file.toPath(), "hello world", StandardCharsets.UTF_8);
 
@@ -41,12 +41,12 @@ public class HashUtilsTest {
     }
 
     @Test
-    public void sha1Hash_returnsNullForNullFile() {
+    public void sha1HashReturnsNullForNullFile() {
         assertNull(HashUtils.sha1Hash(null));
     }
 
     @Test
-    public void sha1Hash_wrapsIoErrors() {
+    public void sha1HashWrapsIoErrors() {
         File missing = new File(testRoot, "missing.txt");
 
         try {

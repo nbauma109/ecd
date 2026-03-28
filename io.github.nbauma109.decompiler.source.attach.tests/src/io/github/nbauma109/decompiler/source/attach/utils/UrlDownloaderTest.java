@@ -41,7 +41,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_toTargetFile_downloadsContentToSpecifiedPath() throws Exception {
+    public void downloadToTargetFileDownloadsContentToSpecifiedPath() throws Exception {
         // Create a source file with known content
         File sourceFile = new File(testRoot, "source.txt");
         byte[] content = "test content for download".getBytes(StandardCharsets.UTF_8);
@@ -63,7 +63,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_toTargetFileWithExistingParent_downloadsContentSuccessfully() throws Exception {
+    public void downloadToTargetFileWithExistingParentDownloadsContentSuccessfully() throws Exception {
         // Create a source file
         File sourceFile = new File(testRoot, "source2.txt");
         byte[] content = "another test content".getBytes(StandardCharsets.UTF_8);
@@ -82,7 +82,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_withNullTargetFile_downloadsTempFile() throws Exception {
+    public void downloadWithNullTargetFileDownloadsTempFile() throws Exception {
         // Create a source file
         File sourceFile = new File(testRoot, "source3.txt");
         byte[] content = "temp content".getBytes(StandardCharsets.UTF_8);
@@ -99,7 +99,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_withInvalidUrl_returnsPathAndDoesNotThrow() throws Exception {
+    public void downloadWithInvalidUrlReturnsPathAndDoesNotThrow() throws Exception {
         File targetFile = new File(testRoot, "should-not-exist.txt");
 
         String result = new UrlDownloader().download("http://localhost:0/no-such-file.jar", targetFile);
@@ -109,7 +109,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_withScmUrl_throwsUnsupportedOperationException() {
+    public void downloadWithScmUrlThrowsUnsupportedOperationException() {
         try {
             new UrlDownloader().download("scm:git:https://example.com/repo.git", null);
             org.junit.Assert.fail("Expected UnsupportedOperationException"); //$NON-NLS-1$
@@ -121,7 +121,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void download_withExistingLocalFile_returnsPathDirectly() throws Exception {
+    public void downloadWithExistingLocalFileReturnsPathDirectly() throws Exception {
         // Create a local file
         File localFile = new File(testRoot, "local.txt");
         try (FileOutputStream fos = new FileOutputStream(localFile)) {

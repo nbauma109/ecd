@@ -63,7 +63,7 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
-    public void getPackageName_returnsPackageName_whenPresent() {
+    public void getPackageNameReturnsPackageNameWhenPresent() {
         String source =
                 """
                 /*header*/
@@ -75,13 +75,13 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
-    public void getPackageName_returnsNull_whenMissing() {
+    public void getPackageNameReturnsNullWhenMissing() {
         String source = "public class A {}";
         assertNull(DecompileUtil.getPackageName(source));
     }
 
     @Test
-    public void decompile_returnsExistingSource_whenReusable() throws Exception {
+    public void decompileReturnsExistingSourceWhenReusable() throws Exception {
         LibraryArtifacts artifacts = createLibraryArtifacts();
 
         String projectName = ".decompileutil-" + System.nanoTime();
@@ -101,7 +101,7 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
-    public void decompiler_decompilesFileFromEditorInput_returnsNonNullStringOrNullWithoutThrowing() throws Exception {
+    public void decompilerDecompilesFileFromEditorInputReturnsNonNullStringOrNullWithoutThrowing() throws Exception {
         File classFile = createStandaloneClassFileOnDisk();
 
         IFileStore store = EFS.getStore(URI.create(classFile.toURI().toString()));

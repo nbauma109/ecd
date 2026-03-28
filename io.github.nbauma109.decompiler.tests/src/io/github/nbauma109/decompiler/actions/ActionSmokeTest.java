@@ -29,7 +29,7 @@ public class ActionSmokeTest {
     }
 
     @Test
-    public void sourceCodeAction_isAlwaysCheckedAndSafeWithoutEditor() {
+    public void sourceCodeActionIsAlwaysCheckedAndSafeWithoutEditor() {
         SourceCodeAction action = new SourceCodeAction();
 
         assertTrue(action.isChecked());
@@ -41,12 +41,12 @@ public class ActionSmokeTest {
     }
 
     @Test
-    public void sourceCodeHandler_executeReturnsNullWithoutEditor() throws Exception {
+    public void sourceCodeHandlerExecuteReturnsNullWithoutEditor() throws Exception {
         assertNull(new SourceCodeHandler().execute(null));
     }
 
     @Test
-    public void sourceCodeMenuItemAction_exposesNullMenusAndSafeNoOps() {
+    public void sourceCodeMenuItemActionExposesNullMenusAndSafeNoOps() {
         SourceCodeMenuItemAction action = new SourceCodeMenuItemAction();
         IAction delegateAction = new Action() {
         };
@@ -61,7 +61,7 @@ public class ActionSmokeTest {
     }
 
     @Test
-    public void preferenceMenuItemAction_exposesNullMenusAndSafeNoOps() {
+    public void preferenceMenuItemActionExposesNullMenusAndSafeNoOps() {
         PreferenceMenuItemAction action = new PreferenceMenuItemAction();
         IAction delegateAction = new Action() {
         };
@@ -75,7 +75,7 @@ public class ActionSmokeTest {
     }
 
     @Test
-    public void delegates_ignoreNonDecompilerEditors() {
+    public void delegatesIgnoreNonDecompilerEditors() {
         IAction action = new Action() {
         };
         IEditorPart editorPart = (IEditorPart) Proxy.newProxyInstance(IEditorPart.class.getClassLoader(),

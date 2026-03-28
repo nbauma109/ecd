@@ -8,18 +8,18 @@ import org.junit.Test;
 public class MessagesTest {
 
     @Test
-    public void getString_returnsConfiguredValueForKnownKey() {
+    public void getStringReturnsConfiguredValueForKnownKey() {
         assertEquals("D&ecompile@Ctrl+Alt+,",
                 Messages.getString("JavaDecompilerActionBarContributor.Action.Decompile"));
     }
 
     @Test
-    public void getString_wrapsMissingKeysWithExclamationMarks() {
+    public void getStringWrapsMissingKeysWithExclamationMarks() {
         assertEquals("!missing.key!", Messages.getString("missing.key"));
     }
 
     @Test
-    public void getFormattedString_formatsArgumentsIntoMessageTemplate() {
+    public void getFormattedStringFormatsArgumentsIntoMessageTemplate() {
         String text = Messages.getFormattedString("ExportSourceAction.Status.Error.DecompileFailed",
                 new Object[] { "Demo.class" });
 

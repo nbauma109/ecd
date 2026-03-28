@@ -47,7 +47,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void findGavFromFile_returnsParsedCoordinatesForSinglePomProperties() throws Exception {
+    public void findGavFromFileReturnsParsedCoordinatesForSinglePomProperties() throws Exception {
         File jar = createZip("single.jar",
                 Collections.singletonMap("META-INF/maven/org.example/demo/pom.properties",
                         "groupId=org.example\nartifactId=demo\nversion=1.2.3\n"));
@@ -61,7 +61,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void findGavFromFile_returnsEmptyForMergedJarWithMultiplePomProperties() throws Exception {
+    public void findGavFromFileReturnsEmptyForMergedJarWithMultiplePomProperties() throws Exception {
         Map<String, String> entries = new LinkedHashMap<>();
         entries.put("META-INF/maven/org.example/demo/pom.properties",
                 "groupId=org.example\nartifactId=demo\nversion=1.2.3\n");
@@ -75,7 +75,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getString_readsPlainTextFromFileUrl() throws Exception {
+    public void getStringReadsPlainTextFromFileUrl() throws Exception {
         File file = new File(testRoot, "plain.txt");
         try (FileWriter writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             writer.write("plain text");
@@ -87,7 +87,7 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getString_readsGzippedContentFromFileUrl() throws Exception {
+    public void getStringReadsGzippedContentFromFileUrl() throws Exception {
         File file = new File(testRoot, "compressed.bin");
         try (GZIPOutputStream out = new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
             out.write("compressed text".getBytes(StandardCharsets.UTF_8));
@@ -99,14 +99,14 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
-    public void getString_returnsEmptyStringWhenUrlCannotBeRead() throws Exception {
+    public void getStringReturnsEmptyStringWhenUrlCannotBeRead() throws Exception {
         URL missing = new File(testRoot, "missing.txt").toURI().toURL();
 
         assertEquals("", new ExposedFinder().exposeGetString(missing));
     }
 
     @Test
-    public void getText_returnsSelectedHtmlText() throws Exception {
+    public void getTextReturnsSelectedHtmlText() throws Exception {
         HTMLDocument doc = new HTMLDocument();
         doc.insertString(0, HELLO_FINDER, null);
         HTMLDocument.Iterator iterator = new HTMLDocument.Iterator() {

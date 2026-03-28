@@ -36,13 +36,13 @@ public class EditorUtilityTest {
     }
 
     @Test
-    public void decompilerType_containsDefaultDecompilerInSortedSet() {
+    public void decompilerTypeContainsDefaultDecompilerInSortedSet() {
         assertFalse(DecompilerType.getDecompilerTypes().isEmpty());
         assertTrue(DecompilerType.getDecompilerTypes().contains(DecompilerType.getDefault()));
     }
 
     @Test
-    public void decompilerClassEditorInput_usesCustomTooltipWhenProvided() throws Exception {
+    public void decompilerClassEditorInputUsesCustomTooltipWhenProvided() throws Exception {
         File file = new File(testRoot, "Demo.class");
         Files.writeString(file.toPath(), "bytes", StandardCharsets.UTF_8);
         IFileStore store = EFS.getLocalFileSystem().fromLocalFile(file);
@@ -56,7 +56,7 @@ public class EditorUtilityTest {
     }
 
     @Test
-    public void realignStatus_exposesExpectedEnumValues() {
+    public void realignStatusExposesExpectedEnumValues() {
         assertArrayEquals(new RealignStatus[] {
                 RealignStatus.TURNED_OFF,
                 RealignStatus.NATIVELY_REALIGNED,
@@ -67,7 +67,7 @@ public class EditorUtilityTest {
     }
 
     @Test
-    public void startup_earlyStartupIsNoOp() {
+    public void startupEarlyStartupIsNoOp() {
         new Startup().earlyStartup();
     }
 

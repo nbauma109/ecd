@@ -12,7 +12,7 @@ public class GAVTest {
     private static final String VERSION = "1.0.0";
 
     @Test
-    public void gav_isValidOnlyWhenAllCoordinatesArePresent() {
+    public void gavIsValidOnlyWhenAllCoordinatesArePresent() {
         GAV gav = new GAV();
         assertFalse(gav.isValid());
 
@@ -25,7 +25,7 @@ public class GAVTest {
     }
 
     @Test
-    public void gav_equalsHashCodeAndToStringReflectState() {
+    public void gavEqualsHashCodeAndToStringReflectState() {
         GAV left = new GAV();
         left.setGroupId(GROUP_ID);
         left.setArtifactId("demo");

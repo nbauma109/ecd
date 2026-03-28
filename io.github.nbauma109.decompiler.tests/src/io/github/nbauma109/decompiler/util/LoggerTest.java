@@ -16,7 +16,7 @@ public class LoggerTest {
     }
 
     @Test
-    public void debug_printsMessageAndThrowableWithoutThrowing() {
+    public void debugPrintsMessageAndThrowableWithoutThrowing() {
         Logger.debug("debug message", new RuntimeException("boom"));
     }
 }

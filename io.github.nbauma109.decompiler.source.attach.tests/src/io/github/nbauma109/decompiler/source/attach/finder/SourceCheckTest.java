@@ -38,7 +38,7 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSource_returnsTrueWhenBinaryHasClassesButSourceHasNoJavaFiles() throws Exception {
+    public void isWrongSourceReturnsTrueWhenBinaryHasClassesButSourceHasNoJavaFiles() throws Exception {
         File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
         File srcJar = createZip(SOURCE_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
 
@@ -46,7 +46,7 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSource_returnsFalseWhenSourceContainsJavaFiles() throws Exception {
+    public void isWrongSourceReturnsFalseWhenSourceContainsJavaFiles() throws Exception {
         File binJar = createZip(BIN_JAR_NAME, "pkg/Demo.class", "bytecode");
         File srcJar = createZip(SOURCE_JAR_NAME, "pkg/Demo.java", "class Demo {}");
 
@@ -54,7 +54,7 @@ public class SourceCheckTest {
     }
 
     @Test
-    public void isWrongSource_returnsFalseWhenBinaryHasNoClasses() throws Exception {
+    public void isWrongSourceReturnsFalseWhenBinaryHasNoClasses() throws Exception {
         File binJar = createZip(BIN_JAR_NAME, "META-INF/MANIFEST.MF", "manifest");
         File srcJar = createZip(SOURCE_JAR_NAME, "docs/readme.txt", "text");
 
