@@ -87,7 +87,7 @@ public class ExportSourceActionTest {
     }
 
     @After
-    public void tearDown() throws IOException, CoreException {
+    public void tearDown() throws CoreException {
         JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
         if (plugin != null && originalTempDir != null) {
             plugin.getPreferenceStore().setValue(JavaDecompilerPlugin.TEMP_DIR, originalTempDir);

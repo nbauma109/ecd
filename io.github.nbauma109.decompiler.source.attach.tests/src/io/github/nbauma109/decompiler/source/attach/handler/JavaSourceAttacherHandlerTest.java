@@ -47,7 +47,7 @@ public class JavaSourceAttacherHandlerTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @After
-    public void tearDown() throws IOException, CoreException {
+    public void tearDown() throws CoreException {
         for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);

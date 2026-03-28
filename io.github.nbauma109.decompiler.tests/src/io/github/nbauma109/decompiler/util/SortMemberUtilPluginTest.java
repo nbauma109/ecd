@@ -38,7 +38,7 @@ public class SortMemberUtilPluginTest {
 
     @Test
     public void sortMemberGroupsFieldsBeforeMethodsAndCleansUpCompilationUnit()
-            throws CoreException, InterruptedException {
+            throws CoreException {
         String input =
                 """
                 package com.example;

@@ -30,7 +30,7 @@ public class UrlDownloaderTest {
     private File testRoot;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         File targetDir = new File("target");
         assertTrue(targetDir.exists() || targetDir.mkdirs());
         testRoot = new File(targetDir, "url-downloader-tests-" + System.nanoTime());
@@ -38,7 +38,7 @@ public class UrlDownloaderTest {
     }
 
     @After
-    public void tearDown() throws IOException {
+    public void tearDown() {
         FileUtils.deleteQuietly(testRoot);
     }
 

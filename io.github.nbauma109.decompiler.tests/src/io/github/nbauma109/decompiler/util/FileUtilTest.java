@@ -74,7 +74,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void getContentTrimsWhitespace() throws IOException {
+    public void getContentTrimsWhitespace() {
         File file = resolve("trim.txt");
         FileUtil.writeToFile(file, "  hello  \n", StandardCharsets.UTF_8.name());
 
@@ -134,7 +134,7 @@ public class FileUtilTest {
     }
 
     @Test
-    public void deleteQuietlyDeletesRecursively() throws IOException {
+    public void deleteQuietlyDeletesRecursively() {
         File dir = resolve("tree");
         File nested = new File(dir, "p/q");
         assertTrue(nested.mkdirs());

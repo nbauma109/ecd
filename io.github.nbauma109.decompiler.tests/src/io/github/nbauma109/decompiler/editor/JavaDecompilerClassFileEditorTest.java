@@ -87,7 +87,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @After
-    public void tearDown() throws IOException, CoreException {
+    public void tearDown() throws CoreException {
         closeOpenedEditor();
 
         if (project != null && project.exists()) {
@@ -172,7 +172,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable()
-            throws IOException, CoreException, InterruptedException {
+            throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -192,7 +192,7 @@ public class JavaDecompilerClassFileEditorTest {
         Image customImage = runInUiThreadWithResult(() -> new Image(Display.getDefault(), 1, 1));
         try {
             runInUiThread(() -> {
-                editor.setTitleImage(customImage);
+                editor.setEditorTitleImage(customImage);
                 editor.setDecompilerType(null);
                 editor.updateTitleImage();
             });
@@ -205,7 +205,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testUpdateTitleImageRestoresDecompilerImageWhenAvailable()
-            throws IOException, CoreException, InterruptedException {
+            throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -225,7 +225,7 @@ public class JavaDecompilerClassFileEditorTest {
         Image customImage = runInUiThreadWithResult(() -> new Image(Display.getDefault(), 1, 1));
         try {
             runInUiThread(() -> {
-                editor.setTitleImage(customImage);
+                editor.setEditorTitleImage(customImage);
                 editor.setDecompilerType(DECOMPILER_FERNFLOWER);
                 editor.updateTitleImage();
             });
