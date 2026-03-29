@@ -55,6 +55,23 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
 
     @Override
     public void find(String binFile, String sha1, List<SourceFileResult> results) {
+        Collection<GAV> gavs = fetchGAVs(binFile, sha1);
+        if (canceled || gavs.isEmpty()) {
+            return;
+        }
+
+        Map<GAV, String> sourcesUrls = buildSourcesUrls(gavs);
+
+        // Try cached sources first
+        if (tryCachedSources(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        // Download and verify sources
+        downloadAndVerifySources(binFile, sourcesUrls, results);
+    }
+
+    private Collection<GAV> fetchGAVs(String binFile, String sha1) {
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingSonatype(sha1));
@@ -63,7 +80,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
         }
 
         if (canceled) {
-            return;
+            return gavs;
         }
 
         if (gavs.isEmpty()) {
@@ -73,18 +90,20 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                 Logger.debug(e);
             }
         }
+        return gavs;
+    }
 
-        if (canceled || gavs.isEmpty()) {
-            return;
-        }
-
+    private Map<GAV, String> buildSourcesUrls(Collection<GAV> gavs) {
         Map<GAV, String> sourcesUrls = new HashMap<>();
         for (GAV gav : gavs) {
             if (gav != null && gav.isValid()) {
                 sourcesUrls.put(gav, buildSourcesUrl(gav));
             }
         }
+        return sourcesUrls;
+    }
 
+    private boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
                 String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
@@ -93,13 +112,16 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                     File tempFile = new File(sourceFiles[1]);
                     SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
                     results.add(result);
-                    return;
+                    return true;
                 }
             } catch (Throwable e) {
                 Logger.debug(e);
             }
         }
+        return false;
+    }
 
+    private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + SOURCES_JAR;
             try {
@@ -124,40 +146,60 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
             return results;
         }
 
+        JsonArray componentArray = fetchComponents(sha1);
+        extractGAVsFromComponents(componentArray, results);
+        return results;
+    }
+
+    private JsonArray fetchComponents(String sha1) throws IOException {
         String payload = "{\"size\":" + PAGE_SIZE + ",\"searchTerm\":\"1:" //$NON-NLS-1$ //$NON-NLS-2$
                 + sha1.toLowerCase(Locale.ROOT) + "\",\"filter\":[]}"; //$NON-NLS-1$
         JsonObject response = Json.parse(postJson(SONATYPE_BROWSE_COMPONENTS_API, payload)).asObject();
         JsonValue components = response.get("components"); //$NON-NLS-1$
-        if (components == null || !components.isArray()) {
-            return results;
-        }
 
-        JsonArray componentArray = components.asArray();
+        if (components == null || !components.isArray()) {
+            return new JsonArray();
+        }
+        return components.asArray();
+    }
+
+    private void extractGAVsFromComponents(JsonArray componentArray, Set<GAV> results) {
         for (JsonValue value : componentArray) {
             if (value == null || !value.isObject()) {
                 continue;
             }
             JsonObject component = value.asObject();
-
-            String namespace = component.getString("namespace", ""); //$NON-NLS-1$ //$NON-NLS-2$
-            String artifactId = component.getString("name", ""); //$NON-NLS-1$ //$NON-NLS-2$
-            String version = component.getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
-            if (version.isBlank()) {
-                JsonValue latestVersionInfo = component.get("latestVersionInfo"); //$NON-NLS-1$
-                if (latestVersionInfo != null && latestVersionInfo.isObject()) {
-                    version = latestVersionInfo.asObject().getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
-                }
-            }
-
-            if (!namespace.isBlank() && !artifactId.isBlank() && !version.isBlank()) {
-                GAV gav = new GAV();
-                gav.setGroupId(namespace);
-                gav.setArtifactId(artifactId);
-                gav.setVersion(version);
+            GAV gav = parseGAVFromComponent(component);
+            if (gav != null) {
                 results.add(gav);
             }
         }
-        return results;
+    }
+
+    private GAV parseGAVFromComponent(JsonObject component) {
+        String namespace = component.getString("namespace", ""); //$NON-NLS-1$ //$NON-NLS-2$
+        String artifactId = component.getString("name", ""); //$NON-NLS-1$ //$NON-NLS-2$
+        String version = getVersionFromComponent(component);
+
+        if (!namespace.isBlank() && !artifactId.isBlank() && !version.isBlank()) {
+            GAV gav = new GAV();
+            gav.setGroupId(namespace);
+            gav.setArtifactId(artifactId);
+            gav.setVersion(version);
+            return gav;
+        }
+        return null;
+    }
+
+    private String getVersionFromComponent(JsonObject component) {
+        String version = component.getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
+        if (version.isBlank()) {
+            JsonValue latestVersionInfo = component.get("latestVersionInfo"); //$NON-NLS-1$
+            if (latestVersionInfo != null && latestVersionInfo.isObject()) {
+                version = latestVersionInfo.asObject().getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
+            }
+        }
+        return version;
     }
 
     private String postJson(String apiUrl, String payload) throws IOException {
