@@ -235,16 +235,16 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
 
         String code = UnicodeUtil.decode(res.getDecompiledOutput());
-        RealignStatus realignStatus = realignCode(code, exceptions, prefs);
-        if (realignStatus.code != null) {
-            code = realignStatus.code;
+        RealignResult realignResult = realignCode(code, exceptions, prefs);
+        if (realignResult.code != null) {
+            code = realignResult.code;
         }
 
         String formattedCode = formatDecompiledCode(type, info, code, prefs);
 
         StringBuilder source = new StringBuilder(formattedCode);
         if (prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA)) {
-            printDecompileReport(source, classLocation, exceptions, realignStatus.status);
+            printDecompileReport(source, classLocation, exceptions, realignResult.status);
         }
 
         char[] sourceAsCharArray = source.toString().toCharArray();
