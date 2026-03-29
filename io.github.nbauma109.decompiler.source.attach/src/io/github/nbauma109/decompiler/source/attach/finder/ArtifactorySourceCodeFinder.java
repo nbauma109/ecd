@@ -55,6 +55,20 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
     @Override
     public void find(String binFile, String sha1, List<SourceFileResult> results) {
+        Collection<GAV> gavs = collectGAVs(binFile, sha1);
+        if (canceled || gavs.isEmpty()) {
+            return;
+        }
+
+        Map<GAV, String> sourcesUrls = findSourceUrls(gavs);
+        if (tryUseExistingSourceFiles(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        downloadAndVerifySources(binFile, sourcesUrls, results);
+    }
+
+    private Collection<GAV> collectGAVs(String binFile, String sha1) {
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingArtifactory(null, null, null, null, sha1, false));
@@ -62,29 +76,31 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             Logger.debug(e);
         }
 
-        if (canceled) {
-            return;
+        if (canceled || !gavs.isEmpty()) {
+            return gavs;
         }
 
-        if (gavs.isEmpty()) {
-            try {
-                findGAVFromFile(binFile).ifPresent(gavs::add);
-            } catch (Throwable e) {
-                Logger.debug(e);
-            }
+        try {
+            findGAVFromFile(binFile).ifPresent(gavs::add);
+        } catch (Throwable e) {
+            Logger.debug(e);
         }
 
-        if (canceled) {
-            return;
-        }
+        return gavs;
+    }
 
+    private Map<GAV, String> findSourceUrls(Collection<GAV> gavs) {
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
             sourcesUrls.putAll(findSourcesUsingArtifactory(gavs));
         } catch (Throwable e) {
             Logger.debug(e);
         }
+        return sourcesUrls;
+    }
 
+    private boolean tryUseExistingSourceFiles(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
                 String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
@@ -93,13 +109,17 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
                     File tempFile = new File(sourceFiles[1]);
                     SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
                     results.add(result);
-                    return;
+                    return true;
                 }
             } catch (Throwable e) {
                 Logger.debug(e);
             }
         }
+        return false;
+    }
 
+    private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
             try {

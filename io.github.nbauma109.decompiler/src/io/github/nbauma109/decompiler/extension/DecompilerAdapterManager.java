@@ -164,40 +164,51 @@ public class DecompilerAdapterManager {
 
     private static Class<?> classForName(String className, Object adapterInstance, IAdapterFactory adapterFactory)
             throws ClassNotFoundException {
-        Class<?> clazz = null;
-
-        if (adapterInstance != null) {
-            try {
-                clazz = adapterInstance.getClass().getClassLoader().loadClass(className);
-            } catch (ClassNotFoundException ex) {
-                // fail over
-            }
+        Class<?> clazz = tryLoadFromInstance(className, adapterInstance);
+        if (clazz == null) {
+            clazz = tryLoadFromFactory(className, adapterFactory);
         }
-
-        if (clazz == null && adapterFactory != null) {
-            try {
-                clazz = adapterFactory.getClass().getClassLoader().loadClass(className);
-            } catch (ClassNotFoundException ex) {
-                // it is possible that the default bundle classloader is unaware
-                // of this class, but the adaptor factory can load it in some
-                // other way. See bug 200068.
-                Class<?>[] adapterList = adapterFactory.getAdapterList();
-                if (adapterList != null && adapterList.length > 0) {
-                    for (Class<?> element : adapterList) {
-                        if (className.equals(element.getName())) {
-                            clazz = element;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
         if (clazz == null) {
             clazz = Class.forName(className);
         }
-
         return clazz;
+    }
+
+    private static Class<?> tryLoadFromInstance(String className, Object adapterInstance) {
+        if (adapterInstance == null) {
+            return null;
+        }
+        try {
+            return adapterInstance.getClass().getClassLoader().loadClass(className);
+        } catch (ClassNotFoundException ex) {
+            return null;
+        }
+    }
+
+    private static Class<?> tryLoadFromFactory(String className, IAdapterFactory adapterFactory) {
+        if (adapterFactory == null) {
+            return null;
+        }
+
+        try {
+            return adapterFactory.getClass().getClassLoader().loadClass(className);
+        } catch (ClassNotFoundException ex) {
+            return searchAdapterList(className, adapterFactory);
+        }
+    }
+
+    private static Class<?> searchAdapterList(String className, IAdapterFactory adapterFactory) {
+        Class<?>[] adapterList = adapterFactory.getAdapterList();
+        if (adapterList == null || adapterList.length == 0) {
+            return null;
+        }
+
+        for (Class<?> element : adapterList) {
+            if (className.equals(element.getName())) {
+                return element;
+            }
+        }
+        return null;
     }
 
     private static void registerAdapter(Class<?> adaptableType, DecompilerAdapter adapter) {

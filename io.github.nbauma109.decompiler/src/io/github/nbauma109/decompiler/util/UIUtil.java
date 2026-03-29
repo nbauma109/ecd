@@ -154,34 +154,46 @@ public class UIUtil {
 
     private static IWorkbenchPart getActiveEditor(boolean activePageOnly) {
         IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (window == null) {
+            return null;
+        }
 
-        if (window != null) {
-            if (activePageOnly) {
-                IWorkbenchPage pg = window.getActivePage();
+        if (activePageOnly) {
+            return getActivePartFromPage(window.getActivePage());
+        }
+        return getActivePartFromPages(window.getPages());
+    }
 
-                if (pg != null) {
-                    IWorkbenchPart activePart = pg.getActivePart();
-                    if (!(activePart instanceof ContentOutline outline)) {
-                        return activePart;
-                    }
-                    IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
-                            "getCurrentContributingPart"); //$NON-NLS-1$
-                    if (part == null) {
-                        return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
-                    }
-                }
-            } else {
-                for (IWorkbenchPage pg : window.getPages()) {
-                    if (pg != null) {
-                        IWorkbenchPart part = pg.getActivePart();
-                        if (part != null) {
-                            return part;
-                        }
-                    }
+    private static IWorkbenchPart getActivePartFromPage(IWorkbenchPage page) {
+        if (page == null) {
+            return null;
+        }
+
+        IWorkbenchPart activePart = page.getActivePart();
+        if (activePart instanceof ContentOutline outline) {
+            return getContributingPartFromOutline(outline);
+        }
+        return activePart;
+    }
+
+    private static IWorkbenchPart getContributingPartFromOutline(ContentOutline outline) {
+        IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
+                "getCurrentContributingPart"); //$NON-NLS-1$
+        if (part == null) {
+            return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
+        }
+        return part;
+    }
+
+    private static IWorkbenchPart getActivePartFromPages(IWorkbenchPage[] pages) {
+        for (IWorkbenchPage page : pages) {
+            if (page != null) {
+                IWorkbenchPart part = page.getActivePart();
+                if (part != null) {
+                    return part;
                 }
             }
         }
-
         return null;
     }
 
