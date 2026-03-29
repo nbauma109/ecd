@@ -138,25 +138,6 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         return false;
     }
 
-    private boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls,
-            List<SourceFileResult> results) {
-        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            try {
-                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
-                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-                    File sourceFile = new File(sourceFiles[0]);
-                    File tempFile = new File(sourceFiles[1]);
-                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
-                    results.add(result);
-                    return true;
-                }
-            } catch (Throwable e) {
-                Logger.debug(e);
-            }
-        }
-        return false;
-    }
-
     private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls,
             List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
