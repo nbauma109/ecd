@@ -48,9 +48,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 
     /**
      * Calculate the Maven local repository path for a source JAR.
-     * Returns null if the GAV coordinates contain path traversal characters.
+     * Returns null if the GAV coordinates are incomplete or contain path traversal characters.
      */
-    private File getMavenRepoSourceFile(GAV gav) {
+    public File getMavenRepoSourceFile(GAV gav) {
         String groupId = gav.getGroupId();
         String artifactId = gav.getArtifactId();
         String version = gav.getVersion();

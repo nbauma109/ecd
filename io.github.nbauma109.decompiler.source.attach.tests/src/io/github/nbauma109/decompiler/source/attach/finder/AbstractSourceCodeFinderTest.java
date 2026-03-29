@@ -3,6 +3,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -10,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileWriter;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +38,8 @@ import org.junit.Test;
 public class AbstractSourceCodeFinderTest {
 
     private static final String HELLO_FINDER = "Hello finder";
+    private static final String DUMMY_JAR = "dummy.jar"; //$NON-NLS-1$
+    private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
 
     private File testRoot;
 
@@ -157,7 +161,7 @@ public class AbstractSourceCodeFinderTest {
     public void tryCachedSourcesReturnsFalseForEmptyMap() {
         ExposedFinder finder = new ExposedFinder();
         List<SourceFileResult> results = new ArrayList<>();
-        boolean found = finder.exposeTryCachedSources("dummy.jar", Collections.emptyMap(), results);
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, Collections.emptyMap(), results);
         assertFalse(found);
         assertTrue(results.isEmpty());
     }
@@ -171,9 +175,9 @@ public class AbstractSourceCodeFinderTest {
         gav.setArtifactId("lib");
         gav.setVersion("1.0");
         // Use a unique URL that is guaranteed not to be in any binding file
-        String uniqueUrl = "https://example.com/never-cached-" + System.nanoTime() + "-sources.jar";
+        String uniqueUrl = "https://example.com/never-cached-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
         Map<GAV, String> sourcesUrls = Collections.singletonMap(gav, uniqueUrl);
-        boolean found = finder.exposeTryCachedSources("dummy.jar", sourcesUrls, results);
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, sourcesUrls, results);
         assertFalse(found);
         assertTrue(results.isEmpty());
     }
@@ -186,7 +190,7 @@ public class AbstractSourceCodeFinderTest {
         File tempFile = new File(testRoot, "cached-temp.jar");
         createMinimalZip(tempFile);
 
-        String testUrl = "https://test.example.com/cached-" + System.nanoTime() + "-sources.jar";
+        String testUrl = "https://test.example.com/cached-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
         SourceBindingUtil.saveSourceBindingRecord(sourceFile, "cafebabe", testUrl, tempFile);
 
         GAV gav = new GAV();
@@ -211,9 +215,13 @@ public class AbstractSourceCodeFinderTest {
         createMinimalZip(tempFileForReg);
         // We need a "source" file to pass saveSourceBindingRecord's exists() check — create then delete
         createMinimalZip(missingSourceFile);
-        String testUrl = "https://test.example.com/missing-" + System.nanoTime() + "-sources.jar";
+        String testUrl = "https://test.example.com/missing-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
         SourceBindingUtil.saveSourceBindingRecord(missingSourceFile, "deadbeef", testUrl, tempFileForReg);
-        assertTrue("Expected source file to be deleted for test", missingSourceFile.delete()); // now the cached path no longer exists
+        try {
+            Files.delete(missingSourceFile.toPath()); // now the cached path no longer exists
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
 
         GAV gav = new GAV();
         gav.setGroupId("test.example");
@@ -223,7 +231,7 @@ public class AbstractSourceCodeFinderTest {
 
         ExposedFinder finder = new ExposedFinder();
         List<SourceFileResult> results = new ArrayList<>();
-        boolean found = finder.exposeTryCachedSources("dummy.jar", sourcesUrls, results);
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, sourcesUrls, results);
 
         assertFalse(found);
         assertTrue(results.isEmpty());
