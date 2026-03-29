@@ -142,66 +142,79 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
     protected Set<GAV> findArtifactsUsingArtifactory(String g, String a, String v, String c, String sha1,
             boolean getLink) throws IOException {
-        // https://repository.cloudera.com/artifactory/api/search/checksum?sha1=2bf96b7aa8b611c177d329452af1dc933e14501c
-        // {"results":[{"uri":"https://repository.cloudera.com/artifactory/api/storage/repo1-cache/commons-cli/commons-cli/1.2/commons-cli-1.2.jar"}]}
-        // GET
-        // /api/search/gavc?g=org.acme&a=artifact*&v=1.0&c=sources&repos=libs-release-local
-
         Set<GAV> results = new HashSet<>();
         String apiUrl = getArtifactApiUrl();
-
-        String url;
-        if (sha1 != null) {
-            url = apiUrl + "search/checksum?sha1=" + sha1; //$NON-NLS-1$
-        } else {
-            url = apiUrl + "search/gavc?g=" + g + "&a=" + a + "&v=" + v + (c != null ? "&c=" + c : ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-        }
+        String url = buildSearchUrl(apiUrl, g, a, v, c, sha1);
 
         URLConnection connection = new URL(url).openConnection();
         connection.setConnectTimeout(5000);
         connection.setReadTimeout(5000);
         connection.connect();
         try {
-            String json;
-            try (InputStream is = connection.getInputStream()) {
-                json = IOUtils.toString(is, StandardCharsets.UTF_8);
-            }
-
+            String json = readJsonResponse(connection);
             JsonObject resp = Json.parse(json).asObject();
-            for (JsonValue elem : resp.get("results").asArray()) //$NON-NLS-1$
-            {
-                JsonObject result = elem.asObject();
-                String uri = result.getString("uri", ""); //$NON-NLS-1$ //$NON-NLS-2$
-                // https://repository.cloudera.com/artifactory/api/storage/repo1-cache/commons-cli/commons-cli/1.2/commons-cli-1.2.jar
-                String regex = "/api/storage/[^/]+/(.+)$"; //$NON-NLS-1$
-                Pattern pattern = Pattern.compile(regex);
-                Matcher matcher = pattern.matcher(uri);
-                if (matcher.find()) {
-                    String[] gavInArray = matcher.group(1).split("/"); //$NON-NLS-1$
-
-                    GAV gav = new GAV();
-                    StringBuilder group = new StringBuilder().append(gavInArray[0]);
-                    for (int i = 1; i < gavInArray.length - 3; i++) {
-                        group.append(".").append(gavInArray[i]); //$NON-NLS-1$
-                    }
-                    gav.setGroupId(group.toString());
-
-                    gav.setArtifactId(gavInArray[gavInArray.length - 3]);
-                    gav.setVersion(gavInArray[gavInArray.length - 2]);
-
-                    if (getLink) {
-                        gav.setArtifactLink(uri);
-                    }
-                    results.add(gav);
-                }
-
-            }
-
+            processSearchResults(resp, getLink, results);
         } catch (Throwable e) {
             Logger.debug(e);
         }
 
         return results;
+    }
+
+    private String buildSearchUrl(String apiUrl, String g, String a, String v, String c, String sha1) {
+        if (sha1 != null) {
+            return apiUrl + "search/checksum?sha1=" + sha1; //$NON-NLS-1$
+        }
+        return apiUrl + "search/gavc?g=" + g + "&a=" + a + "&v=" + v + (c != null ? "&c=" + c : ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+    }
+
+    private String readJsonResponse(URLConnection connection) throws IOException {
+        try (InputStream is = connection.getInputStream()) {
+            return IOUtils.toString(is, StandardCharsets.UTF_8);
+        }
+    }
+
+    private void processSearchResults(JsonObject resp, boolean getLink, Set<GAV> results) {
+        for (JsonValue elem : resp.get("results").asArray()) { //$NON-NLS-1$
+            JsonObject result = elem.asObject();
+            String uri = result.getString("uri", ""); //$NON-NLS-1$ //$NON-NLS-2$
+            GAV gav = parseGAVFromUri(uri, getLink);
+            if (gav != null) {
+                results.add(gav);
+            }
+        }
+    }
+
+    private GAV parseGAVFromUri(String uri, boolean getLink) {
+        String regex = "/api/storage/[^/]+/(.+)$"; //$NON-NLS-1$
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(uri);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        String[] gavInArray = matcher.group(1).split("/"); //$NON-NLS-1$
+        if (gavInArray.length < 3) {
+            return null;
+        }
+
+        GAV gav = new GAV();
+        gav.setGroupId(buildGroupId(gavInArray));
+        gav.setArtifactId(gavInArray[gavInArray.length - 3]);
+        gav.setVersion(gavInArray[gavInArray.length - 2]);
+
+        if (getLink) {
+            gav.setArtifactLink(uri);
+        }
+        return gav;
+    }
+
+    private String buildGroupId(String[] gavInArray) {
+        StringBuilder group = new StringBuilder().append(gavInArray[0]);
+        for (int i = 1; i < gavInArray.length - 3; i++) {
+            group.append(".").append(gavInArray[i]); //$NON-NLS-1$
+        }
+        return group.toString();
     }
 
     private String getArtifactApiUrl() {

@@ -83,43 +83,65 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
 
     @Override
     public void find(String binFile, String sha1, List<SourceFileResult> results) {
+        Collection<GAV> gavs = fetchGAVsFromMavenCentral(sha1);
+        if (canceled) {
+            return;
+        }
+
+        Map<GAV, String> sourcesUrls = fetchSourcesUrls(gavs);
+
+        // Try existing Maven repo files first
+        if (tryExistingMavenRepoSources(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        // Try cached sources
+        if (tryCachedSources(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        // Download and verify sources
+        downloadAndVerifySources(binFile, sourcesUrls, results);
+    }
+
+    private Collection<GAV> fetchGAVsFromMavenCentral(String sha1) {
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingMavenCentral(sha1));
         } catch (IOException e) {
             Logger.debug(e);
         }
+        return gavs;
+    }
 
-        if (canceled) {
-            return;
-        }
-
+    private Map<GAV, String> fetchSourcesUrls(Collection<GAV> gavs) {
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
             sourcesUrls.putAll(findSourcesUsingMavenCentral(gavs));
         } catch (IOException e) {
             Logger.debug(e);
         }
+        return sourcesUrls;
+    }
 
+    private boolean tryExistingMavenRepoSources(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             GAV gav = entry.getKey();
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
-            // Check if already downloaded to Maven repo and validate it
             if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()) {
-                try {
-                    if (SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFile)) {
-                        SourceFileResult result = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
-                        results.add(result);
-                        setDownloadUrl(entry.getValue());
-                        return;
-                    }
-                } catch (RuntimeException e) {
-                    Logger.debug(e);
+                if (validateAndAddSource(binFile, mavenRepoSourceFile, mavenRepoSourceFile, entry.getValue(), results)) {
+                    return true;
                 }
-                // If validation fails or throws, fall through to try other strategies
             }
+        }
+        return false;
+    }
 
+    private boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
+        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
                 String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
                 if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
@@ -127,19 +149,22 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                     File tempFile = new File(sourceFiles[1]);
                     SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
                     results.add(result);
-                    return;
+                    return true;
                 }
             } catch (Throwable e) {
                 Logger.debug(e);
             }
         }
+        return false;
+    }
 
+    private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             GAV gav = entry.getKey();
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
             try {
-                // Download directly to Maven local repo location (or temp if path rejected)
                 String tmpFile = new UrlDownloader().download(entry.getValue(), mavenRepoSourceFile);
                 if (tmpFile != null && new File(tmpFile).exists()
                         && SourceAttachUtil.isSourceCodeFor(tmpFile, binFile)) {
@@ -149,12 +174,27 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                     SourceFileResult object = new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100);
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
                     results.add(object);
-
+                    return;
                 }
             } catch (IOException e) {
                 Logger.debug(e);
             }
         }
+    }
+
+    private boolean validateAndAddSource(String binFile, File sourceFile, File tempFile,
+            String downloadUrl, List<SourceFileResult> results) {
+        try {
+            if (SourceAttachUtil.isSourceCodeFor(sourceFile.getAbsolutePath(), binFile)) {
+                SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+                results.add(result);
+                setDownloadUrl(downloadUrl);
+                return true;
+            }
+        } catch (RuntimeException e) {
+            Logger.debug(e);
+        }
+        return false;
     }
 
     private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws IOException {
