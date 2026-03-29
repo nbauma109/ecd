@@ -135,7 +135,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                     results.add(result);
                     return true;
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Logger.debug(e);
             }
         }

@@ -23,7 +23,6 @@ import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
-import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
