@@ -83,20 +83,45 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         boolean always = prefs.getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING);
 
-        Collection<Exception> exceptions = new LinkedList<>();
         IPackageFragment pkgFrag = type.getPackageFragment();
         IPackageFragmentRoot root = (IPackageFragmentRoot) pkgFrag.getParent();
 
         JavaDecompilerPlugin.getDefault().syncLibrarySource(root);
-        char[] attachedSource = null;
 
+        char[] attachedSource = tryFindAttachedSource(type, info, root, always);
+        if (attachedSource != null) {
+            return attachedSource;
+        }
+
+        if (info == null) {
+            return always ? null : attachedSource;
+        }
+
+        initializeSourceMapper(root);
+
+        char[] sourceFromMapper = tryGetSourceFromMapper(type, info, root, always);
+        if (sourceFromMapper != null) {
+            return sourceFromMapper;
+        }
+
+        isAttachedSource = false;
+
+        char[] waitedSource = tryWaitForSourceAttachment(type, info, root, prefs, always);
+        if (waitedSource != null) {
+            return waitedSource;
+        }
+
+        return decompileAndFormatSource(type, info, root, prefs);
+    }
+
+    private char[] tryFindAttachedSource(IType type, IBinaryType info, IPackageFragmentRoot root, boolean always) {
         if (UIUtil.requestFromJavadocHover() && !fromInput(type) && always) {
             sourceRanges.remove(type);
             return originalSourceMapper.get(root).findSource(type, info);
         }
 
         if (originalSourceMapper.containsKey(root)) {
-            attachedSource = originalSourceMapper.get(root).findSource(type, info);
+            char[] attachedSource = originalSourceMapper.get(root).findSource(type, info);
 
             if (attachedSource != null && !always) {
                 updateSourceRanges(type, attachedSource);
@@ -106,35 +131,18 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
                 return attachedSource;
             }
         }
+        return null;
+    }
 
-        if (info == null) {
-            if (always) {
-                return null;
-            }
-            return attachedSource;
-        }
-
+    private void initializeSourceMapper(IPackageFragmentRoot root) {
         try {
             if (root instanceof PackageFragmentRoot pfr) {
-
                 SourceMapper sourceMapper = pfr.getSourceMapper();
 
                 if (!originalSourceMapper.containsKey(root)) {
                     ReflectionUtils.setFieldValue(this, "options", //$NON-NLS-1$
                             ReflectionUtils.getFieldValue(sourceMapper, "options")); //$NON-NLS-1$
                     originalSourceMapper.put(root, sourceMapper);
-                }
-
-                if (sourceMapper != null && !always && !(sourceMapper instanceof DecompilerSourceMapper)) {
-                    attachedSource = sourceMapper.findSource(type, info);
-                    if (attachedSource != null) {
-                        updateSourceRanges(type, attachedSource);
-                        isAttachedSource = true;
-                        mapSourceSwitch(type, attachedSource, true);
-                        SourceMapperUtil.mapSource(((PackageFragmentRoot) root).getSourceMapper(), type, attachedSource,
-                                info);
-                        return attachedSource;
-                    }
                 }
 
                 if (sourceMapper != this) {
@@ -144,39 +152,108 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         } catch (JavaModelException e) {
             JavaDecompilerPlugin.logError(e, "Could not set source mapper."); //$NON-NLS-1$
         }
+    }
 
-        isAttachedSource = false;
-
-        String[] excludedPackages = prefs.getString(JavaDecompilerPlugin.EXCLUDE_PACKAGES).split(",");
-        if (JavaDecompilerPlugin.getDefault().isAutoAttachSource() && isSourceLookupEligible(type, excludedPackages)) {
-            boolean waitForSources = prefs.getBoolean(JavaDecompilerPlugin.WAIT_FOR_SOURCES);
-            Thread attachSourceThread = JavaDecompilerPlugin.getDefault().attachSource(root, false);
-            if (!always && waitForSources && attachSourceThread != null && root instanceof PackageFragmentRoot pfr) {
-                try {
-                    long t0 = System.nanoTime();
-                    attachSourceThread.join(10000);
-                    long t1 = System.nanoTime();
-                    Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
-                    SourceMapper sourceMapper = pfr.getSourceMapper();
-                    if (sourceMapper != null && !(sourceMapper instanceof DecompilerSourceMapper)) {
-                        attachedSource = sourceMapper.findSource(type, info);
-                        if (attachedSource != null) {
-                            updateSourceRanges(type, attachedSource);
-                            isAttachedSource = true;
-                            mapSourceSwitch(type, attachedSource, true);
-                            SourceMapperUtil.mapSource(((PackageFragmentRoot) root).getSourceMapper(), type,
-                                    attachedSource, info);
-                            return attachedSource;
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Logger.error(e);
-                    // Restore interrupted state...
-                    Thread.currentThread().interrupt();
-                }
-            }
+    private char[] tryGetSourceFromMapper(IType type, IBinaryType info, IPackageFragmentRoot root, boolean always) {
+        if (!(root instanceof PackageFragmentRoot pfr)) {
+            return null;
         }
 
+        try {
+            SourceMapper sourceMapper = pfr.getSourceMapper();
+            if (sourceMapper != null && !always && !(sourceMapper instanceof DecompilerSourceMapper)) {
+                char[] attachedSource = sourceMapper.findSource(type, info);
+                if (attachedSource != null) {
+                    updateSourceRanges(type, attachedSource);
+                    isAttachedSource = true;
+                    mapSourceSwitch(type, attachedSource, true);
+                    SourceMapperUtil.mapSource(((PackageFragmentRoot) root).getSourceMapper(), type, attachedSource, info);
+                    return attachedSource;
+                }
+            }
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+        }
+        return null;
+    }
+
+    private char[] tryWaitForSourceAttachment(IType type, IBinaryType info, IPackageFragmentRoot root,
+            IPreferenceStore prefs, boolean always) {
+        String[] excludedPackages = prefs.getString(JavaDecompilerPlugin.EXCLUDE_PACKAGES).split(",");
+        if (!JavaDecompilerPlugin.getDefault().isAutoAttachSource() || !isSourceLookupEligible(type, excludedPackages)) {
+            return null;
+        }
+
+        boolean waitForSources = prefs.getBoolean(JavaDecompilerPlugin.WAIT_FOR_SOURCES);
+        Thread attachSourceThread = JavaDecompilerPlugin.getDefault().attachSource(root, false);
+
+        if (!always && waitForSources && attachSourceThread != null && root instanceof PackageFragmentRoot pfr) {
+            return waitAndGetAttachedSource(type, info, pfr, attachSourceThread);
+        }
+        return null;
+    }
+
+    private char[] waitAndGetAttachedSource(IType type, IBinaryType info, PackageFragmentRoot pfr, Thread attachSourceThread) {
+        try {
+            long t0 = System.nanoTime();
+            attachSourceThread.join(10000);
+            long t1 = System.nanoTime();
+            Logger.warn("Source attach took " + TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " millis");
+
+            SourceMapper sourceMapper = pfr.getSourceMapper();
+            if (sourceMapper != null && !(sourceMapper instanceof DecompilerSourceMapper)) {
+                char[] attachedSource = sourceMapper.findSource(type, info);
+                if (attachedSource != null) {
+                    updateSourceRanges(type, attachedSource);
+                    isAttachedSource = true;
+                    mapSourceSwitch(type, attachedSource, true);
+                    SourceMapperUtil.mapSource(((PackageFragmentRoot) pfr).getSourceMapper(), type, attachedSource, info);
+                    return attachedSource;
+                }
+            }
+        } catch (InterruptedException e) {
+            Logger.error(e);
+            // Restore interrupted state...
+            Thread.currentThread().interrupt();
+        }
+        return null;
+    }
+
+    private char[] decompileAndFormatSource(IType type, IBinaryType info, IPackageFragmentRoot root, IPreferenceStore prefs) {
+        Collection<Exception> exceptions = new LinkedList<>();
+
+        String className = extractClassName(info);
+        if (className == null) {
+            return null;
+        }
+
+        classLocation = ""; //$NON-NLS-1$
+        DecompilationResult res = decompile(type, exceptions, root, className);
+
+        if (res == null || res.getDecompiledOutput() == null || res.getDecompiledOutput().isEmpty()) {
+            return null;
+        }
+
+        String code = UnicodeUtil.decode(res.getDecompiledOutput());
+        RealignStatus realignStatus = realignCode(code, exceptions, prefs);
+        if (realignStatus.code != null) {
+            code = realignStatus.code;
+        }
+
+        String formattedCode = formatDecompiledCode(type, info, code, prefs);
+
+        StringBuilder source = new StringBuilder(formattedCode);
+        if (prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA)) {
+            printDecompileReport(source, classLocation, exceptions, realignStatus.status);
+        }
+
+        char[] sourceAsCharArray = source.toString().toCharArray();
+        mapSourceToOriginalMapper(type, info, root, sourceAsCharArray);
+        updateSourceRanges(type, sourceAsCharArray);
+        return sourceAsCharArray;
+    }
+
+    private String extractClassName(IBinaryType info) {
         String className = new String(info.getName());
         String fullName = new String(info.getFileName());
         int classNameIndex = fullName.lastIndexOf(className);
@@ -186,75 +263,66 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             return null;
         }
         className = fullName.substring(classNameIndex);
-
         int index = className.lastIndexOf('/');
-        className = className.substring(index + 1);
+        return className.substring(index + 1);
+    }
 
-        classLocation = ""; //$NON-NLS-1$
+    private static class RealignResult {
+        String code;
+        RealignStatus status;
 
-        DecompilationResult res = decompile(type, exceptions, root, className);
-
-        if (res == null || res.getDecompiledOutput() == null || res.getDecompiledOutput().isEmpty()) {
-            return null;
+        RealignResult(String code, RealignStatus status) {
+            this.code = code;
+            this.status = status;
         }
+    }
 
-        String code = UnicodeUtil.decode(res.getDecompiledOutput());
-
-        boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
-
+    private RealignResult realignCode(String code, Collection<Exception> exceptions, IPreferenceStore prefs) {
         boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
         boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-        RealignStatus realignStatus = RealignStatus.TURNED_OFF;
-        if ((showLineNumber && align)
-                || JavaDecompilerPlugin.getDefault().isDebug()
-                || UIUtil.isDebugPerspective()) {
-            if (currentDecompiler.supportsRealignment()) {
-                realignStatus = RealignStatus.NATIVELY_REALIGNED;
-            } else {
-                try {
-                    code = new ParserRealigner().realign(code);
-                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
-                } catch (ParseException e) {
-                    exceptions.add(e);
-                    realignStatus = RealignStatus.PARSE_ERROR;
-                }
+
+        if (!((showLineNumber && align) || JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective())) {
+            return new RealignResult(null, RealignStatus.TURNED_OFF);
+        }
+
+        if (currentDecompiler.supportsRealignment()) {
+            return new RealignResult(null, RealignStatus.NATIVELY_REALIGNED);
+        }
+
+        try {
+            String realignedCode = new ParserRealigner().realign(code);
+            return new RealignResult(realignedCode, RealignStatus.PARSED_AND_REALIGNED);
+        } catch (ParseException e) {
+            exceptions.add(e);
+            return new RealignResult(null, RealignStatus.PARSE_ERROR);
+        }
+    }
+
+    private String formatDecompiledCode(IType type, IBinaryType info, String code, IPreferenceStore prefs) {
+        if (JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective()) {
+            return code;
+        }
+
+        boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
+        if (useSorter) {
+            String className = new String(info.getName());
+            String fullName = new String(info.getFileName());
+            if (fullName.lastIndexOf(className) != -1) {
+                className = fullName.substring(fullName.lastIndexOf(className));
             }
+            code = SortMemberUtil.sortMember(type.getPackageFragment().getElementName(), className, code);
         }
 
-        StringBuilder source = new StringBuilder();
+        return formatSource(code);
+    }
 
-        if (!JavaDecompilerPlugin.getDefault().isDebug() && !UIUtil.isDebugPerspective()) {
-            boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
-            if (useSorter) {
-                className = new String(info.getName());
-                fullName = new String(info.getFileName());
-                if (fullName.lastIndexOf(className) != -1) {
-                    className = fullName.substring(fullName.lastIndexOf(className));
-                }
-
-                code = SortMemberUtil.sortMember(type.getPackageFragment().getElementName(), className, code);
-            }
-
-            source.append(formatSource(code));
-
-        } else {
-            source.append(code);
-        }
-
-        if (showReport) {
-            printDecompileReport(source, classLocation, exceptions, realignStatus);
-        }
-
-        char[] sourceAsCharArray = source.toString().toCharArray();
+    private void mapSourceToOriginalMapper(IType type, IBinaryType info, IPackageFragmentRoot root, char[] sourceAsCharArray) {
         if (originalSourceMapper.containsKey(root)) {
             SourceMapper rootSourceMapper = originalSourceMapper.get(root);
             if (rootSourceMapper.findSource(type, info) == null) {
                 SourceMapperUtil.mapSource(rootSourceMapper, type, sourceAsCharArray, info);
             }
         }
-
-        updateSourceRanges(type, sourceAsCharArray);
-        return sourceAsCharArray;
     }
 
     public boolean isSourceLookupEligible(IType type, String[] excludedPackages) {
@@ -357,66 +425,66 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
     @Override
     public String decompile(File file) {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        List<Exception> exceptions = new LinkedList<>();
 
-        Boolean displayNumber = null;
-        if (JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective()) {
-            displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
-            JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
+        Boolean displayNumber = enableDebugLineNumbers();
+
+        DecompilationResult decompilationResult = decompileFile(file, exceptions);
+
+        restoreLineNumberSetting(displayNumber);
+
+        if (decompilationResult == null || decompilationResult.getDecompiledOutput() == null
+                || decompilationResult.getDecompiledOutput().isEmpty()) {
+            return null;
         }
 
-        List<Exception> exceptions = new LinkedList<>();
-        DecompilationResult decompilationResult = null;
+        String code = UnicodeUtil.decode(decompilationResult.getDecompiledOutput());
+        RealignResult realignResult = realignCode(code, exceptions, prefs);
+        if (realignResult.code != null) {
+            code = realignResult.code;
+        }
+
+        StringBuilder source = formatCodeForDebugging(code);
+
+        if (prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA)) {
+            printDecompileReport(source, file.getAbsolutePath(), exceptions, realignResult.status);
+        }
+
+        return source.toString();
+    }
+
+    private Boolean enableDebugLineNumbers() {
+        if (JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective()) {
+            Boolean displayNumber = JavaDecompilerPlugin.getDefault().isDisplayLineNumber();
+            JavaDecompilerPlugin.getDefault().displayLineNumber(Boolean.TRUE);
+            return displayNumber;
+        }
+        return null;
+    }
+
+    private void restoreLineNumberSetting(Boolean displayNumber) {
+        if (displayNumber != null) {
+            JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
+        }
+    }
+
+    private DecompilationResult decompileFile(File file, List<Exception> exceptions) {
         try {
-            decompilationResult = currentDecompiler.decompile(file.getParentFile().getAbsolutePath(), "", //$NON-NLS-1$
-                    file.getName());
-
-            if (displayNumber != null) {
-                JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
-            }
-
-            if (decompilationResult.getDecompiledOutput() == null || decompilationResult.getDecompiledOutput().isEmpty()) {
-                return null;
-            }
+            return currentDecompiler.decompile(file.getParentFile().getAbsolutePath(), "", file.getName()); //$NON-NLS-1$
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException e) {
             exceptions.add(e);
+            return null;
         }
+    }
 
-        String code = decompilationResult == null ? "" : UnicodeUtil.decode(decompilationResult.getDecompiledOutput());
-
-        boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
-
-        boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
-        boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-        RealignStatus realignStatus = RealignStatus.TURNED_OFF;
-        if ((showLineNumber && align)
-                || JavaDecompilerPlugin.getDefault().isDebug()
-                || UIUtil.isDebugPerspective()) {
-            if (currentDecompiler.supportsRealignment()) {
-                realignStatus = RealignStatus.NATIVELY_REALIGNED;
-            } else {
-                try {
-                    code = new ParserRealigner().realign(code);
-                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
-                } catch (ParseException e) {
-                    exceptions.add(e);
-                    realignStatus = RealignStatus.PARSE_ERROR;
-                }
-            }
-        }
-
+    private StringBuilder formatCodeForDebugging(String code) {
         StringBuilder source = new StringBuilder();
-
         if (!JavaDecompilerPlugin.getDefault().isDebug() && !UIUtil.isDebugPerspective()) {
             source.append(formatSource(code));
         } else {
             source.append(code);
         }
-
-        if (showReport) {
-            printDecompileReport(source, file.getAbsolutePath(), exceptions, realignStatus);
-        }
-
-        return source.toString();
+        return source;
     }
 
     protected void logExceptions(Collection<Exception> exceptions, StringBuilder buffer) {
