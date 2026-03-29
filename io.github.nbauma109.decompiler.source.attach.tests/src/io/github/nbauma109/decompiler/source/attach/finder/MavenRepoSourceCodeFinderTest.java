@@ -2,6 +2,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -22,6 +23,7 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
 
     private static final String ASM_UTIL_GAV_URL = "https://repo1.maven.org/maven2/org/ow2/asm/asm-util/9.7/"; //$NON-NLS-1$
     private static final String ASM_UTIL_FILE_NAME = "asm-util-9.7"; //$NON-NLS-1$
+    private static final String ORG_EXAMPLE = "org.example"; //$NON-NLS-1$
 
     @Test
     public void testFind() throws IOException {
@@ -75,5 +77,79 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
     @Override
     protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
         return new MavenRepoSourceCodeFinder();
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullGroupId() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId(null);
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullArtifactId() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId(ORG_EXAMPLE);
+        gav.setArtifactId(null);
+        gav.setVersion("1.0");
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullVersion() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId(ORG_EXAMPLE);
+        gav.setArtifactId("lib");
+        gav.setVersion(null);
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForPathTraversalInGroupId() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId("org/../etc");
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForSlashInGroupId() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId("org/evil");
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForPathTraversalInVersion() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId(ORG_EXAMPLE);
+        gav.setArtifactId("lib");
+        gav.setVersion("../evil");
+        assertNull(finder.getMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsValidPathForValidGav() {
+        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
+        GAV gav = new GAV();
+        gav.setGroupId(ORG_EXAMPLE);
+        gav.setArtifactId("mylib");
+        gav.setVersion("2.3.4");
+        File result = finder.getMavenRepoSourceFile(gav);
+        assertNotNull(result);
+        String path = result.getAbsolutePath();
+        assertTrue(path.startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath()));
+        assertTrue(path.endsWith("mylib-2.3.4-sources.jar")); //$NON-NLS-1$
     }
 }

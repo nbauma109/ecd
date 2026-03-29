@@ -187,30 +187,40 @@ public class FileUtil {
     public static void recursiveZip(IProgressMonitor monitor, ZipOutputStream zos, File file, final String path,
             FileFilter filter, int step) throws IOException {
         if (file.isDirectory()) {
-            File[] files = file.listFiles(filter);
-            if (files != null) {
-                for (File file2 : files) {
-                    recursiveZip(monitor, zos, file2, (!path.isEmpty() ? (path + "/") : path) //$NON-NLS-1$
-                            + file2.getName(), filter, step);
-                }
-            }
-            if (monitor != null) {
-                monitor.worked(step);
-            }
+            zipDirectory(monitor, zos, file, path, filter, step);
         }
         if (file.isFile()) {
-            if (monitor != null) {
-                monitor.subTask(path);
+            zipFile(monitor, zos, file, path);
+        }
+    }
+
+    private static void zipDirectory(IProgressMonitor monitor, ZipOutputStream zos, File file, String path,
+            FileFilter filter, int step) throws IOException {
+        File[] files = file.listFiles(filter);
+        if (files != null) {
+            for (File file2 : files) {
+                recursiveZip(monitor, zos, file2, (!path.isEmpty() ? (path + "/") : path) //$NON-NLS-1$
+                        + file2.getName(), filter, step);
             }
-            byte[] bt = new byte[4096];
-            ZipEntry ze = new ZipEntry(path);
-            ze.setSize(file.length());
-            zos.putNextEntry(ze);
-            try (BufferedInputStream fis = new BufferedInputStream(new FileInputStream(file))) {
-                int i = 0;
-                while ((i = fis.read(bt)) != -1) {
-                    zos.write(bt, 0, i);
-                }
+        }
+        if (monitor != null) {
+            monitor.worked(step);
+        }
+    }
+
+    private static void zipFile(IProgressMonitor monitor, ZipOutputStream zos, File file, String path)
+            throws IOException {
+        if (monitor != null) {
+            monitor.subTask(path);
+        }
+        byte[] bt = new byte[4096];
+        ZipEntry ze = new ZipEntry(path);
+        ze.setSize(file.length());
+        zos.putNextEntry(ze);
+        try (BufferedInputStream fis = new BufferedInputStream(new FileInputStream(file))) {
+            int i = 0;
+            while ((i = fis.read(bt)) != -1) {
+                zos.write(bt, 0, i);
             }
         }
     }
