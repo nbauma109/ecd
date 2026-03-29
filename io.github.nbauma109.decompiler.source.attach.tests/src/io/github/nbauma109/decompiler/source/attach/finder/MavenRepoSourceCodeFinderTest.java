@@ -2,10 +2,12 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -75,5 +77,78 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
     @Override
     protected AbstractSourceCodeFinder newSourceCodeFinder(String serviceUrl) {
         return new MavenRepoSourceCodeFinder();
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullGroupId() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId(null);
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullArtifactId() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org.example");
+        gav.setArtifactId(null);
+        gav.setVersion("1.0");
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForNullVersion() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org.example");
+        gav.setArtifactId("lib");
+        gav.setVersion(null);
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForPathTraversalInGroupId() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org/../etc");
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForSlashInGroupId() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org/evil");
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsNullForPathTraversalInVersion() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org.example");
+        gav.setArtifactId("lib");
+        gav.setVersion("../evil");
+        assertNull(invokeMavenRepoSourceFile(gav));
+    }
+
+    @Test
+    public void getMavenRepoSourceFileReturnsValidPathForValidGav() throws Exception {
+        GAV gav = new GAV();
+        gav.setGroupId("org.example");
+        gav.setArtifactId("mylib");
+        gav.setVersion("2.3.4");
+        File result = invokeMavenRepoSourceFile(gav);
+        assertNotNull(result);
+        String path = result.getAbsolutePath();
+        assertTrue(path.startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath()));
+        assertTrue(path.endsWith("mylib-2.3.4-sources.jar")); //$NON-NLS-1$
+    }
+
+    private File invokeMavenRepoSourceFile(GAV gav) throws Exception {
+        Method method = MavenRepoSourceCodeFinder.class.getDeclaredMethod("getMavenRepoSourceFile", GAV.class); //$NON-NLS-1$
+        method.setAccessible(true);
+        return (File) method.invoke(new MavenRepoSourceCodeFinder(), gav);
     }
 }
