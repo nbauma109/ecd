@@ -117,9 +117,11 @@ public class SourceAttachUtil {
     }
 
     private static boolean attachSourceToRoot(IPackageFragmentRoot root, File sourceFile, String[] files, String sha) {
-        File tempFile = new File(files[1]);
-        if (files[1] != null && tempFile.exists()) {
-            return attachExistingTempFile(root, sourceFile, tempFile, sha);
+        if (files != null && files.length > 1 && files[1] != null) {
+            File tempFile = new File(files[1]);
+            if (tempFile.exists()) {
+                return attachExistingTempFile(root, sourceFile, tempFile, sha);
+            }
         }
         return createAndAttachTempFile(root, sourceFile, sha);
     }

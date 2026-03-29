@@ -338,7 +338,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 break;
             }
 
-            processComponentItems(root, sink);
+            if (processComponentItems(root, sink)) {
+                return;
+            }
 
             JsonValue cont = root.get("continuationToken");
             next = (cont == null || cont.isNull()) ? null : cont.asString();
@@ -355,15 +357,16 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         return u.toString();
     }
 
-    private void processComponentItems(JsonObject root, Map<GAV, String> sink) {
+    private boolean processComponentItems(JsonObject root, Map<GAV, String> sink) {
         JsonArray items = jsonArray(root, "items");
         for (JsonValue v : items) {
             if (canceled) {
-                return;
+                return true;
             }
             JsonObject comp = v.asObject();
             processComponent(comp, sink);
         }
+        return false;
     }
 
     private void processComponent(JsonObject comp, Map<GAV, String> sink) {

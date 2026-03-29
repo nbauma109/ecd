@@ -22,6 +22,7 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
 import org.eclipse.jdt.internal.ui.wizards.buildpaths.BuildPathSupport;
 import org.eclipse.jdt.internal.ui.wizards.buildpaths.CPListElement;
@@ -58,7 +59,7 @@ public class InternalBasedSourceAttacherImpl36 implements SourceAttacher {
         }
     }
 
-    private boolean validatePackageFragmentRoot(IPackageFragmentRoot fRoot) {
+    private boolean validatePackageFragmentRoot(IPackageFragmentRoot fRoot) throws JavaModelException {
         if (fRoot == null || fRoot.getKind() != IPackageFragmentRoot.K_BINARY) {
             Logger.debug("error(!=K_BINARY)", null); //$NON-NLS-1$
             return false;
@@ -118,7 +119,7 @@ public class InternalBasedSourceAttacherImpl36 implements SourceAttacher {
         return true;
     }
 
-    private IPath computeSourcePath(File newSourcePath, IClasspathEntry fEntry) {
+    private IPath computeSourcePath(File newSourcePath, IClasspathEntry fEntry) throws JavaModelException {
         IPath srcAttPath = Path.fromOSString(newSourcePath.getAbsolutePath()).makeAbsolute();
         if (fEntry.getEntryKind() == IClasspathEntry.CPE_VARIABLE) {
             final File sourceAttacherDir = newSourcePath.getParentFile();
