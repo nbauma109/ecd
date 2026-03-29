@@ -332,58 +332,79 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         String next = null;
 
         do {
-            StringBuilder u = new StringBuilder(base)
-                    .append("/service/rest/v1/search?sha1=")
-                    .append(urlenc(sha1));
-            if (next != null) {
-                u.append("&continuationToken=").append(urlenc(next));
-            }
-
-            JsonObject root = getJson(u.toString());
+            String url = buildSearchUrl(base, sha1, next);
+            JsonObject root = getJson(url);
             if (root == null) {
                 break;
             }
 
-            JsonArray items = jsonArray(root, "items");
-            for (JsonValue v : items) {
-                if (canceled) {
-                    return;
-                }
-                JsonObject comp = v.asObject();
-                String group = jsonString(comp, "group");
-                String name = jsonString(comp, "name");
-                String version = jsonString(comp, VERSION_FIELD);
-
-                Set<String> assetUrls = new LinkedHashSet<>();
-                JsonArray assets = jsonArray(comp, "assets");
-                for (JsonValue av : assets) {
-                    JsonObject a = av.asObject();
-                    String download = jsonString(a, "downloadUrl");
-                    download = normalizeSchemeByPort(download); // normalize if needed
-                    String path = jsonString(a, "path");
-                    if (download != null && path != null) {
-                        assetUrls.add(download);
-                    }
-                }
-
-                if (!assetUrls.isEmpty()) {
-                    GAV gav = new GAV();
-                    if (group != null && name != null && version != null) {
-                        gav.setGroupId(group);
-                        gav.setArtifactId(name);
-                        gav.setVersion(version);
-                    }
-                    // Prefer sources asset if present
-                    String chosen = chooseSourcesFirst(assetUrls);
-                    if (!sink.containsKey(gav) || chosen.endsWith(SOURCES_JAR)) {
-                        sink.put(gav, chosen);
-                    }
-                }
-            }
+            processComponentItems(root, sink);
 
             JsonValue cont = root.get("continuationToken");
             next = (cont == null || cont.isNull()) ? null : cont.asString();
         } while (next != null);
+    }
+
+    private String buildSearchUrl(String base, String sha1, String continuationToken) {
+        StringBuilder u = new StringBuilder(base)
+                .append("/service/rest/v1/search?sha1=")
+                .append(urlenc(sha1));
+        if (continuationToken != null) {
+            u.append("&continuationToken=").append(urlenc(continuationToken));
+        }
+        return u.toString();
+    }
+
+    private void processComponentItems(JsonObject root, Map<GAV, String> sink) {
+        JsonArray items = jsonArray(root, "items");
+        for (JsonValue v : items) {
+            if (canceled) {
+                return;
+            }
+            JsonObject comp = v.asObject();
+            processComponent(comp, sink);
+        }
+    }
+
+    private void processComponent(JsonObject comp, Map<GAV, String> sink) {
+        String group = jsonString(comp, "group");
+        String name = jsonString(comp, "name");
+        String version = jsonString(comp, VERSION_FIELD);
+
+        Set<String> assetUrls = extractAssetUrls(comp);
+
+        if (!assetUrls.isEmpty()) {
+            GAV gav = createGAV(group, name, version);
+            String chosen = chooseSourcesFirst(assetUrls);
+            if (!sink.containsKey(gav) || chosen.endsWith(SOURCES_JAR)) {
+                sink.put(gav, chosen);
+            }
+        }
+    }
+
+    private Set<String> extractAssetUrls(JsonObject comp) {
+        Set<String> assetUrls = new LinkedHashSet<>();
+        JsonArray assets = jsonArray(comp, "assets");
+        for (JsonValue av : assets) {
+            JsonObject a = av.asObject();
+            String download = jsonString(a, "downloadUrl");
+            download = normalizeSchemeByPort(download);
+            String path = jsonString(a, "path");
+            if (download != null && path != null) {
+                assetUrls.add(download);
+            }
+        }
+        return assetUrls;
+    }
+
+    private GAV createGAV(String group, String name, String version) {
+        GAV gav = new GAV();
+        if (group != null && name != null && version != null) {
+            gav.setGroupId(group);
+            gav.setArtifactId(name);
+            gav.setVersion(version);
+        }
+        return gav;
     }
 
     // ---------------------------------------------------------------------------------
@@ -400,84 +421,98 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             return sink;
         }
 
-        // Identify endpoint (single result)
+        // Try identify endpoint first (usually more accurate)
+        if (tryNx2IdentifyEndpoint(base, sha1, sink)) {
+            return sink;
+        }
+
+        // Fall back to Lucene search
+        tryNx2LuceneSearch(base, sha1, sink);
+        return sink;
+    }
+
+    private boolean tryNx2IdentifyEndpoint(String base, String sha1, Map<GAV, String> sink) {
         try {
             String u = base + "/service/local/identify/sha1/" + urlenc(sha1);
             JsonObject root = getJson(u);
             if (root != null) {
-                // Primary field is repoId; fallbacks are tolerated for compatibility
-                String repoId     = jsonStringAny(root, "repoId", "repositoryId");
-                String groupId    = jsonString(root, "groupId");
-                String artifactId = jsonString(root, "artifactId");
-                String version    = jsonString(root, VERSION_FIELD);
-                String classifier = jsonString(root, "classifier");
-                String ext        = firstNonEmpty(jsonString(root, "extension"), "jar");
-
-                if (groupId != null && artifactId != null && version != null && repoId != null) {
-                    String redirectBase = ensureTrailingSlash(base) + "service/local/artifact/maven/redirect";
-                    String src = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, ext, "sources");
-                    String jar = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, ext, isEmpty(classifier) ? null : classifier);
-
-                    String chosen = httpExists(src) ? src : jar;
-
-                    if (chosen != null) {
-                        GAV g = new GAV();
-                        g.setGroupId(groupId);
-                        g.setArtifactId(artifactId);
-                        g.setVersion(version);
-                        g.setArtifactLink(chosen);
-                        sink.put(g, chosen);
-                        return sink; // identify usually yields a definitive match
-                    }
-                }
+                return processNx2IdentifyResult(base, root, sink);
             }
         } catch (Throwable t) {
             Logger.debug(t);
         }
+        return false;
+    }
 
-        // Lucene search (may return multiple)
+    private boolean processNx2IdentifyResult(String base, JsonObject root, Map<GAV, String> sink) {
+        String repoId     = jsonStringAny(root, "repoId", "repositoryId");
+        String groupId    = jsonString(root, "groupId");
+        String artifactId = jsonString(root, "artifactId");
+        String version    = jsonString(root, VERSION_FIELD);
+        String classifier = jsonString(root, "classifier");
+        String ext        = firstNonEmpty(jsonString(root, "extension"), "jar");
+
+        if (groupId != null && artifactId != null && version != null && repoId != null) {
+            String redirectBase = ensureTrailingSlash(base) + "service/local/artifact/maven/redirect";
+            String src = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, ext, "sources");
+            String jar = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, ext, isEmpty(classifier) ? null : classifier);
+
+            String chosen = httpExists(src) ? src : jar;
+
+            if (chosen != null) {
+                GAV g = createGAV(groupId, artifactId, version);
+                g.setArtifactLink(chosen);
+                sink.put(g, chosen);
+                return true; // identify usually yields a definitive match
+            }
+        }
+        return false;
+    }
+
+    private void tryNx2LuceneSearch(String base, String sha1, Map<GAV, String> sink) {
         try {
             String u = base + "/service/local/lucene/search?sha1=" + urlenc(sha1);
             JsonObject root = getJson(u);
             if (root != null) {
-                JsonArray data = jsonArray(root, "data");
-                for (JsonValue v : data) {
-                    if (canceled) {
-                        return sink;
-                    }
-                    JsonObject item = v.asObject();
-                    String groupId    = jsonString(item, "groupId");
-                    String artifactId = jsonString(item, "artifactId");
-                    String version    = jsonString(item, VERSION_FIELD);
-                    // Primary field is latestReleaseRepositoryId; fallbacks are tolerated for compatibility
-                    String repoId     = jsonStringAny(item, "latestReleaseRepositoryId", "repositoryId", "repoId");
-
-                    if (groupId == null || artifactId == null || version == null || repoId == null) {
-                        continue;
-                    }
-
-                    String redirectBase = ensureTrailingSlash(base) + "service/local/artifact/maven/redirect";
-                    String src = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, "jar", "sources");
-                    String jar = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, "jar", null);
-
-                    String chosen = httpExists(src) ? src : (httpExists(jar) ? jar : null);
-                    if (chosen != null) {
-                        GAV g = new GAV();
-                        g.setGroupId(groupId);
-                        g.setArtifactId(artifactId);
-                        g.setVersion(version);
-                        g.setArtifactLink(chosen);
-                        if (!sink.containsKey(g) || chosen.endsWith(SOURCES_JAR)) {
-                            sink.put(g, chosen);
-                        }
-                    }
-                }
+                processNx2LuceneResults(base, root, sink);
             }
         } catch (Throwable t) {
             Logger.debug(t);
         }
+    }
 
-        return sink;
+    private void processNx2LuceneResults(String base, JsonObject root, Map<GAV, String> sink) {
+        JsonArray data = jsonArray(root, "data");
+        for (JsonValue v : data) {
+            if (canceled) {
+                return;
+            }
+            processNx2LuceneItem(base, v.asObject(), sink);
+        }
+    }
+
+    private void processNx2LuceneItem(String base, JsonObject item, Map<GAV, String> sink) {
+        String groupId    = jsonString(item, "groupId");
+        String artifactId = jsonString(item, "artifactId");
+        String version    = jsonString(item, VERSION_FIELD);
+        String repoId     = jsonStringAny(item, "latestReleaseRepositoryId", "repositoryId", "repoId");
+
+        if (groupId == null || artifactId == null || version == null || repoId == null) {
+            return;
+        }
+
+        String redirectBase = ensureTrailingSlash(base) + "service/local/artifact/maven/redirect";
+        String src = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, "jar", "sources");
+        String jar = buildNx2Redirect(redirectBase, repoId, groupId, artifactId, version, "jar", null);
+
+        String chosen = httpExists(src) ? src : (httpExists(jar) ? jar : null);
+        if (chosen != null) {
+            GAV g = createGAV(groupId, artifactId, version);
+            g.setArtifactLink(chosen);
+            if (!sink.containsKey(g) || chosen.endsWith(SOURCES_JAR)) {
+                sink.put(g, chosen);
+            }
+        }
     }
 
     private String buildNx2Redirect(String redirectBase, String repoId, String groupId, String artifactId,
