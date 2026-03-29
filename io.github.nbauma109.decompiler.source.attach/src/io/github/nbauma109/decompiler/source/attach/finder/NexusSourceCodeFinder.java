@@ -379,9 +379,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         if (!assetUrls.isEmpty()) {
             GAV gav = createGAV(group, name, version);
             String chosen = chooseSourcesFirst(assetUrls);
-            if (!sink.containsKey(gav) || chosen.endsWith(SOURCES_JAR)) {
-                sink.put(gav, chosen);
-            }
+            sink.compute(gav, (k, v) -> v == null || chosen.endsWith(SOURCES_JAR) ? chosen : v);
         }
     }
 
@@ -512,9 +510,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         if (chosen != null) {
             GAV g = createGAV(groupId, artifactId, version);
             g.setArtifactLink(chosen);
-            if (!sink.containsKey(g) || chosen.endsWith(SOURCES_JAR)) {
-                sink.put(g, chosen);
-            }
+            sink.compute(g, (k, v) -> v == null || chosen.endsWith(SOURCES_JAR) ? chosen : v);
         }
     }
 

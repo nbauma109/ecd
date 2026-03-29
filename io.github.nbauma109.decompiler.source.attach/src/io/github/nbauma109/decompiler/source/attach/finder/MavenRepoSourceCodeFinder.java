@@ -130,10 +130,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
             GAV gav = entry.getKey();
             File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
 
-            if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()) {
-                if (validateAndAddSource(binFile, mavenRepoSourceFile, mavenRepoSourceFile, entry.getValue(), results)) {
-                    return true;
-                }
+            if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()
+                    && validateAndAddSource(binFile, mavenRepoSourceFile, mavenRepoSourceFile, entry.getValue(), results)) {
+                return true;
             }
         }
         return false;
