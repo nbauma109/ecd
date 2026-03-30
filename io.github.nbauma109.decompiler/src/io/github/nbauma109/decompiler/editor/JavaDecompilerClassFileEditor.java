@@ -365,14 +365,13 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         try {
             doOpenBuffer(input, false);
         } catch (JavaModelException e) {
-            if (!tryWriteClassFileAndOpen(input, e)) {
+            if (!tryWriteClassFileAndOpen(input)) {
                 callSuperDoSetInput(input);
             }
         }
     }
 
-    private boolean tryWriteClassFileAndOpen(IEditorInput input, JavaModelException originalException)
-            throws CoreException {
+    private boolean tryWriteClassFileAndOpen(IEditorInput input) throws CoreException {
         IClassFileEditorInput classFileEditorInput = (IClassFileEditorInput) input;
         IClassFile file = classFileEditorInput.getClassFile();
         if (file.getSourceRange() != null || file.getBytes() == null || !ClassUtil.isClassFile(file.getBytes())) {

@@ -103,7 +103,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             return always ? null : attachedSource;
         }
 
-        attachedSource = trySetSourceMapper(type, info, root, always, attachedSource);
+        attachedSource = trySetSourceMapper(type, info, root, always);
         if (attachedSource != null) {
             return attachedSource;
         }
@@ -130,8 +130,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         return attachedSource;
     }
 
-    private char[] trySetSourceMapper(IType type, IBinaryType info, IPackageFragmentRoot root,
-            boolean always, char[] existingAttachedSource) {
+    private char[] trySetSourceMapper(IType type, IBinaryType info, IPackageFragmentRoot root, boolean always) {
         try {
             if (root instanceof PackageFragmentRoot pfr) {
                 SourceMapper sourceMapper = pfr.getSourceMapper();
@@ -227,7 +226,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         code = realigned[0];
         RealignStatus realignStatus = RealignStatus.valueOf(realigned[1]);
 
-        StringBuilder source = buildSource(code, info, type, prefs, className, fullName);
+        StringBuilder source = buildSource(code, info, type, prefs);
 
         if (showReport) {
             printDecompileReport(source, classLocation, exceptions, realignStatus);
@@ -261,8 +260,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         }
     }
 
-    private StringBuilder buildSource(String code, IBinaryType info, IType type, IPreferenceStore prefs,
-            String className, String fullName) {
+    private StringBuilder buildSource(String code, IBinaryType info, IType type, IPreferenceStore prefs) {
         StringBuilder source = new StringBuilder();
         if (!JavaDecompilerPlugin.getDefault().isDebug() && !UIUtil.isDebugPerspective()) {
             boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
