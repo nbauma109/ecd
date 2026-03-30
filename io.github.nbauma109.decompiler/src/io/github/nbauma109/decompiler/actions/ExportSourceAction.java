@@ -401,16 +401,16 @@ public class ExportSourceAction extends Action {
         }
     }
 
-    private static void collectClassFileEntry(IClassFile cf, Map<IJavaElement, List<IJavaElement>> classesMap,
+    private static void collectClassFileEntry(IClassFile element, Map<IJavaElement, List<IJavaElement>> classesMap,
             IProgressMonitor monitor) {
-        IPackageFragment pkg = (IPackageFragment) cf.getParent();
+        IPackageFragment pkg = (IPackageFragment) element.getParent();
         if (!classesMap.containsKey(pkg)) {
             monitor.subTask(pkg.getElementName());
             List<IJavaElement> list = new ArrayList<>();
-            list.add(cf);
+            list.add(element);
             classesMap.put(pkg, list);
         } else {
-            classesMap.get(pkg).add(cf);
+            classesMap.get(pkg).add(element);
         }
     }
 

@@ -389,7 +389,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             classFile.delete();
             return true;
         } catch (IOException e1) {
-            JavaDecompilerPlugin.logError(originalException, ""); //$NON-NLS-1$
+            JavaDecompilerPlugin.logError(e1, ""); //$NON-NLS-1$
             return false;
         } finally {
             if (classFile.exists()) {
