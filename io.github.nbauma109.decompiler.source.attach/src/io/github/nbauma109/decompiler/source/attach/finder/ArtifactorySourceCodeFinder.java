@@ -55,6 +55,22 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
     @Override
     public void find(String binFile, String sha1, List<SourceFileResult> results) {
+        Collection<GAV> gavs = findGavsBySha1(sha1, binFile);
+
+        if (canceled || gavs == null) {
+            return;
+        }
+
+        Map<GAV, String> sourcesUrls = findSourceUrls(gavs);
+
+        if (tryFromCache(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        downloadAndVerify(binFile, sourcesUrls, results);
+    }
+
+    private Collection<GAV> findGavsBySha1(String sha1, String binFile) {
         Collection<GAV> gavs = new HashSet<>();
         try {
             gavs.addAll(findArtifactsUsingArtifactory(null, null, null, null, sha1, false));
@@ -63,7 +79,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         }
 
         if (canceled) {
-            return;
+            return null;
         }
 
         if (gavs.isEmpty()) {
@@ -75,31 +91,39 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         }
 
         if (canceled) {
-            return;
+            return null;
         }
+        return gavs;
+    }
 
+    private Map<GAV, String> findSourceUrls(Collection<GAV> gavs) {
         Map<GAV, String> sourcesUrls = new HashMap<>();
         try {
             sourcesUrls.putAll(findSourcesUsingArtifactory(gavs));
         } catch (Throwable e) {
             Logger.debug(e);
         }
+        return sourcesUrls;
+    }
 
+    private boolean tryFromCache(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
                 String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
                 if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
                     File sourceFile = new File(sourceFiles[0]);
                     File tempFile = new File(sourceFiles[1]);
-                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
-                    results.add(result);
-                    return;
+                    results.add(new SourceFileResult(this, binFile, sourceFile, tempFile, 100));
+                    return true;
                 }
             } catch (Throwable e) {
                 Logger.debug(e);
             }
         }
+        return false;
+    }
 
+    private void downloadAndVerify(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
             try {

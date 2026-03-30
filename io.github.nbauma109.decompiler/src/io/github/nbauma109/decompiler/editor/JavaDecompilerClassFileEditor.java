@@ -257,112 +257,143 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     @Override
     protected void doSetInput(IEditorInput input) throws CoreException {
         switch (input) {
-            case IFileEditorInput in -> {
-                String filePath = UIUtil.getPathLocation(in.getStorage().getFullPath());
-                if (filePath == null || !new File(filePath).exists()) {
-                    callSuperDoSetInput(input);
-                } else {
-                    doSetInput(new DecompilerClassEditorInput(EFS.getLocalFileSystem().getStore(new Path(filePath))));
-                }
+            case IFileEditorInput in -> handleFileEditorInput(in);
+            case FileStoreEditorInput storeInput -> handleFileStoreEditorInput(storeInput);
+            default -> handleDefaultInput(input);
+        }
+    }
+
+    private void handleFileEditorInput(IFileEditorInput in) throws CoreException {
+        String filePath = UIUtil.getPathLocation(in.getStorage().getFullPath());
+        if (filePath == null || !new File(filePath).exists()) {
+            callSuperDoSetInput(in);
+        } else {
+            doSetInput(new DecompilerClassEditorInput(EFS.getLocalFileSystem().getStore(new Path(filePath))));
+        }
+    }
+
+    private void handleFileStoreEditorInput(FileStoreEditorInput storeInput) throws CoreException {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        decompilerType = prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
+        String source = DecompileUtil.decompiler(storeInput, decompilerType);
+
+        if (source != null) {
+            openDecompiledSourceInEditor(storeInput, source);
+        }
+        Display.getDefault().asyncExec(() -> JavaDecompilerClassFileEditor.this.getEditorSite().getPage()
+                .closeEditor(JavaDecompilerClassFileEditor.this, false));
+
+        throw new CoreException(new Status(8, JavaDecompilerPlugin.PLUGIN_ID, 1, "", //$NON-NLS-1$
+                null));
+    }
+
+    private void openDecompiledSourceInEditor(FileStoreEditorInput storeInput, String source) {
+        String packageName = DecompileUtil.getPackageName(source);
+        String classFullName = packageName == null ? storeInput.getName()
+                : packageName + "." //$NON-NLS-1$
+                + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
+                        ""); //$NON-NLS-1$
+
+        File file = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
+                storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
+                        System.currentTimeMillis() + ".java")); //$NON-NLS-1$
+        FileUtil.writeToFile(file, source, ResourcesPlugin.getEncoding());
+        file.deleteOnExit();
+
+        DecompilerClassEditorInput editorInput = new DecompilerClassEditorInput(
+                EFS.getLocalFileSystem().getStore(new Path(file.getAbsolutePath())));
+        editorInput.setToolTipText(classFullName);
+
+        try {
+            IEditorPart editor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
+                    .openEditor(editorInput, "org.eclipse.jdt.ui.CompilationUnitEditor"); //$NON-NLS-1$
+            configureOpenedEditor(editor, storeInput);
+        } catch (Exception e) {
+            JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
+        }
+    }
+
+    private void configureOpenedEditor(IEditorPart editor, FileStoreEditorInput storeInput) {
+        try {
+            ReflectionUtils.invokeMethod(editor, "setPartName", //$NON-NLS-1$
+                    new Class[] { String.class }, new String[] { getPartTitle(storeInput.getName()) });
+
+            Image decompilerImage = resolveDecompilerTitleImage();
+            if (isUsableImage(decompilerImage)) {
+                ReflectionUtils.invokeMethod(editor, "setTitleImage", //$NON-NLS-1$
+                        new Class[] { Image.class },
+                        new Object[] { decompilerImage });
             }
-            case FileStoreEditorInput storeInput -> {
-                IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
-                decompilerType = prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE);
-                String source = DecompileUtil.decompiler(storeInput, decompilerType);
 
-                if (source != null) {
-                    String packageName = DecompileUtil.getPackageName(source);
-                    String classFullName = packageName == null ? storeInput.getName()
-                            : packageName + "." //$NON-NLS-1$
-                            + storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
-                                    ""); //$NON-NLS-1$
+            ReflectionUtils.setFieldValue(editor, "fIsEditingDerivedFileAllowed", //$NON-NLS-1$
+                    Boolean.valueOf(false));
+        } catch (Exception e) {
+            JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
+        }
+    }
 
-                    File file = new File(System.getProperty("java.io.tmpdir"), //$NON-NLS-1$
-                            storeInput.getName().replaceAll("(?i)\\.class", //$NON-NLS-1$
-                                    System.currentTimeMillis() + ".java")); //$NON-NLS-1$
-                    FileUtil.writeToFile(file, source, ResourcesPlugin.getEncoding());
-                    file.deleteOnExit();
-
-                    DecompilerClassEditorInput editorInput = new DecompilerClassEditorInput(
-                            EFS.getLocalFileSystem().getStore(new Path(file.getAbsolutePath())));
-                    editorInput.setToolTipText(classFullName);
-
-                    IEditorPart editor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
-                            .openEditor(editorInput, "org.eclipse.jdt.ui.CompilationUnitEditor"); //$NON-NLS-1$
-                    try {
-                        ReflectionUtils.invokeMethod(editor, "setPartName", //$NON-NLS-1$
-                                new Class[] { String.class }, new String[] { getPartTitle(storeInput.getName()) });
-
-                        Image decompilerImage = resolveDecompilerTitleImage();
-                        if (isUsableImage(decompilerImage)) {
-                            ReflectionUtils.invokeMethod(editor, "setTitleImage", //$NON-NLS-1$
-                                    new Class[] { Image.class },
-                                    new Object[] { decompilerImage });
-                        }
-
-                        ReflectionUtils.setFieldValue(editor, "fIsEditingDerivedFileAllowed", //$NON-NLS-1$
-                                Boolean.valueOf(false));
-                    } catch (Exception e) {
-                        JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-                    }
-                }
-                Display.getDefault().asyncExec(() -> JavaDecompilerClassFileEditor.this.getEditorSite().getPage()
-                        .closeEditor(JavaDecompilerClassFileEditor.this, false));
-
-                throw new CoreException(new Status(8, JavaDecompilerPlugin.PLUGIN_ID, 1, "", //$NON-NLS-1$
-                        null));
+    private void handleDefaultInput(IEditorInput input) throws CoreException {
+        if (input instanceof InternalClassFileEditorInput classInput) {
+            if (classInput.getClassFile().getParent() instanceof PackageFragment) {
+                doOpenBuffer(input, false);
+                return;
             }
-            default -> {
-                if (input instanceof InternalClassFileEditorInput classInput) {
+            if (handleExternalClassInput(classInput)) {
+                return;
+            }
+        }
+        openDefaultBuffer(input);
+    }
 
-                    if (classInput.getClassFile().getParent() instanceof PackageFragment) {
-                        doOpenBuffer(input, false);
-                    } else {
-                        IPath relativePath = classInput.getClassFile().getParent().getPath();
-                        String location = UIUtil.getPathLocation(relativePath);
-                        if (!FileUtil.isZipFile(location) && !FileUtil.isZipFile(relativePath.toOSString())) {
-                            String filePath = UIUtil.getPathLocation(classInput.getClassFile().getPath());
-                            if (filePath != null) {
-                                DecompilerClassEditorInput editorInput = new DecompilerClassEditorInput(
-                                        EFS.getLocalFileSystem().getStore(new Path(filePath)));
-                                doSetInput(editorInput);
-                            } else {
-                                doSetInput(new DecompilerClassEditorInput(
-                                        EFS.getLocalFileSystem().getStore(classInput.getClassFile().getPath())));
-                            }
-                            return;
-                        }
-                    }
-                }
-                try {
-                    doOpenBuffer(input, false);
-                } catch (JavaModelException e) {
-                    IClassFileEditorInput classFileEditorInput = (IClassFileEditorInput) input;
-                    IClassFile file = classFileEditorInput.getClassFile();
+    private boolean handleExternalClassInput(InternalClassFileEditorInput classInput) throws CoreException {
+        IPath relativePath = classInput.getClassFile().getParent().getPath();
+        String location = UIUtil.getPathLocation(relativePath);
+        if (FileUtil.isZipFile(location) || FileUtil.isZipFile(relativePath.toOSString())) {
+            return false;
+        }
+        String filePath = UIUtil.getPathLocation(classInput.getClassFile().getPath());
+        if (filePath != null) {
+            doSetInput(new DecompilerClassEditorInput(EFS.getLocalFileSystem().getStore(new Path(filePath))));
+        } else {
+            doSetInput(new DecompilerClassEditorInput(
+                    EFS.getLocalFileSystem().getStore(classInput.getClassFile().getPath())));
+        }
+        return true;
+    }
 
-                    if (file.getSourceRange() == null && file.getBytes() != null && ClassUtil.isClassFile(file.getBytes())) {
-                        File classFile = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
-                                .getString(JavaDecompilerPlugin.TEMP_DIR), file.getElementName());
-                        try {
-                            try (FileOutputStream fos = new FileOutputStream(classFile)) {
-                                fos.write(file.getBytes());
-                            }
-
-                            doSetInput(new DecompilerClassEditorInput(
-                                    EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
-                            classFile.delete();
-                            return;
-                        } catch (IOException e1) {
-                            JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
-                        } finally {
-                            if (classFile.exists()) {
-                                classFile.delete();
-                            }
-                        }
-                    }
-                }
-
+    private void openDefaultBuffer(IEditorInput input) throws CoreException {
+        try {
+            doOpenBuffer(input, false);
+        } catch (JavaModelException e) {
+            if (!tryWriteClassFileAndOpen(input, e)) {
                 callSuperDoSetInput(input);
+            }
+        }
+    }
+
+    private boolean tryWriteClassFileAndOpen(IEditorInput input, JavaModelException originalException)
+            throws CoreException {
+        IClassFileEditorInput classFileEditorInput = (IClassFileEditorInput) input;
+        IClassFile file = classFileEditorInput.getClassFile();
+        if (file.getSourceRange() != null || file.getBytes() == null || !ClassUtil.isClassFile(file.getBytes())) {
+            return false;
+        }
+        File classFile = new File(JavaDecompilerPlugin.getDefault().getPreferenceStore()
+                .getString(JavaDecompilerPlugin.TEMP_DIR), file.getElementName());
+        try {
+            try (FileOutputStream fos = new FileOutputStream(classFile)) {
+                fos.write(file.getBytes());
+            }
+            doSetInput(new DecompilerClassEditorInput(
+                    EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
+            classFile.delete();
+            return true;
+        } catch (IOException e1) {
+            JavaDecompilerPlugin.logError(originalException, ""); //$NON-NLS-1$
+            return false;
+        } finally {
+            if (classFile.exists()) {
+                classFile.delete();
             }
         }
     }

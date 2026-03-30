@@ -107,28 +107,42 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             return;
         }
 
-        // If SHA-1 is not provided, compute it from the binary file
-        String targetSha1 = sha1;
-        if (targetSha1 == null && binFile != null) {
-            try {
-                targetSha1 = HashUtils.sha1Hash(new File(binFile));
-            } catch (Throwable t) {
-                Logger.debug(t);
-            }
-        }
+        String targetSha1 = resolveSha1(sha1, binFile);
         if (targetSha1 == null) {
             return;
         }
 
-        // Detect Nexus family
         Detection d = detectFamily();
         if (canceled) {
             return;
         }
 
-        // Collect candidate download URLs, keyed by GAV; prefer sources when available
-        Map<GAV, String> candidates = new LinkedHashMap<>();
+        Map<GAV, String> candidates = collectCandidates(d, targetSha1);
 
+        if (canceled || candidates.isEmpty()) {
+            return;
+        }
+
+        downloadAndAddFirstMatch(binFile, candidates, results);
+    }
+
+    private static String resolveSha1(String sha1, String binFile) {
+        if (sha1 != null) {
+            return sha1;
+        }
+        if (binFile == null) {
+            return null;
+        }
+        try {
+            return HashUtils.sha1Hash(new File(binFile));
+        } catch (Throwable t) {
+            Logger.debug(t);
+            return null;
+        }
+    }
+
+    private Map<GAV, String> collectCandidates(Detection d, String targetSha1) {
+        Map<GAV, String> candidates = new LinkedHashMap<>();
         try {
             switch (d.family) {
                 case NXRM3:
@@ -138,29 +152,33 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     candidates.putAll(nx2SearchBySha1(d.base, targetSha1));
                     break;
                 case UNKNOWN:
-                    // Try both base and base+/nexus for Nexus 3 first, then Nexus 2
-                    String withNexus = ensureWithNexus(d.base);
-                    candidates.putAll(nx3SearchBySha1(d.base, targetSha1));
-                    if (candidates.isEmpty()) {
-                        candidates.putAll(nx3SearchBySha1(withNexus, targetSha1));
-                    }
-                    if (candidates.isEmpty()) {
-                        candidates.putAll(nx2SearchBySha1(d.base, targetSha1));
-                        if (candidates.isEmpty()) {
-                            candidates.putAll(nx2SearchBySha1(withNexus, targetSha1));
-                        }
-                    }
+                    candidates.putAll(searchUnknownFamily(d.base, targetSha1));
                     break;
             }
         } catch (Throwable t) {
             Logger.debug(t);
         }
+        return candidates;
+    }
 
-        if (canceled || candidates.isEmpty()) {
-            return;
+    private Map<GAV, String> searchUnknownFamily(String base, String targetSha1) {
+        Map<GAV, String> candidates = new LinkedHashMap<>();
+        String withNexus = ensureWithNexus(base);
+        candidates.putAll(nx3SearchBySha1(base, targetSha1));
+        if (candidates.isEmpty()) {
+            candidates.putAll(nx3SearchBySha1(withNexus, targetSha1));
         }
+        if (candidates.isEmpty()) {
+            candidates.putAll(nx2SearchBySha1(base, targetSha1));
+            if (candidates.isEmpty()) {
+                candidates.putAll(nx2SearchBySha1(withNexus, targetSha1));
+            }
+        }
+        return candidates;
+    }
 
-        // Download and verify each candidate. The first verified match wins.
+    private void downloadAndAddFirstMatch(String binFile, Map<GAV, String> candidates,
+            List<SourceFileResult> results) {
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(serviceUser);
         downloader.setServicePassword(servicePassword);
@@ -171,13 +189,13 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             if (canceled) {
                 return;
             }
-            String downloadUrl = normalizeSchemeByPort(e.getValue()); // normalize odd http://...:443/... links
+            String downloadUrl = normalizeSchemeByPort(e.getValue());
             try {
                 String tmp = downloader.download(downloadUrl);
                 if (tmp != null && new File(tmp).exists() && SourceAttachUtil.isSourceCodeFor(tmp, binFile)) {
                     setDownloadUrl(downloadUrl);
                     results.add(new SourceFileResult(this, binFile, tmp, repoNameForUi, 100));
-                    return; // stop after the first verified match
+                    return;
                 }
             } catch (Throwable ex) {
                 Logger.debug(ex);
@@ -299,26 +317,9 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 if (canceled) {
                     return any;
                 }
-                JsonObject it = v.asObject();
-                String download = jsonString(it, "downloadUrl");
-                download = normalizeSchemeByPort(download); // normalize if the server returned http on port 443
-                String path = jsonString(it, "path");
-                if (download == null || path == null) {
-                    continue;
+                if (processAssetItem(v.asObject(), sink)) {
+                    any = true;
                 }
-
-                Optional<GAV> gavOpt = parseMavenPathToGav(path);
-                GAV gav = gavOpt.orElseGet(GAV::new);
-                if (!gavOpt.isPresent()) {
-                    // Best effort if the path is not Maven-like: keep empty GAV but allow dedup by link
-                    gav.setArtifactLink(download);
-                }
-                // Prefer sources
-                boolean isSources = path.endsWith(SOURCES_JAR) || path.endsWith(".src.zip");
-                if (isSources || !sink.containsKey(gav)) {
-                    sink.put(gav, download);
-                }
-                any = true;
             }
 
             JsonValue cont = root.get("continuationToken");
@@ -326,6 +327,26 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         } while (next != null);
 
         return any;
+    }
+
+    private boolean processAssetItem(JsonObject it, Map<GAV, String> sink) {
+        String download = jsonString(it, "downloadUrl");
+        download = normalizeSchemeByPort(download);
+        String path = jsonString(it, "path");
+        if (download == null || path == null) {
+            return false;
+        }
+
+        Optional<GAV> gavOpt = parseMavenPathToGav(path);
+        GAV gav = gavOpt.orElseGet(GAV::new);
+        if (!gavOpt.isPresent()) {
+            gav.setArtifactLink(download);
+        }
+        boolean isSources = path.endsWith(SOURCES_JAR) || path.endsWith(".src.zip");
+        if (isSources || !sink.containsKey(gav)) {
+            sink.put(gav, download);
+        }
+        return true;
     }
 
     private void nx3SearchComponents(String base, String sha1, Map<GAV, String> sink) {

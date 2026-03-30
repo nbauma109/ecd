@@ -154,34 +154,41 @@ public class UIUtil {
 
     private static IWorkbenchPart getActiveEditor(boolean activePageOnly) {
         IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (window == null) {
+            return null;
+        }
+        if (activePageOnly) {
+            return getActivePartFromWindow(window);
+        }
+        return getActivePartFromAnyPage(window);
+    }
 
-        if (window != null) {
-            if (activePageOnly) {
-                IWorkbenchPage pg = window.getActivePage();
+    private static IWorkbenchPart getActivePartFromWindow(IWorkbenchWindow window) {
+        IWorkbenchPage pg = window.getActivePage();
+        if (pg == null) {
+            return null;
+        }
+        IWorkbenchPart activePart = pg.getActivePart();
+        if (!(activePart instanceof ContentOutline outline)) {
+            return activePart;
+        }
+        IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
+                "getCurrentContributingPart"); //$NON-NLS-1$
+        if (part == null) {
+            return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
+        }
+        return part;
+    }
 
-                if (pg != null) {
-                    IWorkbenchPart activePart = pg.getActivePart();
-                    if (!(activePart instanceof ContentOutline outline)) {
-                        return activePart;
-                    }
-                    IWorkbenchPart part = (IWorkbenchPart) ReflectionUtils.invokeMethod(outline,
-                            "getCurrentContributingPart"); //$NON-NLS-1$
-                    if (part == null) {
-                        return (IWorkbenchPart) ReflectionUtils.getFieldValue(outline, "hiddenPart"); //$NON-NLS-1$
-                    }
-                }
-            } else {
-                for (IWorkbenchPage pg : window.getPages()) {
-                    if (pg != null) {
-                        IWorkbenchPart part = pg.getActivePart();
-                        if (part != null) {
-                            return part;
-                        }
-                    }
+    private static IWorkbenchPart getActivePartFromAnyPage(IWorkbenchWindow window) {
+        for (IWorkbenchPage pg : window.getPages()) {
+            if (pg != null) {
+                IWorkbenchPart part = pg.getActivePart();
+                if (part != null) {
+                    return part;
                 }
             }
         }
-
         return null;
     }
 

@@ -128,17 +128,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void windowOpened(IWorkbenchWindow window) {
-                window.removePageListener(pageListener);
-                window.addPageListener(pageListener);
-                window.removePerspectiveListener(perspectiveListener);
-                window.addPerspectiveListener(perspectiveListener);
-                IWorkbenchPage[] pages = window.getPages();
-                if (pages != null) {
-                    for (IWorkbenchPage page : pages) {
-                        page.removePartListener(partListener);
-                        page.addPartListener(partListener);
-                    }
-                }
+                registerListeners(window, pageListener, perspectiveListener, partListener);
             }
 
             @Override
@@ -155,17 +145,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void windowActivated(IWorkbenchWindow window) {
-                window.removePageListener(pageListener);
-                window.addPageListener(pageListener);
-                window.removePerspectiveListener(perspectiveListener);
-                window.addPerspectiveListener(perspectiveListener);
-                IWorkbenchPage[] pages = window.getPages();
-                if (pages != null) {
-                    for (IWorkbenchPage page : pages) {
-                        page.removePartListener(partListener);
-                        page.addPartListener(partListener);
-                    }
-                }
+                registerListeners(window, pageListener, perspectiveListener, partListener);
             }
         };
 
@@ -180,19 +160,34 @@ public class SetupRunnable implements Runnable {
             return;
         }
 
-        PlatformUI.getWorkbench().getActiveWorkbenchWindow().removePageListener(pageListener);
-        PlatformUI.getWorkbench().getActiveWorkbenchWindow().addPageListener(pageListener);
+        IWorkbenchWindow activeWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        activeWindow.removePageListener(pageListener);
+        activeWindow.addPageListener(pageListener);
+        activeWindow.removePerspectiveListener(perspectiveListener);
+        activeWindow.addPerspectiveListener(perspectiveListener);
 
-        PlatformUI.getWorkbench().getActiveWorkbenchWindow().removePerspectiveListener(perspectiveListener);
-        PlatformUI.getWorkbench().getActiveWorkbenchWindow().addPerspectiveListener(perspectiveListener);
-
-        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        IWorkbenchPage page = activeWindow.getActivePage();
         if (page == null) {
             return;
         }
 
         page.removePartListener(partListener);
         page.addPartListener(partListener);
+    }
+
+    private static void registerListeners(IWorkbenchWindow window, IPageListener pageListener,
+            IPerspectiveListener perspectiveListener, IPartListener partListener) {
+        window.removePageListener(pageListener);
+        window.addPageListener(pageListener);
+        window.removePerspectiveListener(perspectiveListener);
+        window.addPerspectiveListener(perspectiveListener);
+        IWorkbenchPage[] pages = window.getPages();
+        if (pages != null) {
+            for (IWorkbenchPage page : pages) {
+                page.removePartListener(partListener);
+                page.addPartListener(partListener);
+            }
+        }
     }
 
     private void checkClassFileAssociation() {

@@ -55,61 +55,11 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     @Override
     public Object execute(final ExecutionEvent event) throws ExecutionException {
         final ISelection selection = HandlerUtil.getCurrentSelection(event);
-        if (!(selection instanceof IStructuredSelection)) {
+        if (!(selection instanceof IStructuredSelection structuredSelection)) {
             return null;
         }
-        final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
-        final List<IPackageFragmentRoot> selections = new ArrayList<>();
-        for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext();) {
-            IJavaElement aSelection = (IJavaElement) iterator.next();
-            if (aSelection instanceof IPackageFragmentRoot pkgRoot) {
-                selections.add(pkgRoot);
-            } else {
-                if (!(aSelection instanceof IJavaProject)) {
-                    continue;
-                }
-                final IJavaProject p = (IJavaProject) aSelection;
-                try {
-                    IPackageFragmentRoot[] packageFragmentRoots;
-                    for (int length = (packageFragmentRoots = p.getPackageFragmentRoots()).length,
-                            i = 0; i < length; ++i) {
-                        final IPackageFragmentRoot pkgRoot2 = packageFragmentRoots[i];
-                        selections.add(pkgRoot2);
-                    }
-                } catch (Exception e) {
-                    Logger.debug(e);
-                }
-            }
-        }
-        final Iterator<IPackageFragmentRoot> it = selections.iterator();
-        while (it.hasNext()) {
-            final IPackageFragmentRoot pkgRoot3 = it.next();
-            try {
-                if (pkgRoot3.getKind() == IPackageFragmentRoot.K_BINARY && pkgRoot3.isArchive()
-                        && (pkgRoot3.getRawClasspathEntry().getEntryKind() == IClasspathEntry.CPE_LIBRARY
-                        || pkgRoot3.getRawClasspathEntry().getEntryKind() == IClasspathEntry.CPE_VARIABLE
-                        || pkgRoot3.getRawClasspathEntry().getEntryKind() == IClasspathEntry.CPE_CONTAINER)) {
-                    final IPath source = pkgRoot3.getSourceAttachmentPath();
-                    if (source == null || source.isEmpty() || !new File(source.toOSString()).exists()) {
-                        continue;
-                    }
-                    File binFile;
-                    if (!pkgRoot3.isExternal()) {
-                        binFile = pkgRoot3.getResource().getLocation().toFile();
-                    } else {
-                        binFile = pkgRoot3.getPath().toFile();
-                    }
-                    if (SourceCheck.isWrongSource(new File(source.toOSString()), binFile)) {
-                        continue;
-                    }
-                    it.remove();
-                } else {
-                    it.remove();
-                }
-            } catch (Exception e2) {
-                Logger.debug(e2);
-            }
-        }
+        final List<IPackageFragmentRoot> selections = collectRoots(structuredSelection);
+        filterAlreadyAttachedRoots(selections);
 
         if (!selections.isEmpty()) {
             final Job job = new Job(Messages.getString("JavaSourceAttacherHandler.Job.Name")) { //$NON-NLS-1$
@@ -125,17 +75,73 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         return null;
     }
 
+    private static List<IPackageFragmentRoot> collectRoots(IStructuredSelection structuredSelection) {
+        final List<IPackageFragmentRoot> selections = new ArrayList<>();
+        for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext();) {
+            IJavaElement aSelection = (IJavaElement) iterator.next();
+            if (aSelection instanceof IPackageFragmentRoot pkgRoot) {
+                selections.add(pkgRoot);
+            } else if (aSelection instanceof IJavaProject p) {
+                addProjectRoots(p, selections);
+            }
+        }
+        return selections;
+    }
+
+    private static void addProjectRoots(IJavaProject project, List<IPackageFragmentRoot> selections) {
+        try {
+            for (IPackageFragmentRoot pkgRoot : project.getPackageFragmentRoots()) {
+                selections.add(pkgRoot);
+            }
+        } catch (Exception e) {
+            Logger.debug(e);
+        }
+    }
+
+    private static void filterAlreadyAttachedRoots(List<IPackageFragmentRoot> selections) {
+        final Iterator<IPackageFragmentRoot> it = selections.iterator();
+        while (it.hasNext()) {
+            final IPackageFragmentRoot pkgRoot = it.next();
+            try {
+                if (isAlreadyAttached(pkgRoot)) {
+                    it.remove();
+                } else if (!isEligibleBinaryArchive(pkgRoot)) {
+                    it.remove();
+                }
+            } catch (Exception e) {
+                Logger.debug(e);
+            }
+        }
+    }
+
+    private static boolean isEligibleBinaryArchive(IPackageFragmentRoot pkgRoot) throws Exception {
+        if (pkgRoot.getKind() != IPackageFragmentRoot.K_BINARY || !pkgRoot.isArchive()) {
+            return false;
+        }
+        int entryKind = pkgRoot.getRawClasspathEntry().getEntryKind();
+        return entryKind == IClasspathEntry.CPE_LIBRARY
+                || entryKind == IClasspathEntry.CPE_VARIABLE
+                || entryKind == IClasspathEntry.CPE_CONTAINER;
+    }
+
+    private static boolean isAlreadyAttached(IPackageFragmentRoot pkgRoot) throws Exception {
+        if (!isEligibleBinaryArchive(pkgRoot)) {
+            return false;
+        }
+        final IPath source = pkgRoot.getSourceAttachmentPath();
+        if (source == null || source.isEmpty() || !new File(source.toOSString()).exists()) {
+            return false;
+        }
+        File binFile = pkgRoot.isExternal() ? pkgRoot.getPath().toFile()
+                : pkgRoot.getResource().getLocation().toFile();
+        return !SourceCheck.isWrongSource(new File(source.toOSString()), binFile);
+    }
+
     public static IStatus updateSourceAttachments(final List<IPackageFragmentRoot> roots,
             final IProgressMonitor monitor) {
 
         for (final IPackageFragmentRoot pkgRoot : roots) {
-            File file;
-
-            if (!pkgRoot.isExternal()) {
-                file = pkgRoot.getResource().getLocation().toFile();
-            } else {
-                file = pkgRoot.getPath().toFile();
-            }
+            File file = getFileForRoot(pkgRoot);
             try {
                 if (roots.size() == 1 && requests.containsKey(file.getCanonicalPath())) {
                     return Status.CANCEL_STATUS;
@@ -152,25 +158,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         libs.addAll(requests.keySet());
         final FinderManager mgr = new FinderManager();
         mgr.findSources(libs, responses);
-        if (monitor == null) {
-            while (mgr.isRunning() && !notProcessedLibs.isEmpty()) {
-                processLibSources(notProcessedLibs, responses);
-                try {
-                    Thread.sleep(1000L);
-                } catch (Exception e2) {
-                    Logger.debug(e2);
-                }
-            }
-        } else {
-            while (!monitor.isCanceled() && mgr.isRunning() && !notProcessedLibs.isEmpty()) {
-                processLibSources(notProcessedLibs, responses);
-                try {
-                    Thread.sleep(1000L);
-                } catch (Exception e2) {
-                    Logger.debug(e2);
-                }
-            }
-        }
+        waitForResults(mgr, monitor, notProcessedLibs, responses);
 
         mgr.cancel();
         if (!notProcessedLibs.isEmpty()) {
@@ -178,15 +166,8 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         }
 
         for (final IPackageFragmentRoot pkgRoot : roots) {
-            File file;
-
-            if (!pkgRoot.isExternal()) {
-                file = pkgRoot.getResource().getLocation().toFile();
-            } else {
-                file = pkgRoot.getPath().toFile();
-            }
+            File file = getFileForRoot(pkgRoot);
             try {
-
                 requests.remove(file.getCanonicalPath());
             } catch (Exception e) {
                 Logger.debug(e);
@@ -196,75 +177,137 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
         return Status.OK_STATUS;
     }
 
+    private static File getFileForRoot(IPackageFragmentRoot pkgRoot) {
+        if (!pkgRoot.isExternal()) {
+            return pkgRoot.getResource().getLocation().toFile();
+        }
+        return pkgRoot.getPath().toFile();
+    }
+
+    private static void waitForResults(FinderManager mgr, IProgressMonitor monitor,
+            Set<String> notProcessedLibs, List<SourceFileResult> responses) {
+        if (monitor == null) {
+            waitWithoutMonitor(mgr, notProcessedLibs, responses);
+        } else {
+            waitWithMonitor(mgr, monitor, notProcessedLibs, responses);
+        }
+    }
+
+    private static void waitWithoutMonitor(FinderManager mgr, Set<String> notProcessedLibs,
+            List<SourceFileResult> responses) {
+        while (mgr.isRunning() && !notProcessedLibs.isEmpty()) {
+            processLibSources(notProcessedLibs, responses);
+            sleepQuietly();
+        }
+    }
+
+    private static void waitWithMonitor(FinderManager mgr, IProgressMonitor monitor,
+            Set<String> notProcessedLibs, List<SourceFileResult> responses) {
+        while (!monitor.isCanceled() && mgr.isRunning() && !notProcessedLibs.isEmpty()) {
+            processLibSources(notProcessedLibs, responses);
+            sleepQuietly();
+        }
+    }
+
+    private static void sleepQuietly() {
+        try {
+            Thread.sleep(1000L);
+        } catch (Exception e) {
+            Logger.debug(e);
+        }
+    }
+
     public static void processLibSources(final Set<String> notProcessedLibs, final List<SourceFileResult> responses) {
 
         while (!responses.isEmpty()) {
             final SourceFileResult response = responses.remove(0);
             final String binFile = response.getBinFile();
-            if (notProcessedLibs.contains(binFile) && response.getSource() != null) {
-                final IPackageFragmentRoot pkgRoot = requests.get(binFile);
-                try {
-                    notProcessedLibs.remove(response.getBinFile());
-                    final String source = response.getSource();
-                    final String tempSource = response.getTempSource();
-                    final String suggestedSourceFileName = response.getSuggestedSourceFileName();
-                    final String downloadUrl = response.getFinder().getDownloadUrl();
-                    if (downloadUrl == null && !(response.getFinder() instanceof SourceCodeFinderFacade)) {
-                        continue;
-                    }
-                    if (!SourceConstants.SourceAttacherDir.exists()) {
-                        SourceConstants.SourceAttacherDir.mkdirs();
-                    }
-
-                    if (!SourceConstants.getSourceTempDir().exists()) {
-                        SourceConstants.getSourceTempDir().mkdirs();
-                    }
-
-                    File sourceTempFile;
-                    File sourceFile;
-                    if (tempSource == null || !new File(tempSource).exists()) {
-                        File tempFile = new File(source);
-
-                        // Always copy the source to the persistent and temp locations
-                        sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
-                        if (!sourceFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceFile);
-                        }
-
-                        sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
-                        if (!sourceTempFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceTempFile);
-                        }
-                        sourceTempFile.deleteOnExit();
-                        if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                            tempFile.delete();
-                        }
-                    } else {
-                        sourceFile = new File(source);
-                        sourceTempFile = new File(tempSource);
-
-                        // Only mark for deletion if not in Maven repo
-                        boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-                        if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
-                            sourceTempFile.deleteOnExit();
-                        }
-                    }
-
-                    if (pkgRoot.getSourceAttachmentPath() != null
-                            && sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
-                        SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
-                    } else if (attachSource(pkgRoot, sourceTempFile)) {
-                        SourceBindingUtil.saveSourceBindingRecord(sourceFile,
-                                HashUtils.sha1Hash(new File(response.getBinFile())), downloadUrl, sourceTempFile);
-                    }
-                } catch (Exception e) {
-                    if (pkgRoot != null && pkgRoot.getResource() != null
-                            && pkgRoot.getResource().getLocation() != null) {
-                        Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
-                    }
+            if (!notProcessedLibs.contains(binFile) || response.getSource() == null) {
+                continue;
+            }
+            final IPackageFragmentRoot pkgRoot = requests.get(binFile);
+            try {
+                processSourceFileResult(response, binFile, pkgRoot, notProcessedLibs);
+            } catch (Exception e) {
+                if (pkgRoot != null && pkgRoot.getResource() != null
+                        && pkgRoot.getResource().getLocation() != null) {
+                    Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
                 }
             }
         }
+    }
+
+    private static void processSourceFileResult(SourceFileResult response, String binFile,
+            IPackageFragmentRoot pkgRoot, Set<String> notProcessedLibs) throws Exception {
+        notProcessedLibs.remove(binFile);
+        final String source = response.getSource();
+        final String tempSource = response.getTempSource();
+        final String suggestedSourceFileName = response.getSuggestedSourceFileName();
+        final String downloadUrl = response.getFinder().getDownloadUrl();
+        if (downloadUrl == null && !(response.getFinder() instanceof SourceCodeFinderFacade)) {
+            return;
+        }
+        ensureSourceDirsExist();
+
+        File[] sourceFiles = resolveSourceFiles(source, tempSource, suggestedSourceFileName);
+        File sourceFile = sourceFiles[0];
+        File sourceTempFile = sourceFiles[1];
+
+        if (pkgRoot.getSourceAttachmentPath() != null
+                && sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
+            SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
+        } else if (attachSource(pkgRoot, sourceTempFile)) {
+            SourceBindingUtil.saveSourceBindingRecord(sourceFile,
+                    HashUtils.sha1Hash(new File(binFile)), downloadUrl, sourceTempFile);
+        }
+    }
+
+    private static void ensureSourceDirsExist() {
+        if (!SourceConstants.SourceAttacherDir.exists()) {
+            SourceConstants.SourceAttacherDir.mkdirs();
+        }
+        if (!SourceConstants.getSourceTempDir().exists()) {
+            SourceConstants.getSourceTempDir().mkdirs();
+        }
+    }
+
+    private static File[] resolveSourceFiles(String source, String tempSource, String suggestedSourceFileName)
+            throws Exception {
+        if (tempSource == null || !new File(tempSource).exists()) {
+            return copyFromTempFile(source, suggestedSourceFileName);
+        }
+        return useExistingTempSource(source, tempSource, suggestedSourceFileName);
+    }
+
+    private static File[] copyFromTempFile(String source, String suggestedSourceFileName) throws Exception {
+        File tempFile = new File(source);
+
+        File sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
+        if (!sourceFile.exists()) {
+            FileUtils.copyFile(tempFile, sourceFile);
+        }
+
+        File sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
+        if (!sourceTempFile.exists()) {
+            FileUtils.copyFile(tempFile, sourceTempFile);
+        }
+        sourceTempFile.deleteOnExit();
+        if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
+            tempFile.delete();
+        }
+        return new File[] { sourceFile, sourceTempFile };
+    }
+
+    private static File[] useExistingTempSource(String source, String tempSource, String suggestedSourceFileName) {
+        File sourceFile = new File(source);
+        File sourceTempFile = new File(tempSource);
+
+        boolean isInMavenRepo = sourceTempFile.getAbsolutePath()
+                .startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+        if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+            sourceTempFile.deleteOnExit();
+        }
+        return new File[] { sourceFile, sourceTempFile };
     }
 
     public static boolean attachSource(final IPackageFragmentRoot root, final File sourcePath) {

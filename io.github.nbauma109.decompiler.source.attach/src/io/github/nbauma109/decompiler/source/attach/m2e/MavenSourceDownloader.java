@@ -42,73 +42,80 @@ public class MavenSourceDownloader {
             IJavaElement element = input.getClassFile();
             while (element.getParent() != null) {
                 element = element.getParent();
-                if ((element instanceof IPackageFragmentRoot)) {
-                    root = (IPackageFragmentRoot) element;
-                    if (root.getPath() == null || root.getPath().toOSString() == null) {
-                        continue;
+                if (element instanceof IPackageFragmentRoot pkgRoot) {
+                    if (scheduleDownloadIfNeeded(buildpathManager, pkgRoot)) {
+                        break;
                     }
-                    if (libraries.contains(root.getPath().toOSString())) {
-                        continue;
-                    }
-                    libraries.add(root.getPath().toOSString());
-                    if (!SourceAttachUtil.isMavenLibrary(root)) {
-                        continue;
-                    }
-                    final IPath sourcePath = root.getSourceAttachmentPath();
-                    if (sourcePath != null && sourcePath.toOSString() != null) {
-                        File tempfile = new File(sourcePath.toOSString());
-                        if (tempfile.exists() && tempfile.isFile()) {
-                            break;
-                        }
-                    }
-                    buildpathManager.scheduleDownload(root, true, false);
-
-                    Thread thread = new Thread() {
-
-                        @Override
-                        public void run() {
-                            if (root instanceof PackageFragmentRoot) {
-                                long time = System.currentTimeMillis();
-                                PackageFragmentRoot fRoot = (PackageFragmentRoot) root;
-                                while (true) {
-                                    if (System.currentTimeMillis() - time > 60 * 1000) {
-                                        new AttachSourceHandler().execute(root, true);
-                                        break;
-                                    }
-                                    try {
-                                        if (fRoot.getSourceAttachmentPath() != null
-                                                && fRoot.getSourceAttachmentPath().toFile().exists()) {
-                                            SourceAttachUtil.updateSourceAttachStatus(fRoot);
-                                            break;
-                                        }
-                                    } catch (JavaModelException e) {
-                                        Logger.debug(e);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    };
-                    thread.setDaemon(true);
-                    thread.start();
                 }
             }
         } catch (JavaModelException e) {
             Logger.debug(e);
-            if (root != null) {
-                final List<IPackageFragmentRoot> selections = new ArrayList<IPackageFragmentRoot>();
-                selections.add(root);
-                Thread thread = new Thread() {
+            scheduleAttachSourceFallback();
+        }
+    }
 
-                    @Override
-                    public void run() {
-                        JavaSourceAttacherHandler.updateSourceAttachments(selections, null);
-                    }
-                };
-                thread.setDaemon(true);
-                thread.start();
+    private boolean scheduleDownloadIfNeeded(IClasspathManager buildpathManager, IPackageFragmentRoot pkgRoot)
+            throws JavaModelException {
+        root = pkgRoot;
+        if (root.getPath() == null || root.getPath().toOSString() == null) {
+            return false;
+        }
+        if (libraries.contains(root.getPath().toOSString())) {
+            return false;
+        }
+        libraries.add(root.getPath().toOSString());
+        if (!SourceAttachUtil.isMavenLibrary(root)) {
+            return false;
+        }
+        final IPath sourcePath = root.getSourceAttachmentPath();
+        if (sourcePath != null && sourcePath.toOSString() != null) {
+            File tempfile = new File(sourcePath.toOSString());
+            if (tempfile.exists() && tempfile.isFile()) {
+                return true;
             }
         }
+        buildpathManager.scheduleDownload(root, true, false);
+        startSourceDownloadWatchThread(root);
+        return false;
+    }
+
+    private static void startSourceDownloadWatchThread(IPackageFragmentRoot fragmentRoot) {
+        Thread thread = new Thread(() -> waitForSourceAndAttach(fragmentRoot));
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private static void waitForSourceAndAttach(IPackageFragmentRoot fragmentRoot) {
+        if (!(fragmentRoot instanceof PackageFragmentRoot fRoot)) {
+            return;
+        }
+        long time = System.currentTimeMillis();
+        while (true) {
+            if (System.currentTimeMillis() - time > 60 * 1000) {
+                new AttachSourceHandler().execute(fragmentRoot, true);
+                break;
+            }
+            try {
+                if (fRoot.getSourceAttachmentPath() != null && fRoot.getSourceAttachmentPath().toFile().exists()) {
+                    SourceAttachUtil.updateSourceAttachStatus(fRoot);
+                    break;
+                }
+            } catch (JavaModelException e) {
+                Logger.debug(e);
+                break;
+            }
+        }
+    }
+
+    private void scheduleAttachSourceFallback() {
+        if (root == null) {
+            return;
+        }
+        final List<IPackageFragmentRoot> selections = new ArrayList<>();
+        selections.add(root);
+        Thread thread = new Thread(() -> JavaSourceAttacherHandler.updateSourceAttachments(selections, null));
+        thread.setDaemon(true);
+        thread.start();
     }
 
 }
