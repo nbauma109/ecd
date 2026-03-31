@@ -84,6 +84,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
 
     public static final String PUBLIC_REPO_MAVEN_CENTRAL = "PUBLIC_REPO_MAVEN_CENTRAL"; //$NON-NLS-1$
     public static final String PUBLIC_REPO_SONATYPE_CENTRAL = "PUBLIC_REPO_SONATYPE_CENTRAL"; //$NON-NLS-1$
+    public static final String PUBLIC_REPO_JITPACK = "PUBLIC_REPO_JITPACK"; //$NON-NLS-1$
     public static final String PUBLIC_REPO_CLOUDERA = "PUBLIC_REPO_CLOUDERA"; //$NON-NLS-1$
     public static final String PUBLIC_REPO_MAVEN_ALFRESCO = "PUBLIC_REPO_MAVEN_ALFRESCO"; //$NON-NLS-1$
     public static final String PUBLIC_REPO_APACHE_ORG = "PUBLIC_REPO_APACHE_ORG"; //$NON-NLS-1$

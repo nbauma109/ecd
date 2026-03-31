@@ -35,6 +35,9 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_SONATYPE_CENTRAL)) {
             finders.add(new SonatypeSourceCodeFinder());
         }
+        if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_JITPACK)) {
+            finders.add(new JitPackSourceCodeFinder());
+        }
         if (prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_GRAILS_ORG)) {
             finders.add(new ArtifactorySourceCodeFinder(HTTPS_REPO_GRAILS_ORG_GRAILS));
         }
