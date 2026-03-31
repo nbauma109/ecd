@@ -12,6 +12,8 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -221,10 +223,28 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     private Set<String> libraries = new ConcurrentSkipListSet<>();
 
     public Thread attachSource(IPackageFragmentRoot library, boolean force) {
+        return attachSources(List.of(library), force);
+    }
+
+    public Thread attachSources(List<IPackageFragmentRoot> roots, boolean force) {
         final IAttachSourceHandler attachSourceAdapter = getAttachSourceHandler();
-        if (attachSourceAdapter != null && (!libraries.contains(library.getPath().toOSString()) || force)) {
-            libraries.add(library.getPath().toOSString());
-            return attachSourceAdapter.execute(library, force);
+        if (attachSourceAdapter == null || roots == null || roots.isEmpty()) {
+            return null;
+        }
+
+        List<IPackageFragmentRoot> rootsToAttach = new ArrayList<>();
+        for (IPackageFragmentRoot root : roots) {
+            if (root == null || root.getPath() == null) {
+                continue;
+            }
+            String libraryPath = root.getPath().toOSString();
+            if (!libraries.contains(libraryPath) || force) {
+                libraries.add(libraryPath);
+                rootsToAttach.add(root);
+            }
+        }
+        if (!rootsToAttach.isEmpty()) {
+            return attachSourceAdapter.execute(rootsToAttach, force);
         }
         return null;
     }

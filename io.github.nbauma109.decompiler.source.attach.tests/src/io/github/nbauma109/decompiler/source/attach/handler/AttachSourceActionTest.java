@@ -16,6 +16,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -143,6 +145,34 @@ public class AttachSourceActionTest {
         assertTrue(candidates.matches(attachedPath.toFile()));
     }
 
+    @Test
+    public void testRunWithMultipleRootSelectionAttachesSourceToAll() throws IOException, CoreException, InterruptedException {
+        File jar1 = resolveTestJar();
+        File jar2 = createJarCopy(jar1, "commons-io-copy-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
+        SourceJarCandidates candidates1 = prepareSourceJarCandidates(jar1);
+        SourceJarCandidates candidates2 = prepareSourceJarCandidates(jar2);
+
+        JavaProjectSetup setup1 = createJavaProjectWithLibrary("attach-source-action-multi-1-" + UUID.randomUUID(), jar1); //$NON-NLS-1$
+        JavaProjectSetup setup2 = createJavaProjectWithLibrary("attach-source-action-multi-2-" + UUID.randomUUID(), jar2); //$NON-NLS-1$
+        IPackageFragmentRoot root1 = setup1.root();
+        IPackageFragmentRoot root2 = setup2.root();
+
+        List<Object> selection = new ArrayList<>();
+        selection.add(root1);
+        selection.add(root2);
+
+        new AttachSourceAction(selection).run();
+
+        IPath attachedPath1 = waitForSourceAttachment(root1, 20, 250);
+        IPath attachedPath2 = waitForSourceAttachment(root2, 20, 250);
+        assertNotNull(attachedPath1);
+        assertNotNull(attachedPath2);
+        assertTrue(attachedPath1.toFile().exists());
+        assertTrue(attachedPath2.toFile().exists());
+        assertTrue(candidates1.matches(attachedPath1.toFile()));
+        assertTrue(candidates2.matches(attachedPath2.toFile()));
+    }
+
     private static IPath waitForSourceAttachment(IPackageFragmentRoot root, int attempts, long delayMs)
             throws InterruptedException, JavaModelException {
         IPath attached = root.getSourceAttachmentPath();
@@ -268,6 +298,14 @@ public class AttachSourceActionTest {
         if (candidate.exists() && candidate.isFile() && candidate.length() > 0) {
             candidates.add(candidate);
         }
+    }
+
+    private File createJarCopy(File binaryJar, String copyName) throws IOException {
+        File copy = new File(new File("target"), copyName); //$NON-NLS-1$
+        ensureParentDirectory(copy);
+        Files.copy(binaryJar.toPath(), copy.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        filesToDelete.add(copy);
+        return copy;
     }
 
     private static void ensureParentDirectory(File file) throws IOException {

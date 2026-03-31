@@ -8,11 +8,17 @@
 
 package io.github.nbauma109.decompiler.source.attach;
 
+import java.util.List;
+
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 
 public interface IAttachSourceHandler {
 
-    Thread execute(IPackageFragmentRoot library, boolean showUI);
+    default Thread execute(IPackageFragmentRoot library, boolean showUI) {
+        return execute(List.of(library), showUI);
+    }
+
+    Thread execute(List<IPackageFragmentRoot> libraries, boolean showUI);
 
     boolean syncAttachSource(IPackageFragmentRoot root);
 

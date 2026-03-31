@@ -359,25 +359,32 @@ public class SourceAttachUtil {
     }
 
     public static boolean needDownloadSource(List<?> selection) {
-        IPackageFragmentRoot root = null;
+        boolean needsDownload = false;
         for (int i = 0; i < selection.size(); i++) {
-            IPackageFragmentRoot packRoot = null;
             Object obj = selection.get(i);
-            if (obj instanceof IPackageFragment packageFragment) {
-                packRoot = (IPackageFragmentRoot) packageFragment.getParent();
-            } else if (obj instanceof IClassFile classFile) {
-                packRoot = (IPackageFragmentRoot) classFile.getParent().getParent();
-            } else if (obj instanceof IPackageFragmentRoot) {
-                packRoot = (IPackageFragmentRoot) obj;
-            } else {
-                return false;
-            }
+            IPackageFragmentRoot root = toPackageFragmentRoot(obj);
             if (root == null) {
-                root = packRoot;
-            } else if (root != packRoot) {
                 return false;
             }
+            needsDownload |= needsDownloadSource(root);
         }
+        return needsDownload;
+    }
+
+    private static IPackageFragmentRoot toPackageFragmentRoot(Object obj) {
+        if (obj instanceof IPackageFragment packageFragment) {
+            return (IPackageFragmentRoot) packageFragment.getParent();
+        }
+        if (obj instanceof IClassFile classFile) {
+            return (IPackageFragmentRoot) classFile.getParent().getParent();
+        }
+        if (obj instanceof IPackageFragmentRoot packageFragmentRoot) {
+            return packageFragmentRoot;
+        }
+        return null;
+    }
+
+    private static boolean needsDownloadSource(IPackageFragmentRoot root) {
         try {
             if (root != null && root.getSourceAttachmentPath() != null
                     && root.getSourceAttachmentPath().toFile().exists()

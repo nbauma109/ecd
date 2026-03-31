@@ -35,8 +35,7 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
         final ISelectionService selService = serviceLocator.getService(ISelectionService.class);
         final List selectedJars = getSelectedElements(selService, IPackageFragmentRoot.class);
-        boolean attachRoot = (selectedJars.size() == 1);
-        if (attachRoot) {
+        if (!selectedJars.isEmpty()) {
             additions.addContributionItem(new ActionContributionItem(new AttachSourceAction(selectedJars)),
                     new Expression() {
 
@@ -51,10 +50,6 @@ public class AttachSourceContributionFactory extends ExtensionContributionFactor
                     return EvaluationResult.FALSE;
                 }
             });
-            return;
-        }
-
-        if (selectedJars.size() > 1) {
             return;
         }
 

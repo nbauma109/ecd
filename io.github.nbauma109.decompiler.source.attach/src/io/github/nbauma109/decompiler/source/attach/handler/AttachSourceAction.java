@@ -8,7 +8,10 @@
 
 package io.github.nbauma109.decompiler.source.attach.handler;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
@@ -33,28 +36,11 @@ public class AttachSourceAction extends Action {
 
     @Override
     public void run() {
-        if (selection == null || selection.isEmpty()) {
+        List<IPackageFragmentRoot> selectedRoots = getSelectedRoots();
+        if (selectedRoots.isEmpty()) {
             return;
         }
-
-        Object firstElement = selection.get(0);
-        if (selection.size() == 1 && firstElement instanceof IClassFile classFile) {
-            IPackageFragmentRoot root = (IPackageFragmentRoot) classFile.getParent().getParent();
-            JavaDecompilerPlugin.getDefault().attachSource(root, true);
-        } else if (selection.size() == 1 && firstElement instanceof IPackageFragmentRoot root) {
-            JavaDecompilerPlugin.getDefault().attachSource(root, true);
-        } else {
-            IPackageFragmentRoot root = null;
-            if (firstElement instanceof IClassFile iClassFile) {
-                root = (IPackageFragmentRoot) iClassFile.getParent().getParent();
-            } else if (firstElement instanceof IPackageFragment iPackageFragment) {
-                root = (IPackageFragmentRoot) iPackageFragment.getParent();
-            }
-            if (root == null) {
-                return;
-            }
-            JavaDecompilerPlugin.getDefault().attachSource(root, true);
-        }
+        JavaDecompilerPlugin.getDefault().attachSources(selectedRoots, true);
     }
 
     @Override
@@ -62,4 +48,31 @@ public class AttachSourceAction extends Action {
         return selection != null;
     }
 
+    private List<IPackageFragmentRoot> getSelectedRoots() {
+        Map<String, IPackageFragmentRoot> roots = new LinkedHashMap<>();
+        if (selection == null) {
+            return new ArrayList<>(roots.values());
+        }
+        for (Object element : selection) {
+            IPackageFragmentRoot root = toPackageFragmentRoot(element);
+            if (root == null || root.getPath() == null) {
+                continue;
+            }
+            roots.putIfAbsent(root.getPath().toOSString(), root);
+        }
+        return new ArrayList<>(roots.values());
+    }
+
+    private IPackageFragmentRoot toPackageFragmentRoot(Object element) {
+        if (element instanceof IClassFile classFile) {
+            return (IPackageFragmentRoot) classFile.getParent().getParent();
+        }
+        if (element instanceof IPackageFragmentRoot root) {
+            return root;
+        }
+        if (element instanceof IPackageFragment packageFragment) {
+            return (IPackageFragmentRoot) packageFragment.getParent();
+        }
+        return null;
+    }
 }

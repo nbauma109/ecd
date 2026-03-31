@@ -24,13 +24,17 @@ import io.github.nbauma109.decompiler.util.Logger;
 public class AttachSourceHandler implements IAttachSourceHandler {
 
     @Override
-    public Thread execute(final IPackageFragmentRoot library, final boolean showUI) {
-        if (!showUI && SourceAttachUtil.isMavenLibrary(library) && SourceAttachUtil.enableMavenDownload()) {
-            return null;
-        }
-
+    public Thread execute(final List<IPackageFragmentRoot> libraries, final boolean showUI) {
         final List<IPackageFragmentRoot> selections = new ArrayList<>();
-        selections.add(library);
+        for (IPackageFragmentRoot library : libraries) {
+            if (library == null) {
+                continue;
+            }
+            if (!showUI && SourceAttachUtil.isMavenLibrary(library) && SourceAttachUtil.enableMavenDownload()) {
+                continue;
+            }
+            selections.add(library);
+        }
         if (!selections.isEmpty()) {
             if (!showUI) {
                 Thread thread = new Thread() {
