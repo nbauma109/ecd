@@ -13,6 +13,8 @@ import java.util.List;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.ui.ISharedImages;
+import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.action.Action;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.source.attach.i18n.Messages;
@@ -24,6 +26,8 @@ public class AttachSourceAction extends Action {
 
     public AttachSourceAction(List selection) {
         super(Messages.getString("AttachSourceAction.Action.Name")); //$NON-NLS-1$
+        this.setImageDescriptor(
+                JavaUI.getSharedImages().getImageDescriptor(ISharedImages.IMG_OBJS_EXTERNAL_ARCHIVE_WITH_SOURCE));
         this.selection = selection;
     }
 
