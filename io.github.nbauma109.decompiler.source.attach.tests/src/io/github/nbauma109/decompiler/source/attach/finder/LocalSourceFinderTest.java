@@ -10,9 +10,12 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
 
 public class LocalSourceFinderTest {
 
@@ -23,16 +26,12 @@ public class LocalSourceFinderTest {
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "local-source-finder-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = SourceAttachTestSupport.createTargetTempDir("local-source-finder-tests"); //$NON-NLS-1$
     }
 
     @After
     public void tearDown() {
-        deleteRecursively(testRoot);
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -79,20 +78,5 @@ public class LocalSourceFinderTest {
         finder.find(binJar.getAbsolutePath(), IGNORED_SHA1, results);
 
         assertTrue(results.isEmpty());
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

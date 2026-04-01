@@ -43,6 +43,9 @@ public class SourceAttachUtil {
     private static final String JAR_REGEX = "(?i)(\\-)*(\\d)*(\\.)jar";
     private static final String ZIP_REGEX = "(?i)(\\-)*(\\d)*(\\.)zip";
 
+    private SourceAttachUtil() {
+    }
+
     private static File getBinFile(IPackageFragmentRoot root) {
         File binFile;
         if (!root.isExternal()) {
@@ -97,62 +100,78 @@ public class SourceAttachUtil {
         try {
             String sha = HashUtils.sha1Hash(getBinFile(root));
             String[] files = SourceBindingUtil.getSourceFileBySha(sha);
-            if (files != null && files[0] != null) {
-                File sourceFile = new File(files[0]);
-                if (!sourceFile.exists()) {
-                    return false;
-                }
-                File tempFile = new File(files[1]);
-                if (files[1] != null && tempFile.exists()) {
-                    JavaSourceAttacherHandler.attachSource(root, tempFile);
-                    SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
-
-                    if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
-                    {
-                        refreshJRELibrarySources(root);
-                    }
-
-                    if (sourceFile.getName().startsWith("eclipse_")) //$NON-NLS-1$
-                    {
-                        List<String> packages = getEclipsePlugins(sourceFile);
-                        refreshEclipseLibrarySources(root, packages);
-                    }
-
-                    return true;
-                }
-                String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
-                tempFile = new File(SourceConstants.getSourceTempDir(),
-                        sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
-                        .replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
-                FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
-                JavaSourceAttacherHandler.attachSource(root, tempFile);
-
-                // Only mark for deletion if not in Maven repo
-                boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-                if (!isInMavenRepo) {
-                    tempFile.deleteOnExit();
-                }
-
-                SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
-
-                if (sourceFile.getName().startsWith("jre_")) //$NON-NLS-1$
-                {
-                    refreshJRELibrarySources(root);
-                }
-
-                if (sourceFile.getName().startsWith("eclipse_")) //$NON-NLS-1$
-                {
-                    List<String> packages = getEclipsePlugins(sourceFile);
-                    refreshEclipseLibrarySources(root, packages);
-                }
-
-                return true;
+            if (files == null || files[0] == null) {
+                return false;
             }
 
+            File sourceFile = new File(files[0]);
+            if (!sourceFile.exists()) {
+                return false;
+            }
+
+            return attachSourceToRoot(root, sourceFile, files, sha);
         } catch (Exception e) {
             Logger.debug(e);
         }
         return false;
+    }
+
+    private static boolean attachSourceToRoot(IPackageFragmentRoot root, File sourceFile, String[] files, String sha) {
+        if (files != null && files.length > 1 && files[1] != null) {
+            File tempFile = new File(files[1]);
+            if (tempFile.exists()) {
+                return attachExistingTempFile(root, sourceFile, tempFile, sha);
+            }
+        }
+        return createAndAttachTempFile(root, sourceFile, sha);
+    }
+
+    private static boolean attachExistingTempFile(IPackageFragmentRoot root, File sourceFile, File tempFile, String sha) {
+        try {
+            JavaSourceAttacherHandler.attachSource(root, tempFile);
+            SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+
+            refreshRelatedLibrarySources(root, sourceFile);
+            return true;
+        } catch (Exception e) {
+            Logger.debug(e);
+            return false;
+        }
+    }
+
+    private static boolean createAndAttachTempFile(IPackageFragmentRoot root, File sourceFile, String sha) {
+        try {
+            String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
+            File tempFile = new File(SourceConstants.getSourceTempDir(),
+                    sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
+                    .replaceAll(ZIP_REGEX, suffix)); // $NON-NLS-1$
+            FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
+            JavaSourceAttacherHandler.attachSource(root, tempFile);
+
+            // Only mark for deletion if not in Maven repo
+            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+            if (!isInMavenRepo) {
+                tempFile.deleteOnExit();
+            }
+
+            SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+            refreshRelatedLibrarySources(root, sourceFile);
+            return true;
+        } catch (Exception e) {
+            Logger.debug(e);
+            return false;
+        }
+    }
+
+    private static void refreshRelatedLibrarySources(IPackageFragmentRoot root, File sourceFile) throws IOException {
+        if (sourceFile.getName().startsWith("jre_")) { //$NON-NLS-1$
+            refreshJRELibrarySources(root);
+        }
+
+        if (sourceFile.getName().startsWith("eclipse_")) { //$NON-NLS-1$
+            List<String> packages = getEclipsePlugins(sourceFile);
+            refreshEclipseLibrarySources(root, packages);
+        }
     }
 
     private static List<String> getEclipsePlugins(final File file) throws IOException {

@@ -19,6 +19,9 @@ import java.security.NoSuchAlgorithmException;
 public class HashUtils {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
+    private HashUtils() {
+    }
+
     public static String sha1Hash(File file) {
         if (file != null) {
             try (InputStream fis = new FileInputStream(file)) {

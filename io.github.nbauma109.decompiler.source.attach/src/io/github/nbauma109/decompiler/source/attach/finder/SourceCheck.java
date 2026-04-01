@@ -18,6 +18,9 @@ import java.util.zip.ZipFile;
 
 public class SourceCheck {
 
+    private SourceCheck() {
+    }
+
     public static boolean isWrongSource(final File srcFile, final File binFile) throws IOException {
         final List<String> classnames = getJavaFileNames(binFile, ".class"); //$NON-NLS-1$
         final List<String> javanames = getJavaFileNames(srcFile, ".java"); //$NON-NLS-1$

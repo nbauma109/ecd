@@ -11,7 +11,7 @@ public class JitPackSourceCodeFinderTest extends AbstractSourceCodeFinderTests {
 
     @Test
     public void testFind() throws IOException {
-        testFind(ASCII_TABLE_GAV_URL, null, ASCII_TABLE_FILE_NAME);
+        testFind(null, ASCII_TABLE_GAV_URL, ASCII_TABLE_FILE_NAME);
     }
 
     @Override

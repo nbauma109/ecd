@@ -12,6 +12,9 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 
 public class Logger {
 
+    private Logger() {
+    }
+
     public static void debug(String message, Throwable throwable) {
         try {
             if (message != null) {

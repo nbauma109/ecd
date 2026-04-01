@@ -11,9 +11,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 
 public class HashUtilsTest {
 
@@ -21,17 +24,13 @@ public class HashUtilsTest {
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "hashutils-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = DecompilerTestSupport.createTargetTempDir("hashutils-tests"); //$NON-NLS-1$
     }
 
     @After
     public void tearDown() {
         if (testRoot != null) {
-            deleteRecursively(testRoot);
+            FileUtils.deleteQuietly(testRoot);
         }
     }
 
@@ -60,20 +59,5 @@ public class HashUtilsTest {
         }
 
         throw new AssertionError("Expected UncheckedIOException to be thrown");
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

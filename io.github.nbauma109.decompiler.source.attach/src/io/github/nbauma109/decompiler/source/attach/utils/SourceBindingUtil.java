@@ -25,6 +25,9 @@ public class SourceBindingUtil {
     private static final String SOURCE = "source";
     private static final File sourceBindingJsonFile = new File(SourceConstants.SourceAttacherDir, "source.json"); //$NON-NLS-1$
 
+    private SourceBindingUtil() {
+    }
+
     private static synchronized JsonObject loadSourceBindingJson() {
         if (sourceBindingJsonFile.exists()) {
             try {

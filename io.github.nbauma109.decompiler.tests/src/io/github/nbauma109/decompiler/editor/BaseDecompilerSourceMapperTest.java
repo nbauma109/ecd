@@ -123,21 +123,21 @@ public class BaseDecompilerSourceMapperTest {
         assertEquals("class A {}\n"
                 + "\n"
                 + "/*\n"
-                + "	DECOMPILATION REPORT\n"
+                + "\tDECOMPILATION REPORT\n"
                 + "\n"
-                + "	Decompiled from: path/to/file\n"
-                + "	Total time: "
+                + "\tDecompiled from: path/to/file\n"
+                + "\tTotal time: "
                 + vineflower.getDecompilationTime()
                 + " ms\n"
-                + "	\n"
-                + "	Decompiled with "
+                + "\t\n"
+                + "\tDecompiled with "
                 + vineflower.getDecompilerName()
                 + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
                 + TRANSFORMER_API_LABEL
                 + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
-                + "	Parse and realign phase failed with ParseException. Please report issue to https://github.com/nbauma109/jd-util/issues.\n"
+                + "\tParse and realign phase failed with ParseException. Please report issue to https://github.com/nbauma109/jd-util/issues.\n"
                 + "*/", source.toString());
     }
 
@@ -149,29 +149,29 @@ public class BaseDecompilerSourceMapperTest {
         File file = new File(HELLO_WORLD_CLASS_PATH);
         String decompiledOutput = vineflower.decompile(file);
         assertEquals("public class HelloWorld {\r\n"
-                + "	public static void main(String[] args) {\r\n"
-                + "		System.out.println(\"Hello World!\");// 3\r\n"
-                + "	}// 4\r\n"
+                + "\tpublic static void main(String[] args) {\r\n"
+                + "\t\tSystem.out.println(\"Hello World!\");// 3\r\n"
+                + "\t}// 4\r\n"
                 + "}\n"
                 + "\n"
                 + "/*\n"
-                + "	DECOMPILATION REPORT\n"
+                + "\tDECOMPILATION REPORT\n"
                 + "\n"
-                + "	Decompiled from: "
+                + "\tDecompiled from: "
                 + file.getAbsolutePath()
                 + "\n"
-                + "	Total time: "
+                + "\tTotal time: "
                 + vineflower.getDecompilationTime()
                 + " ms\n"
-                + "	\n"
-                + "	Decompiled with "
+                + "\t\n"
+                + "\tDecompiled with "
                 + vineflower.getDecompilerName()
                 + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
                 + TRANSFORMER_API_LABEL
                 + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
-                + "	Realignment is turned off.\n"
+                + "\tRealignment is turned off.\n"
                 + "*/", decompiledOutput);
     }
 
@@ -190,23 +190,23 @@ public class BaseDecompilerSourceMapperTest {
                 + "\n"
                 + "\n"
                 + "/*\n"
-                + "	DECOMPILATION REPORT\n"
+                + "\tDECOMPILATION REPORT\n"
                 + "\n"
-                + "	Decompiled from: "
+                + "\tDecompiled from: "
                 + file.getAbsolutePath()
                 + "\n"
-                + "	Total time: "
+                + "\tTotal time: "
                 + vineflower.getDecompilationTime()
                 + " ms\n"
-                + "	\n"
-                + "	Decompiled with "
+                + "\t\n"
+                + "\tDecompiled with "
                 + vineflower.getDecompilerName()
                 + VERSION_SEPARATOR
                 + vineflower.getDecompilerVersion()
                 + TRANSFORMER_API_LABEL
                 + vineflower.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
-                + "	Parsed and realigned with jd-util "
+                + "\tParsed and realigned with jd-util "
                 + vineflower.getVersion("JD-Util-Version")
                 + " (https://github.com/nbauma109/jd-util).\n"
                 + "*/", decompiledOutput);
@@ -227,16 +227,16 @@ public class BaseDecompilerSourceMapperTest {
                 + "\n"
                 + "\n"
                 + "/*\n"
-                + "	DECOMPILATION REPORT\n"
+                + "\tDECOMPILATION REPORT\n"
                 + "\n"
-                + "	Decompiled from: "
+                + "\tDecompiled from: "
                 + file.getAbsolutePath()
                 + "\n"
-                + "	Total time: "
+                + "\tTotal time: "
                 + jdCore.getDecompilationTime()
                 + " ms\n"
-                + "	\n"
-                + "	Decompiled and natively realigned with "
+                + "\t\n"
+                + "\tDecompiled and natively realigned with "
                 + jdCore.getDecompilerName()
                 + VERSION_SEPARATOR
                 + jdCore.getDecompilerVersion()

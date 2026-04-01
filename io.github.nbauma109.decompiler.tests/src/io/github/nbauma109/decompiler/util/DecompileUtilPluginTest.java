@@ -23,6 +23,7 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IProject;
@@ -63,7 +64,7 @@ public class DecompileUtilPluginTest {
     @After
     public void tearDown() throws CoreException, InterruptedException {
         deleteProjectIfPresent();
-        deleteRecursively(testRootDirectory);
+        FileUtils.deleteQuietly(testRootDirectory);
         waitForWorkspaceJobs();
     }
 
@@ -271,24 +272,6 @@ public class DecompileUtilPluginTest {
         }
         project = null;
     }
-
-    private static void deleteRecursively(File root) {
-        if (root == null || !root.exists()) {
-            return;
-        }
-        if (root.isFile()) {
-            root.delete();
-            return;
-        }
-        File[] children = root.listFiles();
-        if (children != null) {
-            for (File child : children) {
-                deleteRecursively(child);
-            }
-        }
-        root.delete();
-    }
-
     private static void waitForWorkspaceJobs() throws InterruptedException {
         Job.getJobManager().join(ResourcesPlugin.FAMILY_AUTO_BUILD, new NullProgressMonitor());
         Job.getJobManager().join(ResourcesPlugin.FAMILY_MANUAL_BUILD, new NullProgressMonitor());
