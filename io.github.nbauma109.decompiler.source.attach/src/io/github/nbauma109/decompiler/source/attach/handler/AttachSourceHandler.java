@@ -27,13 +27,9 @@ public class AttachSourceHandler implements IAttachSourceHandler {
     public Thread execute(final List<IPackageFragmentRoot> libraries, final boolean showUI) {
         final List<IPackageFragmentRoot> selections = new ArrayList<>();
         for (IPackageFragmentRoot library : libraries) {
-            if (library == null) {
-                continue;
+            if (shouldIncludeLibrary(library, showUI)) {
+                selections.add(library);
             }
-            if (!showUI && SourceAttachUtil.isMavenLibrary(library) && SourceAttachUtil.enableMavenDownload()) {
-                continue;
-            }
-            selections.add(library);
         }
         if (!selections.isEmpty()) {
             if (!showUI) {
@@ -60,6 +56,10 @@ public class AttachSourceHandler implements IAttachSourceHandler {
         }
         return null;
 
+    }
+
+    private static boolean shouldIncludeLibrary(IPackageFragmentRoot library, boolean showUI) {
+        return library != null && (showUI || !SourceAttachUtil.isMavenLibrary(library) || !SourceAttachUtil.enableMavenDownload());
     }
 
     @Override
