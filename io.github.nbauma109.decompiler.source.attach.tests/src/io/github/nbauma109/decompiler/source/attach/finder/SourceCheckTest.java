@@ -11,9 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
 
 public class SourceCheckTest {
 
@@ -24,17 +27,13 @@ public class SourceCheckTest {
 
     @Before
     public void setUp() {
-        File targetDir = new File("target");
-        assertTrue(targetDir.exists() || targetDir.mkdirs());
-
-        testRoot = new File(targetDir, "sourcecheck-tests" + File.separator + System.nanoTime());
-        assertTrue(testRoot.mkdirs());
+        testRoot = SourceAttachTestSupport.createTargetTempDir("sourcecheck-tests"); //$NON-NLS-1$
     }
 
     @After
     public void tearDown() {
         if (testRoot != null) {
-            deleteRecursively(testRoot);
+            FileUtils.deleteQuietly(testRoot);
         }
     }
 
@@ -73,20 +72,5 @@ public class SourceCheckTest {
             zos.closeEntry();
         }
         return zip;
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

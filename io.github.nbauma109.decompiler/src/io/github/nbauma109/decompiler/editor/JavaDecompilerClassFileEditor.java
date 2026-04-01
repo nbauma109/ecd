@@ -93,6 +93,10 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         this.decompilerType = decompilerType;
     }
 
+    public void setEditorTitleImage(Image image) {
+        super.setTitleImage(image);
+    }
+
     private boolean doOpenBuffer(IEditorInput input, boolean force) throws JavaModelException {
         IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         return doOpenBuffer(input, prefs.getString(JavaDecompilerPlugin.DECOMPILER_TYPE), force);

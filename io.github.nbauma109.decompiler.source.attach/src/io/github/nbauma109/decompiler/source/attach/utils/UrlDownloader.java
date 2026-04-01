@@ -75,10 +75,8 @@ public class UrlDownloader {
             // Create parent directories if needed
             if (targetFile != null) {
                 final File parent = file.getParentFile();
-                if (parent != null && !parent.exists()) {
-                    if (!parent.mkdirs() && !parent.exists()) {
-                        throw new IOException("Failed to create directory: " + parent);
-                    }
+                if ((parent != null && !parent.exists()) && (!parent.mkdirs() && !parent.exists())) {
+                    throw new IOException("Failed to create directory: " + parent);
                 }
             }
             final URLConnection conn = new URL(url).openConnection();

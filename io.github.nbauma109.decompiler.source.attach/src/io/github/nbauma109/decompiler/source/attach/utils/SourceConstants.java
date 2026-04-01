@@ -28,6 +28,9 @@ public class SourceConstants {
     public static final File SourceAttacherDir = Paths.get(USER_HOME,
             ".decompiler", TEMP_SOURCE_PREFIX).toFile(); //$NON-NLS-1$
 
+    private SourceConstants() {
+    }
+
     public static final File getSourceTempDir() {
         return new File(JavaDecompilerPlugin.getDefault().getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)
                 + File.separatorChar + TEMP_SOURCE_PREFIX);

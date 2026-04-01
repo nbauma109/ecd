@@ -15,33 +15,26 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
 import org.junit.After;
 import org.junit.Test;
-import org.osgi.framework.Bundle;
+
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.JavaProjectSetup;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.LibrarySpec;
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport.SingleLibrarySetup;
 
 public class SourceAttachUtilTest {
 
@@ -52,7 +45,7 @@ public class SourceAttachUtilTest {
     private final List<File> filesToDelete = new ArrayList<>();
 
     @After
-    public void tearDown() throws IOException, CoreException {
+    public void tearDown() throws CoreException {
         for (IProject p : projectsToDelete) {
             if (p != null && p.exists()) {
                 p.delete(true, true, null);
@@ -62,7 +55,7 @@ public class SourceAttachUtilTest {
 
         for (File f : filesToDelete) {
             if (f != null && f.exists()) {
-                deleteRecursively(f);
+                FileUtils.deleteQuietly(f);
             }
         }
         filesToDelete.clear();
@@ -70,12 +63,14 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testNeedDownloadSourceReturnsTrueForSingleRootSelection() throws IOException, CoreException {
-        File jar = resolveTestJar();
-        JavaProjectSetup setup = createJavaProjectWithLibraries("need-download-true-" + UUID.randomUUID(), //$NON-NLS-1$
-                new LibrarySpec(jar, null));
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "need-download-true-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
-        IClassFile classFile = findAnyClassFileInRoot(root);
+        IPackageFragmentRoot root = setup.root();
+        IClassFile classFile = SourceAttachTestSupport.findAnyClassFileInRoot(root);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(classFile);
@@ -85,17 +80,18 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testNeedDownloadSourceReturnsFalseForDifferentRoots() throws IOException, CoreException {
-        File jar1 = resolveTestJar();
+        File jar1 = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File jar2 = copyJarToTempFile(jar1, "test-copy-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries("need-download-multi-root-" + UUID.randomUUID(), //$NON-NLS-1$
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("need-download-multi-root-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar1, null), new LibrarySpec(jar2, null));
 
         IPackageFragmentRoot rootA = setup.roots().get(0);
         IPackageFragmentRoot rootB = setup.roots().get(1);
 
-        IPackageFragment pkgA = findAnyPackageWithClasses(rootA);
-        IPackageFragment pkgB = findAnyPackageWithClasses(rootB);
+        IPackageFragment pkgA = SourceAttachTestSupport.findAnyPackageWithClasses(rootA);
+        IPackageFragment pkgB = SourceAttachTestSupport.findAnyPackageWithClasses(rootB);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(pkgA);
@@ -107,14 +103,15 @@ public class SourceAttachUtilTest {
     @Test
     public void testNeedDownloadSourceReturnsFalseWhenSourceAlreadyAttachedToDifferentExistingFile()
             throws IOException, CoreException {
-        File jar = resolveTestJar();
+        File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         File existingSourceJar = createNonEmptyFileUnderTarget("attached-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        JavaProjectSetup setup = createJavaProjectWithLibraries("need-download-attached-" + UUID.randomUUID(), //$NON-NLS-1$
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("need-download-attached-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
                 new LibrarySpec(jar, existingSourceJar));
 
         IPackageFragmentRoot root = setup.roots().get(0);
-        IPackageFragment pkg = findAnyPackageWithClasses(root);
+        IPackageFragment pkg = SourceAttachTestSupport.findAnyPackageWithClasses(root);
 
         List<IJavaElement> selection = new ArrayList<>();
         selection.add(pkg);
@@ -124,11 +121,13 @@ public class SourceAttachUtilTest {
 
     @Test
     public void testUpdateSourceAttachStatusDoesNotThrow() throws IOException, CoreException {
-        File jar = resolveTestJar();
-        JavaProjectSetup setup = createJavaProjectWithLibraries("update-source-attach-" + UUID.randomUUID(), //$NON-NLS-1$
-                new LibrarySpec(jar, null));
+        SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
+                TEST_JAR_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "update-source-attach-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete);
 
-        IPackageFragmentRoot root = setup.roots().get(0);
+        IPackageFragmentRoot root = setup.root();
         assertNotNull(root);
         assertTrue(root.exists());
 
@@ -153,104 +152,8 @@ public class SourceAttachUtilTest {
         }
     }
 
-    private File resolveTestJar() throws IOException {
-        Bundle bundle = Platform.getBundle(TEST_JAR_BUNDLE_ID);
-        assertNotNull(bundle);
-
-        URL entry = bundle.getEntry(TEST_JAR_PATH);
-        assertNotNull(entry);
-
-        URL resolved = FileLocator.toFileURL(entry);
-        IPath path = new Path(resolved.getPath());
-        File file = path.toFile();
-        assertTrue(file.exists());
-        return file;
-    }
-
-    private JavaProjectSetup createJavaProjectWithLibraries(String projectName, LibrarySpec... libs)
-            throws CoreException {
-        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-        IProject project = root.getProject(projectName);
-
-        if (project.exists()) {
-            project.delete(true, true, null);
-        }
-        project.create(null);
-        project.open(null);
-        projectsToDelete.add(project);
-
-        IProjectDescription description = project.getDescription();
-        description.setNatureIds(new String[] { JavaCore.NATURE_ID });
-        project.setDescription(description, null);
-
-        IJavaProject javaProject = JavaCore.create(project);
-
-        List<IClasspathEntry> entries = new ArrayList<>();
-        for (LibrarySpec lib : libs) {
-            IPath jarPath = new Path(lib.binaryJar().getAbsolutePath());
-
-            IPath srcPath = null;
-            if (lib.sourceJarOrZip() != null) {
-                srcPath = new Path(lib.sourceJarOrZip().getAbsolutePath());
-            }
-
-            IClasspathEntry libEntry = JavaCore.newLibraryEntry(jarPath, srcPath, null);
-            entries.add(libEntry);
-        }
-
-        javaProject.setRawClasspath(entries.toArray(new IClasspathEntry[0]), null);
-
-        List<IPackageFragmentRoot> roots = new ArrayList<>();
-        IPackageFragmentRoot[] allRoots = javaProject.getAllPackageFragmentRoots();
-
-        for (LibrarySpec lib : libs) {
-            File jar = lib.binaryJar();
-            IPath jarPath = new Path(jar.getAbsolutePath());
-
-            IPackageFragmentRoot match = null;
-            for (IPackageFragmentRoot candidate : allRoots) {
-                IPath candidatePath = candidate.getPath();
-                if (candidatePath != null && candidatePath.equals(jarPath)) {
-                    match = candidate;
-                    break;
-                }
-            }
-            assertNotNull("No package fragment root for jar: " + jar.getAbsolutePath(), match); //$NON-NLS-1$
-            match.open(null);
-            roots.add(match);
-        }
-
-        return new JavaProjectSetup(project, javaProject, roots);
-    }
-
-    private static IClassFile findAnyClassFileInRoot(IPackageFragmentRoot root) throws JavaModelException {
-        IJavaElement[] children = root.getChildren();
-        for (IJavaElement child : children) {
-            if (child instanceof IPackageFragment pkg) {
-                IClassFile[] classFiles = pkg.getClassFiles();
-                if (classFiles != null && classFiles.length > 0) {
-                    return classFiles[0];
-                }
-            }
-        }
-        throw new IllegalStateException("No class file found in root: " + root.getElementName()); //$NON-NLS-1$
-    }
-
-    private static IPackageFragment findAnyPackageWithClasses(IPackageFragmentRoot root) throws JavaModelException {
-        IJavaElement[] children = root.getChildren();
-        for (IJavaElement child : children) {
-            if (child instanceof IPackageFragment pkg) {
-                IClassFile[] classFiles = pkg.getClassFiles();
-                if (classFiles != null && classFiles.length > 0) {
-                    return pkg;
-                }
-            }
-        }
-        throw new IllegalStateException("No package with class files found in root: " + root.getElementName()); //$NON-NLS-1$
-    }
-
     private File copyJarToTempFile(File original, String name) throws IOException {
-        File targetDir = ensureTargetDir();
+        File targetDir = SourceAttachTestSupport.ensureTargetDir();
         File out = new File(targetDir, name);
         Files.copy(original.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
         filesToDelete.add(out);
@@ -258,7 +161,7 @@ public class SourceAttachUtilTest {
     }
 
     private File createNonEmptyFileUnderTarget(String name) throws IOException {
-        File targetDir = ensureTargetDir();
+        File targetDir = SourceAttachTestSupport.ensureTargetDir();
         File out = new File(targetDir, name);
         try (FileOutputStream fos = new FileOutputStream(out)) {
             fos.write(new byte[] { 0x50, 0x4b, 0x03, 0x04 });
@@ -267,39 +170,15 @@ public class SourceAttachUtilTest {
         return out;
     }
 
-    private static File ensureTargetDir() throws IOException {
-        File target = new File("target"); //$NON-NLS-1$
-        if (!target.exists() && !target.mkdirs() && !target.exists()) {
-            throw new IOException("Unable to create target directory: " + target.getAbsolutePath()); //$NON-NLS-1$
-        }
-        return target;
-    }
-
-    private static void deleteRecursively(File file) throws IOException {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete: " + file.getAbsolutePath()); //$NON-NLS-1$
-        }
-    }
-
     @Test
     public void testReattachSourceDoesNotCallDeleteOnExitForMavenRepoFiles() throws IOException, CoreException {
-        File jar = resolveTestJar();
         File initialSource = createNonEmptyFileUnderTarget("initial-source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
         // Create a project with source already attached (so getSourceAttachmentPath() is non-null)
-        JavaProjectSetup setup = createJavaProjectWithLibraries("reattach-maven-" + UUID.randomUUID(), //$NON-NLS-1$
-                new LibrarySpec(jar, initialSource));
+        JavaProjectSetup setup = SourceAttachTestSupport.createJavaProjectWithLibraries("reattach-maven-" + UUID.randomUUID(), //$NON-NLS-1$
+                projectsToDelete,
+                new LibrarySpec(SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH),
+                        initialSource));
 
         IPackageFragmentRoot root = setup.roots().get(0);
         assertNotNull(root.getSourceAttachmentPath());
@@ -318,11 +197,5 @@ public class SourceAttachUtilTest {
         // Even if attach fails due to test constraints, the Maven repo file must still exist
         assertTrue(mavenRepoSourceJar.exists());
         // The key is that reattchSource was called without throwing and the Maven repo file is preserved
-    }
-
-    public record LibrarySpec(File binaryJar, File sourceJarOrZip) {
-    }
-
-    public record JavaProjectSetup(IProject project, IJavaProject javaProject, List<IPackageFragmentRoot> roots) {
     }
 }

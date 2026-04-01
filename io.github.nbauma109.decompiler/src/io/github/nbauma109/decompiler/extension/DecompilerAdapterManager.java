@@ -62,6 +62,9 @@ public class DecompilerAdapterManager {
         }
     };
 
+    private DecompilerAdapterManager() {
+    }
+
     static {
         // initial adaptersMap
         IExtensionRegistry registry = Platform.getExtensionRegistry();
@@ -240,8 +243,7 @@ public class DecompilerAdapterManager {
         }
 
         List<Object> adapterObjects = new ArrayList<>();
-        l: for (Iterator<DecompilerAdapter> iter = adapters.iterator(); iter.hasNext();) {
-            DecompilerAdapter adapter = iter.next();
+        l: for (DecompilerAdapter adapter : adapters) {
             if (adapter.getExpression() != null) {
                 EvaluationContext context = new EvaluationContext(null, adaptableObject);
                 context.setAllowPluginActivation(true);
@@ -264,8 +266,7 @@ public class DecompilerAdapterManager {
     private static Set<DecompilerAdapter> getAdapters(Object adaptableObject) {
         Set<Class<?>> keys = adaptersMap.keySet();
         ElementAdapterSet adapters = null;
-        for (Iterator<Class<?>> iter = keys.iterator(); iter.hasNext();) {
-            Class<?> clazz = iter.next();
+        for (Class<?> clazz : keys) {
             // adaptable is the instance of the key class or its subclass.
             if (clazz.isAssignableFrom(adaptableObject.getClass())) {
                 if (adapters == null) {

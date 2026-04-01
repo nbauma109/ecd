@@ -22,6 +22,9 @@ import io.github.nbauma109.decompiler.util.SourceMapperUtil;
 
 public class ClassFileSourceMap {
 
+    private ClassFileSourceMap() {
+    }
+
     private static IType getOuterMostEnclosingType(ClassFile cf) {
         IType type = cf.getType();
         IType enclosingType = type.getDeclaringType();

@@ -17,6 +17,8 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -28,6 +30,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
+import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
@@ -115,5 +118,27 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         int endOffset = iterator.getEndOffset();
         int length = endOffset - startOffset;
         return doc.getText(startOffset, length);
+    }
+
+    /**
+     * Try to use cached source files if available.
+     * @return true if a cached source was found and added to results
+     */
+    protected boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
+        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
+            try {
+                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
+                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
+                    File sourceFile = new File(sourceFiles[0]);
+                    File tempFile = new File(sourceFiles[1]);
+                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+                    results.add(result);
+                    return true;
+                }
+            } catch (Exception e) {
+                Logger.debug(e);
+            }
+        }
+        return false;
     }
 }

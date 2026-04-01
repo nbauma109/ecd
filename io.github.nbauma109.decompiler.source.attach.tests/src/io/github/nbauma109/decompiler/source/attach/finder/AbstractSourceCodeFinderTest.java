@@ -3,6 +3,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -10,7 +11,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileWriter;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,11 +23,14 @@ import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
+
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.AttributeSet;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +38,8 @@ import org.junit.Test;
 public class AbstractSourceCodeFinderTest {
 
     private static final String HELLO_FINDER = "Hello finder";
+    private static final String DUMMY_JAR = "dummy.jar"; //$NON-NLS-1$
+    private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
 
     private File testRoot;
 
@@ -46,7 +54,7 @@ public class AbstractSourceCodeFinderTest {
 
     @After
     public void tearDown() {
-        deleteRecursively(testRoot);
+        FileUtils.deleteQuietly(testRoot);
     }
 
     @Test
@@ -149,6 +157,95 @@ public class AbstractSourceCodeFinderTest {
         assertEquals(HELLO_FINDER, text);
     }
 
+    @Test
+    public void tryCachedSourcesReturnsFalseForEmptyMap() {
+        ExposedFinder finder = new ExposedFinder();
+        List<SourceFileResult> results = new ArrayList<>();
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, Collections.emptyMap(), results);
+        assertFalse(found);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void tryCachedSourcesReturnsFalseForUncachedUrl() {
+        ExposedFinder finder = new ExposedFinder();
+        List<SourceFileResult> results = new ArrayList<>();
+        GAV gav = new GAV();
+        gav.setGroupId("org.example");
+        gav.setArtifactId("lib");
+        gav.setVersion("1.0");
+        // Use a unique URL that is guaranteed not to be in any binding file
+        String uniqueUrl = "https://example.com/never-cached-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
+        Map<GAV, String> sourcesUrls = Collections.singletonMap(gav, uniqueUrl);
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, sourcesUrls, results);
+        assertFalse(found);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void tryCachedSourcesReturnsTrueWhenCachedSourceExists() throws IOException {
+        // Arrange: create a real source file and a matching temp file, then register them
+        File sourceFile = new File(testRoot, "cached-source.jar");
+        createMinimalZip(sourceFile);
+        File tempFile = new File(testRoot, "cached-temp.jar");
+        createMinimalZip(tempFile);
+
+        String testUrl = "https://test.example.com/cached-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, "cafebabe", testUrl, tempFile);
+
+        GAV gav = new GAV();
+        gav.setGroupId("test.example");
+        gav.setArtifactId("cached");
+        gav.setVersion("1.0");
+        Map<GAV, String> sourcesUrls = Collections.singletonMap(gav, testUrl);
+
+        ExposedFinder finder = new ExposedFinder();
+        List<SourceFileResult> results = new ArrayList<>();
+        boolean found = finder.exposeTryCachedSources(sourceFile.getAbsolutePath(), sourcesUrls, results);
+
+        assertTrue(found);
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    public void tryCachedSourcesReturnsFalseWhenCachedSourceFileIsMissing() throws IOException {
+        // Arrange: register a binding but do NOT create the source file
+        File missingSourceFile = new File(testRoot, "missing-source.jar");
+        File tempFileForReg = new File(testRoot, "temp-for-reg.jar");
+        createMinimalZip(tempFileForReg);
+        // We need a "source" file to pass saveSourceBindingRecord's exists() check — create then delete
+        createMinimalZip(missingSourceFile);
+        String testUrl = "https://test.example.com/missing-" + System.nanoTime() + SOURCES_JAR_SUFFIX;
+        SourceBindingUtil.saveSourceBindingRecord(missingSourceFile, "deadbeef", testUrl, tempFileForReg);
+        try {
+            Files.delete(missingSourceFile.toPath()); // now the cached path no longer exists
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+
+        GAV gav = new GAV();
+        gav.setGroupId("test.example");
+        gav.setArtifactId("missing");
+        gav.setVersion("1.0");
+        Map<GAV, String> sourcesUrls = Collections.singletonMap(gav, testUrl);
+
+        ExposedFinder finder = new ExposedFinder();
+        List<SourceFileResult> results = new ArrayList<>();
+        boolean found = finder.exposeTryCachedSources(DUMMY_JAR, sourcesUrls, results);
+
+        assertFalse(found);
+        assertTrue(results.isEmpty());
+    }
+
+    private void createMinimalZip(File dest) throws IOException {
+        try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(dest)))) {
+            ZipEntry entry = new ZipEntry("placeholder.txt");
+            zos.putNextEntry(entry);
+            zos.write("placeholder".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+        }
+    }
+
     private File createZip(String name, Map<String, String> entries) throws IOException {
         File zip = new File(testRoot, name);
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zip)))) {
@@ -163,22 +260,6 @@ public class AbstractSourceCodeFinderTest {
         }
         return zip;
     }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
-    }
-
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
         Optional<GAV> exposeFindGavFromFile(String binFile) throws IOException {
             return findGAVFromFile(binFile);
@@ -190,6 +271,10 @@ public class AbstractSourceCodeFinderTest {
 
         String exposeGetText(HTMLDocument doc, HTMLDocument.Iterator iterator) throws BadLocationException {
             return getText(doc, iterator);
+        }
+
+        boolean exposeTryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
+            return tryCachedSources(binFile, sourcesUrls, results);
         }
 
         @Override
