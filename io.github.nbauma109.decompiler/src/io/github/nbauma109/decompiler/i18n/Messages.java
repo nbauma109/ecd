@@ -16,7 +16,7 @@ public class Messages {
     }
 
     public static String getString(String key) {
-        return ResourceBundleMessages.getString(BUNDLE_NAME, key);
+        return ResourceBundleMessages.getString(BUNDLE_NAME, key, Messages.class);
     }
 
     /**
@@ -26,7 +26,7 @@ public class Messages {
      * @return translated value string
      */
     public static String getFormattedString(String key, Object[] arguments) {
-        return ResourceBundleMessages.getFormattedString(BUNDLE_NAME, key, arguments);
+        return ResourceBundleMessages.getFormattedString(BUNDLE_NAME, key, arguments, Messages.class);
     }
 
 }

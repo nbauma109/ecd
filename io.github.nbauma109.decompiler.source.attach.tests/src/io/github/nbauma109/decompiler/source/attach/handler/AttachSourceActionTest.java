@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.source.attach.handler;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -47,6 +48,13 @@ public class AttachSourceActionTest {
 
     private final List<IProject> projectsToDelete = new ArrayList<>();
     private final List<File> filesToDelete = new ArrayList<>();
+
+    @Test
+    public void testActionUsesLocalizedLabel() {
+        AttachSourceAction action = new AttachSourceAction(new ArrayList<>());
+
+        assertEquals("Attach Library Source", action.getText()); //$NON-NLS-1$
+    }
 
     @After
     public void tearDown() throws CoreException {

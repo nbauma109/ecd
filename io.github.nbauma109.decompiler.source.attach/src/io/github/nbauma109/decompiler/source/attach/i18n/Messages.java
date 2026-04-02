@@ -18,7 +18,7 @@ public class Messages {
     }
 
     public static String getString(String key) {
-        return ResourceBundleMessages.getString(BUNDLE_NAME, key);
+        return ResourceBundleMessages.getString(BUNDLE_NAME, key, Messages.class);
     }
 
 }
