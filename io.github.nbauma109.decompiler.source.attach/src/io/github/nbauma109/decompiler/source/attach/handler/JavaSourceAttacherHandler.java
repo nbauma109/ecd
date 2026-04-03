@@ -198,77 +198,80 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     }
 
     public static void processLibSources(final Set<String> notProcessedLibs, final List<SourceFileResult> responses) {
-
         while (!responses.isEmpty()) {
             final SourceFileResult response = responses.remove(0);
             final String binFile = response.getBinFile();
             if (notProcessedLibs.contains(binFile) && response.getSource() != null) {
                 final IPackageFragmentRoot pkgRoot = requests.get(binFile);
-                try {
-                    notProcessedLibs.remove(response.getBinFile());
-                    final String source = response.getSource();
-                    final String tempSource = response.getTempSource();
-                    final String suggestedSourceFileName = response.getSuggestedSourceFileName();
-                    final String downloadUrl = response.getFinder().getDownloadUrl();
-                    if (downloadUrl == null && !(response.getFinder() instanceof SourceCodeFinderFacade)) {
-                        continue;
-                    }
-                    if (!SourceConstants.SourceAttacherDir.exists()) {
-                        SourceConstants.SourceAttacherDir.mkdirs();
-                    }
-
-                    if (!SourceConstants.getSourceTempDir().exists()) {
-                        SourceConstants.getSourceTempDir().mkdirs();
-                    }
-
-                    File sourceTempFile;
-                    File sourceFile;
-                    if (tempSource == null || !new File(tempSource).exists()) {
-                        File tempFile = new File(source);
-
-                        // Always copy the source to the persistent and temp locations
-                        sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
-                        if (!sourceFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceFile);
-                        }
-
-                        sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
-                        if (!sourceTempFile.exists()) {
-                            FileUtils.copyFile(tempFile, sourceTempFile);
-                        }
-                        sourceTempFile.deleteOnExit();
-                        if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                            try {
-                                Files.deleteIfExists(tempFile.toPath());
-                            } catch (Exception deleteException) {
-                                Logger.debug("Failed to delete temporary source file " + tempFile, deleteException); //$NON-NLS-1$
-                            }
-                        }
-                    } else {
-                        sourceFile = new File(source);
-                        sourceTempFile = new File(tempSource);
-
-                        // Only mark for deletion if not in Maven repo
-                        boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-                        if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
-                            sourceTempFile.deleteOnExit();
-                        }
-                    }
-
-                    if (pkgRoot.getSourceAttachmentPath() != null
-                            && sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
-                        SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
-                    } else if (attachSource(pkgRoot, sourceTempFile)) {
-                        SourceBindingUtil.saveSourceBindingRecord(sourceFile,
-                                HashUtils.sha1Hash(new File(response.getBinFile())), downloadUrl, sourceTempFile);
-                    }
-                } catch (Exception e) {
-                    if (pkgRoot != null && pkgRoot.getResource() != null
-                            && pkgRoot.getResource().getLocation() != null) {
-                        Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
-                    }
+                if (pkgRoot != null) {
+                    processSourceResult(notProcessedLibs, pkgRoot, response);
                 }
             }
+        }
+    }
+
+    private static void processSourceResult(Set<String> notProcessedLibs, IPackageFragmentRoot pkgRoot, SourceFileResult response) {
+        try {
+            notProcessedLibs.remove(response.getBinFile());
+            final String source = response.getSource();
+            final String tempSource = response.getTempSource();
+            final String suggestedSourceFileName = response.getSuggestedSourceFileName();
+            final String downloadUrl = response.getFinder().getDownloadUrl();
+            if (downloadUrl == null && !(response.getFinder() instanceof SourceCodeFinderFacade)) {
+                return;
+            }
+            if (!SourceConstants.SourceAttacherDir.exists()) {
+                SourceConstants.SourceAttacherDir.mkdirs();
+            }
+            if (!SourceConstants.getSourceTempDir().exists()) {
+                SourceConstants.getSourceTempDir().mkdirs();
+            }
+            File sourceFile;
+            File sourceTempFile;
+            if (tempSource == null || !new File(tempSource).exists()) {
+                File tempFile = new File(source);
+                // Always copy the source to the persistent and temp locations
+                sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
+                if (!sourceFile.exists()) {
+                    FileUtils.copyFile(tempFile, sourceFile);
+                }
+                sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
+                if (!sourceTempFile.exists()) {
+                    FileUtils.copyFile(tempFile, sourceTempFile);
+                }
+                sourceTempFile.deleteOnExit();
+                if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
+                    deleteTempSourceFile(tempFile);
+                }
+            } else {
+                sourceFile = new File(source);
+                sourceTempFile = new File(tempSource);
+                // Only mark for deletion if not in Maven repo
+                boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+                if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+                    sourceTempFile.deleteOnExit();
+                }
+            }
+            if (pkgRoot.getSourceAttachmentPath() != null
+                    && sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
+                SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
+            } else if (attachSource(pkgRoot, sourceTempFile)) {
+                SourceBindingUtil.saveSourceBindingRecord(sourceFile,
+                        HashUtils.sha1Hash(new File(response.getBinFile())), downloadUrl, sourceTempFile);
+            }
+        } catch (Exception e) {
+            if (pkgRoot != null && pkgRoot.getResource() != null
+                    && pkgRoot.getResource().getLocation() != null) {
+                Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
+            }
+        }
+    }
+
+    private static void deleteTempSourceFile(File tempFile) {
+        try {
+            Files.deleteIfExists(tempFile.toPath());
+        } catch (Exception e) {
+            Logger.debug("Failed to delete temporary source file " + tempFile, e); //$NON-NLS-1$
         }
     }
 
