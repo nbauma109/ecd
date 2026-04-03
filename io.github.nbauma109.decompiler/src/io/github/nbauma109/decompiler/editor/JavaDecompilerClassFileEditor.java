@@ -351,7 +351,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
                             doSetInput(new DecompilerClassEditorInput(
                                     EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
-                            Files.deleteIfExists(classFile.toPath());
                             return;
                         } catch (IOException e1) {
                             JavaDecompilerPlugin.logError(e1, ""); //$NON-NLS-1$
