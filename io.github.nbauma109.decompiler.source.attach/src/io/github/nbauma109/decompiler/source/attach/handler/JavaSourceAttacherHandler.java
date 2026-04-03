@@ -238,7 +238,11 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                         }
                         sourceTempFile.deleteOnExit();
                         if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                            Files.deleteIfExists(tempFile.toPath());
+                            try {
+                                Files.deleteIfExists(tempFile.toPath());
+                            } catch (Exception deleteException) {
+                                Logger.debug("Failed to delete temporary source file " + tempFile, deleteException); //$NON-NLS-1$
+                            }
                         }
                     } else {
                         sourceFile = new File(source);
