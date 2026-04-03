@@ -354,7 +354,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                             Files.deleteIfExists(classFile.toPath());
                             return;
                         } catch (IOException e1) {
-                            JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
+                            JavaDecompilerPlugin.logError(e1, ""); //$NON-NLS-1$
                         } finally {
                             try {
                                 Files.deleteIfExists(classFile.toPath());
