@@ -12,6 +12,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -414,9 +415,7 @@ public class ExportSourceAction extends Action {
             if (dir.isDirectory()) {
                 return;
             }
-            if (!dir.delete() && dir.exists()) {
-                throw new IOException("Unable to delete file blocking directory: " + dir.getAbsolutePath()); //$NON-NLS-1$
-            }
+            Files.deleteIfExists(dir.toPath());
         }
         if (!dir.mkdirs() && !dir.isDirectory()) {
             throw new IOException("Unable to create directory: " + dir.getAbsolutePath()); //$NON-NLS-1$

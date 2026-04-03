@@ -22,6 +22,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -118,10 +119,7 @@ public class FileUtil {
         }
 
         cleanDirectory(monitor, directory, base, step);
-        if (!directory.delete()) {
-            String message = "Unable to delete directory " + directory + "."; //$NON-NLS-1$ //$NON-NLS-2$
-            throw new IOException(message);
-        }
+        Files.delete(directory.toPath());
     }
 
     public static void deleteDirectory(IProgressMonitor monitor, File directory, int step) throws IOException {
@@ -177,10 +175,7 @@ public class FileUtil {
             if (!file.exists()) {
                 throw new FileNotFoundException("File does not exist: " + file); //$NON-NLS-1$
             }
-            if (!file.delete()) {
-                String message = "Unable to delete file: " + file; //$NON-NLS-1$
-                throw new IOException(message);
-            }
+            Files.delete(file.toPath());
         }
     }
 

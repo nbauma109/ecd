@@ -15,6 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import org.apache.commons.io.file.PathUtils;
 import org.apache.tools.ant.Project;
@@ -93,7 +94,11 @@ public class UrlDownloader {
             PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException ex) {
             Logger.error(ex);
-            file.delete();
+            try {
+                Files.deleteIfExists(file.toPath());
+            } catch (IOException deleteEx) {
+                Logger.error(deleteEx);
+            }
         }
         return file.getAbsolutePath();
     }

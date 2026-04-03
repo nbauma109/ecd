@@ -11,6 +11,7 @@ package io.github.nbauma109.decompiler.editor;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -350,13 +351,15 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
                             doSetInput(new DecompilerClassEditorInput(
                                     EFS.getLocalFileSystem().getStore(new Path(classFile.getAbsolutePath()))));
-                            classFile.delete();
+                            Files.deleteIfExists(classFile.toPath());
                             return;
                         } catch (IOException e1) {
                             JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
                         } finally {
-                            if (classFile.exists()) {
-                                classFile.delete();
+                            try {
+                                Files.deleteIfExists(classFile.toPath());
+                            } catch (IOException e2) {
+                                JavaDecompilerPlugin.logError(e2, ""); //$NON-NLS-1$
                             }
                         }
                     }

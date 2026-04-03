@@ -9,6 +9,7 @@
 package io.github.nbauma109.decompiler.source.attach.handler;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -237,7 +238,7 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                         }
                         sourceTempFile.deleteOnExit();
                         if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                            tempFile.delete();
+                            Files.deleteIfExists(tempFile.toPath());
                         }
                     } else {
                         sourceFile = new File(source);

@@ -340,7 +340,7 @@ public class ExportSourceActionTest {
     private File createTempZipFile() throws IOException {
         File zip = Files.createTempFile("export-source-action-", ".zip").toFile();
         if (zip.exists()) {
-            assertTrue(zip.delete());
+            assertTrue(Files.deleteIfExists(zip.toPath()));
         }
         filesToDelete.add(zip);
         return zip;
