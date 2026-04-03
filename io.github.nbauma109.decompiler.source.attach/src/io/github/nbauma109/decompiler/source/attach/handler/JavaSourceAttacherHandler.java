@@ -9,6 +9,7 @@
 package io.github.nbauma109.decompiler.source.attach.handler;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
