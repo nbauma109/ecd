@@ -51,6 +51,8 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public class JavaSourceAttacherHandler extends AbstractHandler {
 
+    private record SourceFilePair(File sourceFile, File sourceTempFile) {}
+
     static final Map<String, IPackageFragmentRoot> requests = new HashMap<>();
 
     @Override
@@ -213,45 +215,14 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
     private static void processSourceResult(Set<String> notProcessedLibs, IPackageFragmentRoot pkgRoot, SourceFileResult response) {
         try {
             notProcessedLibs.remove(response.getBinFile());
-            final String source = response.getSource();
-            final String tempSource = response.getTempSource();
-            final String suggestedSourceFileName = response.getSuggestedSourceFileName();
             final String downloadUrl = response.getFinder().getDownloadUrl();
             if (downloadUrl == null && !(response.getFinder() instanceof SourceCodeFinderFacade)) {
                 return;
             }
-            if (!SourceConstants.SourceAttacherDir.exists()) {
-                SourceConstants.SourceAttacherDir.mkdirs();
-            }
-            if (!SourceConstants.getSourceTempDir().exists()) {
-                SourceConstants.getSourceTempDir().mkdirs();
-            }
-            File sourceFile;
-            File sourceTempFile;
-            if (tempSource == null || !new File(tempSource).exists()) {
-                File tempFile = new File(source);
-                // Always copy the source to the persistent and temp locations
-                sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
-                if (!sourceFile.exists()) {
-                    FileUtils.copyFile(tempFile, sourceFile);
-                }
-                sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
-                if (!sourceTempFile.exists()) {
-                    FileUtils.copyFile(tempFile, sourceTempFile);
-                }
-                sourceTempFile.deleteOnExit();
-                if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
-                    deleteTempSourceFile(tempFile);
-                }
-            } else {
-                sourceFile = new File(source);
-                sourceTempFile = new File(tempSource);
-                // Only mark for deletion if not in Maven repo
-                boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-                if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
-                    sourceTempFile.deleteOnExit();
-                }
-            }
+            ensureDirectoriesExist();
+            SourceFilePair pair = resolveSourceFiles(response.getSource(), response.getTempSource(), response.getSuggestedSourceFileName());
+            File sourceFile = pair.sourceFile();
+            File sourceTempFile = pair.sourceTempFile();
             if (pkgRoot.getSourceAttachmentPath() != null
                     && sourceTempFile.equals(pkgRoot.getSourceAttachmentPath().toFile())) {
                 SourceAttachUtil.reattchSource(pkgRoot, sourceFile, sourceTempFile, downloadUrl);
@@ -265,6 +236,45 @@ public class JavaSourceAttacherHandler extends AbstractHandler {
                 Logger.debug("Cannot attach to " + pkgRoot.getResource().getLocation().toOSString(), e); //$NON-NLS-1$
             }
         }
+    }
+
+    private static void ensureDirectoriesExist() {
+        if (!SourceConstants.SourceAttacherDir.exists()) {
+            SourceConstants.SourceAttacherDir.mkdirs();
+        }
+        if (!SourceConstants.getSourceTempDir().exists()) {
+            SourceConstants.getSourceTempDir().mkdirs();
+        }
+    }
+
+    private static SourceFilePair resolveSourceFiles(String source, String tempSource, String suggestedSourceFileName) throws IOException {
+        File sourceFile;
+        File sourceTempFile;
+        if (tempSource == null || !new File(tempSource).exists()) {
+            File tempFile = new File(source);
+            // Always copy the source to the persistent and temp locations
+            sourceFile = new File(SourceConstants.SourceAttacherDir, suggestedSourceFileName);
+            if (!sourceFile.exists()) {
+                FileUtils.copyFile(tempFile, sourceFile);
+            }
+            sourceTempFile = new File(SourceConstants.getSourceTempDir(), suggestedSourceFileName);
+            if (!sourceTempFile.exists()) {
+                FileUtils.copyFile(tempFile, sourceTempFile);
+            }
+            sourceTempFile.deleteOnExit();
+            if (!tempFile.getAbsolutePath().startsWith(SourceConstants.SourceAttachPath)) {
+                deleteTempSourceFile(tempFile);
+            }
+        } else {
+            sourceFile = new File(source);
+            sourceTempFile = new File(tempSource);
+            // Only mark for deletion if not in Maven repo
+            boolean isInMavenRepo = sourceTempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+            if (!isInMavenRepo && sourceTempFile.toPath().startsWith(SourceConstants.getSourceTempDir().toPath())) {
+                sourceTempFile.deleteOnExit();
+            }
+        }
+        return new SourceFilePair(sourceFile, sourceTempFile);
     }
 
     private static void deleteTempSourceFile(File tempFile) {
