@@ -96,7 +96,7 @@ public class UrlDownloaderTest {
         assertNotNull(result);
         File downloadedFile = new File(result);
         assertTrue(downloadedFile.exists());
-        Files.deleteIfExists(downloadedFile.toPath());
+        FileUtils.deleteQuietly(downloadedFile);
     }
 
     @Test
