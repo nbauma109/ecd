@@ -5,6 +5,7 @@
 [![Update version](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/update-version.yml)
 [![Github Release](https://github.com/nbauma109/ecd/actions/workflows/release.yml/badge.svg)](https://github.com/nbauma109/ecd/actions/workflows/release.yml)
 [![Coverage Status](https://codecov.io/gh/nbauma109/ecd/branch/master/graph/badge.svg)](https://app.codecov.io/gh/nbauma109/ecd)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=nbauma109_ecd&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=nbauma109_ecd)
 
 Downloads from Github releases :
 
