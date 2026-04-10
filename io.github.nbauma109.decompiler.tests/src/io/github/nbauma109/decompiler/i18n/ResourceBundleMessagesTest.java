@@ -7,12 +7,12 @@ import org.junit.Test;
 public class ResourceBundleMessagesTest {
 
     private static final String BUNDLE_NAME = "io.github.nbauma109.decompiler.i18n.messages"; //$NON-NLS-1$
+    private static final String DECOMPILE_ACTION_KEY = "JavaDecompilerActionBarContributor.Action.Decompile"; //$NON-NLS-1$
 
     @Test
     public void getStringTwoParamReturnsKnownValue() {
         assertEquals("D&ecompile@Ctrl+Alt+,",
-                ResourceBundleMessages.getString(BUNDLE_NAME,
-                        "JavaDecompilerActionBarContributor.Action.Decompile")); //$NON-NLS-1$
+                ResourceBundleMessages.getString(BUNDLE_NAME, DECOMPILE_ACTION_KEY));
     }
 
     @Test
@@ -31,17 +31,14 @@ public class ResourceBundleMessagesTest {
     @Test
     public void getStringFourParamWithScopeReturnsKnownValue() {
         assertEquals("D&ecompile@Ctrl+Alt+,",
-                ResourceBundleMessages.getString(BUNDLE_NAME,
-                        "JavaDecompilerActionBarContributor.Action.Decompile", //$NON-NLS-1$
+                ResourceBundleMessages.getString(BUNDLE_NAME, DECOMPILE_ACTION_KEY,
                         ResourceBundleMessagesTest.class));
     }
 
     @Test
     public void cachedBundleLookupReturnsSameValueOnRepeatedCalls() {
-        String first = ResourceBundleMessages.getString(BUNDLE_NAME,
-                "JavaDecompilerActionBarContributor.Action.Decompile"); //$NON-NLS-1$
-        String second = ResourceBundleMessages.getString(BUNDLE_NAME,
-                "JavaDecompilerActionBarContributor.Action.Decompile"); //$NON-NLS-1$
+        String first = ResourceBundleMessages.getString(BUNDLE_NAME, DECOMPILE_ACTION_KEY);
+        String second = ResourceBundleMessages.getString(BUNDLE_NAME, DECOMPILE_ACTION_KEY);
         assertEquals(first, second);
     }
 }

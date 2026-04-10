@@ -43,7 +43,7 @@ public class FinderManagerTest {
     }
 
     @Test
-    public void cancelAfterFindSourcesWithEmptyListDoesNotThrow() throws InterruptedException {
+    public void cancelAfterFindSourcesWithEmptyListDoesNotThrow() {
         FinderManager manager = new FinderManager();
         List<SourceFileResult> results = new ArrayList<>();
 

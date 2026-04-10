@@ -17,9 +17,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Enumeration;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -162,7 +166,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void zipFolderCreatesZipContainingOnlyJavaFiles() throws Exception {
+    public void zipFolderCreatesZipContainingOnlyJavaFiles() throws IOException {
         // Create a source folder with java and non-java files
         File srcFolder = new File(testRoot, "src-to-zip");
         File pkgDir = new File(srcFolder, "com/example");
@@ -186,8 +190,8 @@ public class UrlDownloaderTest {
         // Verify: only .java entries (no .class)
         boolean hasJava = false;
         boolean hasClass = false;
-        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(destZip)) {
-            java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zf.entries();
+        try (ZipFile zf = new ZipFile(destZip)) {
+            Enumeration<? extends ZipEntry> entries = zf.entries();
             while (entries.hasMoreElements()) {
                 String name = entries.nextElement().getName();
                 if (name.endsWith(".java")) { //$NON-NLS-1$
@@ -203,7 +207,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void deleteFolderRemovesDirectoryAndItsContents() throws Exception {
+    public void deleteFolderRemovesDirectoryAndItsContents() throws IOException {
         File dir = new File(testRoot, "dir-to-delete");
         File nested = new File(dir, "sub");
         assertTrue(nested.mkdirs());
