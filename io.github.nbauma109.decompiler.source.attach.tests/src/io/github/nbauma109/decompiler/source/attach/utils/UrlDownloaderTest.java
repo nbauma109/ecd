@@ -188,12 +188,25 @@ public class UrlDownloaderTest {
         assertTrue("Zip file should have content", destZip.length() > 0);
 
         // Verify: only .java entries (no .class)
+        // Guard against zip-bomb: cap entry count and total uncompressed size.
+        final int maxEntries = 10_000;
+        final long maxTotalSize = 100_000_000L; // 100 MB
         boolean hasJava = false;
         boolean hasClass = false;
         try (ZipFile zf = new ZipFile(destZip)) {
             Enumeration<? extends ZipEntry> entries = zf.entries();
+            int entryCount = 0;
+            long totalSize = 0;
             while (entries.hasMoreElements()) {
-                String name = entries.nextElement().getName();
+                ZipEntry entry = entries.nextElement();
+                entryCount++;
+                assertTrue("Too many zip entries – possible zip bomb", entryCount <= maxEntries);
+                long entrySize = entry.getSize();
+                if (entrySize > 0) {
+                    totalSize += entrySize;
+                    assertTrue("Total uncompressed size exceeds limit – possible zip bomb", totalSize <= maxTotalSize);
+                }
+                String name = entry.getName();
                 if (name.endsWith(".java")) { //$NON-NLS-1$
                     hasJava = true;
                 }
