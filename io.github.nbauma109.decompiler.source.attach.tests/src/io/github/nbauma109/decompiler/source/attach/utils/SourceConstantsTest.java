@@ -24,7 +24,7 @@ public class SourceConstantsTest {
         String path = SourceConstants.USER_M2_REPO_DIR.getAbsolutePath();
         assertTrue("Expected .m2" + File.separator + "repository suffix", //$NON-NLS-1$ //$NON-NLS-2$
                 path.endsWith(File.separator + ".m2" + File.separator + "repository") //$NON-NLS-1$ //$NON-NLS-2$
-                        || path.endsWith("/.m2/repository")); //$NON-NLS-1$
+                || path.endsWith("/.m2/repository")); //$NON-NLS-1$
     }
 
     @Test
