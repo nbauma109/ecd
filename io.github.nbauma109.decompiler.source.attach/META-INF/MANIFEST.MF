@@ -28,5 +28,6 @@ Export-Package: io.github.nbauma109.decompiler.source.attach,
  io.github.nbauma109.decompiler.source.attach.attacher,
  io.github.nbauma109.decompiler.source.attach.finder,
  io.github.nbauma109.decompiler.source.attach.handler,
+ io.github.nbauma109.decompiler.source.attach.i18n,
  io.github.nbauma109.decompiler.source.attach.utils
 Automatic-Module-Name: io.github.nbauma109.decompiler.source.attach

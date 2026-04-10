@@ -9,15 +9,21 @@
 package io.github.nbauma109.decompiler.source.attach.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Enumeration;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -133,5 +139,101 @@ public class UrlDownloaderTest {
         String result = new UrlDownloader().download(localFile.getAbsolutePath(), null);
 
         assertEquals(localFile.getAbsolutePath(), result);
+    }
+
+    @Test
+    public void serviceUserGetterAndSetterRoundTrip() {
+        UrlDownloader downloader = new UrlDownloader();
+        assertNull(downloader.getServiceUser());
+
+        downloader.setServiceUser("alice"); //$NON-NLS-1$
+        assertEquals("alice", downloader.getServiceUser()); //$NON-NLS-1$
+
+        downloader.setServiceUser(null);
+        assertNull(downloader.getServiceUser());
+    }
+
+    @Test
+    public void servicePasswordGetterAndSetterRoundTrip() {
+        UrlDownloader downloader = new UrlDownloader();
+        assertNull(downloader.getServicePassword());
+
+        downloader.setServicePassword("secret"); //$NON-NLS-1$
+        assertEquals("secret", downloader.getServicePassword()); //$NON-NLS-1$
+
+        downloader.setServicePassword(null);
+        assertNull(downloader.getServicePassword());
+    }
+
+    @Test
+    public void zipFolderCreatesZipContainingOnlyJavaFiles() throws IOException {
+        // Create a source folder with java and non-java files
+        File srcFolder = new File(testRoot, "src-to-zip");
+        File pkgDir = new File(srcFolder, "com/example");
+        assertTrue(pkgDir.mkdirs());
+
+        File javaFile = new File(pkgDir, "Hello.java");
+        File classFile = new File(pkgDir, "Hello.class");
+        try (FileOutputStream fos = new FileOutputStream(javaFile)) {
+            fos.write("public class Hello {}".getBytes(StandardCharsets.UTF_8));
+        }
+        try (FileOutputStream fos = new FileOutputStream(classFile)) {
+            fos.write(new byte[] { (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE });
+        }
+
+        File destZip = new File(testRoot, "out.zip");
+        new UrlDownloader().zipFolder(srcFolder, destZip);
+
+        assertTrue("Zip file should be created", destZip.exists());
+        assertTrue("Zip file should have content", destZip.length() > 0);
+
+        // Verify: only .java entries (no .class)
+        // Guard against zip-bomb: cap entry count and total uncompressed size.
+        final int maxEntries = 10_000;
+        final long maxTotalSize = 100_000_000L; // 100 MB
+        boolean hasJava = false;
+        boolean hasClass = false;
+        try (ZipFile zf = new ZipFile(destZip)) {
+            Enumeration<? extends ZipEntry> entries = zf.entries();
+            int entryCount = 0;
+            long totalSize = 0;
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                entryCount++;
+                assertTrue("Too many zip entries – possible zip bomb", entryCount <= maxEntries);
+                long entrySize = entry.getSize();
+                if (entrySize > 0) {
+                    totalSize += entrySize;
+                    assertTrue("Total uncompressed size exceeds limit – possible zip bomb", totalSize <= maxTotalSize);
+                }
+                String name = entry.getName();
+                if (name.endsWith(".java")) { //$NON-NLS-1$
+                    hasJava = true;
+                }
+                if (name.endsWith(".class")) { //$NON-NLS-1$
+                    hasClass = true;
+                }
+            }
+        }
+        assertTrue("Zip should contain at least one .java entry", hasJava);
+        assertFalse("Zip should not contain any .class entries", hasClass);
+    }
+
+    @Test
+    public void deleteFolderRemovesDirectoryAndItsContents() throws IOException {
+        File dir = new File(testRoot, "dir-to-delete");
+        File nested = new File(dir, "sub");
+        assertTrue(nested.mkdirs());
+
+        File file = new File(dir, "file.txt");
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write("content".getBytes(StandardCharsets.UTF_8));
+        }
+
+        assertTrue(dir.exists());
+
+        new UrlDownloader().delete(dir);
+
+        assertFalse("Directory should have been deleted", dir.exists());
     }
 }
