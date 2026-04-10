@@ -9,17 +9,22 @@
 package io.github.nbauma109.decompiler.source.attach.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
@@ -197,5 +202,53 @@ public class SourceAttachUtilTest {
         // Even if attach fails due to test constraints, the Maven repo file must still exist
         assertTrue(mavenRepoSourceJar.exists());
         // The key is that reattchSource was called without throwing and the Maven repo file is preserved
+    }
+
+    // -----------------------------------------------------------------------
+    // isSourceCodeFor tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void isSourceCodeForReturnsTrueWhenSourceHasMatchingJavaFile() throws IOException {
+        File testRoot = SourceAttachTestSupport.createTargetTempDir("is-source-code-for-match"); //$NON-NLS-1$
+        try {
+            File binJar = createZip(new File(testRoot, "demo.jar"), "pkg/Demo.class", "bytecode"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            File srcJar = createZip(new File(testRoot, "demo-sources.jar"), "pkg/Demo.java", "class Demo {}"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
+            assertTrue(SourceAttachUtil.isSourceCodeFor(srcJar.getAbsolutePath(), binJar.getAbsolutePath()));
+        } finally {
+            FileUtils.deleteQuietly(testRoot);
+        }
+    }
+
+    @Test
+    public void isSourceCodeForReturnsFalseWhenSourceHasNoMatchingJavaFile() throws IOException {
+        File testRoot = SourceAttachTestSupport.createTargetTempDir("is-source-code-for-no-match"); //$NON-NLS-1$
+        try {
+            File binJar = createZip(new File(testRoot, "demo.jar"), "pkg/Demo.class", "bytecode"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            File srcJar = createZip(new File(testRoot, "demo-sources.jar"), "pkg/Other.java", "class Other {}"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
+            assertFalse(SourceAttachUtil.isSourceCodeFor(srcJar.getAbsolutePath(), binJar.getAbsolutePath()));
+        } finally {
+            FileUtils.deleteQuietly(testRoot);
+        }
+    }
+
+    @Test
+    public void isSourceCodeForReturnsFalseForNonExistingFiles() {
+        assertFalse(SourceAttachUtil.isSourceCodeFor("nonexistent-src.jar", "nonexistent-bin.jar")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private static File createZip(File dest, String entryName, String content) throws IOException {
+        dest.getParentFile().mkdirs();
+        try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(dest)))) {
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            ZipEntry entry = new ZipEntry(entryName);
+            entry.setSize(bytes.length);
+            zos.putNextEntry(entry);
+            zos.write(bytes);
+            zos.closeEntry();
+        }
+        return dest;
     }
 }
