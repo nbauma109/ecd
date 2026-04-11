@@ -37,10 +37,10 @@ public class ClassUtilTest {
     @Test
     public void isClassFileReturnsTrueForMinimalValidHeader() {
         // 0xCAFEBABE + minor version 0 + major version 61 (Java 17)
-        byte[] header = new byte[] {
-            (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE,
-            0x00, 0x00,
-            0x00, 0x3D
+        byte[] header = {
+                (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE,
+                0x00, 0x00,
+                0x00, 0x3D
         };
         assertTrue(ClassUtil.isClassFile(header));
     }
