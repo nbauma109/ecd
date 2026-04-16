@@ -225,6 +225,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         super.doSetInput(input);
         refreshSemanticHighlighting();
         updateTitleImage();
+        // Ensure source is shown after input is set, especially important for editor restoration
+        showSource();
     }
 
     /**
@@ -421,7 +423,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     @Override
     public void createPartControl(Composite parent) {
         super.createPartControl(parent);
-        showSource();
+        // Note: showSource() is called after doSetInput() to ensure editor input is available
+        // This is necessary for proper editor restoration when Eclipse reopens saved editors
+        if (getEditorInput() instanceof IClassFileEditorInput) {
+            showSource();
+        }
     }
 
     protected JavaDecompilerBufferManager getBufferManager() {
@@ -611,11 +617,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             if (fStackLayout != null && fViewerComposite != null && fParent != null) {
                 fStackLayout.topControl = fViewerComposite;
                 fParent.layout();
+                sourceShown = true;
             }
         } catch (Exception e) {
             Logger.debug(e);
         }
-        sourceShown = true;
     }
 
     @Override
