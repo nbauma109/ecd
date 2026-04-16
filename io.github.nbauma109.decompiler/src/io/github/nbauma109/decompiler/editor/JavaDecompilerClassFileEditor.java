@@ -425,9 +425,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         super.createPartControl(parent);
         // Note: showSource() is called after doSetInput() to ensure editor input is available
         // This is necessary for proper editor restoration when Eclipse reopens saved editors
-        if (getEditorInput() instanceof IClassFileEditorInput) {
-            showSource();
-        }
+        showSource();
     }
 
     protected JavaDecompilerBufferManager getBufferManager() {
