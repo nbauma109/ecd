@@ -41,14 +41,21 @@ import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IFindReplaceTarget;
 import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.swt.SWT;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
@@ -86,6 +93,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private boolean selectionChange = false;
     private ISourceReference selectedElement = null;
     private String decompilerType = null;
+    private Composite loadingComposite;
+    private Canvas loadingSpinner;
+    private int loadingSpinnerFrame = 0;
 
     public ISourceReference getSelectedElement() {
         return selectedElement;
@@ -259,6 +269,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     public boolean refreshContentIfNeeded() {
         IDocument document = getCurrentDocument();
         if (document == null || isBlank(document)) {
+            showLoadingPlaceholder();
             doSetInput(true);
             showSource();
             return true;
@@ -468,7 +479,18 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     @Override
     public void createPartControl(Composite parent) {
         super.createPartControl(parent);
-        showSource();
+        createLoadingControl();
+        IDocument document = getCurrentDocument();
+        if (document == null || isBlank(document)) {
+            showLoadingPlaceholder();
+            Display.getDefault().asyncExec(() -> {
+                if (!isEditorControlDisposed()) {
+                    refreshContentIfNeeded();
+                }
+            });
+        } else {
+            showSource();
+        }
     }
 
     protected JavaDecompilerBufferManager getBufferManager() {
@@ -642,27 +664,123 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     public void showSource() {
-        if (getEditorInput() instanceof IClassFileEditorInput in) {
-            showSource(in);
-        }
-    }
-
-    protected void showSource(IClassFileEditorInput classFileEditorInput) {
         if (sourceShown) {
             return;
         }
+        Composite viewerComposite = (Composite) ReflectionUtils.getFieldValue(this, "fViewerComposite"); //$NON-NLS-1$
+        if (viewerComposite == null || viewerComposite.isDisposed()) {
+            return;
+        }
+        showTopControl(viewerComposite);
+        sourceShown = true;
+    }
+
+    protected void showSource(IClassFileEditorInput classFileEditorInput) {
+        showSource();
+    }
+
+    private void createLoadingControl() {
+        if (loadingComposite != null && !loadingComposite.isDisposed()) {
+            return;
+        }
         try {
-            StackLayout fStackLayout = (StackLayout) ReflectionUtils.getFieldValue(this, "fStackLayout"); //$NON-NLS-1$
-            Composite fParent = (Composite) ReflectionUtils.getFieldValue(this, "fParent"); //$NON-NLS-1$
-            Composite fViewerComposite = (Composite) ReflectionUtils.getFieldValue(this, "fViewerComposite"); //$NON-NLS-1$
-            if (fStackLayout != null && fViewerComposite != null && fParent != null) {
-                fStackLayout.topControl = fViewerComposite;
-                fParent.layout();
+            Composite editorParent = (Composite) ReflectionUtils.getFieldValue(this, "fParent"); //$NON-NLS-1$
+            if (editorParent == null || editorParent.isDisposed()) {
+                return;
+            }
+
+            loadingComposite = new Composite(editorParent, SWT.NONE);
+            GridLayout layout = new GridLayout(1, false);
+            layout.marginWidth = 24;
+            layout.marginHeight = 24;
+            layout.verticalSpacing = 10;
+            loadingComposite.setLayout(layout);
+
+            Label loadingLabel = new Label(loadingComposite, SWT.CENTER);
+            loadingLabel.setText("Loading decompiled source..."); //$NON-NLS-1$
+            loadingLabel.setLayoutData(new GridData(SWT.CENTER, SWT.END, true, true));
+
+            loadingSpinner = new Canvas(loadingComposite, SWT.DOUBLE_BUFFERED);
+            GridData spinnerData = new GridData(SWT.CENTER, SWT.BEGINNING, false, false);
+            spinnerData.widthHint = 32;
+            spinnerData.heightHint = 32;
+            loadingSpinner.setLayoutData(spinnerData);
+            loadingSpinner.addPaintListener(this::paintLoadingSpinner);
+        } catch (Exception e) {
+            Logger.debug(e);
+        }
+    }
+
+    private void showLoadingPlaceholder() {
+        if (loadingComposite == null || loadingComposite.isDisposed()) {
+            createLoadingControl();
+        }
+        showTopControl(loadingComposite);
+        sourceShown = false;
+        startLoadingSpinner();
+    }
+
+    private void showTopControl(Composite topControl) {
+        if (topControl == null || topControl.isDisposed()) {
+            return;
+        }
+        try {
+            StackLayout stackLayout = (StackLayout) ReflectionUtils.getFieldValue(this, "fStackLayout"); //$NON-NLS-1$
+            Composite editorParent = (Composite) ReflectionUtils.getFieldValue(this, "fParent"); //$NON-NLS-1$
+            if (stackLayout != null && editorParent != null && !editorParent.isDisposed()) {
+                stackLayout.topControl = topControl;
+                editorParent.layout();
             }
         } catch (Exception e) {
             Logger.debug(e);
         }
-        sourceShown = true;
+    }
+
+    private boolean isEditorControlDisposed() {
+        if (getSourceViewer() == null || getSourceViewer().getTextWidget() == null) {
+            return true;
+        }
+        return getSourceViewer().getTextWidget().isDisposed();
+    }
+
+    private void startLoadingSpinner() {
+        if (loadingSpinner == null || loadingSpinner.isDisposed()) {
+            return;
+        }
+        Display display = loadingSpinner.getDisplay();
+        display.timerExec(0, new Runnable() {
+            @Override
+            public void run() {
+                if (loadingSpinner == null || loadingSpinner.isDisposed() || sourceShown) {
+                    return;
+                }
+                loadingSpinnerFrame = (loadingSpinnerFrame + 1) % 12;
+                loadingSpinner.redraw();
+                display.timerExec(80, this);
+            }
+        });
+    }
+
+    private void paintLoadingSpinner(PaintEvent event) {
+        if (loadingSpinner == null || loadingSpinner.isDisposed()) {
+            return;
+        }
+        Rectangle bounds = loadingSpinner.getClientArea();
+        int size = Math.min(bounds.width, bounds.height) - 4;
+        int x = (bounds.width - size) / 2;
+        int y = (bounds.height - size) / 2;
+
+        event.gc.setAdvanced(true);
+        event.gc.setAntialias(SWT.ON);
+
+        for (int i = 0; i < 12; i++) {
+            int alpha = 35 + ((i + loadingSpinnerFrame) % 12) * 18;
+            event.gc.setAlpha(Math.min(alpha, 255));
+            event.gc.setLineWidth(3);
+            int startAngle = i * 30;
+            event.gc.drawArc(x, y, size, size, startAngle, 18);
+        }
+        event.gc.setAlpha(255);
     }
 
     @Override
