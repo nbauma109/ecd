@@ -133,7 +133,7 @@ public class JavaDecompilerClassFileEditorTest {
 
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
-        assertTrue(contents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
+        assertTrue(contents.contains(KEYWORD_CLASS));
         assertFalse(openedEditor.getTitle().contains(" [" + DECOMPILER_FERNFLOWER + "]")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
     }
@@ -196,13 +196,13 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue(initialContents.contains(stripClassExtension(classInJar.classFileName())));
 
         runInUiThread(() -> initialDocument.set("")); //$NON-NLS-1$
-        assertTrue(runInUiThreadWithResult(() -> Boolean.valueOf(editor.refreshContentIfNeeded())).booleanValue());
+        assertTrue(runInUiThreadWithResult(() -> editor.refreshContentIfNeeded()));
 
         IDocument refreshedDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
         assertNotNull(refreshedDocument);
         String refreshedContents = waitForNonEmptyDocument(refreshedDocument);
         assertTrue(refreshedContents.contains(stripClassExtension(classInJar.classFileName())));
-        assertTrue(refreshedContents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
+        assertTrue(refreshedContents.contains(KEYWORD_CLASS));
     }
 
     @Test
@@ -340,7 +340,7 @@ public class JavaDecompilerClassFileEditorTest {
                 continue;
             }
 
-            String className = e.getAttribute(KEYWORD_CLASS); //$NON-NLS-1$
+            String className = e.getAttribute(KEYWORD_CLASS);
             if (expectedClassName.equals(className)) {
                 return e.getAttribute("id"); //$NON-NLS-1$
             }
