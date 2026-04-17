@@ -37,6 +37,8 @@ import org.eclipse.jdt.internal.ui.javaeditor.InternalClassFileEditorInput;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IFindReplaceTarget;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ISelectionProvider;
@@ -255,12 +257,14 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     public boolean refreshContentIfNeeded() {
-        String code = getCurrentDocumentContents();
-        if (code == null || code.trim().isEmpty()) {
+        IDocument document = getCurrentDocument();
+        if (document == null || isBlank(document)) {
             doSetInput(true);
             showSource();
             return true;
         }
+
+        String code = document.get();
         if (ClassUtil.isDebug() != isDebug(code)) {
             doSetInput(false);
             showSource();
@@ -269,14 +273,32 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return false;
     }
 
-    private String getCurrentDocumentContents() {
+    private IDocument getCurrentDocument() {
         if (getViewer() != null && getViewer().getDocument() != null) {
-            return getViewer().getDocument().get();
+            return getViewer().getDocument();
         }
         if (getSourceViewer() != null && getSourceViewer().getDocument() != null) {
-            return getSourceViewer().getDocument().get();
+            return getSourceViewer().getDocument();
         }
         return null;
+    }
+
+    private boolean isBlank(IDocument document) {
+        int length = document.getLength();
+        if (length == 0) {
+            return true;
+        }
+        try {
+            for (int i = 0; i < length; i++) {
+                if (!Character.isWhitespace(document.getChar(i))) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (BadLocationException e) {
+            JavaDecompilerPlugin.logError(e, ""); //$NON-NLS-1$
+            return document.get().isBlank();
+        }
     }
 
     @Override
