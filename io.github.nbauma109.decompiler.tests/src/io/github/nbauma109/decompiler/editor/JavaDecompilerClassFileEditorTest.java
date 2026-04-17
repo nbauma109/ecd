@@ -56,6 +56,7 @@ import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarPr
 
 public class JavaDecompilerClassFileEditorTest {
 
+    private static final String KEYWORD_CLASS = "class";
     private static final String CLASS = ".class";
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
@@ -132,7 +133,7 @@ public class JavaDecompilerClassFileEditorTest {
 
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
-        assertTrue(contents.contains("class")); //$NON-NLS-1$
+        assertTrue(contents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
         assertFalse(openedEditor.getTitle().contains(" [" + DECOMPILER_FERNFLOWER + "]")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
     }
@@ -201,7 +202,7 @@ public class JavaDecompilerClassFileEditorTest {
         assertNotNull(refreshedDocument);
         String refreshedContents = waitForNonEmptyDocument(refreshedDocument);
         assertTrue(refreshedContents.contains(stripClassExtension(classInJar.classFileName())));
-        assertTrue(refreshedContents.contains("class")); //$NON-NLS-1$
+        assertTrue(refreshedContents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
     }
 
     @Test
@@ -339,7 +340,7 @@ public class JavaDecompilerClassFileEditorTest {
                 continue;
             }
 
-            String className = e.getAttribute("class"); //$NON-NLS-1$
+            String className = e.getAttribute(KEYWORD_CLASS); //$NON-NLS-1$
             if (expectedClassName.equals(className)) {
                 return e.getAttribute("id"); //$NON-NLS-1$
             }
