@@ -1,4 +1,0 @@
--proc:none
--cp
-/dev/null
-/home/runner/work/ecd/ecd/io.github.nbauma109.decompiler.source.attach.tests/src/io/github/nbauma109/decompiler/source/attach/finder/SourceCodeFinderFacadeTest.java

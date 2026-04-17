@@ -1,4 +1,0 @@
--proc:none
--cp
-/dev/null
-/home/runner/work/ecd/ecd/io.github.nbauma109.decompiler.tests/src/io/github/nbauma109/decompiler/util/DecompileUtilPluginTest.java

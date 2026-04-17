@@ -139,14 +139,18 @@ public class LocalSourceFinderTest {
         return jar;
     }
 
-    private static void deleteEmptyDirs(File dir) {
-        if (dir == null || !dir.exists() || !dir.isDirectory()) {
-            return;
-        }
-        File[] contents = dir.listFiles();
-        if (contents != null && contents.length == 0) {
-            dir.delete();
-            deleteEmptyDirs(dir.getParentFile());
+    private static void deleteEmptyDirs(File dir) throws IOException {
+        // Walk up the directory tree, removing each empty directory up to (but not including)
+        // the Maven local repository root so we don't accidentally remove ~/.m2/repository.
+        File cursor = dir;
+        while (cursor != null && cursor.exists() && cursor.isDirectory()
+                && !cursor.equals(SourceConstants.USER_M2_REPO_DIR)) {
+            File[] contents = cursor.listFiles();
+            if (contents == null || contents.length != 0) {
+                break; // non-empty (or unreadable) – stop here
+            }
+            Files.delete(cursor.toPath());
+            cursor = cursor.getParentFile();
         }
     }
 }
