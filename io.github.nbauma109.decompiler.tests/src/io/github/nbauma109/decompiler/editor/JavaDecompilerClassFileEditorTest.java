@@ -56,6 +56,7 @@ import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarPr
 
 public class JavaDecompilerClassFileEditorTest {
 
+    private static final String KEYWORD_CLASS = "class";
     private static final String CLASS = ".class";
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
     private static final String TEST_JAR_PATH = "resources/test.jar";
@@ -132,7 +133,7 @@ public class JavaDecompilerClassFileEditorTest {
 
         String expectedSimpleName = stripClassExtension(classInJar.classFileName());
         assertTrue(contents.contains(expectedSimpleName));
-        assertTrue(contents.contains("class")); //$NON-NLS-1$
+        assertTrue(contents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
         assertFalse(openedEditor.getTitle().contains(" [" + DECOMPILER_FERNFLOWER + "]")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
     }
@@ -171,6 +172,40 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testRefreshContentIfNeededReloadsBlankDocument()
+            throws IOException, CoreException, InterruptedException {
+        ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        assertNotNull(textEditor);
+
+        IDocument initialDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        assertNotNull(initialDocument);
+        String initialContents = waitForNonEmptyDocument(initialDocument);
+        assertTrue(initialContents.contains(stripClassExtension(classInJar.classFileName())));
+
+        runInUiThread(() -> initialDocument.set("")); //$NON-NLS-1$
+        assertTrue(runInUiThreadWithResult(() -> Boolean.valueOf(editor.refreshContentIfNeeded())).booleanValue());
+
+        IDocument refreshedDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        assertNotNull(refreshedDocument);
+        String refreshedContents = waitForNonEmptyDocument(refreshedDocument);
+        assertTrue(refreshedContents.contains(stripClassExtension(classInJar.classFileName())));
+        assertTrue(refreshedContents.contains(KEYWORD_CLASS)); //$NON-NLS-1$
+    }
+
+    @Test
     public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable()
             throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
@@ -199,7 +234,7 @@ public class JavaDecompilerClassFileEditorTest {
 
             assertSame(customImage, editor.getTitleImage());
         } finally {
-            runInUiThread(() -> customImage.dispose());
+            runInUiThread(customImage::dispose);
         }
     }
 
@@ -232,7 +267,7 @@ public class JavaDecompilerClassFileEditorTest {
 
             assertSame(decompilerImage, editor.getTitleImage());
         } finally {
-            runInUiThread(() -> customImage.dispose());
+            runInUiThread(customImage::dispose);
         }
     }
 
@@ -305,7 +340,7 @@ public class JavaDecompilerClassFileEditorTest {
                 continue;
             }
 
-            String className = e.getAttribute("class"); //$NON-NLS-1$
+            String className = e.getAttribute(KEYWORD_CLASS); //$NON-NLS-1$
             if (expectedClassName.equals(className)) {
                 return e.getAttribute("id"); //$NON-NLS-1$
             }

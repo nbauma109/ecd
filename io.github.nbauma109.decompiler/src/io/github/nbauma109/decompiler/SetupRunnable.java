@@ -11,6 +11,8 @@ package io.github.nbauma109.decompiler;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorDescriptor;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.IFileEditorMapping;
 import org.eclipse.ui.IPageListener;
 import org.eclipse.ui.IPartListener;
@@ -31,7 +33,6 @@ import io.github.nbauma109.decompiler.actions.DecompileAction;
 import io.github.nbauma109.decompiler.debug.BreakpointPresentationBridge;
 import io.github.nbauma109.decompiler.debug.DecompilerSourceLookupBridge;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
-import io.github.nbauma109.decompiler.util.ClassUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.UIUtil;
 
@@ -74,7 +75,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void partOpened(IWorkbenchPart part) {
-                // Opening a part does not require any decompiler-specific adjustment.
+                refreshDecompilerEditor(part);
             }
 
             @Override
@@ -89,12 +90,7 @@ public class SetupRunnable implements Runnable {
 
             @Override
             public void partBroughtToTop(IWorkbenchPart part) {
-                if (part instanceof JavaDecompilerClassFileEditor editor) {
-                    String code = editor.getViewer().getDocument().get();
-                    if (ClassUtil.isDebug() != JavaDecompilerClassFileEditor.isDebug(code)) {
-                        ((JavaDecompilerClassFileEditor) part).doSetInput(false);
-                    }
-                }
+                refreshDecompilerEditor(part);
             }
 
             @Override
@@ -109,6 +105,7 @@ public class SetupRunnable implements Runnable {
             public void pageOpened(IWorkbenchPage page) {
                 page.removePartListener(partListener);
                 page.addPartListener(partListener);
+                refreshDecompilerEditors(page);
             }
 
             @Override
@@ -121,6 +118,7 @@ public class SetupRunnable implements Runnable {
             public void pageActivated(IWorkbenchPage page) {
                 page.removePartListener(partListener);
                 page.addPartListener(partListener);
+                refreshDecompilerEditors(page);
             }
         };
 
@@ -137,6 +135,7 @@ public class SetupRunnable implements Runnable {
                     for (IWorkbenchPage page : pages) {
                         page.removePartListener(partListener);
                         page.addPartListener(partListener);
+                        refreshDecompilerEditors(page);
                     }
                 }
             }
@@ -164,6 +163,7 @@ public class SetupRunnable implements Runnable {
                     for (IWorkbenchPage page : pages) {
                         page.removePartListener(partListener);
                         page.addPartListener(partListener);
+                        refreshDecompilerEditors(page);
                     }
                 }
             }
@@ -193,6 +193,23 @@ public class SetupRunnable implements Runnable {
 
         page.removePartListener(partListener);
         page.addPartListener(partListener);
+        refreshDecompilerEditors(page);
+    }
+
+    private void refreshDecompilerEditors(IWorkbenchPage page) {
+        if (page == null) {
+            return;
+        }
+        for (IEditorReference editorReference : page.getEditorReferences()) {
+            IEditorPart editor = editorReference.getEditor(false);
+            refreshDecompilerEditor(editor);
+        }
+    }
+
+    private void refreshDecompilerEditor(IWorkbenchPart part) {
+        if (part instanceof JavaDecompilerClassFileEditor editor) {
+            editor.refreshContentIfNeeded();
+        }
     }
 
     private void checkClassFileAssociation() {
