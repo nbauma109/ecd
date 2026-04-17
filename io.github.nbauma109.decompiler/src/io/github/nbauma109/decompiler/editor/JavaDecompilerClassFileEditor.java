@@ -254,6 +254,31 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         }
     }
 
+    public boolean refreshContentIfNeeded() {
+        String code = getCurrentDocumentContents();
+        if (code == null || code.trim().isEmpty()) {
+            doSetInput(true);
+            showSource();
+            return true;
+        }
+        if (ClassUtil.isDebug() != isDebug(code)) {
+            doSetInput(false);
+            showSource();
+            return true;
+        }
+        return false;
+    }
+
+    private String getCurrentDocumentContents() {
+        if (getViewer() != null && getViewer().getDocument() != null) {
+            return getViewer().getDocument().get();
+        }
+        if (getSourceViewer() != null && getSourceViewer().getDocument() != null) {
+            return getSourceViewer().getDocument().get();
+        }
+        return null;
+    }
+
     @Override
     protected void doSetInput(IEditorInput input) throws CoreException {
         switch (input) {

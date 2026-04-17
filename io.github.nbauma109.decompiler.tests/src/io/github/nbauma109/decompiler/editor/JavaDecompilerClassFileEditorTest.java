@@ -171,6 +171,40 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testRefreshContentIfNeededReloadsBlankDocument()
+            throws IOException, CoreException, InterruptedException {
+        ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
+                () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
+
+        IPackageFragment pkg = jarRoot.getPackageFragment(classInJar.packageName());
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(classInJar.classFileName());
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        assertNotNull(textEditor);
+
+        IDocument initialDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        assertNotNull(initialDocument);
+        String initialContents = waitForNonEmptyDocument(initialDocument);
+        assertTrue(initialContents.contains(stripClassExtension(classInJar.classFileName())));
+
+        runInUiThread(() -> initialDocument.set("")); //$NON-NLS-1$
+        assertTrue(runInUiThreadWithResult(() -> Boolean.valueOf(editor.refreshContentIfNeeded())).booleanValue());
+
+        IDocument refreshedDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        assertNotNull(refreshedDocument);
+        String refreshedContents = waitForNonEmptyDocument(refreshedDocument);
+        assertTrue(refreshedContents.contains(stripClassExtension(classInJar.classFileName())));
+        assertTrue(refreshedContents.contains("class")); //$NON-NLS-1$
+    }
+
+    @Test
     public void testUpdateTitleImageKeepsCurrentImageWhenDecompilerImageUnavailable()
             throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
@@ -199,7 +233,7 @@ public class JavaDecompilerClassFileEditorTest {
 
             assertSame(customImage, editor.getTitleImage());
         } finally {
-            runInUiThread(() -> customImage.dispose());
+            runInUiThread(customImage::dispose);
         }
     }
 
@@ -232,7 +266,7 @@ public class JavaDecompilerClassFileEditorTest {
 
             assertSame(decompilerImage, editor.getTitleImage());
         } finally {
-            runInUiThread(() -> customImage.dispose());
+            runInUiThread(customImage::dispose);
         }
     }
 
