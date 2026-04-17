@@ -86,6 +86,31 @@ public class AbstractSourceCodeFinderTest {
     }
 
     @Test
+    public void findGavFromFileReturnsEmptyForJarWithNoPomPropertiesEntries() throws IOException {
+        Map<String, String> entries = new LinkedHashMap<>();
+        entries.put("com/example/Demo.class", "bytecode");
+        entries.put("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n");
+        File jar = createZip("no-pom.jar", entries);
+
+        Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
+
+        assertFalse(gav.isPresent());
+    }
+
+    @Test
+    public void findGavFromFileReturnsEmptyWhenPomPropertiesLackRequiredFields() throws IOException {
+        // pom.properties is missing 'groupId' – the GAV should not be added to the result set
+        Map<String, String> entries = Collections.singletonMap(
+                "META-INF/maven/org.example/demo/pom.properties",
+                "artifactId=demo\nversion=1.0\n"); // groupId intentionally absent
+        File jar = createZip("missing-group.jar", entries);
+
+        Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
+
+        assertFalse(gav.isPresent());
+    }
+
+    @Test
     public void getStringReadsPlainTextFromFileUrl() throws IOException {
         File file = new File(testRoot, "plain.txt");
         try (FileWriter writer = new FileWriter(file, StandardCharsets.UTF_8)) {

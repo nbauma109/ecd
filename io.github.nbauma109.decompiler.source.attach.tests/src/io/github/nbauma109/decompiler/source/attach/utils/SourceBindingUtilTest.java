@@ -131,6 +131,55 @@ public class SourceBindingUtilTest {
     }
 
     // -----------------------------------------------------------------------
+    // modifySourceBindingRecord – update existing entry with a new SHA
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void saveSourceBindingRecordTwiceWithDifferentShasMakesBothShasQueryable() throws IOException {
+        File sourceFile = createMinimalZip("update-src.jar"); //$NON-NLS-1$
+        File tempFile = createMinimalZip("update-tmp.jar"); //$NON-NLS-1$
+        String sha1 = "sha-first-" + System.nanoTime(); //$NON-NLS-1$
+        String sha2 = "sha-second-" + System.nanoTime(); //$NON-NLS-1$
+
+        // First save creates the entry; second save should call modifySourceBindingRecord
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha1, null, tempFile);
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha2, null, tempFile);
+
+        assertNotNull("First SHA must still be findable after a second save", //$NON-NLS-1$
+                SourceBindingUtil.getSourceFileBySha(sha1));
+        assertNotNull("Second SHA must be findable after the second save", //$NON-NLS-1$
+                SourceBindingUtil.getSourceFileBySha(sha2));
+    }
+
+    @Test
+    public void saveSourceBindingRecordUpdatesSameEntryWithDownloadUrl() throws IOException {
+        File sourceFile = createMinimalZip("dl-update-src.jar"); //$NON-NLS-1$
+        File tempFile = createMinimalZip("dl-update-tmp.jar"); //$NON-NLS-1$
+        String sha = "sha-dl-update-" + System.nanoTime(); //$NON-NLS-1$
+        String url = "https://example.com/dl-update-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+
+        // First save without URL, second save adds the URL to the same record
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, url, tempFile);
+
+        String[] byUrl = SourceBindingUtil.getSourceFileByDownloadUrl(url);
+        assertNotNull("Record should be findable by its download URL after the update", byUrl); //$NON-NLS-1$
+        assertNotNull("Source path must be non-null", byUrl[0]); //$NON-NLS-1$
+    }
+
+    @Test
+    public void getSourceFileByShaReturnsNullForUnknownSha() {
+        String unknownSha = "sha-never-saved-" + System.nanoTime(); //$NON-NLS-1$
+        assertNull(SourceBindingUtil.getSourceFileBySha(unknownSha));
+    }
+
+    @Test
+    public void getSourceFileByDownloadUrlReturnsNullForUnknownUrl() {
+        String unknownUrl = "https://example.com/never-saved-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+        assertNull(SourceBindingUtil.getSourceFileByDownloadUrl(unknownUrl));
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
