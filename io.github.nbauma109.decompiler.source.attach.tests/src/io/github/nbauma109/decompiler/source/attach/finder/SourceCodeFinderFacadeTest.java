@@ -24,10 +24,12 @@ public class SourceCodeFinderFacadeTest {
 
     @Test
     public void findWithDirectoryPathDoesNotAddResults() {
-        // The target/ directory always exists when tests run inside a Maven build
         File dir = new File("target"); //$NON-NLS-1$
-        assertTrue("target directory must exist for this test to be meaningful", //$NON-NLS-1$
-                dir.exists() && dir.isDirectory());
+        if (!dir.exists()) {
+            assertTrue("target directory could not be created for this test", dir.mkdirs()); //$NON-NLS-1$
+        }
+        assertTrue("target path must be a directory for this test to be meaningful", //$NON-NLS-1$
+                dir.isDirectory());
         SourceCodeFinderFacade facade = new SourceCodeFinderFacade();
         List<SourceFileResult> results = new ArrayList<>();
 
