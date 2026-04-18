@@ -12,12 +12,18 @@ import org.junit.Test;
 public class SourceCodeFinderFacadeTest {
 
     @Test
-    public void findWithNonExistentBinaryFileDoesNotAddResults() {
+    public void findWithNonExistentBinaryFileDoesNotAddResults() throws Exception {
+        File nonExistentBinaryFile = File.createTempFile("SourceCodeFinderFacadeTest-", ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
+        String nonExistentBinaryFilePath = nonExistentBinaryFile.getAbsolutePath();
+        assertTrue("temporary file must be deleted for this test to be meaningful", //$NON-NLS-1$
+                nonExistentBinaryFile.delete());
+        assertTrue("temporary file path must not exist for this test to be meaningful", //$NON-NLS-1$
+                !nonExistentBinaryFile.exists());
+
         SourceCodeFinderFacade facade = new SourceCodeFinderFacade();
         List<SourceFileResult> results = new ArrayList<>();
 
-        facade.find("/path/that/absolutely/does/not/exist-" + System.nanoTime() + ".jar", //$NON-NLS-1$ //$NON-NLS-2$
-                "deadbeef", results); //$NON-NLS-1$
+        facade.find(nonExistentBinaryFilePath, "deadbeef", results); //$NON-NLS-1$
 
         assertTrue(results.isEmpty());
     }
