@@ -196,7 +196,7 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue(initialContents.contains(stripClassExtension(classInJar.classFileName())));
 
         runInUiThread(() -> initialDocument.set("")); //$NON-NLS-1$
-        assertTrue(runInUiThreadWithResult(() -> editor.refreshContentIfNeeded()));
+        assertTrue(runInUiThreadWithResult(editor::refreshContentIfNeeded));
 
         IDocument refreshedDocument = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
         assertNotNull(refreshedDocument);
