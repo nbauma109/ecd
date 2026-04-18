@@ -21,6 +21,8 @@ import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSup
 
 public class SourceBindingUtilTest {
 
+    private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
+
     private File testRoot;
 
     @Before
@@ -89,7 +91,7 @@ public class SourceBindingUtilTest {
         File sourceFile = createMinimalZip("dl-url-src.jar");
         File tempFile = createMinimalZip("dl-url-tmp.jar");
         String sha = "sha-dl-url-" + System.nanoTime(); //$NON-NLS-1$
-        String downloadUrl = "https://example.com/dl-url-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+        String downloadUrl = "https://example.com/dl-url-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
 
         SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, downloadUrl, tempFile);
 
@@ -156,7 +158,7 @@ public class SourceBindingUtilTest {
         File sourceFile = createMinimalZip("dl-update-src.jar"); //$NON-NLS-1$
         File tempFile = createMinimalZip("dl-update-tmp.jar"); //$NON-NLS-1$
         String sha = "sha-dl-update-" + System.nanoTime(); //$NON-NLS-1$
-        String url = "https://example.com/dl-update-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+        String url = "https://example.com/dl-update-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
 
         // First save without URL, second save adds the URL to the same record
         SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
@@ -175,7 +177,7 @@ public class SourceBindingUtilTest {
 
     @Test
     public void getSourceFileByDownloadUrlReturnsNullForUnknownUrl() {
-        String unknownUrl = "https://example.com/never-saved-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+        String unknownUrl = "https://example.com/never-saved-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
         assertNull(SourceBindingUtil.getSourceFileByDownloadUrl(unknownUrl));
     }
 
