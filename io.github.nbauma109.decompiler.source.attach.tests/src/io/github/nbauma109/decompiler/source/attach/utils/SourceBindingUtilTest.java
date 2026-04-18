@@ -21,6 +21,8 @@ import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSup
 
 public class SourceBindingUtilTest {
 
+    private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
+
     private File testRoot;
 
     @Before
@@ -89,7 +91,7 @@ public class SourceBindingUtilTest {
         File sourceFile = createMinimalZip("dl-url-src.jar");
         File tempFile = createMinimalZip("dl-url-tmp.jar");
         String sha = "sha-dl-url-" + System.nanoTime(); //$NON-NLS-1$
-        String downloadUrl = "https://example.com/dl-url-" + System.nanoTime() + "-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+        String downloadUrl = "https://example.com/dl-url-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
 
         SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, downloadUrl, tempFile);
 
@@ -128,6 +130,55 @@ public class SourceBindingUtilTest {
     public void checkSourceBindingConfigIsNoOpWhenNoBindingFileExists() {
         // Should not throw even if no binding file exists yet (e.g., first run)
         SourceBindingUtil.checkSourceBindingConfig();
+    }
+
+    // -----------------------------------------------------------------------
+    // modifySourceBindingRecord – update existing entry with a new SHA
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void saveSourceBindingRecordTwiceWithDifferentShasMakesBothShasQueryable() throws IOException {
+        File sourceFile = createMinimalZip("update-src.jar"); //$NON-NLS-1$
+        File tempFile = createMinimalZip("update-tmp.jar"); //$NON-NLS-1$
+        String sha1 = "sha-first-" + System.nanoTime(); //$NON-NLS-1$
+        String sha2 = "sha-second-" + System.nanoTime(); //$NON-NLS-1$
+
+        // First save creates the entry; second save should call modifySourceBindingRecord
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha1, null, tempFile);
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha2, null, tempFile);
+
+        assertNotNull("First SHA must still be findable after a second save", //$NON-NLS-1$
+                SourceBindingUtil.getSourceFileBySha(sha1));
+        assertNotNull("Second SHA must be findable after the second save", //$NON-NLS-1$
+                SourceBindingUtil.getSourceFileBySha(sha2));
+    }
+
+    @Test
+    public void saveSourceBindingRecordUpdatesSameEntryWithDownloadUrl() throws IOException {
+        File sourceFile = createMinimalZip("dl-update-src.jar"); //$NON-NLS-1$
+        File tempFile = createMinimalZip("dl-update-tmp.jar"); //$NON-NLS-1$
+        String sha = "sha-dl-update-" + System.nanoTime(); //$NON-NLS-1$
+        String url = "https://example.com/dl-update-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
+
+        // First save without URL, second save adds the URL to the same record
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, url, tempFile);
+
+        String[] byUrl = SourceBindingUtil.getSourceFileByDownloadUrl(url);
+        assertNotNull("Record should be findable by its download URL after the update", byUrl); //$NON-NLS-1$
+        assertNotNull("Source path must be non-null", byUrl[0]); //$NON-NLS-1$
+    }
+
+    @Test
+    public void getSourceFileByShaReturnsNullForUnknownSha() {
+        String unknownSha = "sha-never-saved-" + System.nanoTime(); //$NON-NLS-1$
+        assertNull(SourceBindingUtil.getSourceFileBySha(unknownSha));
+    }
+
+    @Test
+    public void getSourceFileByDownloadUrlReturnsNullForUnknownUrl() {
+        String unknownUrl = "https://example.com/never-saved-" + System.nanoTime() + SOURCES_JAR_SUFFIX; //$NON-NLS-1$
+        assertNull(SourceBindingUtil.getSourceFileByDownloadUrl(unknownUrl));
     }
 
     // -----------------------------------------------------------------------

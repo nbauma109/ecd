@@ -87,6 +87,18 @@ public class DecompileUtilPluginTest {
     }
 
     @Test
+    public void getPackageNameHandlesTabBetweenKeywordAndName() {
+        assertEquals("com.example.test", DecompileUtil.getPackageName("package\tcom.example.test;")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
+    public void getPackageNameReturnsFirstMatchWhenMultiplePackageKeywordsPresent() {
+        // The pattern finds the first occurrence of 'package <non-whitespace>'
+        String source = "package com.example.first;\npackage com.example.second;"; //$NON-NLS-1$
+        assertEquals("com.example.first", DecompileUtil.getPackageName(source)); //$NON-NLS-1$
+    }
+
+    @Test
     public void decompileReturnsExistingSourceWhenReusable() throws IOException, CoreException, InterruptedException {
         LibraryArtifacts artifacts = createLibraryArtifacts();
 

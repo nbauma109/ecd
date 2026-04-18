@@ -40,6 +40,7 @@ public class AbstractSourceCodeFinderTest {
     private static final String HELLO_FINDER = "Hello finder";
     private static final String DUMMY_JAR = "dummy.jar"; //$NON-NLS-1$
     private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
+    private static final String POM_PROPERTIES_PATH = "META-INF/maven/org.example/demo/pom.properties"; //$NON-NLS-1$
 
     private File testRoot;
 
@@ -60,7 +61,7 @@ public class AbstractSourceCodeFinderTest {
     @Test
     public void findGavFromFileReturnsParsedCoordinatesForSinglePomProperties() throws IOException {
         File jar = createZip("single.jar",
-                Collections.singletonMap("META-INF/maven/org.example/demo/pom.properties",
+                Collections.singletonMap(POM_PROPERTIES_PATH,
                         "groupId=org.example\nartifactId=demo\nversion=1.2.3\n"));
 
         Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
@@ -74,11 +75,36 @@ public class AbstractSourceCodeFinderTest {
     @Test
     public void findGavFromFileReturnsEmptyForMergedJarWithMultiplePomProperties() throws IOException {
         Map<String, String> entries = new LinkedHashMap<>();
-        entries.put("META-INF/maven/org.example/demo/pom.properties",
+        entries.put(POM_PROPERTIES_PATH,
                 "groupId=org.example\nartifactId=demo\nversion=1.2.3\n");
         entries.put("META-INF/maven/org.other/other/pom.properties",
                 "groupId=org.other\nartifactId=other\nversion=9.0.0\n");
         File jar = createZip("merged.jar", entries);
+
+        Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
+
+        assertFalse(gav.isPresent());
+    }
+
+    @Test
+    public void findGavFromFileReturnsEmptyForJarWithNoPomPropertiesEntries() throws IOException {
+        Map<String, String> entries = new LinkedHashMap<>();
+        entries.put("com/example/Demo.class", "bytecode");
+        entries.put("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n");
+        File jar = createZip("no-pom.jar", entries);
+
+        Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
+
+        assertFalse(gav.isPresent());
+    }
+
+    @Test
+    public void findGavFromFileReturnsEmptyWhenPomPropertiesLackRequiredFields() throws IOException {
+        // pom.properties is missing 'groupId' – the GAV should not be added to the result set
+        Map<String, String> entries = Collections.singletonMap(
+                POM_PROPERTIES_PATH,
+                "artifactId=demo\nversion=1.0\n"); // groupId intentionally absent
+        File jar = createZip("missing-group.jar", entries);
 
         Optional<GAV> gav = new ExposedFinder().exposeFindGavFromFile(jar.getAbsolutePath());
 
