@@ -163,7 +163,7 @@ Access the project's GitHub repository directly from Eclipse by clicking the ![G
 
 ### Attach Library Source
 
-Automatically download and attach source code to library JAR files. Right-click on any JAR file or class in the Package Explorer or Project Explorer and select "Attach Library Source" to download the corresponding source code from configured repositories. The action uses the Eclipse JDT library icon to indicate libraries with attached sources.
+Automatically download and attach source code to library JAR files. Right-click on any JAR file or class in the Package Explorer or Project Explorer and select "Attach Library Source" ![attach library source icon](io.github.nbauma109.decompiler.source.attach/icons/jar_lsrc_obj.png) to download the corresponding source code from configured repositories.
 
 This feature integrates with both private Nexus repositories (configured with credentials) and public repositories (Maven Central, Sonatype, JitPack, etc.) to find and attach the appropriate source files.
 
