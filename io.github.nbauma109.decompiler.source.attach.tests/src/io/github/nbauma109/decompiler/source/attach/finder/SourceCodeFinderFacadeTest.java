@@ -7,39 +7,50 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+
+import io.github.nbauma109.decompiler.source.attach.testutil.SourceAttachTestSupport;
 
 public class SourceCodeFinderFacadeTest {
 
+    private File testRoot;
+
+    @Before
+    public void setUp() {
+        testRoot = SourceAttachTestSupport.createTargetTempDir("facade-test"); //$NON-NLS-1$
+    }
+
+    @After
+    public void tearDown() {
+        FileUtils.deleteQuietly(testRoot);
+    }
+
     @Test
-    public void findWithNonExistentBinaryFileDoesNotAddResults() throws Exception {
-        File nonExistentBinaryFile = File.createTempFile("SourceCodeFinderFacadeTest-", ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
-        String nonExistentBinaryFilePath = nonExistentBinaryFile.getAbsolutePath();
-        assertTrue("temporary file must be deleted for this test to be meaningful", //$NON-NLS-1$
-                nonExistentBinaryFile.delete());
-        assertTrue("temporary file path must not exist for this test to be meaningful", //$NON-NLS-1$
+    public void findWithNonExistentBinaryFileDoesNotAddResults() {
+        // Construct a path inside testRoot that is never created on disk
+        File nonExistentBinaryFile = new File(testRoot, "nonexistent-" + System.nanoTime() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue("file must not exist for this test to be meaningful", //$NON-NLS-1$
                 !nonExistentBinaryFile.exists());
 
         SourceCodeFinderFacade facade = new SourceCodeFinderFacade();
         List<SourceFileResult> results = new ArrayList<>();
 
-        facade.find(nonExistentBinaryFilePath, "deadbeef", results); //$NON-NLS-1$
+        facade.find(nonExistentBinaryFile.getAbsolutePath(), "deadbeef", results); //$NON-NLS-1$
 
         assertTrue(results.isEmpty());
     }
 
     @Test
     public void findWithDirectoryPathDoesNotAddResults() {
-        File dir = new File("target"); //$NON-NLS-1$
-        if (!dir.exists()) {
-            assertTrue("target directory could not be created for this test", dir.mkdirs()); //$NON-NLS-1$
-        }
-        assertTrue("target path must be a directory for this test to be meaningful", //$NON-NLS-1$
-                dir.isDirectory());
+        assertTrue("testRoot must be a directory for this test to be meaningful", //$NON-NLS-1$
+                testRoot.isDirectory());
         SourceCodeFinderFacade facade = new SourceCodeFinderFacade();
         List<SourceFileResult> results = new ArrayList<>();
 
-        facade.find(dir.getAbsolutePath(), "deadbeef", results); //$NON-NLS-1$
+        facade.find(testRoot.getAbsolutePath(), "deadbeef", results); //$NON-NLS-1$
 
         assertTrue(results.isEmpty());
     }
