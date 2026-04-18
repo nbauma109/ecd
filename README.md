@@ -134,6 +134,40 @@ Use this icon to switch decompiler while a class file is still open. Once a file
 
 ![image](https://javadecompiler.org/ecd/switch-decompiler.png)
 
+## Features
+
+### Export Source
+
+You can export decompiled source code to files using the Export Source action. This feature is available in two ways:
+
+- From the toolbar: Click the ![export icon](io.github.nbauma109.decompiler/icons/etool16/export_wiz.png) icon in the editor toolbar when viewing a decompiled class file.
+- From context menu: Right-click on Java classes, packages, or JAR files in the Package Explorer or Project Explorer and select "Export Source".
+
+The exported source files will be saved with the configured encoding (see preferences).
+
+### Mark Occurrences
+
+Toggle the highlighting of all occurrences of the currently selected identifier in the decompiled code by clicking the ![mark occurrences icon](io.github.nbauma109.decompiler/icons/etool16/mark_occurrences.png) icon in the toolbar. This helps you quickly identify where a variable, method, or class is used throughout the decompiled source.
+
+### Breadcrumb Navigation
+
+Enable or disable breadcrumb navigation by clicking the ![breadcrumb icon](io.github.nbauma109.decompiler/icons/etool16/toggle_breadcrumb.png) icon in the toolbar. The breadcrumb shows the structural path to the current code location (package, class, method) and allows quick navigation through the code hierarchy.
+
+### Open Class With
+
+Right-click on any Java class file in the Package Explorer or Project Explorer and select "Open Class With" to choose which specific decompiler to use for opening that class file. This allows you to compare output from different decompilers for the same class.
+
+### GitHub Project Home
+
+Access the project's GitHub repository directly from Eclipse by clicking the ![GitHub icon](io.github.nbauma109.decompiler/icons/github.png) icon in the toolbar. This provides quick access to documentation, issues, and updates.
+
+### Keyboard Shortcuts
+
+The following keyboard shortcuts are available when working with decompiled class files:
+
+- **Ctrl+Alt+,** - Trigger decompilation
+- **Ctrl+Alt+.** - Toggle debug mode
+
 ## How to uninstall Enhanced Class Decompiler?
   1. Click on _"Help > About Eclipse > Installation Details > Installation Software"_,
   2. Select _"Enhanced Class Decompiler"_,
