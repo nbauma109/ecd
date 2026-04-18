@@ -134,6 +134,62 @@ Use this icon to switch decompiler while a class file is still open. Once a file
 
 ![image](https://javadecompiler.org/ecd/switch-decompiler.png)
 
+## Features
+
+### Export Source
+
+You can export decompiled source code to files using the Export Source action. This feature is available in two ways:
+
+- From the toolbar: Click the ![export icon](io.github.nbauma109.decompiler/icons/etool16/export_wiz.png) icon in the editor toolbar when viewing a decompiled class file.
+- From context menu: Right-click on Java classes, packages, or JAR files in the Package Explorer or Project Explorer and select "Export Source".
+
+The exported source files will be saved with the configured encoding (see preferences).
+
+### Mark Occurrences
+
+Toggle the highlighting of all occurrences of the currently selected identifier in the decompiled code by clicking the ![mark occurrences icon](io.github.nbauma109.decompiler/icons/etool16/mark_occurrences.png) icon in the toolbar. This helps you quickly identify where a variable, method, or class is used throughout the decompiled source.
+
+### Breadcrumb Navigation
+
+Enable or disable breadcrumb navigation by clicking the ![breadcrumb icon](io.github.nbauma109.decompiler/icons/etool16/toggle_breadcrumb.png) icon in the toolbar. The breadcrumb shows the structural path to the current code location (package, class, method) and allows quick navigation through the code hierarchy.
+
+### Open Class With
+
+Right-click on any Java class file in the Package Explorer or Project Explorer and select "Open Class With" to choose which specific decompiler to use for opening that class file. This allows you to compare output from different decompilers for the same class.
+
+### GitHub Project Home
+
+Access the project's GitHub repository directly from Eclipse by clicking the ![GitHub icon](io.github.nbauma109.decompiler/icons/github.png) icon in the toolbar. This provides quick access to documentation, issues, and updates.
+
+### Attach Library Source
+
+Automatically download and attach source code to library JAR files. Right-click on any JAR file or class in the Package Explorer or Project Explorer and select "Attach Library Source" to download the corresponding source code from configured repositories. The action uses the Eclipse JDT library icon to indicate libraries with attached sources.
+
+This feature integrates with both private Nexus repositories (configured with credentials) and public repositories (Maven Central, Sonatype, JitPack, etc.) to find and attach the appropriate source files.
+
+### Show Source Code
+
+Toggle between viewing decompiled code and original source code (when available) by using the "Show Source Code" option in the editor context menu or the Decompiler menu. This allows you to quickly switch views without closing and reopening files.
+
+### Decompiler Selection
+
+Access the complete list of available decompilers through the Decompiler pulldown menu in the toolbar. You can select from Fernflower, Vineflower, Procyon, CFR, JD-Core V0, JD-Core V1, and JADX. Each decompiler may produce different output, so you can choose the one that works best for your needs.
+
+### Toggle Breakpoints
+
+Set and remove breakpoints directly in decompiled code by clicking in the editor's left margin (ruler). This enables you to debug class files without source code, with the decompiler providing the necessary mapping between the decompiled code and the actual bytecode.
+
+### JVM Opcode Documentation
+
+Access comprehensive JVM instruction reference documentation by navigating to "Help > Help Contents > JVM Instruction Reference". This built-in documentation provides detailed information about all JVM opcodes and bytecode instructions, helpful when analyzing decompiled code or understanding bytecode behavior.
+
+### Keyboard Shortcuts
+
+The following keyboard shortcuts are available when working with decompiled class files:
+
+- **Ctrl+Alt+,** - Trigger decompilation
+- **Ctrl+Alt+.** - Toggle debug mode
+
 ## How to uninstall Enhanced Class Decompiler?
   1. Click on _"Help > About Eclipse > Installation Details > Installation Software"_,
   2. Select _"Enhanced Class Decompiler"_,
