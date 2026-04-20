@@ -241,12 +241,12 @@ public class SourceAttachUtilTest {
 
     @Test
     public void needDownloadSourceReturnsTrueForEmptySelection() {
-        assertTrue(SourceAttachUtil.needDownloadSource(new java.util.ArrayList<>()));
+        assertTrue(SourceAttachUtil.needDownloadSource(new ArrayList<>()));
     }
 
     @Test
     public void needDownloadSourceReturnsFalseForNonJavaElementInSelection() {
-        java.util.List<Object> selection = new java.util.ArrayList<>();
+        List<Object> selection = new ArrayList<>();
         selection.add(new Object());
         assertFalse(SourceAttachUtil.needDownloadSource(selection));
     }
