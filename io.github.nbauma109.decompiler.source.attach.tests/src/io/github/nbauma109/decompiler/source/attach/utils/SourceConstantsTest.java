@@ -60,6 +60,6 @@ public class SourceConstantsTest {
         File tempDir = SourceConstants.getSourceTempDir();
         assertNotNull(tempDir);
         assertTrue("Expected getSourceTempDir to end with 'source' segment", //$NON-NLS-1$
-                tempDir.getName().equals("source") || tempDir.getAbsolutePath().endsWith(File.separator + "source")); //$NON-NLS-1$ //$NON-NLS-2$
+                "source".equals(tempDir.getName()) || tempDir.getAbsolutePath().endsWith(File.separator + "source")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 }
