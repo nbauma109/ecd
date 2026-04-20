@@ -73,6 +73,15 @@ Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates m
   * Usage of forked versions of decompilers : I need this freedom to bring bug fixes as some of the decompilers are not maintained anymore, or rarely maintained (see also this [Why a fork ?](https://github.com/nbauma109/procyon/tree/master?tab=readme-ov-file#why-a-fork-) section)
   * Source attach plugin comes with some enhancements (see below) but it was removed in upstream project ([#103](https://github.com/ecd-plugin/ecd/issues/103), [5a9a574](https://github.com/ecd-plugin/ecd/commit/5a9a5747159e43fe07c0f8b9ad2698bd3acad2fa))
   * Broken functions "Show Byte Code" and "Show Disassembler" are removed (bytecode is available natively in Eclipse in menu `Window -> Show View -> Bytecode`) but still present in upstream project
+  * Code realignment for debugging uses [jd-util](https://github.com/nbauma109/jd-util)'s [JAVACC](https://javacc.github.io/javacc/) parser to realign decompiled code with original line numbers, enabling accurate breakpoint placement
+  * Eclipse Code Formatter integration: decompiled code can be automatically formatted using your Eclipse code formatter settings
+  * Eclipse Member Sorter integration: class members in decompiled code can be automatically sorted using Eclipse's member ordering preferences
+  * Automatic source download from Maven (m2e integration): when a class file belongs to a Maven dependency, sources are automatically downloaded via m2e
+  * Local source lookup from Maven (`~/.m2/repository`) and Gradle (`~/.gradle/caches`) caches before querying remote repositories
+  * Multiple configurable public repositories for source lookup: Maven Central, Sonatype Central, JitPack, Grails Artifactory, Apache Repository, Alfresco Nexus, and Cloudera Repository
+  * Javadoc hover support on decompiled code
+  * Automatic debug mode switching: decompilation is automatically realigned for debugging when the Debug perspective is active
+  * Decompilation report showing decompiler name/version, timing, and realignment status
   * Some significant refactorings in upstream project made rebasing next to impossible not only because of conflicts but also because of the risk of regression ([e3d0e4e](https://github.com/ecd-plugin/ecd/commit/e3d0e4e29035807b6ce5bb46bf8607d9cd5162f6), [94a317a](https://github.com/ecd-plugin/ecd/commit/94a317aa4bcc9300befe3bc9a3ffd8924b1a9075), [6c3710c](https://github.com/ecd-plugin/ecd/commit/6c3710c4333d01bd45c70aa42e3c2fae15f0f250))
   * The forked project has its own governance, major changes (such as introduction of [transformer-api](https://github.com/nbauma109/transformer-api)), its own release pace
 
