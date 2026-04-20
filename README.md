@@ -140,18 +140,18 @@ Use this icon to switch decompiler while a class file is still open. Once a file
 
 You can export decompiled source code to files using the Export Source action. This feature is available in two ways:
 
-- From the toolbar: Click the ![export icon](io.github.nbauma109.decompiler/icons/etool16/export_wiz.png) icon in the editor toolbar when viewing a decompiled class file.
+- From the toolbar: Click the ![export icon](io.github.nbauma109.decompiler/icons/etool16/export_wiz.png) `Export Source...` icon in the editor toolbar when viewing a decompiled class file.
 - From context menu: Right-click on Java classes, packages, or JAR files in the Package Explorer or Project Explorer and select "Export Source".
 
 The exported source files will be saved with the configured encoding (see preferences).
 
 ### Mark Occurrences
 
-Toggle the highlighting of all occurrences of the currently selected identifier in the decompiled code by clicking the ![mark occurrences icon](io.github.nbauma109.decompiler/icons/etool16/mark_occurrences.png) icon in the toolbar. This helps you quickly identify where a variable, method, or class is used throughout the decompiled source.
+Toggle the highlighting of all occurrences of the currently selected identifier in the decompiled code by clicking the ![mark occurrences icon](io.github.nbauma109.decompiler/icons/etool16/mark_occurrences.png) `Toggle Mark Occurrences` icon in the toolbar. This helps you quickly identify where a variable, method, or class is used throughout the decompiled source.
 
 ### Breadcrumb Navigation
 
-Enable or disable breadcrumb navigation by clicking the ![breadcrumb icon](io.github.nbauma109.decompiler/icons/etool16/toggle_breadcrumb.png) icon in the toolbar. The breadcrumb shows the structural path to the current code location (package, class, method) and allows quick navigation through the code hierarchy.
+Enable or disable breadcrumb navigation by clicking the ![breadcrumb icon](io.github.nbauma109.decompiler/icons/etool16/toggle_breadcrumb.png) `Toggle Breadcrumb` icon in the toolbar. The breadcrumb shows the structural path to the current code location (package, class, method) and allows quick navigation through the code hierarchy.
 
 ### Open Class With
 
@@ -159,7 +159,7 @@ Right-click on any Java class file in the Package Explorer or Project Explorer a
 
 ### GitHub Project Home
 
-Access the project's GitHub repository directly from Eclipse by clicking the ![GitHub icon](io.github.nbauma109.decompiler/icons/github.png) icon in the toolbar. This provides quick access to documentation, issues, and updates.
+Access the project's GitHub repository directly from Eclipse by clicking the ![GitHub icon](io.github.nbauma109.decompiler/icons/github.png) `Project Home Page` icon in the toolbar. This provides quick access to documentation, issues, and updates.
 
 ### Attach Library Source
 
