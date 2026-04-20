@@ -56,10 +56,10 @@ public class SourceConstantsTest {
     }
 
     @Test
-    public void getSourceTempDirIsNonNullAndContainsTempSourcePrefix() {
-        java.io.File tempDir = SourceConstants.getSourceTempDir();
+    public void getSourceTempDirIsNonNullAndEndsWithSourceSegment() {
+        File tempDir = SourceConstants.getSourceTempDir();
         assertNotNull(tempDir);
         assertTrue("Expected getSourceTempDir to end with 'source' segment", //$NON-NLS-1$
-                tempDir.getName().equals("source") || tempDir.getAbsolutePath().endsWith(java.io.File.separator + "source")); //$NON-NLS-1$ //$NON-NLS-2$
+                tempDir.getName().equals("source") || tempDir.getAbsolutePath().endsWith(File.separator + "source")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 }
