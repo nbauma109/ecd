@@ -239,6 +239,18 @@ public class SourceAttachUtilTest {
         assertFalse(SourceAttachUtil.isSourceCodeFor("nonexistent-src.jar", "nonexistent-bin.jar")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
+    @Test
+    public void needDownloadSourceReturnsTrueForEmptySelection() {
+        assertTrue(SourceAttachUtil.needDownloadSource(new java.util.ArrayList<>()));
+    }
+
+    @Test
+    public void needDownloadSourceReturnsFalseForNonJavaElementInSelection() {
+        java.util.List<Object> selection = new java.util.ArrayList<>();
+        selection.add(new Object());
+        assertFalse(SourceAttachUtil.needDownloadSource(selection));
+    }
+
     private static File createZip(File dest, String entryName, String content) throws IOException {
         dest.getParentFile().mkdirs();
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(dest)))) {

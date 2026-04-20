@@ -19,4 +19,29 @@ public class LoggerTest {
     public void debugPrintsMessageAndThrowableWithoutThrowing() {
         Logger.debug("debug message", new RuntimeException("boom"));
     }
+
+    @Test
+    public void infoWithNonNullMessageDoesNotThrow() {
+        Logger.info("info message");
+    }
+
+    @Test
+    public void warnWithNonNullMessageDoesNotThrow() {
+        Logger.warn("warn message");
+    }
+
+    @Test
+    public void errorWithNonNullMessageDoesNotThrow() {
+        Logger.error("error message");
+    }
+
+    @Test
+    public void errorWithNonNullMessageAndThrowableDoesNotThrow() {
+        Logger.error("error with cause", new RuntimeException("cause"));
+    }
+
+    @Test
+    public void errorWithNonNullThrowableDoesNotThrow() {
+        Logger.error(new RuntimeException("throwable only"));
+    }
 }

@@ -54,4 +54,12 @@ public class SourceConstantsTest {
     public void sourceAttachPathMatchesSourceAttacherDirAbsolutePath() {
         assertEquals(SourceConstants.SourceAttacherDir.getAbsolutePath(), SourceConstants.SourceAttachPath);
     }
+
+    @Test
+    public void getSourceTempDirIsNonNullAndContainsTempSourcePrefix() {
+        java.io.File tempDir = SourceConstants.getSourceTempDir();
+        assertNotNull(tempDir);
+        assertTrue("Expected getSourceTempDir to end with 'source' segment", //$NON-NLS-1$
+                tempDir.getName().equals("source") || tempDir.getAbsolutePath().endsWith(java.io.File.separator + "source")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
 }
