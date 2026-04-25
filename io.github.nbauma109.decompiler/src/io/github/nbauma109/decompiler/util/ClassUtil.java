@@ -63,7 +63,7 @@ public class ClassUtil {
         }
 
         IClassFile topLevelByName = getTopLevelClassFileByName(classFile);
-        return topLevelByName != null && topLevelByName.exists() ? topLevelByName : classFile;
+        return topLevelByName.exists() ? topLevelByName : classFile;
     }
 
     public static IClassFile getTopLevelClassFile(IType type) {
@@ -141,16 +141,6 @@ public class ClassUtil {
         return false;
     }
 
-    private static boolean isEnclosedByTopLevel(String enclosingClass, String topLevelInternalName) {
-        return enclosingClass != null
-                && topLevelInternalName.equals(stripNestedInternalName(enclosingClass));
-    }
-
-    private static String stripNestedInternalName(String internalName) {
-        int nestedSeparator = internalName.indexOf(NESTED_CLASS_SEPARATOR);
-        return nestedSeparator < 0 ? internalName : internalName.substring(0, nestedSeparator);
-    }
-
     private static String getInternalName(IClassFile classFile) {
         if (!(classFile.getParent() instanceof IPackageFragment pkg)) {
             return null;
@@ -200,6 +190,15 @@ public class ClassUtil {
             return enclosedInTopLevel;
         }
 
+        private static boolean isEnclosedByTopLevel(String enclosingClass, String topLevelInternalName) {
+            return enclosingClass != null
+                    && topLevelInternalName.equals(stripNestedInternalName(enclosingClass));
+        }
+
+        private static String stripNestedInternalName(String internalName) {
+            int nestedSeparator = internalName.indexOf(NESTED_CLASS_SEPARATOR);
+            return nestedSeparator < 0 ? internalName : internalName.substring(0, nestedSeparator);
+        }
     }
 
 }
