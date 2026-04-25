@@ -33,8 +33,10 @@ import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.ui.IPackagesViewPart;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -68,6 +70,11 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_JAR_PATH = "resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String NO_CLASS_ENTRY_FOUND = "No .class entry found in test.jar"; //$NON-NLS-1$
+    private static final String TEST_PACKAGE = "test"; //$NON-NLS-1$
+    private static final String TEST_TOP_LEVEL_CLASS = "Test.class"; //$NON-NLS-1$
+    private static final String TEST_INNER_CLASS = "Test$Inner1.class"; //$NON-NLS-1$
+    private static final String TEST_INNER_TYPE = "Inner1"; //$NON-NLS-1$
+    private static final String TEST_TOP_LEVEL_SOURCE_DECLARATION = "class Test"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -180,10 +187,10 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testOpeningInnerClassFileUsesTopLevelEditorInput()
             throws CoreException, InterruptedException {
-        IPackageFragment pkg = jarRoot.getPackageFragment("test"); //$NON-NLS-1$
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
-        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(innerClassFile.exists());
 
         openedEditor = openDefault(innerClassFile);
@@ -191,24 +198,24 @@ public class JavaDecompilerClassFileEditorTest {
 
         IClassFile openedClassFile = getClassFileFromEditor(openedEditor);
         assertNotNull(openedClassFile);
-        assertEquals("Test.class", openedClassFile.getElementName()); //$NON-NLS-1$
+        assertEquals(TEST_TOP_LEVEL_CLASS, openedClassFile.getElementName());
 
         ITextEditor textEditor = adaptToTextEditor(openedEditor);
         assertNotNull(textEditor);
         IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
         String contents = waitForNonEmptyDocument(document);
-        assertTrue(contents.contains("class Test")); //$NON-NLS-1$
-        assertTrue(contents.contains("Inner1")); //$NON-NLS-1$
+        assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
+        assertTrue(contents.contains(TEST_INNER_TYPE));
     }
 
     @Test
     public void testOpeningInnerClassFileReusesTopLevelEditor()
             throws CoreException {
-        IPackageFragment pkg = jarRoot.getPackageFragment("test"); //$NON-NLS-1$
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
-        IClassFile topLevelClassFile = pkg.getClassFile("Test.class"); //$NON-NLS-1$
-        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IClassFile topLevelClassFile = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(topLevelClassFile.exists());
         assertTrue(innerClassFile.exists());
 
@@ -222,37 +229,37 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testOpeningInnerTypeFocusesNestedType()
             throws CoreException, InterruptedException {
-        IPackageFragment pkg = jarRoot.getPackageFragment("test"); //$NON-NLS-1$
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
-        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(innerClassFile.exists());
 
-        openedEditor = openDefault(innerClassFile.getType());
+        openedEditor = openDefault(getType(innerClassFile));
         assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
 
         JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
-        assertTrue(waitForSelectedElement(editor, "Inner1")); //$NON-NLS-1$
+        assertTrue(waitForSelectedElement(editor, TEST_INNER_TYPE));
     }
 
     @Test
     public void testOpeningInnerTypeLinksPackageExplorerToNestedType()
             throws CoreException, InterruptedException {
-        IPackageFragment pkg = jarRoot.getPackageFragment("test"); //$NON-NLS-1$
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
-        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(innerClassFile.exists());
 
         IPackagesViewPart packagesView = showPackageExplorer();
         runInUiThread(() -> packagesView.setLinkingEnabled(true));
 
-        openedEditor = openDefault(innerClassFile.getType());
+        openedEditor = openDefault(getType(innerClassFile));
         assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
 
         assertTrue("Expected Package Explorer to select the inner type or its visible class-file fallback, actual selection: " //$NON-NLS-1$
                 + describePackageExplorerSelection(packagesView),
-                waitForPackageExplorerSelection(packagesView, "Inner1", "Test$Inner1.class", "Test.class")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                waitForPackageExplorerSelection(packagesView, TEST_INNER_TYPE, TEST_INNER_CLASS, TEST_TOP_LEVEL_CLASS));
     }
 
     @Test
@@ -524,6 +531,13 @@ public class JavaDecompilerClassFileEditorTest {
             return classFileInput.getClassFile();
         }
         return null;
+    }
+
+    private static IType getType(IClassFile classFile) {
+        if (classFile instanceof IOrdinaryClassFile ordinaryClassFile) {
+            return ordinaryClassFile.getType();
+        }
+        throw new IllegalArgumentException("Class file is not ordinary: " + classFile.getElementName()); //$NON-NLS-1$
     }
 
     private static String waitForNonEmptyDocument(IDocument document) throws InterruptedException {

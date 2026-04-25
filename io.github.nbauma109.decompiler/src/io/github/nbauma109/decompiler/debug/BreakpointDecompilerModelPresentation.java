@@ -109,7 +109,9 @@ public final class BreakpointDecompilerModelPresentation implements IDebugModelP
             return Optional.empty();
         }
         if (input instanceof IClassFileEditorInput classFileEditorInput) {
-            return Optional.of(ClassUtil.getTopLevelClassFile(classFileEditorInput.getClassFile()));
+            return Optional.ofNullable(classFileEditorInput.getClassFile())
+                    .map(ClassUtil::getTopLevelClassFile)
+                    .filter(IClassFile::exists);
         }
         if (element instanceof IBreakpoint breakpoint) {
             return ClassFileResolver.resolveClassFile(breakpoint);
