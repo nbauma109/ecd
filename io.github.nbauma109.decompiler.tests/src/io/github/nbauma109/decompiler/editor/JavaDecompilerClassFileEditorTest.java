@@ -11,6 +11,7 @@ package io.github.nbauma109.decompiler.editor;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -61,6 +62,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 public class JavaDecompilerClassFileEditorTest {
 
@@ -75,6 +77,8 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_INNER_CLASS = "Test$Inner1.class"; //$NON-NLS-1$
     private static final String TEST_INNER_TYPE = "Inner1"; //$NON-NLS-1$
     private static final String TEST_TOP_LEVEL_SOURCE_DECLARATION = "class Test"; //$NON-NLS-1$
+
+    private static final String TEST_ANONYMOUS_CLASS = "Test$1.class"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -110,6 +114,94 @@ public class JavaDecompilerClassFileEditorTest {
         if (tempDir != null && tempDir.exists()) {
             FileUtils.deleteQuietly(tempDir);
         }
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsNullForNullClassFile() {
+        assertNull(ClassUtil.getTopLevelClassFile((org.eclipse.jdt.core.IClassFile) null));
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsNullForNullType() {
+        assertNull(ClassUtil.getTopLevelClassFile((org.eclipse.jdt.core.IType) null));
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsItselfForTopLevelClass() throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevel.exists());
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(topLevel);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsTopLevelForInnerClass() throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(inner.exists());
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(inner);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsTopLevelForAnonymousClass() throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile anonymous = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
+        assertTrue("Expected anonymous class file to exist: " + TEST_ANONYMOUS_CLASS, anonymous.exists()); //$NON-NLS-1$
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(anonymous);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForTopLevelType() throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevel.exists());
+        IType topLevelType = getType(topLevel);
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(topLevelType);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForInnerType() throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(inner.exists());
+        IType innerType = getType(inner);
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(innerType);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testOpeningAnonymousClassFileUsesTopLevelEditorInput()
+            throws CoreException, InterruptedException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile anonymousClassFile = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
+        assertTrue(anonymousClassFile.exists());
+
+        openedEditor = openDefault(anonymousClassFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        IClassFile openedClassFile = getClassFileFromEditor(openedEditor);
+        assertNotNull(openedClassFile);
+        assertEquals(TEST_TOP_LEVEL_CLASS, openedClassFile.getElementName());
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
     }
 
     @Test
