@@ -481,14 +481,6 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (!(reference instanceof IJavaElement javaElement)) {
             return reference;
         }
-        if (nestedOpenTarget instanceof ISourceReference nestedTarget) {
-            IClassFile referenceClassFile = getClassFile(javaElement);
-            IClassFile nestedTargetClassFile = getClassFile(nestedOpenTarget);
-            if (referenceClassFile != null && nestedTargetClassFile != null
-                    && !referenceClassFile.equals(nestedTargetClassFile)) {
-                return nestedTarget;
-            }
-        }
         if (belongsToEditorInput(javaElement)) {
             rememberNestedSelection(javaElement);
             return reference;
@@ -509,7 +501,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private void rememberNestedSelection(IJavaElement javaElement) {
         IClassFile editorClassFile = getEditorClassFile();
         IType editorType = getType(editorClassFile);
-        if (!(javaElement instanceof IType type) || editorType == null || editorType.equals(type)) {
+        if (!(javaElement instanceof IType type) || editorType == null) {
+            return;
+        }
+        if (editorType.equals(type)) {
+            nestedOpenTarget = null;
+            nestedOpenClassFile = null;
             return;
         }
         nestedOpenTarget = javaElement;
@@ -737,11 +734,19 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     @Override
     public <T> T getAdapter(Class<T> adapter) {
-        if (adapter == IShowInSource.class && nestedOpenTarget != null) {
-            IShowInSource source = () -> new ShowInContext(getEditorInput(), new StructuredSelection(nestedOpenTarget));
+        IJavaElement showInTarget = getShowInTarget();
+        if (adapter == IShowInSource.class && showInTarget != null) {
+            IShowInSource source = () -> new ShowInContext(getEditorInput(), new StructuredSelection(showInTarget));
             return adapter.cast(source);
         }
         return super.getAdapter(adapter);
+    }
+
+    private IJavaElement getShowInTarget() {
+        if (selectedElement instanceof IJavaElement javaElement) {
+            return javaElement;
+        }
+        return nestedOpenTarget;
     }
 
     @Override
