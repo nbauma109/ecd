@@ -127,7 +127,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testGetTopLevelClassFileReturnsItselfForTopLevelClass() throws CoreException {
+    public void testGetTopLevelClassFileReturnsItselfForTopLevelClass() {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
         assertTrue(topLevel.exists());
@@ -138,7 +138,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testGetTopLevelClassFileReturnsTopLevelForInnerClass() throws CoreException {
+    public void testGetTopLevelClassFileReturnsTopLevelForInnerClass() {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(inner.exists());
@@ -149,7 +149,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testGetTopLevelClassFileReturnsTopLevelForAnonymousClass() throws CoreException {
+    public void testGetTopLevelClassFileReturnsTopLevelForAnonymousClass() {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile anonymous = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
         assertTrue("Expected anonymous class file to exist: " + TEST_ANONYMOUS_CLASS, anonymous.exists()); //$NON-NLS-1$
@@ -160,7 +160,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testGetTopLevelClassFileITypeReturnsTopLevelForTopLevelType() throws CoreException {
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForTopLevelType() {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
         assertTrue(topLevel.exists());
@@ -172,7 +172,7 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
-    public void testGetTopLevelClassFileITypeReturnsTopLevelForInnerType() throws CoreException {
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForInnerType() {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
         assertTrue(inner.exists());
