@@ -546,18 +546,47 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             return nestedType;
         }
 
-        String[] segments = nestedName.substring(topLevelName.length() + 1).split("\\$"); //$NON-NLS-1$
-        for (String segment : segments) {
-            if (segment.isBlank()) {
-                return nestedType;
-            }
-            IType child = type.getType(segment);
-            if (child == null || !child.exists()) {
-                return nestedType;
-            }
-            type = child;
+        String suffix = nestedName.substring(topLevelName.length() + 1);
+        IType resolved = resolveNestedType(type, suffix);
+        return resolved != null ? resolved : nestedType;
+    }
+
+    /**
+     * Resolves a nested type by traversing the type hierarchy using the given
+     * {@code $}-separated suffix. At each level the candidate name grows by one
+     * more {@code $}-delimited part so that simple names that themselves contain
+     * {@code $} (e.g. {@code Inner$Proxy} as a direct member) are matched
+     * correctly before falling back to a deeper traversal.
+     */
+    private IType resolveNestedType(IType parent, String suffix) {
+        if (suffix.isEmpty()) {
+            return parent;
         }
-        return type;
+        String[] parts = suffix.split("\\$"); //$NON-NLS-1$
+        StringBuilder candidate = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isEmpty()) {
+                return null;
+            }
+            if (i > 0) {
+                candidate.append(NESTED_CLASS_SEPARATOR);
+            }
+            candidate.append(parts[i]);
+            IType child = parent.getType(candidate.toString());
+            if (child != null && child.exists()) {
+                String remaining = suffix.substring(candidate.length());
+                if (remaining.isEmpty()) {
+                    return child;
+                }
+                // remaining starts with '$'; skip it and recurse
+                IType deeper = resolveNestedType(child, remaining.substring(1));
+                if (deeper != null) {
+                    return deeper;
+                }
+                // child matched but deeper resolution failed – try a longer candidate
+            }
+        }
+        return null;
     }
 
     private String stripClassExtension(String name) {
