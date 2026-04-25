@@ -24,6 +24,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IEditorInput;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 public final class BreakpointDecompilerModelPresentation implements IDebugModelPresentationExtension {
 
@@ -108,7 +109,7 @@ public final class BreakpointDecompilerModelPresentation implements IDebugModelP
             return Optional.empty();
         }
         if (input instanceof IClassFileEditorInput classFileEditorInput) {
-            return Optional.of(classFileEditorInput.getClassFile());
+            return Optional.of(ClassUtil.getTopLevelClassFile(classFileEditorInput.getClassFile()));
         }
         if (element instanceof IBreakpoint breakpoint) {
             return ClassFileResolver.resolveClassFile(breakpoint);

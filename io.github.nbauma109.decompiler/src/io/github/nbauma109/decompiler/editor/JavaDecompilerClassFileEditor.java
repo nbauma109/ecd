@@ -24,14 +24,17 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.ISourceReference;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
 import org.eclipse.jdt.internal.core.PackageFragment;
 import org.eclipse.jdt.internal.ui.actions.CompositeActionGroup;
 import org.eclipse.jdt.internal.ui.javaeditor.ClassFileEditor;
+import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
 import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
 import org.eclipse.jdt.internal.ui.javaeditor.InternalClassFileEditorInput;
 import org.eclipse.jface.action.Action;
@@ -41,6 +44,7 @@ import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IFindReplaceTarget;
 import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
@@ -59,10 +63,13 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbenchCommandConstants;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
 import org.eclipse.ui.ide.FileStoreEditorInput;
+import org.eclipse.ui.part.IShowInSource;
+import org.eclipse.ui.part.ShowInContext;
 import org.eclipse.ui.texteditor.FindNextAction;
 import org.eclipse.ui.texteditor.FindReplaceAction;
 import org.eclipse.ui.texteditor.GotoLineAction;
@@ -72,6 +79,10 @@ import org.eclipse.ui.texteditor.ITextEditorActionConstants;
 import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 import org.eclipse.ui.texteditor.IWorkbenchActionDefinitionIds;
 import org.eclipse.ui.texteditor.IncrementalFindAction;
+import org.eclipse.jdt.ui.IPackagesViewPart;
+import org.eclipse.jdt.ui.JavaUI;
+import org.eclipse.jdt.ui.PreferenceConstants;
+import org.eclipse.jdt.ui.StandardJavaElementContentProvider;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.actions.DecompileActionGroup;
@@ -96,6 +107,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private Composite loadingComposite;
     private Canvas loadingSpinner;
     private int loadingSpinnerFrame = 0;
+    private IJavaElement nestedOpenTarget;
+    private IClassFile nestedOpenClassFile;
 
     public ISourceReference getSelectedElement() {
         return selectedElement;
@@ -130,7 +143,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (input instanceof IClassFileEditorInput in) {
 
             boolean opened = false;
-            IClassFile cf = in.getClassFile();
+            IClassFile cf = ClassUtil.getTopLevelClassFile(in.getClassFile());
 
             decompilerType = type;
             String origSrc = cf.getSource();
@@ -178,9 +191,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     @Override
     protected void setSelection(ISourceReference reference, boolean moveCursor) {
-        super.setSelection(reference, moveCursor);
+        ISourceReference selection = resolveSelectionTarget(reference);
+        super.setSelection(selection, moveCursor);
 
-        this.selectedElement = reference;
+        this.selectedElement = selection;
+        syncPackageExplorer(selection);
     }
 
     @Override
@@ -237,6 +252,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         super.doSetInput(input);
         refreshSemanticHighlighting();
         updateTitleImage();
+        revealNestedOpenTarget();
     }
 
     /**
@@ -314,6 +330,8 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     @Override
     protected void doSetInput(IEditorInput input) throws CoreException {
+        nestedOpenTarget = getNestedOpenTarget(input);
+        input = getTopLevelEditorInput(input);
         switch (input) {
             case IFileEditorInput in -> {
                 String filePath = UIUtil.getPathLocation(in.getStorage().getFullPath());
@@ -423,6 +441,245 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                 callSuperDoSetInput(input);
             }
         }
+    }
+
+    private IEditorInput getTopLevelEditorInput(IEditorInput input) {
+        if (input instanceof IClassFileEditorInput classFileInput) {
+            IClassFile classFile = classFileInput.getClassFile();
+            IClassFile topLevelClassFile = ClassUtil.getTopLevelClassFile(classFile);
+            if (topLevelClassFile != null && !topLevelClassFile.equals(classFile)) {
+                IEditorInput topLevelInput = EditorUtility.getEditorInput(topLevelClassFile);
+                if (topLevelInput != null) {
+                    return topLevelInput;
+                }
+            }
+        }
+        return input;
+    }
+
+    private IJavaElement getNestedOpenTarget(IEditorInput input) {
+        if (input instanceof IClassFileEditorInput classFileInput) {
+            IClassFile classFile = classFileInput.getClassFile();
+            IClassFile topLevelClassFile = ClassUtil.getTopLevelClassFile(classFile);
+            if (topLevelClassFile != null && !topLevelClassFile.equals(classFile)) {
+                nestedOpenClassFile = classFile;
+                return findNestedType(topLevelClassFile, classFile);
+            }
+        }
+        nestedOpenClassFile = null;
+        return null;
+    }
+
+    private ISourceReference resolveSelectionTarget(ISourceReference reference) {
+        if (!(reference instanceof IJavaElement javaElement)) {
+            return reference;
+        }
+        if (nestedOpenTarget instanceof ISourceReference nestedTarget) {
+            IClassFile referenceClassFile = getClassFile(javaElement);
+            IClassFile nestedTargetClassFile = getClassFile(nestedOpenTarget);
+            if (referenceClassFile != null && nestedTargetClassFile != null
+                    && !referenceClassFile.equals(nestedTargetClassFile)) {
+                return nestedTarget;
+            }
+        }
+        if (belongsToEditorInput(javaElement)) {
+            rememberNestedSelection(javaElement);
+            return reference;
+        }
+
+        IClassFile classFile = getClassFile(javaElement);
+        IClassFile editorClassFile = getEditorClassFile();
+        if (classFile == null || editorClassFile == null || editorClassFile.equals(classFile)) {
+            return reference;
+        }
+
+        nestedOpenClassFile = classFile;
+        IJavaElement nestedType = findNestedType(editorClassFile, classFile);
+        nestedOpenTarget = nestedType;
+        return nestedType instanceof ISourceReference sourceReference ? sourceReference : reference;
+    }
+
+    private void rememberNestedSelection(IJavaElement javaElement) {
+        IClassFile editorClassFile = getEditorClassFile();
+        if (!(javaElement instanceof IType type) || editorClassFile == null || editorClassFile.getType().equals(type)) {
+            return;
+        }
+        nestedOpenTarget = javaElement;
+        nestedOpenClassFile = findNestedClassFile(type, editorClassFile);
+    }
+
+    private boolean belongsToEditorInput(IJavaElement javaElement) {
+        IClassFile editorClassFile = getEditorClassFile();
+        IClassFile classFile = getClassFile(javaElement);
+        return editorClassFile != null && editorClassFile.equals(classFile);
+    }
+
+    private void revealNestedOpenTarget() {
+        IJavaElement target = nestedOpenTarget;
+        if (!(target instanceof ISourceReference sourceReference)) {
+            return;
+        }
+
+        Display.getDefault().asyncExec(() -> {
+            if (isEditorControlDisposed()) {
+                return;
+            }
+            setSelection(sourceReference, true);
+        });
+    }
+
+    private IJavaElement findNestedType(IClassFile topLevelClassFile, IClassFile nestedClassFile) {
+        if (topLevelClassFile == null || nestedClassFile == null) {
+            return null;
+        }
+
+        IType type = topLevelClassFile.getType();
+        String topLevelName = stripClassExtension(topLevelClassFile.getElementName());
+        String nestedName = stripClassExtension(nestedClassFile.getElementName());
+        if (!nestedName.startsWith(topLevelName + "$")) { //$NON-NLS-1$
+            return nestedClassFile.getType();
+        }
+
+        String[] segments = nestedName.substring(topLevelName.length() + 1).split("\\$"); //$NON-NLS-1$
+        for (String segment : segments) {
+            if (segment.isBlank()) {
+                return nestedClassFile.getType();
+            }
+            IType child = type.getType(segment);
+            if (child == null || !child.exists()) {
+                return nestedClassFile.getType();
+            }
+            type = child;
+        }
+        return type;
+    }
+
+    private String stripClassExtension(String name) {
+        if (name != null && name.endsWith(".class")) { //$NON-NLS-1$
+            return name.substring(0, name.length() - ".class".length()); //$NON-NLS-1$
+        }
+        return name == null ? "" : name; //$NON-NLS-1$
+    }
+
+    private IClassFile getEditorClassFile() {
+        if (getEditorInput() instanceof IClassFileEditorInput classFileInput) {
+            return classFileInput.getClassFile();
+        }
+        return null;
+    }
+
+    private IClassFile getClassFile(IJavaElement javaElement) {
+        if (javaElement instanceof IClassFile classFile) {
+            return classFile;
+        }
+        IJavaElement classFile = javaElement.getAncestor(IJavaElement.CLASS_FILE);
+        return classFile instanceof IClassFile cf ? cf : null;
+    }
+
+    private IClassFile findNestedClassFile(IType type, IClassFile editorClassFile) {
+        String classFileName = getNestedClassFileName(type, editorClassFile);
+        if (classFileName == null) {
+            return null;
+        }
+
+        IJavaElement parent = editorClassFile.getParent();
+        if (parent instanceof IPackageFragment pkg) {
+            IClassFile classFile = pkg.getClassFile(classFileName);
+            if (classFile.exists()) {
+                return classFile;
+            }
+        }
+        return null;
+    }
+
+    private String getNestedClassFileName(IType type, IClassFile editorClassFile) {
+        String topLevelName = stripClassExtension(editorClassFile.getElementName());
+        String suffix = ""; //$NON-NLS-1$
+        IJavaElement current = type;
+        while (current instanceof IType currentType && !editorClassFile.getType().equals(currentType)) {
+            String segment = currentType.getElementName();
+            if (segment.isBlank()) {
+                return null;
+            }
+            suffix = "$" + segment + suffix; //$NON-NLS-1$
+            current = currentType.getParent();
+        }
+        if (suffix.isEmpty()) {
+            return null;
+        }
+        return topLevelName + suffix + ".class"; //$NON-NLS-1$
+    }
+
+    private void syncPackageExplorer(ISourceReference selection) {
+        if (!(selection instanceof IJavaElement javaElement)) {
+            return;
+        }
+
+        IClassFile fallback = nestedOpenClassFile;
+        Display display = Display.getDefault();
+        display.asyncExec(() -> revealInPackageExplorer(javaElement, fallback));
+        display.timerExec(150, () -> revealInPackageExplorer(javaElement, fallback));
+        display.timerExec(750, () -> revealInPackageExplorer(javaElement, fallback));
+        display.timerExec(1500, () -> revealInPackageExplorer(javaElement, fallback));
+    }
+
+    private void revealInPackageExplorer(IJavaElement javaElement, IClassFile fallback) {
+        if (getSite() == null || getSite().getPage() == null) {
+            return;
+        }
+        IViewPart view = getSite().getPage().findView(JavaUI.ID_PACKAGES);
+        if (view instanceof IPackagesViewPart packageView && packageView.isLinkingEnabled()) {
+            ensurePackageExplorerShowsMembers(packageView);
+            expandPackageExplorerParents(packageView, javaElement);
+            packageView.selectAndReveal(javaElement);
+            if (fallback != null && !isPackageExplorerSelection(packageView, javaElement)) {
+                packageView.selectAndReveal(fallback);
+            }
+        }
+    }
+
+    private void expandPackageExplorerParents(IPackagesViewPart packageView, IJavaElement javaElement) {
+        IJavaElement parent = javaElement.getParent();
+        while (parent != null && parent.getElementType() != IJavaElement.CLASS_FILE
+                && parent.getElementType() != IJavaElement.COMPILATION_UNIT) {
+            parent = parent.getParent();
+        }
+        if (parent != null) {
+            packageView.getTreeViewer().refresh(parent);
+            packageView.getTreeViewer().expandToLevel(parent, 1);
+        }
+    }
+
+    private void ensurePackageExplorerShowsMembers(IPackagesViewPart packageView) {
+        if (!PreferenceConstants.getPreferenceStore().getBoolean(PreferenceConstants.SHOW_CU_CHILDREN)) {
+            PreferenceConstants.getPreferenceStore().setValue(PreferenceConstants.SHOW_CU_CHILDREN, true);
+        }
+        if (packageView.getTreeViewer().getContentProvider() instanceof StandardJavaElementContentProvider provider
+                && !provider.getProvideMembers()) {
+            provider.setProvideMembers(true);
+            packageView.getTreeViewer().refresh();
+        }
+    }
+
+    private boolean isPackageExplorerSelection(IPackagesViewPart packageView, Object target) {
+        if (!(packageView.getTreeViewer().getSelection() instanceof IStructuredSelection selection)) {
+            return false;
+        }
+        Object selected = selection.getFirstElement();
+        if (selected instanceof IJavaElement selectedElement && target instanceof IJavaElement targetElement) {
+            return selectedElement.equals(targetElement)
+                    || selectedElement.getHandleIdentifier().equals(targetElement.getHandleIdentifier());
+        }
+        return target != null && target.equals(selected);
+    }
+
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
+        if (adapter == IShowInSource.class && nestedOpenTarget != null) {
+            IShowInSource source = () -> new ShowInContext(getEditorInput(), new StructuredSelection(nestedOpenTarget));
+            return adapter.cast(source);
+        }
+        return super.getAdapter(adapter);
     }
 
     @Override
