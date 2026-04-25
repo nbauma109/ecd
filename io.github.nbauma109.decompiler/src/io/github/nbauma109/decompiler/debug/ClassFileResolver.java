@@ -26,6 +26,8 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 
+import io.github.nbauma109.decompiler.util.ClassUtil;
+
 public final class ClassFileResolver {
 
     private static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file";
@@ -51,7 +53,7 @@ public final class ClassFileResolver {
             return Optional.empty();
         }
         List<String> candidates = typeNameCandidates(declaringTypeName);
-        return findBinaryClassFileInWorkspace(candidates);
+        return findBinaryClassFileInWorkspace(candidates).map(ClassUtil::getTopLevelClassFile);
     }
 
     private static String getDeclaringTypeName(IJavaStackFrame frame) {

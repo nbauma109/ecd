@@ -26,6 +26,7 @@ import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
 import org.eclipse.ui.IEditorInput;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 public final class DecompilerSourceLookupDirector implements ISourceLookupDirector, ISourcePresentation {
 
@@ -48,7 +49,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
 
         Optional<IClassFile> classFile = ClassFileResolver.resolveClassFile(stackFrame);
         if (!classFile.isPresent() && fromDelegate instanceof IClassFile fromDelegateClassFile) {
-            classFile = Optional.of(fromDelegateClassFile);
+            classFile = Optional.of(ClassUtil.getTopLevelClassFile(fromDelegateClassFile));
         }
         if (!classFile.isPresent()) {
             return fromDelegate;
@@ -76,7 +77,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
 
         Optional<IClassFile> classFile = ClassFileResolver.resolveClassFile(element);
         if (!classFile.isPresent() && fromDelegate instanceof IClassFile fromDelegateClassFile) {
-            classFile = Optional.of(fromDelegateClassFile);
+            classFile = Optional.of(ClassUtil.getTopLevelClassFile(fromDelegateClassFile));
         }
         if (!classFile.isPresent()) {
             return fromDelegate;
@@ -235,10 +236,10 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
 
     private IClassFile extractClassFile(Object sourceElement) {
         if (sourceElement instanceof DecompiledClassFileSourceElement(IClassFile classFile)) {
-            return classFile;
+            return ClassUtil.getTopLevelClassFile(classFile);
         }
         if (sourceElement instanceof IClassFile classFile) {
-            return classFile;
+            return ClassUtil.getTopLevelClassFile(classFile);
         }
         return null;
     }
@@ -256,7 +257,7 @@ public final class DecompilerSourceLookupDirector implements ISourceLookupDirect
         }
         for (Object sourceElement : sourceElements) {
             if (sourceElement instanceof IClassFile classFile) {
-                return Optional.of(classFile);
+                return Optional.of(ClassUtil.getTopLevelClassFile(classFile));
             }
         }
         return Optional.empty();

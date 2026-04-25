@@ -20,6 +20,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.editor.ClassFileSourceMap;
 import io.github.nbauma109.decompiler.editor.DecompilerSourceMapper;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerBufferManager;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 public final class DecompileBufferPopulator {
 
@@ -29,6 +30,7 @@ public final class DecompileBufferPopulator {
     }
 
     public static boolean ensureDecompiled(IClassFile classFile) {
+        classFile = ClassUtil.getTopLevelClassFile(classFile);
         if (classFile == null || !classFile.exists() || ClassFileResolver.hasRealSource(classFile)) {
             return false;
         }
@@ -68,6 +70,7 @@ public final class DecompileBufferPopulator {
     }
 
     public static boolean wasDecompiled(IClassFile classFile) {
+        classFile = ClassUtil.getTopLevelClassFile(classFile);
         return classFile != null && DECOMPILED_CLASSFILES.contains(classFile.getHandleIdentifier());
     }
 

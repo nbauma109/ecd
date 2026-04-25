@@ -9,7 +9,9 @@
 package io.github.nbauma109.decompiler.editor;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -31,20 +33,27 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.ui.IPackagesViewPart;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.texteditor.ITextEditor;
+import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,6 +62,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 public class JavaDecompilerClassFileEditorTest {
 
@@ -62,6 +72,13 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_JAR_PATH = "resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String NO_CLASS_ENTRY_FOUND = "No .class entry found in test.jar"; //$NON-NLS-1$
+    private static final String TEST_PACKAGE = "test"; //$NON-NLS-1$
+    private static final String TEST_TOP_LEVEL_CLASS = "Test.class"; //$NON-NLS-1$
+    private static final String TEST_INNER_CLASS = "Test$Inner1.class"; //$NON-NLS-1$
+    private static final String TEST_INNER_TYPE = "Inner1"; //$NON-NLS-1$
+    private static final String TEST_TOP_LEVEL_SOURCE_DECLARATION = "class Test"; //$NON-NLS-1$
+
+    private static final String TEST_ANONYMOUS_CLASS = "Test$1.class"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -97,6 +114,94 @@ public class JavaDecompilerClassFileEditorTest {
         if (tempDir != null && tempDir.exists()) {
             FileUtils.deleteQuietly(tempDir);
         }
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsNullForNullClassFile() {
+        assertNull(ClassUtil.getTopLevelClassFile((org.eclipse.jdt.core.IClassFile) null));
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsNullForNullType() {
+        assertNull(ClassUtil.getTopLevelClassFile((org.eclipse.jdt.core.IType) null));
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsItselfForTopLevelClass() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevel.exists());
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(topLevel);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsTopLevelForInnerClass() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(inner.exists());
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(inner);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileReturnsTopLevelForAnonymousClass() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile anonymous = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
+        assertTrue("Expected anonymous class file to exist: " + TEST_ANONYMOUS_CLASS, anonymous.exists()); //$NON-NLS-1$
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(anonymous);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForTopLevelType() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevel = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevel.exists());
+        IType topLevelType = getType(topLevel);
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(topLevelType);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testGetTopLevelClassFileITypeReturnsTopLevelForInnerType() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile inner = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(inner.exists());
+        IType innerType = getType(inner);
+
+        IClassFile result = ClassUtil.getTopLevelClassFile(innerType);
+        assertNotNull(result);
+        assertEquals(TEST_TOP_LEVEL_CLASS, result.getElementName());
+    }
+
+    @Test
+    public void testOpeningAnonymousClassFileUsesTopLevelEditorInput()
+            throws CoreException, InterruptedException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile anonymousClassFile = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
+        assertTrue(anonymousClassFile.exists());
+
+        openedEditor = openDefault(anonymousClassFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        IClassFile openedClassFile = getClassFileFromEditor(openedEditor);
+        assertNotNull(openedClassFile);
+        assertEquals(TEST_TOP_LEVEL_CLASS, openedClassFile.getElementName());
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
     }
 
     @Test
@@ -169,6 +274,84 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue("Expected reopen to use JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
                 openedEditor instanceof JavaDecompilerClassFileEditor);
         assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
+    }
+
+    @Test
+    public void testOpeningInnerClassFileUsesTopLevelEditorInput()
+            throws CoreException, InterruptedException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        openedEditor = openDefault(innerClassFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        IClassFile openedClassFile = getClassFileFromEditor(openedEditor);
+        assertNotNull(openedClassFile);
+        assertEquals(TEST_TOP_LEVEL_CLASS, openedClassFile.getElementName());
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
+        assertTrue(contents.contains(TEST_INNER_TYPE));
+    }
+
+    @Test
+    public void testOpeningInnerClassFileReusesTopLevelEditor()
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile topLevelClassFile = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(topLevelClassFile.exists());
+        assertTrue(innerClassFile.exists());
+
+        openedEditor = openDefault(topLevelClassFile);
+        IEditorPart topLevelEditor = openedEditor;
+
+        openedEditor = openDefault(innerClassFile);
+        assertSame(topLevelEditor, openedEditor);
+    }
+
+    @Test
+    public void testOpeningInnerTypeFocusesNestedType()
+            throws CoreException, InterruptedException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        openedEditor = openDefault(getType(innerClassFile));
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        assertTrue(waitForSelectedElement(editor, TEST_INNER_TYPE));
+    }
+
+    @Test
+    public void testOpeningInnerTypeLinksPackageExplorerToNestedType()
+            throws CoreException, InterruptedException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IPackagesViewPart packagesView = showPackageExplorer();
+        runInUiThread(() -> packagesView.setLinkingEnabled(true));
+
+        openedEditor = openDefault(getType(innerClassFile));
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        assertTrue("Expected Package Explorer to select the inner type or its visible class-file fallback, actual selection: " //$NON-NLS-1$
+                + describePackageExplorerSelection(packagesView),
+                waitForPackageExplorerSelection(packagesView, TEST_INNER_TYPE, TEST_INNER_CLASS, TEST_TOP_LEVEL_CLASS));
     }
 
     @Test
@@ -296,8 +479,12 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     private static IEditorPart openDefault(IClassFile classFile) throws CoreException {
+        return openDefault((IJavaElement) classFile);
+    }
+
+    private static IEditorPart openDefault(IJavaElement element) throws CoreException {
         return runInUiThreadWithResult(() -> {
-            IEditorPart editor = JavaUI.openInEditor(classFile, true, true);
+            IEditorPart editor = JavaUI.openInEditor(element, true, true);
             if (editor == null) {
                 throw new IllegalStateException("Unable to open default editor for class file"); //$NON-NLS-1$
             }
@@ -348,6 +535,73 @@ public class JavaDecompilerClassFileEditorTest {
         return null;
     }
 
+    private static IPackagesViewPart showPackageExplorer() throws CoreException {
+        return runInUiThreadWithResult(() -> {
+            IWorkbenchWindow window = resolveWorkbenchWindow();
+            IWorkbenchPage page = resolveWorkbenchPage(window);
+            IViewPart view = page.showView(JavaUI.ID_PACKAGES);
+            if (!(view instanceof IPackagesViewPart packagesView)) {
+                throw new IllegalStateException("Package Explorer view is not available"); //$NON-NLS-1$
+            }
+            return packagesView;
+        });
+    }
+
+    private static boolean waitForSelectedElement(JavaDecompilerClassFileEditor editor, String elementName)
+            throws InterruptedException {
+        int attempts = 250;
+        for (int i = 0; i < attempts; i++) {
+            if (hasSelectedElement(editor, elementName)) {
+                return true;
+            }
+            Thread.sleep(25L);
+            drainUiEvents();
+        }
+        return hasSelectedElement(editor, elementName);
+    }
+
+    private static boolean hasSelectedElement(JavaDecompilerClassFileEditor editor, String elementName) {
+        if (editor.getSelectedElement() instanceof IJavaElement javaElement) {
+            return elementName.equals(javaElement.getElementName());
+        }
+        return false;
+    }
+
+    private static boolean waitForPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames)
+            throws InterruptedException {
+        int attempts = 250;
+        for (int i = 0; i < attempts; i++) {
+            if (hasPackageExplorerSelection(packagesView, elementNames)) {
+                return true;
+            }
+            Thread.sleep(25L);
+            drainUiEvents();
+        }
+        return hasPackageExplorerSelection(packagesView, elementNames);
+    }
+
+    private static boolean hasPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames) {
+        IStructuredSelection selection = (IStructuredSelection) packagesView.getTreeViewer().getSelection();
+        Object selected = selection.getFirstElement();
+        if (selected instanceof IJavaElement javaElement) {
+            for (String elementName : elementNames) {
+                if (elementName.equals(javaElement.getElementName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String describePackageExplorerSelection(IPackagesViewPart packagesView) {
+        IStructuredSelection selection = (IStructuredSelection) packagesView.getTreeViewer().getSelection();
+        Object selected = selection.getFirstElement();
+        if (selected instanceof IJavaElement javaElement) {
+            return javaElement.getElementName() + " (" + javaElement.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        return selected == null ? "<null>" : selected.toString() + " (" + selected.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    }
+
     private static void configurePreferences(File tempDir) {
         IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         store.setValue(JavaDecompilerPlugin.TEMP_DIR, tempDir.getAbsolutePath());
@@ -361,6 +615,21 @@ public class JavaDecompilerClassFileEditorTest {
             return textEditor;
         }
         return editor.getAdapter(ITextEditor.class);
+    }
+
+    private static IClassFile getClassFileFromEditor(IEditorPart editor) {
+        IEditorInput input = editor.getEditorInput();
+        if (input instanceof IClassFileEditorInput classFileInput) {
+            return classFileInput.getClassFile();
+        }
+        return null;
+    }
+
+    private static IType getType(IClassFile classFile) {
+        if (classFile instanceof IOrdinaryClassFile ordinaryClassFile) {
+            return ordinaryClassFile.getType();
+        }
+        throw new IllegalArgumentException("Class file is not ordinary: " + classFile.getElementName()); //$NON-NLS-1$
     }
 
     private static String waitForNonEmptyDocument(IDocument document) throws InterruptedException {

@@ -19,6 +19,7 @@
             class="io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor"
             contributorClass="org.eclipse.jdt.internal.ui.javaeditor.ClassFileEditorActionContributor"
             id="io.github.nbauma109.decompiler.ClassFileEditor"
+            matchingStrategy="io.github.nbauma109.decompiler.editor.TopLevelClassFileEditorMatchingStrategy"
             symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
             filenames="*.class without source">
             <contentTypeBinding
