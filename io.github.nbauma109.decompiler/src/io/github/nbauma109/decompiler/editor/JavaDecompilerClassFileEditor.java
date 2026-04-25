@@ -641,14 +641,18 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (editorType == null) {
             return null;
         }
-        IJavaElement current = type;
-        while (current instanceof IType currentType && !editorType.equals(currentType)) {
-            String segment = currentType.getElementName();
+        IType current = type;
+        while (current != null && !editorType.equals(current)) {
+            String segment = current.getElementName();
             if (segment.isBlank()) {
                 return null;
             }
             suffix.insert(0, segment).insert(0, NESTED_CLASS_SEPARATOR);
-            current = currentType.getParent();
+            current = current.getDeclaringType();
+        }
+        // Confirm we reached the editor's top-level type
+        if (current == null || !editorType.equals(current)) {
+            return null;
         }
         if (suffix.length() == 0) {
             return null;
