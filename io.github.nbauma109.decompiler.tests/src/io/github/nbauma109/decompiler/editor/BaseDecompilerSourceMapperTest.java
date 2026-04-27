@@ -148,7 +148,7 @@ public class BaseDecompilerSourceMapperTest {
         prefs.setValue(JavaDecompilerPlugin.ALIGN, false);
         File file = new File(HELLO_WORLD_CLASS_PATH);
         String decompiledOutput = vineflower.decompile(file);
-        assertEquals("public class HelloWorld {\r\n"
+        assertEqualsIgnoreEOL("public class HelloWorld {\r\n"
                 + "\tpublic static void main(String[] args) {\r\n"
                 + "\t\tSystem.out.println(\"Hello World!\");// 3\r\n"
                 + "\t}// 4\r\n"
@@ -244,6 +244,12 @@ public class BaseDecompilerSourceMapperTest {
                 + jdCore.getVersion(TRANSFORMER_API_VERSION_KEY)
                 + " (https://github.com/nbauma109/transformer-api).\n"
                 + "*/", decompiledOutput);
+    }
+
+    private static void assertEqualsIgnoreEOL(String expected, String actual) {
+        String normalizedExpected = expected.replaceAll("\\r\\n", "\n");
+        String normalizedActual = actual.replaceAll("\\r\\n", "\n");
+        assertEquals(normalizedExpected, normalizedActual);
     }
 
     private IType createType(String packageName, String typeName) throws CoreException {
