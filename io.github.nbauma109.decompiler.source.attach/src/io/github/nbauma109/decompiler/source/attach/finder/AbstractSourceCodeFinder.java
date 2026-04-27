@@ -12,6 +12,9 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URL;
@@ -32,11 +35,10 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyData;
 import org.eclipse.core.net.proxy.IProxyService;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.framework.ServiceReference;
 
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -58,21 +60,39 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
     protected String getString(URL url) {
         try {
-            // Get Eclipse proxy service
-            IProxyService proxyService = getProxyService();
+            // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+            SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+            IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
             // Open connection with proxy support
             URLConnection con;
-            if (proxyService != null) {
-                try {
-                    URI uri = url.toURI();
-                    Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                    con = url.openConnection(proxy);
-                } catch (Exception e) {
-                    Logger.debug(e);
-                    con = url.openConnection();
+            try {
+                URI uri = url.toURI();
+                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                con = url.openConnection(proxy);
+
+                // Set per-connection proxy authenticator if credentials are available
+                if (con instanceof HttpURLConnection) {
+                    IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+                    if (proxyData != null) {
+                        final String proxyUser = proxyData.getUserId();
+                        final char[] proxyPass = proxyData.getPassword() != null
+                                ? proxyData.getPassword().toCharArray() : null;
+                        if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                            ((HttpURLConnection) con).setAuthenticator(new Authenticator() {
+                                @Override
+                                protected PasswordAuthentication getPasswordAuthentication() {
+                                    if (getRequestorType() == Authenticator.RequestorType.PROXY) {
+                                        return new PasswordAuthentication(proxyUser, proxyPass);
+                                    }
+                                    return null;
+                                }
+                            });
+                        }
+                    }
                 }
-            } else {
+            } catch (Exception e) {
+                Logger.debug(e);
                 con = url.openConnection();
             }
 
@@ -97,26 +117,6 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             Logger.debug(e);
         }
         return "";
-    }
-
-    /**
-     * Gets the Eclipse proxy service if available.
-     *
-     * @return the proxy service or null if not available
-     */
-    protected IProxyService getProxyService() {
-        try {
-            BundleContext bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
-            if (bundleContext != null) {
-                ServiceReference<IProxyService> serviceReference = bundleContext.getServiceReference(IProxyService.class);
-                if (serviceReference != null) {
-                    return bundleContext.getService(serviceReference);
-                }
-            }
-        } catch (Exception e) {
-            Logger.debug(e);
-        }
-        return null;
     }
 
     protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {

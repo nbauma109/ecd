@@ -23,10 +23,9 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Target;
 import org.apache.tools.ant.taskdefs.Delete;
 import org.apache.tools.ant.taskdefs.Zip;
+import org.eclipse.core.net.proxy.IProxyData;
 import org.eclipse.core.net.proxy.IProxyService;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.framework.ServiceReference;
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public class UrlDownloader {
@@ -86,33 +85,46 @@ public class UrlDownloader {
                 }
             }
 
-            // Get Eclipse proxy service
-            IProxyService proxyService = getProxyService();
+            // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+            SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+            IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
             // Open connection with proxy support
             URLConnection conn;
-            if (proxyService != null) {
-                try {
-                    URI uri = new URI(url);
-                    Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                    conn = new URL(url).openConnection(proxy);
-                } catch (Exception e) {
-                    Logger.debug(e);
-                    conn = new URL(url).openConnection();
+            try {
+                URI uri = new URI(url);
+                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                conn = new URL(url).openConnection(proxy);
+
+                // Set per-connection authenticator (proxy auth + optional server auth)
+                if (conn instanceof HttpURLConnection) {
+                    IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+                    final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
+                    final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
+                            ? proxyData.getPassword().toCharArray() : null;
+                    if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
+                            || (serviceUser != null && servicePassword != null)) {
+                        ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
+                            @Override
+                            protected PasswordAuthentication getPasswordAuthentication() {
+                                if (getRequestorType() == Authenticator.RequestorType.PROXY
+                                        && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                                    return new PasswordAuthentication(proxyUser, proxyPass);
+                                }
+                                if (getRequestorType() == Authenticator.RequestorType.SERVER
+                                        && serviceUser != null && servicePassword != null) {
+                                    return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
+                                }
+                                return null;
+                            }
+                        });
+                    }
                 }
-            } else {
+            } catch (Exception e) {
+                Logger.debug(e);
                 conn = new URL(url).openConnection();
             }
 
-            // Set HTTP Basic authentication if credentials are provided
-            if (serviceUser != null && servicePassword != null) {
-                ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
-                    }
-                });
-            }
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
             PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -121,26 +133,6 @@ public class UrlDownloader {
             file.delete();
         }
         return file.getAbsolutePath();
-    }
-
-    /**
-     * Gets the Eclipse proxy service if available.
-     *
-     * @return the proxy service or null if not available
-     */
-    private IProxyService getProxyService() {
-        try {
-            BundleContext bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
-            if (bundleContext != null) {
-                ServiceReference<IProxyService> serviceReference = bundleContext.getServiceReference(IProxyService.class);
-                if (serviceReference != null) {
-                    return bundleContext.getService(serviceReference);
-                }
-            }
-        } catch (Exception e) {
-            Logger.debug(e);
-        }
-        return null;
     }
 
     /**

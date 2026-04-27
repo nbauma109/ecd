@@ -10,30 +10,171 @@ package io.github.nbauma109.decompiler.source.attach.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
+import java.net.Authenticator;
+import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
 
+import org.eclipse.core.net.proxy.IProxyChangeListener;
+import org.eclipse.core.net.proxy.IProxyData;
+import org.eclipse.core.net.proxy.IProxyService;
+import org.eclipse.core.runtime.CoreException;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ProxyUtilTest {
 
+    /** Saves and restores the global authenticator so tests stay isolated. */
+    private Authenticator savedAuthenticator;
+
+    @Before
+    public void saveAuthenticator() {
+        savedAuthenticator = Authenticator.getDefault();
+    }
+
+    @After
+    public void restoreAuthenticator() {
+        Authenticator.setDefault(savedAuthenticator);
+    }
+
+    // -----------------------------------------------------------------------
+    // getProxy()
+    // -----------------------------------------------------------------------
+
     @Test
-    public void getProxyWithNullServiceReturnsNoProxy() throws Exception {
-        URI uri = new URI("http://example.com");
-        Proxy proxy = ProxyUtil.getProxy(uri, null);
+    public void getProxy_nullService_returnsNoProxy() throws Exception {
+        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), null);
 
         assertNotNull(proxy);
-        assertEquals(Proxy.NO_PROXY, proxy);
+        assertSame(Proxy.NO_PROXY, proxy);
     }
 
     @Test
-    public void getProxyDoesNotThrowWithValidUri() throws Exception {
-        // This test verifies that getProxy gracefully handles proxy service errors
-        URI uri = new URI("http://example.com");
+    public void getProxy_serviceReturnsNoData_returnsNoProxy() throws Exception {
+        IProxyService service = new StubProxyService(new IProxyData[0]);
 
-        // Should not throw even when proxy service is null
-        Proxy proxy = ProxyUtil.getProxy(uri, null);
-        assertNotNull(proxy);
+        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), service);
+
+        assertSame(Proxy.NO_PROXY, proxy);
+    }
+
+    @Test
+    public void getProxy_serviceReturnsProxy_returnsCorrectHostAndPort() throws Exception {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 8080, null, null);
+        IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
+
+        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), service);
+
+        assertEquals(Proxy.Type.HTTP, proxy.type());
+        InetSocketAddress addr = (InetSocketAddress) proxy.address();
+        assertEquals("proxy.example.com", addr.getHostName());
+        assertEquals(8080, addr.getPort());
+    }
+
+    @Test
+    public void getProxy_doesNotInstallGlobalAuthenticator() throws Exception {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 8080, "user", "pass");
+        IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
+        Authenticator.setDefault(null);
+
+        ProxyUtil.getProxy(new URI("http://example.com"), service);
+
+        // getProxy() must not touch the JVM-global authenticator
+        assertNull("getProxy() must not call Authenticator.setDefault()", Authenticator.getDefault());
+    }
+
+    // -----------------------------------------------------------------------
+    // getProxyData()
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void getProxyData_nullService_returnsNull() throws Exception {
+        assertNull(ProxyUtil.getProxyData(new URI("http://example.com"), null));
+    }
+
+    @Test
+    public void getProxyData_serviceReturnsNoData_returnsNull() throws Exception {
+        IProxyService service = new StubProxyService(new IProxyData[0]);
+        assertNull(ProxyUtil.getProxyData(new URI("http://example.com"), service));
+    }
+
+    @Test
+    public void getProxyData_serviceReturnsProxy_returnsProxyData() throws Exception {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 3128, "alice", "secret");
+        IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
+
+        IProxyData result = ProxyUtil.getProxyData(new URI("http://example.com"), service);
+
+        assertNotNull(result);
+        assertEquals("proxy.example.com", result.getHost());
+        assertEquals(3128, result.getPort());
+        assertEquals("alice", result.getUserId());
+        assertEquals("secret", result.getPassword());
+    }
+
+    @Test
+    public void getProxyData_socksProxy_returnsNull() throws Exception {
+        IProxyData proxyData = new StubProxyData(IProxyData.SOCKS_PROXY_TYPE, "socks.example.com", 1080, null, null);
+        IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
+
+        assertNull("SOCKS proxies should not be returned", ProxyUtil.getProxyData(new URI("socks://example.com"), service));
+    }
+
+    // -----------------------------------------------------------------------
+    // Stub implementations
+    // -----------------------------------------------------------------------
+
+    /** Minimal IProxyData stub backed by constructor-supplied values. */
+    private static class StubProxyData implements IProxyData {
+        private final String type;
+        private String host;
+        private int port;
+        private String userId;
+        private String password;
+
+        StubProxyData(String type, String host, int port, String userId, String password) {
+            this.type = type;
+            this.host = host;
+            this.port = port;
+            this.userId = userId;
+            this.password = password;
+        }
+
+        @Override public String getType()     { return type;     }
+        @Override public String getHost()     { return host;     }
+        @Override public int    getPort()     { return port;     }
+        @Override public String getUserId()   { return userId;   }
+        @Override public String getPassword() { return password; }
+        @Override public boolean isRequiresAuthentication() { return userId != null && !userId.isEmpty(); }
+        @Override public void setHost(String h)       { this.host = h; }
+        @Override public void setPort(int p)          { this.port = p; }
+        @Override public void setUserid(String u)     { this.userId = u; }
+        @Override public void setPassword(String pw)  { this.password = pw; }
+    }
+
+    /** Minimal IProxyService stub that always returns the supplied array from select(). */
+    private static class StubProxyService implements IProxyService {
+        private final IProxyData[] data;
+
+        StubProxyService(IProxyData[] data) { this.data = data; }
+
+        @Override public IProxyData[] select(URI uri)                 { return data; }
+        @Override public IProxyData[] getProxyData()                  { return data; }
+        @Override public IProxyData getProxyData(String type)         { return null; }
+        @Override public IProxyData[] getProxyDataForHost(String host){ return data; }
+        @Override public boolean isProxiesEnabled()                   { return true; }
+        @Override public boolean hasSystemProxies()                   { return false; }
+        @Override public boolean isSystemProxiesEnabled()             { return false; }
+        @Override public void setProxiesEnabled(boolean e)            {}
+        @Override public void setSystemProxiesEnabled(boolean e)      {}
+        @Override public void setProxyData(IProxyData[] proxies) throws CoreException {}
+        @Override public String[] getNonProxiedHosts()                { return new String[0]; }
+        @Override public void setNonProxiedHosts(String[] hosts) throws CoreException {}
+        @Override public void addProxyChangeListener(IProxyChangeListener l)    {}
+        @Override public void removeProxyChangeListener(IProxyChangeListener l) {}
     }
 }
