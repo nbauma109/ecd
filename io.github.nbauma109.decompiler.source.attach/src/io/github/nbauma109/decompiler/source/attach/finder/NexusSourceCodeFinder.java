@@ -51,6 +51,7 @@ import java.util.Set;
 
 import org.eclipse.core.net.proxy.IProxyService;
 
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
@@ -727,21 +728,18 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private HttpURLConnection open(String url, String method) throws IOException {
-        // Get Eclipse proxy service
-        IProxyService proxyService = getProxyService();
+        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
         // Open connection with proxy support
         HttpURLConnection c;
-        if (proxyService != null) {
-            try {
-                URI uri = new URI(url);
-                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                c = (HttpURLConnection) new URL(url).openConnection(proxy);
-            } catch (Exception e) {
-                Logger.debug(e);
-                c = (HttpURLConnection) new URL(url).openConnection();
-            }
-        } else {
+        try {
+            URI uri = new URI(url);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            c = (HttpURLConnection) new URL(url).openConnection(proxy);
+        } catch (Exception e) {
+            Logger.debug(e);
             c = (HttpURLConnection) new URL(url).openConnection();
         }
 

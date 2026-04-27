@@ -28,6 +28,7 @@ import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.core.net.proxy.IProxyService;
 
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
@@ -189,21 +190,18 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
     }
 
     private String postJson(String apiUrl, String payload) throws IOException {
-        // Get Eclipse proxy service
-        IProxyService proxyService = getProxyService();
+        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
         // Open connection with proxy support
         HttpURLConnection connection;
-        if (proxyService != null) {
-            try {
-                URI uri = new URI(apiUrl);
-                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                connection = (HttpURLConnection) new URL(apiUrl).openConnection(proxy);
-            } catch (Exception e) {
-                Logger.debug(e);
-                connection = (HttpURLConnection) new URL(apiUrl).openConnection();
-            }
-        } else {
+        try {
+            URI uri = new URI(apiUrl);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            connection = (HttpURLConnection) new URL(apiUrl).openConnection(proxy);
+        } catch (Exception e) {
+            Logger.debug(e);
             connection = (HttpURLConnection) new URL(apiUrl).openConnection();
         }
 
