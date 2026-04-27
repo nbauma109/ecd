@@ -44,54 +44,15 @@ public class ProxyUtil {
         }
 
         try {
-            // Get proxy data for the URI
-            IProxyData[] proxyDataArray = proxyService.select(uri);
-
-            if (proxyDataArray == null || proxyDataArray.length == 0) {
-                return;
-            }
-
-            // Use the first available proxy
-            IProxyData proxyData = proxyDataArray[0];
-
-            if (proxyData == null || IProxyData.SOCKS_PROXY_TYPE.equals(proxyData.getType())) {
-                // SOCKS proxy is handled differently and not supported in this implementation
+            IProxyData proxyData = getValidProxyData(uri, proxyService);
+            if (proxyData == null) {
                 return;
             }
 
             String proxyHost = proxyData.getHost();
             int proxyPort = proxyData.getPort();
 
-            if (proxyHost == null || proxyHost.isEmpty() || proxyPort < 0) {
-                return;
-            }
-
-            // Configure proxy for this connection
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
-
-            // Note: We cannot set proxy directly on URLConnection after it's been opened.
-            // Instead, we need to handle authentication via Authenticator if credentials are available.
-            String proxyUser = proxyData.getUserId();
-            String proxyPassword = proxyData.getPassword();
-
-            if (proxyUser != null && !proxyUser.isEmpty() && proxyPassword != null) {
-                // Set up authenticator for proxy authentication
-                Authenticator.setDefault(new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        if (getRequestorType() == RequestorType.PROXY) {
-                            String requestingHost = getRequestingHost();
-                            int requestingPort = getRequestingPort();
-
-                            // Verify this is the proxy we configured
-                            if (proxyHost.equals(requestingHost) && proxyPort == requestingPort) {
-                                return new PasswordAuthentication(proxyUser, proxyPassword.toCharArray());
-                            }
-                        }
-                        return null;
-                    }
-                });
-            }
+            setupProxyAuthentication(proxyData, proxyHost, proxyPort);
 
             // Set proxy properties for the connection
             System.setProperty("http.proxyHost", proxyHost);
@@ -117,51 +78,81 @@ public class ProxyUtil {
         }
 
         try {
-            IProxyData[] proxyDataArray = proxyService.select(uri);
-
-            if (proxyDataArray == null || proxyDataArray.length == 0) {
-                return Proxy.NO_PROXY;
-            }
-
-            IProxyData proxyData = proxyDataArray[0];
-
-            if (proxyData == null || IProxyData.SOCKS_PROXY_TYPE.equals(proxyData.getType())) {
+            IProxyData proxyData = getValidProxyData(uri, proxyService);
+            if (proxyData == null) {
                 return Proxy.NO_PROXY;
             }
 
             String proxyHost = proxyData.getHost();
             int proxyPort = proxyData.getPort();
 
-            if (proxyHost == null || proxyHost.isEmpty() || proxyPort < 0) {
-                return Proxy.NO_PROXY;
-            }
-
-            // Set up authentication if available
-            String proxyUser = proxyData.getUserId();
-            String proxyPassword = proxyData.getPassword();
-
-            if (proxyUser != null && !proxyUser.isEmpty() && proxyPassword != null) {
-                Authenticator.setDefault(new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        if (getRequestorType() == RequestorType.PROXY) {
-                            String requestingHost = getRequestingHost();
-                            int requestingPort = getRequestingPort();
-
-                            if (proxyHost.equals(requestingHost) && proxyPort == requestingPort) {
-                                return new PasswordAuthentication(proxyUser, proxyPassword.toCharArray());
-                            }
-                        }
-                        return null;
-                    }
-                });
-            }
+            setupProxyAuthentication(proxyData, proxyHost, proxyPort);
 
             return new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
 
         } catch (Exception e) {
             Logger.debug(e);
             return Proxy.NO_PROXY;
+        }
+    }
+
+    /**
+     * Retrieves and validates proxy data for the given URI.
+     *
+     * @param uri the URI to get proxy data for
+     * @param proxyService the Eclipse proxy service
+     * @return validated IProxyData or null if no valid proxy is available
+     */
+    private static IProxyData getValidProxyData(URI uri, IProxyService proxyService) {
+        IProxyData[] proxyDataArray = proxyService.select(uri);
+
+        if (proxyDataArray == null || proxyDataArray.length == 0) {
+            return null;
+        }
+
+        IProxyData proxyData = proxyDataArray[0];
+
+        if (proxyData == null || IProxyData.SOCKS_PROXY_TYPE.equals(proxyData.getType())) {
+            // SOCKS proxy is handled differently and not supported in this implementation
+            return null;
+        }
+
+        String proxyHost = proxyData.getHost();
+        int proxyPort = proxyData.getPort();
+
+        if (proxyHost == null || proxyHost.isEmpty() || proxyPort < 0) {
+            return null;
+        }
+
+        return proxyData;
+    }
+
+    /**
+     * Sets up proxy authentication if credentials are available.
+     *
+     * @param proxyData the proxy data containing credentials
+     * @param proxyHost the proxy host
+     * @param proxyPort the proxy port
+     */
+    private static void setupProxyAuthentication(IProxyData proxyData, String proxyHost, int proxyPort) {
+        String proxyUser = proxyData.getUserId();
+        String proxyPassword = proxyData.getPassword();
+
+        if (proxyUser != null && !proxyUser.isEmpty() && proxyPassword != null) {
+            Authenticator.setDefault(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    if (getRequestorType() == RequestorType.PROXY) {
+                        String requestingHost = getRequestingHost();
+                        int requestingPort = getRequestingPort();
+
+                        if (proxyHost.equals(requestingHost) && proxyPort == requestingPort) {
+                            return new PasswordAuthentication(proxyUser, proxyPassword.toCharArray());
+                        }
+                    }
+                    return null;
+                }
+            });
         }
     }
 }
