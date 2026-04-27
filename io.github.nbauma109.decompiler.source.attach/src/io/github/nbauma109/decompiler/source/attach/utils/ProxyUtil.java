@@ -99,10 +99,8 @@ public class ProxyUtil {
             System.setProperty("https.proxyHost", proxyHost);
             System.setProperty("https.proxyPort", String.valueOf(proxyPort));
 
-            Logger.debug("Configured proxy: " + proxyHost + ":" + proxyPort);
-
         } catch (Exception e) {
-            Logger.debug("Failed to configure proxy: " + e.getMessage(), e);
+            Logger.debug(e);
         }
     }
 
@@ -162,7 +160,7 @@ public class ProxyUtil {
             return new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
 
         } catch (Exception e) {
-            Logger.debug("Failed to get proxy: " + e.getMessage(), e);
+            Logger.debug(e);
             return Proxy.NO_PROXY;
         }
     }

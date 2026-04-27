@@ -69,7 +69,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                     Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
                     con = url.openConnection(proxy);
                 } catch (Exception e) {
-                    Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                    Logger.debug(e);
                     con = url.openConnection();
                 }
             } else {
@@ -114,7 +114,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                 }
             }
         } catch (Exception e) {
-            Logger.debug("Could not get proxy service: " + e.getMessage());
+            Logger.debug(e);
         }
         return null;
     }

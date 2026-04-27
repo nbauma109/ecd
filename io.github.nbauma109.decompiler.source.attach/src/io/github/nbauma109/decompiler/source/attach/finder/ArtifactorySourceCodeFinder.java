@@ -162,7 +162,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
                 Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
                 connection = new URL(url).openConnection(proxy);
             } catch (Exception e) {
-                Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                Logger.debug(e);
                 connection = new URL(url).openConnection();
             }
         } else {

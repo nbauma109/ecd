@@ -200,7 +200,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                 Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
                 connection = (HttpURLConnection) new URL(apiUrl).openConnection(proxy);
             } catch (Exception e) {
-                Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                Logger.debug(e);
                 connection = (HttpURLConnection) new URL(apiUrl).openConnection();
             }
         } else {

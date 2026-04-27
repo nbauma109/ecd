@@ -90,14 +90,14 @@ public class UrlDownloader {
             IProxyService proxyService = getProxyService();
 
             // Open connection with proxy support
-            final URLConnection conn;
+            URLConnection conn;
             if (proxyService != null) {
                 try {
                     URI uri = new URI(url);
                     Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
                     conn = new URL(url).openConnection(proxy);
                 } catch (Exception e) {
-                    Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                    Logger.debug(e);
                     conn = new URL(url).openConnection();
                 }
             } else {
@@ -138,7 +138,7 @@ public class UrlDownloader {
                 }
             }
         } catch (Exception e) {
-            Logger.debug("Could not get proxy service: " + e.getMessage());
+            Logger.debug(e);
         }
         return null;
     }
