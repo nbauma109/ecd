@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.StandardCopyOption;
@@ -21,6 +23,10 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Target;
 import org.apache.tools.ant.taskdefs.Delete;
 import org.apache.tools.ant.taskdefs.Zip;
+import org.eclipse.core.net.proxy.IProxyService;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public class UrlDownloader {
@@ -79,7 +85,26 @@ public class UrlDownloader {
                     throw new IOException("Failed to create directory: " + parent);
                 }
             }
-            final URLConnection conn = new URL(url).openConnection();
+
+            // Get Eclipse proxy service
+            IProxyService proxyService = getProxyService();
+
+            // Open connection with proxy support
+            final URLConnection conn;
+            if (proxyService != null) {
+                try {
+                    URI uri = new URI(url);
+                    Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                    conn = new URL(url).openConnection(proxy);
+                } catch (Exception e) {
+                    Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                    conn = new URL(url).openConnection();
+                }
+            } else {
+                conn = new URL(url).openConnection();
+            }
+
+            // Set HTTP Basic authentication if credentials are provided
             if (serviceUser != null && servicePassword != null) {
                 ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
                     @Override
@@ -96,6 +121,26 @@ public class UrlDownloader {
             file.delete();
         }
         return file.getAbsolutePath();
+    }
+
+    /**
+     * Gets the Eclipse proxy service if available.
+     *
+     * @return the proxy service or null if not available
+     */
+    private IProxyService getProxyService() {
+        try {
+            BundleContext bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
+            if (bundleContext != null) {
+                ServiceReference<IProxyService> serviceReference = bundleContext.getServiceReference(IProxyService.class);
+                if (serviceReference != null) {
+                    return bundleContext.getService(serviceReference);
+                }
+            }
+        } catch (Exception e) {
+            Logger.debug("Could not get proxy service: " + e.getMessage());
+        }
+        return null;
     }
 
     /**

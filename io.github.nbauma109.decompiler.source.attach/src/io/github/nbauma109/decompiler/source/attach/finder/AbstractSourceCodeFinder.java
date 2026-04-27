@@ -12,6 +12,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +32,12 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyService;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
+
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -50,7 +58,24 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
     protected String getString(URL url) {
         try {
-            URLConnection con = url.openConnection();
+            // Get Eclipse proxy service
+            IProxyService proxyService = getProxyService();
+
+            // Open connection with proxy support
+            URLConnection con;
+            if (proxyService != null) {
+                try {
+                    URI uri = url.toURI();
+                    Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                    con = url.openConnection(proxy);
+                } catch (Exception e) {
+                    Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                    con = url.openConnection();
+                }
+            } else {
+                con = url.openConnection();
+            }
+
             con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
             con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
             con.setConnectTimeout(5000);
@@ -72,6 +97,26 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             Logger.debug(e);
         }
         return "";
+    }
+
+    /**
+     * Gets the Eclipse proxy service if available.
+     *
+     * @return the proxy service or null if not available
+     */
+    protected IProxyService getProxyService() {
+        try {
+            BundleContext bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
+            if (bundleContext != null) {
+                ServiceReference<IProxyService> serviceReference = bundleContext.getServiceReference(IProxyService.class);
+                if (serviceReference != null) {
+                    return bundleContext.getService(serviceReference);
+                }
+            }
+        } catch (Exception e) {
+            Logger.debug("Could not get proxy service: " + e.getMessage());
+        }
+        return null;
     }
 
     protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {

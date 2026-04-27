@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -24,6 +26,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -184,7 +189,24 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
     }
 
     private String postJson(String apiUrl, String payload) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+        // Get Eclipse proxy service
+        IProxyService proxyService = getProxyService();
+
+        // Open connection with proxy support
+        HttpURLConnection connection;
+        if (proxyService != null) {
+            try {
+                URI uri = new URI(apiUrl);
+                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                connection = (HttpURLConnection) new URL(apiUrl).openConnection(proxy);
+            } catch (Exception e) {
+                Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+            }
+        } else {
+            connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+        }
+
         connection.setRequestMethod("POST"); //$NON-NLS-1$
         connection.setRequestProperty("Content-Type", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$
         connection.setRequestProperty("Accept", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$

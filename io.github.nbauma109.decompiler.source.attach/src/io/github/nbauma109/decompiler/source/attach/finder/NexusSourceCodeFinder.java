@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -48,6 +49,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.HashUtils;
@@ -723,7 +727,24 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private HttpURLConnection open(String url, String method) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        // Get Eclipse proxy service
+        IProxyService proxyService = getProxyService();
+
+        // Open connection with proxy support
+        HttpURLConnection c;
+        if (proxyService != null) {
+            try {
+                URI uri = new URI(url);
+                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+                c = (HttpURLConnection) new URL(url).openConnection(proxy);
+            } catch (Exception e) {
+                Logger.debug("Failed to use proxy, falling back to direct connection: " + e.getMessage());
+                c = (HttpURLConnection) new URL(url).openConnection();
+            }
+        } else {
+            c = (HttpURLConnection) new URL(url).openConnection();
+        }
+
         c.setInstanceFollowRedirects(true);
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
