@@ -154,6 +154,7 @@ public class ProxyUtilTest {
         @Override public void setPort(int p)          { this.port = p; }
         @Override public void setUserid(String u)     { this.userId = u; }
         @Override public void setPassword(String pw)  { this.password = pw; }
+        @Override public void disable()               { this.host = null; this.port = -1; this.userId = null; this.password = null; }
     }
 
     /** Minimal IProxyService stub that always returns the supplied array from select(). */
@@ -166,6 +167,7 @@ public class ProxyUtilTest {
         @Override public IProxyData[] getProxyData()                  { return data; }
         @Override public IProxyData getProxyData(String type)         { return null; }
         @Override public IProxyData[] getProxyDataForHost(String host){ return data; }
+        @Override public IProxyData getProxyDataForHost(String host, String type) { return null; }
         @Override public boolean isProxiesEnabled()                   { return true; }
         @Override public boolean hasSystemProxies()                   { return false; }
         @Override public boolean isSystemProxiesEnabled()             { return false; }
