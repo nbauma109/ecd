@@ -37,7 +37,6 @@ import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -737,10 +736,10 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         try {
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            c = (HttpURLConnection) new URL(url).openConnection(proxy);
+            c = (HttpURLConnection) uri.toURL().openConnection(proxy);
         } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
-            c = (HttpURLConnection) new URL(url).openConnection();
+            c = (HttpURLConnection) URI.create(url).toURL().openConnection();
         }
 
         c.setInstanceFollowRedirects(true);

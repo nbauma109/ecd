@@ -247,8 +247,8 @@ public class BaseDecompilerSourceMapperTest {
     }
 
     private static void assertEqualsIgnoreEOL(String expected, String actual) {
-        String normalizedExpected = expected.replaceAll("\\r\\n", "\n");
-        String normalizedActual = actual.replaceAll("\\r\\n", "\n");
+        String normalizedExpected = expected.replace("\r\n", "\n");
+        String normalizedActual = actual.replace("\r\n", "\n");
         assertEquals(normalizedExpected, normalizedActual);
     }
 

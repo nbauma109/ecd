@@ -65,38 +65,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
             IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
-            // Open connection with proxy support
-            URLConnection con;
-            try {
-                URI uri = url.toURI();
-                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                con = url.openConnection(proxy);
-
-                // Set per-connection proxy authenticator if credentials are available
-                if (con instanceof HttpURLConnection) {
-                    IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
-                    if (proxyData != null) {
-                        final String proxyUser = proxyData.getUserId();
-                        final char[] proxyPass = proxyData.getPassword() != null
-                                ? proxyData.getPassword().toCharArray() : null;
-                        if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
-                            ((HttpURLConnection) con).setAuthenticator(new Authenticator() {
-                                @Override
-                                protected PasswordAuthentication getPasswordAuthentication() {
-                                    if (getRequestorType() == Authenticator.RequestorType.PROXY) {
-                                        return new PasswordAuthentication(proxyUser, proxyPass);
-                                    }
-                                    return null;
-                                }
-                            });
-                        }
-                    }
-                }
-            } catch (URISyntaxException | IOException e) {
-                Logger.debug(e);
-                con = url.openConnection();
-            }
-
+            URLConnection con = openConnectionWithProxy(url, proxyService);
             con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
             con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
             con.setConnectTimeout(5000);
@@ -118,6 +87,39 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             Logger.debug(e);
         }
         return "";
+    }
+
+    private URLConnection openConnectionWithProxy(URL url, IProxyService proxyService) throws IOException {
+        try {
+            URI uri = url.toURI();
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            URLConnection con = url.openConnection(proxy);
+
+            // Set per-connection proxy authenticator if credentials are available
+            if (con instanceof HttpURLConnection) {
+                IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+                if (proxyData != null) {
+                    final String proxyUser = proxyData.getUserId();
+                    final char[] proxyPass = proxyData.getPassword() != null
+                            ? proxyData.getPassword().toCharArray() : null;
+                    if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                        ((HttpURLConnection) con).setAuthenticator(new Authenticator() {
+                            @Override
+                            protected PasswordAuthentication getPasswordAuthentication() {
+                                if (getRequestorType() == Authenticator.RequestorType.PROXY) {
+                                    return new PasswordAuthentication(proxyUser, proxyPass);
+                                }
+                                return null;
+                            }
+                        });
+                    }
+                }
+            }
+            return con;
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            return url.openConnection();
+        }
     }
 
     protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {

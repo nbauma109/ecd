@@ -16,7 +16,6 @@ import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.StandardCopyOption;
 import org.apache.commons.io.file.PathUtils;
@@ -90,42 +89,7 @@ public class UrlDownloader {
             SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
             IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
 
-            // Open connection with proxy support
-            URLConnection conn;
-            try {
-                URI uri = new URI(url);
-                Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-                conn = new URL(url).openConnection(proxy);
-
-                // Set per-connection authenticator (proxy auth + optional server auth)
-                if (conn instanceof HttpURLConnection) {
-                    IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
-                    final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
-                    final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
-                            ? proxyData.getPassword().toCharArray() : null;
-                    if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
-                            || (serviceUser != null && servicePassword != null)) {
-                        ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
-                            @Override
-                            protected PasswordAuthentication getPasswordAuthentication() {
-                                if (getRequestorType() == Authenticator.RequestorType.PROXY
-                                        && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
-                                    return new PasswordAuthentication(proxyUser, proxyPass);
-                                }
-                                if (getRequestorType() == Authenticator.RequestorType.SERVER
-                                        && serviceUser != null && servicePassword != null) {
-                                    return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
-                                }
-                                return null;
-                            }
-                        });
-                    }
-                }
-            } catch (URISyntaxException | IOException e) {
-                Logger.debug(e);
-                conn = new URL(url).openConnection();
-            }
-
+            URLConnection conn = openConnectionWithProxy(url, proxyService);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
             PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -134,6 +98,43 @@ public class UrlDownloader {
             file.delete();
         }
         return file.getAbsolutePath();
+    }
+
+    private URLConnection openConnectionWithProxy(final String url, IProxyService proxyService) throws IOException {
+        try {
+            URI uri = new URI(url);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            URLConnection conn = uri.toURL().openConnection(proxy);
+
+            // Set per-connection authenticator (proxy auth + optional server auth)
+            if (conn instanceof HttpURLConnection) {
+                IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+                final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
+                final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
+                        ? proxyData.getPassword().toCharArray() : null;
+                if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
+                        || (serviceUser != null && servicePassword != null)) {
+                    ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
+                        @Override
+                        protected PasswordAuthentication getPasswordAuthentication() {
+                            if (getRequestorType() == Authenticator.RequestorType.PROXY
+                                    && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                                return new PasswordAuthentication(proxyUser, proxyPass);
+                            }
+                            if (getRequestorType() == Authenticator.RequestorType.SERVER
+                                    && serviceUser != null && servicePassword != null) {
+                                return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
+                            }
+                            return null;
+                        }
+                    });
+                }
+            }
+            return conn;
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            return URI.create(url).toURL().openConnection();
+        }
     }
 
     /**

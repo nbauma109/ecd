@@ -28,6 +28,9 @@ import org.junit.Test;
 
 public class ProxyUtilTest {
 
+    private static final String EXAMPLE_URL = "http://example.com";
+    private static final String PROXY_HOST = "proxy.example.com";
+
     /** Saves and restores the global authenticator so tests stay isolated. */
     private Authenticator savedAuthenticator;
 
@@ -46,42 +49,42 @@ public class ProxyUtilTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void getProxy_nullService_returnsNoProxy() throws Exception {
-        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), null);
+    public void getProxyNullServiceReturnsNoProxy() {
+        Proxy proxy = ProxyUtil.getProxy(URI.create(EXAMPLE_URL), null);
 
         assertNotNull(proxy);
         assertSame(Proxy.NO_PROXY, proxy);
     }
 
     @Test
-    public void getProxy_serviceReturnsNoData_returnsNoProxy() throws Exception {
+    public void getProxyServiceReturnsNoDataReturnsNoProxy() {
         IProxyService service = new StubProxyService(new IProxyData[0]);
 
-        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), service);
+        Proxy proxy = ProxyUtil.getProxy(URI.create(EXAMPLE_URL), service);
 
         assertSame(Proxy.NO_PROXY, proxy);
     }
 
     @Test
-    public void getProxy_serviceReturnsProxy_returnsCorrectHostAndPort() throws Exception {
-        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 8080, null, null);
+    public void getProxyServiceReturnsProxyReturnsCorrectHostAndPort() {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, PROXY_HOST, 8080, null, null);
         IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
 
-        Proxy proxy = ProxyUtil.getProxy(new URI("http://example.com"), service);
+        Proxy proxy = ProxyUtil.getProxy(URI.create(EXAMPLE_URL), service);
 
         assertEquals(Proxy.Type.HTTP, proxy.type());
         InetSocketAddress addr = (InetSocketAddress) proxy.address();
-        assertEquals("proxy.example.com", addr.getHostName());
+        assertEquals(PROXY_HOST, addr.getHostName());
         assertEquals(8080, addr.getPort());
     }
 
     @Test
-    public void getProxy_doesNotInstallGlobalAuthenticator() throws Exception {
-        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 8080, "user", "pass");
+    public void getProxyDoesNotInstallGlobalAuthenticator() {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, PROXY_HOST, 8080, "user", "pass");
         IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
         Authenticator.setDefault(null);
 
-        ProxyUtil.getProxy(new URI("http://example.com"), service);
+        ProxyUtil.getProxy(URI.create(EXAMPLE_URL), service);
 
         // getProxy() must not touch the JVM-global authenticator
         assertNull("getProxy() must not call Authenticator.setDefault()", Authenticator.getDefault());
@@ -92,36 +95,36 @@ public class ProxyUtilTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void getProxyData_nullService_returnsNull() throws Exception {
-        assertNull(ProxyUtil.getProxyData(new URI("http://example.com"), null));
+    public void getProxyDataNullServiceReturnsNull() {
+        assertNull(ProxyUtil.getProxyData(URI.create(EXAMPLE_URL), null));
     }
 
     @Test
-    public void getProxyData_serviceReturnsNoData_returnsNull() throws Exception {
+    public void getProxyDataServiceReturnsNoDataReturnsNull() {
         IProxyService service = new StubProxyService(new IProxyData[0]);
-        assertNull(ProxyUtil.getProxyData(new URI("http://example.com"), service));
+        assertNull(ProxyUtil.getProxyData(URI.create(EXAMPLE_URL), service));
     }
 
     @Test
-    public void getProxyData_serviceReturnsProxy_returnsProxyData() throws Exception {
-        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, "proxy.example.com", 3128, "alice", "secret");
+    public void getProxyDataServiceReturnsProxyReturnsProxyData() {
+        IProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE, PROXY_HOST, 3128, "alice", "secret");
         IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
 
-        IProxyData result = ProxyUtil.getProxyData(new URI("http://example.com"), service);
+        IProxyData result = ProxyUtil.getProxyData(URI.create(EXAMPLE_URL), service);
 
         assertNotNull(result);
-        assertEquals("proxy.example.com", result.getHost());
+        assertEquals(PROXY_HOST, result.getHost());
         assertEquals(3128, result.getPort());
         assertEquals("alice", result.getUserId());
         assertEquals("secret", result.getPassword());
     }
 
     @Test
-    public void getProxyData_socksProxy_returnsNull() throws Exception {
+    public void getProxyDataSocksProxyReturnsNull() {
         IProxyData proxyData = new StubProxyData(IProxyData.SOCKS_PROXY_TYPE, "socks.example.com", 1080, null, null);
         IProxyService service = new StubProxyService(new IProxyData[] { proxyData });
 
-        assertNull("SOCKS proxies should not be returned", ProxyUtil.getProxyData(new URI("socks://example.com"), service));
+        assertNull("SOCKS proxies should not be returned", ProxyUtil.getProxyData(URI.create("socks://example.com"), service));
     }
 
     // -----------------------------------------------------------------------
@@ -171,12 +174,12 @@ public class ProxyUtilTest {
         @Override public boolean isProxiesEnabled()                   { return true; }
         @Override public boolean hasSystemProxies()                   { return false; }
         @Override public boolean isSystemProxiesEnabled()             { return false; }
-        @Override public void setProxiesEnabled(boolean e)            {}
-        @Override public void setSystemProxiesEnabled(boolean e)      {}
-        @Override public void setProxyData(IProxyData[] proxies) throws CoreException {}
+        @Override public void setProxiesEnabled(boolean e)            { /* no-op stub */ }
+        @Override public void setSystemProxiesEnabled(boolean e)      { /* no-op stub */ }
+        @Override public void setProxyData(IProxyData[] proxies) throws CoreException { /* no-op stub */ }
         @Override public String[] getNonProxiedHosts()                { return new String[0]; }
-        @Override public void setNonProxiedHosts(String[] hosts) throws CoreException {}
-        @Override public void addProxyChangeListener(IProxyChangeListener l)    {}
-        @Override public void removeProxyChangeListener(IProxyChangeListener l) {}
+        @Override public void setNonProxiedHosts(String[] hosts) throws CoreException { /* no-op stub */ }
+        @Override public void addProxyChangeListener(IProxyChangeListener l)    { /* no-op stub */ }
+        @Override public void removeProxyChangeListener(IProxyChangeListener l) { /* no-op stub */ }
     }
 }

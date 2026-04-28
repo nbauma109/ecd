@@ -14,7 +14,6 @@ import java.io.InputStream;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -162,10 +161,10 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         try {
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            connection = new URL(url).openConnection(proxy);
+            connection = uri.toURL().openConnection(proxy);
         } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
-            connection = new URL(url).openConnection();
+            connection = URI.create(url).toURL().openConnection();
         }
 
         connection.setConnectTimeout(5000);
