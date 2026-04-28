@@ -547,8 +547,7 @@ public class JavaDecompilerClassFileEditorTest {
         });
     }
 
-    private static boolean waitForSelectedElement(JavaDecompilerClassFileEditor editor, String elementName)
-            throws InterruptedException {
+    private static boolean waitForSelectedElement(JavaDecompilerClassFileEditor editor, String elementName) {
         int attempts = 250;
         for (int i = 0; i < attempts; i++) {
             if (hasSelectedElement(editor, elementName)) {
@@ -567,8 +566,7 @@ public class JavaDecompilerClassFileEditorTest {
         return false;
     }
 
-    private static boolean waitForPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames)
-            throws InterruptedException {
+    private static boolean waitForPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames) {
         int attempts = 250;
         for (int i = 0; i < attempts; i++) {
             if (hasPackageExplorerSelection(packagesView, elementNames)) {
@@ -632,7 +630,7 @@ public class JavaDecompilerClassFileEditorTest {
         throw new IllegalArgumentException("Class file is not ordinary: " + classFile.getElementName()); //$NON-NLS-1$
     }
 
-    private static String waitForNonEmptyDocument(IDocument document) throws InterruptedException {
+    private static String waitForNonEmptyDocument(IDocument document) {
         int attempts = 250;
         for (int i = 0; i < attempts; i++) {
             String text = document.get();

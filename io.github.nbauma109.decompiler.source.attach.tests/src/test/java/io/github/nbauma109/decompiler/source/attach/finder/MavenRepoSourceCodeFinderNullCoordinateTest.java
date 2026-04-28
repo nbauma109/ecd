@@ -15,12 +15,12 @@ public class MavenRepoSourceCodeFinderNullCoordinateTest {
 
     private static final String ORG_EXAMPLE = "org.example"; //$NON-NLS-1$
 
-    @Parameters(name = "{0}")
+    @Parameters(name = "groupId={0},artifactId={1},version={2}")
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-            { "null groupId", null, "lib", "1.0" }, //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            { "null artifactId", ORG_EXAMPLE, null, "1.0" }, //$NON-NLS-1$ //$NON-NLS-2$
-            { "null version", ORG_EXAMPLE, "lib", null }, //$NON-NLS-1$ //$NON-NLS-2$
+            { null, "lib", "1.0" }, //$NON-NLS-1$ //$NON-NLS-2$
+            { ORG_EXAMPLE, null, "1.0" }, //$NON-NLS-1$
+            { ORG_EXAMPLE, "lib", null }, //$NON-NLS-1$
         });
     }
 
@@ -28,7 +28,7 @@ public class MavenRepoSourceCodeFinderNullCoordinateTest {
     private final String artifactId;
     private final String version;
 
-    public MavenRepoSourceCodeFinderNullCoordinateTest(String description, String groupId, String artifactId, String version) {
+    public MavenRepoSourceCodeFinderNullCoordinateTest(String groupId, String artifactId, String version) {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
