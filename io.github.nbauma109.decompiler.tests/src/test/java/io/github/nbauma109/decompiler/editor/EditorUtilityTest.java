@@ -67,8 +67,12 @@ public class EditorUtilityTest {
 
     @Test
     public void startupEarlyStartupIsNoOp() {
-        Startup startup = new Startup();
-        startup.earlyStartup();
-        assertNotNull(startup);
+        boolean threw = false;
+        try {
+            new Startup().earlyStartup();
+        } catch (Exception e) {
+            threw = true;
+        }
+        assertFalse("earlyStartup() should not throw any exception", threw);
     }
 }
