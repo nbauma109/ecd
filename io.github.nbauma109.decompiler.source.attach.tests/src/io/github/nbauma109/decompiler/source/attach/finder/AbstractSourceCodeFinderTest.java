@@ -342,42 +342,96 @@ public class AbstractSourceCodeFinderTest {
         private String password;
 
         StubProxyData(String type, String host, int port, String userId, String password) {
-            this.type = type; this.host = host; this.port = port;
-            this.userId = userId; this.password = password;
+            this.type = type;
+            this.host = host;
+            this.port = port;
+            this.userId = userId;
+            this.password = password;
         }
 
-        @Override public String getType()     { return type; }
-        @Override public String getHost()     { return host; }
-        @Override public int    getPort()     { return port; }
-        @Override public String getUserId()   { return userId; }
-        @Override public String getPassword() { return password; }
-        @Override public boolean isRequiresAuthentication() { return userId != null && !userId.isEmpty(); }
-        @Override public void setHost(String h)       { this.host = h; }
-        @Override public void setPort(int p)          { this.port = p; }
-        @Override public void setUserid(String u)     { this.userId = u; }
-        @Override public void setPassword(String pw)  { this.password = pw; }
-        @Override public void disable()               { this.host = null; this.port = -1; }
+        @Override
+        public String getType() { return type; }
+
+        @Override
+        public String getHost() { return host; }
+
+        @Override
+        public int getPort() { return port; }
+
+        @Override
+        public String getUserId() { return userId; }
+
+        @Override
+        public String getPassword() { return password; }
+
+        @Override
+        public boolean isRequiresAuthentication() { return userId != null && !userId.isEmpty(); }
+
+        @Override
+        public void setHost(String h) { this.host = h; }
+
+        @Override
+        public void setPort(int p) { this.port = p; }
+
+        @Override
+        public void setUserid(String u) { this.userId = u; }
+
+        @Override
+        public void setPassword(String pw) { this.password = pw; }
+
+        @Override
+        public void disable() { this.host = null; this.port = -1; }
     }
 
     private static class StubProxyService implements IProxyService {
         private final IProxyData[] data;
+
         StubProxyService(IProxyData[] data) { this.data = data; }
 
-        @Override public IProxyData[] select(java.net.URI uri) { return data; }
-        @Override public IProxyData[] getProxyData()           { return data; }
-        @Override public IProxyData getProxyData(String type)  { return null; }
-        @Override public IProxyData[] getProxyDataForHost(String host) { return data; }
-        @Override public IProxyData getProxyDataForHost(String host, String type) { return null; }
-        @Override public boolean isProxiesEnabled()            { return true; }
-        @Override public boolean hasSystemProxies()            { return false; }
-        @Override public boolean isSystemProxiesEnabled()      { return false; }
-        @Override public void setProxiesEnabled(boolean e)     { /* stub */ }
-        @Override public void setSystemProxiesEnabled(boolean e){ /* stub */ }
-        @Override public void setProxyData(IProxyData[] d) throws CoreException { /* stub */ }
-        @Override public String[] getNonProxiedHosts()         { return new String[0]; }
-        @Override public void setNonProxiedHosts(String[] h) throws CoreException { /* stub */ }
-        @Override public void addProxyChangeListener(IProxyChangeListener l)    { /* stub */ }
-        @Override public void removeProxyChangeListener(IProxyChangeListener l) { /* stub */ }
+        @Override
+        public IProxyData[] select(java.net.URI uri) { return data; }
+
+        @Override
+        public IProxyData[] getProxyData() { return data; }
+
+        @Override
+        public IProxyData getProxyData(String type) { return null; }
+
+        @Override
+        public IProxyData[] getProxyDataForHost(String host) { return data; }
+
+        @Override
+        public IProxyData getProxyDataForHost(String host, String type) { return null; }
+
+        @Override
+        public boolean isProxiesEnabled() { return true; }
+
+        @Override
+        public boolean hasSystemProxies() { return false; }
+
+        @Override
+        public boolean isSystemProxiesEnabled() { return false; }
+
+        @Override
+        public void setProxiesEnabled(boolean e) { /* stub */ }
+
+        @Override
+        public void setSystemProxiesEnabled(boolean e) { /* stub */ }
+
+        @Override
+        public void setProxyData(IProxyData[] d) throws CoreException { /* stub */ }
+
+        @Override
+        public String[] getNonProxiedHosts() { return new String[0]; }
+
+        @Override
+        public void setNonProxiedHosts(String[] h) throws CoreException { /* stub */ }
+
+        @Override
+        public void addProxyChangeListener(IProxyChangeListener l) { /* stub */ }
+
+        @Override
+        public void removeProxyChangeListener(IProxyChangeListener l) { /* stub */ }
     }
 
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
