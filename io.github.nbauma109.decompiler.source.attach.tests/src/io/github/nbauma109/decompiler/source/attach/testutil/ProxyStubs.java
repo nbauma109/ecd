@@ -73,7 +73,13 @@ public final class ProxyStubs {
         public void setPassword(String pw) { this.password = pw; }
 
         @Override
-        public void disable() { this.host = null; this.port = -1; this.userId = null; this.password = null; }
+        public void disable() {
+            // Fully disable: clear all fields including authentication credentials
+            this.host = null;
+            this.port = -1;
+            this.userId = null;
+            this.password = null;
+        }
     }
 
     /** Minimal {@link IProxyService} stub that always returns the supplied array from {@code select()}. */
