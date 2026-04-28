@@ -52,7 +52,7 @@ public class SourceConstantsTest {
 
     @Test
     public void sourceAttachPathMatchesSourceAttacherDirAbsolutePath() {
-        assertEquals(SourceConstants.SourceAttacherDir.getAbsolutePath(), SourceConstants.SourceAttachPath);
+        assertEquals(SourceConstants.SourceAttachPath, SourceConstants.SourceAttacherDir.getAbsolutePath());
     }
 
     @Test

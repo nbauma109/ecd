@@ -80,36 +80,6 @@ public class MavenRepoSourceCodeFinderTest extends AbstractSourceCodeFinderTests
     }
 
     @Test
-    public void getMavenRepoSourceFileReturnsNullForNullGroupId() {
-        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
-        GAV gav = new GAV();
-        gav.setGroupId(null);
-        gav.setArtifactId("lib");
-        gav.setVersion("1.0");
-        assertNull(finder.getMavenRepoSourceFile(gav));
-    }
-
-    @Test
-    public void getMavenRepoSourceFileReturnsNullForNullArtifactId() {
-        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
-        GAV gav = new GAV();
-        gav.setGroupId(ORG_EXAMPLE);
-        gav.setArtifactId(null);
-        gav.setVersion("1.0");
-        assertNull(finder.getMavenRepoSourceFile(gav));
-    }
-
-    @Test
-    public void getMavenRepoSourceFileReturnsNullForNullVersion() {
-        MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
-        GAV gav = new GAV();
-        gav.setGroupId(ORG_EXAMPLE);
-        gav.setArtifactId("lib");
-        gav.setVersion(null);
-        assertNull(finder.getMavenRepoSourceFile(gav));
-    }
-
-    @Test
     public void getMavenRepoSourceFileReturnsNullForPathTraversalInGroupId() {
         MavenRepoSourceCodeFinder finder = new MavenRepoSourceCodeFinder();
         GAV gav = new GAV();

@@ -73,6 +73,7 @@ public class SourceCodeFinderFacadeTest {
     public void cancelDoesNotThrow() {
         SourceCodeFinderFacade facade = new SourceCodeFinderFacade();
         facade.cancel(); // must not throw regardless of state
+        assertNull(facade.getDownloadUrl());
     }
 
     @Test

@@ -32,22 +32,19 @@ public class FinderManagerTest {
         manager.findSources(Collections.emptyList(), results);
 
         // With no libs, each worker receives NO_MORE_WORK immediately and exits.
-        // Poll until all workers finish or the deadline passes.
-        long deadline = System.currentTimeMillis() + 5_000;
-        while (manager.isRunning() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50);
-        }
+        manager.awaitCompletion();
 
-        assertFalse("All workers should have finished within 5 seconds", manager.isRunning());
+        assertFalse("All workers should have finished", manager.isRunning());
         assertTrue("No sources should be found for an empty lib list", results.isEmpty());
     }
 
     @Test
-    public void cancelAfterFindSourcesWithEmptyListDoesNotThrow() {
+    public void cancelAfterFindSourcesWithEmptyListDoesNotThrow() throws InterruptedException {
         FinderManager manager = new FinderManager();
         List<SourceFileResult> results = new ArrayList<>();
 
         manager.findSources(Collections.emptyList(), results);
         manager.cancel(); // cancel while workers may still be winding down
+        assertTrue(results.isEmpty());
     }
 }

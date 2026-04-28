@@ -234,8 +234,7 @@ public class DecompileUtilPluginTest {
             Iterable<? extends JavaFileObject> units =
                     fileManager.getJavaFileObjectsFromFiles(Collections.singletonList(javaFile));
 
-            Boolean ok = compiler.getTask(null, fileManager, null, null, null, units).call();
-            assertTrue(Boolean.TRUE.equals(ok));
+            assertEquals(Boolean.TRUE, compiler.getTask(null, fileManager, null, null, null, units).call());
         }
     }
 

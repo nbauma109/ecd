@@ -67,6 +67,8 @@ public class EditorUtilityTest {
 
     @Test
     public void startupEarlyStartupIsNoOp() {
-        new Startup().earlyStartup();
+        Startup startup = new Startup();
+        startup.earlyStartup();
+        assertNotNull(startup);
     }
 }

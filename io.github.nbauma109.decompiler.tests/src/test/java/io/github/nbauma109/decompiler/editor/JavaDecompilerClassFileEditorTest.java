@@ -240,7 +240,7 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue(contents.contains(expectedSimpleName));
         assertTrue(contents.contains(KEYWORD_CLASS));
         assertFalse(openedEditor.getTitle().contains(" [" + DECOMPILER_FERNFLOWER + "]")); //$NON-NLS-1$ //$NON-NLS-2$
-        assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
+        assertSame(JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER), openedEditor.getTitleImage());
     }
 
     @Test
@@ -273,7 +273,7 @@ public class JavaDecompilerClassFileEditorTest {
         openedEditor = openDefault(classFile);
         assertTrue("Expected reopen to use JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
                 openedEditor instanceof JavaDecompilerClassFileEditor);
-        assertTrue(openedEditor.getTitleImage() == JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER));
+        assertSame(JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER), openedEditor.getTitleImage());
     }
 
     @Test
@@ -554,7 +554,7 @@ public class JavaDecompilerClassFileEditorTest {
             if (hasSelectedElement(editor, elementName)) {
                 return true;
             }
-            Thread.sleep(25L);
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(25L));
             drainUiEvents();
         }
         return hasSelectedElement(editor, elementName);
@@ -574,7 +574,7 @@ public class JavaDecompilerClassFileEditorTest {
             if (hasPackageExplorerSelection(packagesView, elementNames)) {
                 return true;
             }
-            Thread.sleep(25L);
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(25L));
             drainUiEvents();
         }
         return hasPackageExplorerSelection(packagesView, elementNames);
@@ -639,7 +639,7 @@ public class JavaDecompilerClassFileEditorTest {
             if (text != null && !text.trim().isEmpty()) {
                 return text;
             }
-            Thread.sleep(25L);
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(25L));
             drainUiEvents();
         }
         return document.get();

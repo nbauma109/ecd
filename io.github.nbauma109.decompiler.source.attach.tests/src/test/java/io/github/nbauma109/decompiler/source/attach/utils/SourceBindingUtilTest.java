@@ -42,31 +42,35 @@ public class SourceBindingUtilTest {
     @Test
     public void saveSourceBindingRecordWithNullSourceFileIsNoOp() throws IOException {
         File tempFile = createMinimalZip("temp-null-src.jar");
-        // Must not throw even though sourceFile is null
-        SourceBindingUtil.saveSourceBindingRecord(null, "sha-null-src-" + System.nanoTime(), null, tempFile);
+        String sha = "sha-null-src-" + System.nanoTime(); //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(null, sha, null, tempFile);
+        assertNull("No binding should be saved when sourceFile is null", SourceBindingUtil.getSourceFileBySha(sha));
     }
 
     @Test
     public void saveSourceBindingRecordWithNullTempFileIsNoOp() throws IOException {
         File sourceFile = createMinimalZip("src-null-temp.jar");
-        // Must not throw even though tempFile is null
-        SourceBindingUtil.saveSourceBindingRecord(sourceFile, "sha-null-tmp-" + System.nanoTime(), null, null);
+        String sha = "sha-null-tmp-" + System.nanoTime(); //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, null);
+        assertNull("No binding should be saved when tempFile is null", SourceBindingUtil.getSourceFileBySha(sha));
     }
 
     @Test
     public void saveSourceBindingRecordWithNonExistingSourceFileIsNoOp() throws IOException {
         File missingSource = new File(testRoot, "missing-source.jar");
         File tempFile = createMinimalZip("temp-missing-src.jar");
-        // Must not throw when sourceFile does not exist
-        SourceBindingUtil.saveSourceBindingRecord(missingSource, "sha-miss-src-" + System.nanoTime(), null, tempFile);
+        String sha = "sha-miss-src-" + System.nanoTime(); //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(missingSource, sha, null, tempFile);
+        assertNull("No binding should be saved when sourceFile does not exist", SourceBindingUtil.getSourceFileBySha(sha));
     }
 
     @Test
     public void saveSourceBindingRecordWithNonExistingTempFileIsNoOp() throws IOException {
         File sourceFile = createMinimalZip("src-missing-tmp.jar");
         File missingTemp = new File(testRoot, "missing-temp.jar");
-        // Must not throw when tempSourceFile does not exist
-        SourceBindingUtil.saveSourceBindingRecord(sourceFile, "sha-miss-tmp-" + System.nanoTime(), null, missingTemp);
+        String sha = "sha-miss-tmp-" + System.nanoTime(); //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, missingTemp);
+        assertNull("No binding should be saved when tempSourceFile does not exist", SourceBindingUtil.getSourceFileBySha(sha));
     }
 
     // -----------------------------------------------------------------------

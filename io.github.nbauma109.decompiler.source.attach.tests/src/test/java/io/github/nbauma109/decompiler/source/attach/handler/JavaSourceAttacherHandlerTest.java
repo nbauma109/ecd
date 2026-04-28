@@ -66,7 +66,7 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     @Test
-    public void testAttachSourceSetsAttachmentPath() throws IOException, CoreException, InterruptedException {
+    public void testAttachSourceSetsAttachmentPath() throws IOException, CoreException {
         File sourceJar = createZipUnderTarget("source-" + UUID.randomUUID() + ".jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
         SingleLibrarySetup setup = SourceAttachTestSupport.createSingleLibraryProjectFromBundleJar(
@@ -84,7 +84,7 @@ public class JavaSourceAttacherHandlerTest {
 
         IPath attachedPath = waitForSourceAttachment(root, 10, 200);
         assertNotNull(attachedPath);
-        assertTrue(attachedPath.toFile().getAbsolutePath().equals(sourceJar.getAbsolutePath()));
+        assertEquals(sourceJar.getAbsolutePath(), attachedPath.toFile().getAbsolutePath());
     }
 
     @Test
@@ -183,10 +183,10 @@ public class JavaSourceAttacherHandlerTest {
     }
 
     private static IPath waitForSourceAttachment(IPackageFragmentRoot root, int attempts, long delayMs)
-            throws InterruptedException, JavaModelException {
+            throws JavaModelException {
         IPath attached = root.getSourceAttachmentPath();
         for (int i = 0; i < attempts && (attached == null || !attached.toFile().exists()); i++) {
-            Thread.sleep(delayMs);
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(delayMs));
             attached = root.getSourceAttachmentPath();
         }
         return attached;

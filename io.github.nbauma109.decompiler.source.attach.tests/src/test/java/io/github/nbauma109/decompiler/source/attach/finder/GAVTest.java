@@ -2,6 +2,7 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -45,9 +46,9 @@ public class GAVTest {
 
         assertEquals(left, right);
         assertEquals(left.hashCode(), right.hashCode());
-        assertFalse(left.equals(different));
-        assertFalse(left.equals(null));
-        assertFalse("demo".equals(left));
+        assertNotEquals(left, different);
+        assertNotEquals(left, null);
+        assertNotEquals("demo", left);
         assertTrue(left.toString().contains("groupId=org.example"));
         assertTrue(left.toString().contains("artifactId=demo"));
     }

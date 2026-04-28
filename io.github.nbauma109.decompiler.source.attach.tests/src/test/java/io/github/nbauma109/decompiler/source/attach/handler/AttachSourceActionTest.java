@@ -76,7 +76,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithRootSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
+    public void testRunWithRootSelectionAttachesSource() throws IOException, CoreException {
         File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -97,7 +97,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithClassFileSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
+    public void testRunWithClassFileSelectionAttachesSource() throws IOException, CoreException {
         File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -120,7 +120,7 @@ public class AttachSourceActionTest {
     }
 
     @Test
-    public void testRunWithPackageFragmentSelectionAttachesSource() throws IOException, CoreException, InterruptedException {
+    public void testRunWithPackageFragmentSelectionAttachesSource() throws IOException, CoreException {
         File jar = SourceAttachTestSupport.resolveBundleEntryAsFile(TEST_JAR_BUNDLE_ID, TEST_JAR_PATH);
         SourceJarCandidates candidates = prepareSourceJarCandidates(jar);
 
@@ -144,10 +144,10 @@ public class AttachSourceActionTest {
     }
 
     private static IPath waitForSourceAttachment(IPackageFragmentRoot root, int attempts, long delayMs)
-            throws InterruptedException, JavaModelException {
+            throws JavaModelException {
         IPath attached = root.getSourceAttachmentPath();
         for (int i = 0; i < attempts && (attached == null || !attached.toFile().exists()); i++) {
-            Thread.sleep(delayMs);
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(delayMs));
             attached = root.getSourceAttachmentPath();
         }
         return attached;

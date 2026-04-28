@@ -10,7 +10,6 @@ package io.github.nbauma109.decompiler.source.attach.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -125,16 +124,9 @@ public class UrlDownloaderTest {
         assertNotNull(result);
     }
 
-    @Test
-    public void downloadWithScmUrlThrowsUnsupportedOperationException() {
-        try {
-            new UrlDownloader().download("scm:git:https://example.com/repo.git", null);
-            fail("Expected UnsupportedOperationException"); //$NON-NLS-1$
-        } catch (UnsupportedOperationException e) {
-            // expected
-        } catch (Exception e) {
-            fail("Expected UnsupportedOperationException but got " + e.getClass()); //$NON-NLS-1$
-        }
+    @Test(expected = UnsupportedOperationException.class)
+    public void downloadWithScmUrlThrowsUnsupportedOperationException() throws Exception {
+        new UrlDownloader().download("scm:git:https://example.com/repo.git", null);
     }
 
     @Test

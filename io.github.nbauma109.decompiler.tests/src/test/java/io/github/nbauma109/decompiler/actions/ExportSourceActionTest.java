@@ -260,14 +260,9 @@ public class ExportSourceActionTest {
         assertTrue(target.getParentFile().isDirectory());
     }
 
-    @Test
-    public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() {
-        try {
-            ExportSourceAction.ensureParentDirectoryExists(null);
-        } catch (IOException e) {
-            return;
-        }
-        throw new AssertionError("Expected IOException to be thrown");
+    @Test(expected = IOException.class)
+    public void testEnsureParentDirectoryExistsNullTargetThrowsIOException() throws IOException {
+        ExportSourceAction.ensureParentDirectoryExists(null);
     }
 
     @Test
