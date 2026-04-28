@@ -23,7 +23,6 @@ import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
-import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -46,38 +45,9 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         return this.getClass().toString();
     }
 
-    /**
-     * Calculate the Maven local repository path for a source JAR.
-     * Returns null if the GAV coordinates are incomplete or contain path traversal characters.
-     */
+    @Override
     public File getMavenRepoSourceFile(GAV gav) {
-        String groupId = gav.getGroupId();
-        String artifactId = gav.getArtifactId();
-        String version = gav.getVersion();
-        if (groupId == null || artifactId == null || version == null) {
-            return null;
-        }
-        // Reject coordinates containing path traversal or separator characters
-        if (groupId.contains("..") || groupId.contains("/") || groupId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                || artifactId.contains("..") || artifactId.contains("/") || artifactId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                || version.contains("..") || version.contains("/") || version.contains("\\")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            return null;
-        }
-        String sourceFileName = artifactId + '-' + version + SOURCES_JAR;
-        File groupIdDir = new File(SourceConstants.USER_M2_REPO_DIR, groupId.replace('.', File.separatorChar));
-        File result = new File(groupIdDir, String.join(File.separator, artifactId, version, sourceFileName));
-        // Ensure the resolved path stays within the Maven repo directory
-        try {
-            String repoCanonical = SourceConstants.USER_M2_REPO_DIR.getCanonicalPath();
-            String resultCanonical = result.getCanonicalPath();
-            if (!resultCanonical.startsWith(repoCanonical + File.separator) && !resultCanonical.equals(repoCanonical)) {
-                return null;
-            }
-        } catch (IOException e) {
-            Logger.debug(e);
-            return null;
-        }
-        return result;
+        return super.getMavenRepoSourceFile(gav);
     }
 
     @Override
@@ -95,7 +65,7 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         }
 
         // Try cached sources
-        if (tryCachedSources(binFile, sourcesUrls, results)) {
+        if (tryCachedSources(binFile, sourcesUrls, results, true)) {
             return;
         }
 
@@ -123,20 +93,6 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
         return sourcesUrls;
     }
 
-    private boolean tryExistingMavenRepoSources(String binFile, Map<GAV, String> sourcesUrls,
-            List<SourceFileResult> results) {
-        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            GAV gav = entry.getKey();
-            File mavenRepoSourceFile = getMavenRepoSourceFile(gav);
-
-            if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()
-                    && validateAndAddSource(binFile, mavenRepoSourceFile, mavenRepoSourceFile, entry.getValue(), results)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls,
             List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
@@ -159,21 +115,6 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                 Logger.debug(e);
             }
         }
-    }
-
-    private boolean validateAndAddSource(String binFile, File sourceFile, File tempFile,
-            String downloadUrl, List<SourceFileResult> results) {
-        try {
-            if (SourceAttachUtil.isSourceCodeFor(sourceFile.getAbsolutePath(), binFile)) {
-                SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
-                results.add(result);
-                setDownloadUrl(downloadUrl);
-                return true;
-            }
-        } catch (RuntimeException e) {
-            Logger.debug(e);
-        }
-        return false;
     }
 
     private Map<GAV, String> findSourcesUsingMavenCentral(Collection<GAV> gavs) throws IOException {

@@ -164,12 +164,18 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             return;
         }
 
+        if (tryExistingMavenRepoSources(binFile, candidates, results)) {
+            return;
+        }
+
+        if (tryCachedSources(binFile, candidates, results, true)) {
+            return;
+        }
+
         // Download and verify each candidate. The first verified match wins.
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(serviceUser);
         downloader.setServicePassword(servicePassword);
-
-        String repoNameForUi = serviceUrl.substring(serviceUrl.lastIndexOf('/') + 1);
 
         for (Map.Entry<GAV, String> e : candidates.entrySet()) {
             if (canceled) {
@@ -177,10 +183,13 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             }
             String downloadUrl = normalizeSchemeByPort(e.getValue()); // normalize odd http://...:443/... links
             try {
-                String tmp = downloader.download(downloadUrl);
+                File mavenRepoSourceFile = getMavenRepoTargetForDownload(e.getKey(), downloadUrl);
+                String tmp = downloader.download(downloadUrl, mavenRepoSourceFile);
                 if (tmp != null && new File(tmp).exists() && SourceAttachUtil.isSourceCodeFor(tmp, binFile)) {
                     setDownloadUrl(downloadUrl);
-                    results.add(new SourceFileResult(this, binFile, tmp, repoNameForUi, 100));
+                    File downloadedFile = new File(tmp);
+                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
+                    results.add(new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100));
                     return; // stop after the first verified match
                 }
             } catch (Throwable ex) {

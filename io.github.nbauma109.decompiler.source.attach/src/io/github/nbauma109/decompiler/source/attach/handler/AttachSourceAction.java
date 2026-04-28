@@ -16,7 +16,10 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.ui.ISharedImages;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.widgets.Display;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFinderFacade;
 import io.github.nbauma109.decompiler.source.attach.i18n.Messages;
 
 @SuppressWarnings("rawtypes")
@@ -34,6 +37,13 @@ public class AttachSourceAction extends Action {
     @Override
     public void run() {
         if (selection == null || selection.isEmpty()) {
+            return;
+        }
+
+        if (!SourceCodeFinderFacade.hasConfiguredSourceProvider()) {
+            MessageDialog.openWarning(Display.getDefault().getActiveShell(),
+                    Messages.getString("AttachSourceAction.Provider.Warning.Title"), //$NON-NLS-1$
+                    Messages.getString("AttachSourceAction.Provider.Warning.Message")); //$NON-NLS-1$
             return;
         }
 

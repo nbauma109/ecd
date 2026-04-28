@@ -32,7 +32,6 @@ import org.eclipse.core.net.proxy.IProxyService;
 import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
-import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -91,28 +90,23 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             Logger.debug(e);
         }
 
-        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            try {
-                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
-                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-                    File sourceFile = new File(sourceFiles[0]);
-                    File tempFile = new File(sourceFiles[1]);
-                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
-                    results.add(result);
-                    return;
-                }
-            } catch (Throwable e) {
-                Logger.debug(e);
-            }
+        if (tryExistingMavenRepoSources(binFile, sourcesUrls, results)) {
+            return;
+        }
+
+        if (tryCachedSources(binFile, sourcesUrls, results, true)) {
+            return;
         }
 
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
+            File mavenRepoSourceFile = getMavenRepoTargetForDownload(entry.getKey(), entry.getValue());
             try {
-                String result = new UrlDownloader().download(entry.getValue());
+                String result = new UrlDownloader().download(entry.getValue(), mavenRepoSourceFile);
                 if (result != null && new File(result).exists() && SourceAttachUtil.isSourceCodeFor(result, binFile)) {
                     setDownloadUrl(entry.getValue());
-                    SourceFileResult object = new SourceFileResult(this, binFile, result, name, 100);
+                    File downloadedFile = new File(result);
+                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
+                    SourceFileResult object = new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100);
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
                     results.add(object);
                 }

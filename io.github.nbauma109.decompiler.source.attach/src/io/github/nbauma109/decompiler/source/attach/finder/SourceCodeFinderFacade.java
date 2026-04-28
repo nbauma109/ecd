@@ -9,20 +9,36 @@
 package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 
-public class SourceCodeFinderFacade implements SourceCodeFinder {
+public class SourceCodeFinderFacade extends AbstractSourceCodeFinder {
 
     static final String HTTPS_REPOSITORY_CLOUDERA_COM_ARTIFACTORY = "https://repository.cloudera.com";
     static final String HTTPS_MAVEN_ALFRESCO_COM_NEXUS_INDEX_HTML = "https://maven.alfresco.com/nexus";
     static final String HTTPS_REPOSITORY_APACHE_ORG_INDEX_HTML = "https://repository.apache.org";
     static final String HTTPS_REPO_GRAILS_ORG_GRAILS = "https://repo.grails.org/grails/webapp/home.html";
+
+    public static boolean hasConfiguredSourceProvider() {
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        return !prefs.getString(JavaDecompilerPlugin.NEXUS_URL).isBlank()
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_CENTRAL)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_SONATYPE_CENTRAL)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_JITPACK)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_CLOUDERA)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_MAVEN_ALFRESCO)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_APACHE_ORG)
+                || prefs.getBoolean(JavaDecompilerPlugin.PUBLIC_REPO_GRAILS_ORG);
+    }
 
     private static List<SourceCodeFinder> getFinders() {
         List<SourceCodeFinder> finders = new ArrayList<>();
@@ -63,10 +79,10 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
         }
         String[] sourceFiles = SourceBindingUtil.getSourceFileBySha(sha1);
         if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-            File sourceFile = new File(sourceFiles[0]);
-            File tempFile = new File(sourceFiles[1]);
-            SourceFileResult result = new SourceFileResult(this, binFilePath, sourceFile, tempFile, 100);
-            results.add(result);
+            SourceFileResult cachedResult = createCachedSourceResult(binFilePath, sourceFiles);
+            if (cachedResult != null) {
+                results.add(cachedResult);
+            }
             return;
         }
 
@@ -83,6 +99,44 @@ public class SourceCodeFinderFacade implements SourceCodeFinder {
                 break;
             }
         }
+    }
+
+    private SourceFileResult createCachedSourceResult(String binFilePath, String[] sourceFiles) {
+        File sourceFile = new File(sourceFiles[0]);
+        File tempFile = sourceFiles.length > 1 && sourceFiles[1] != null ? new File(sourceFiles[1]) : sourceFile;
+        File mavenRepoSourceFile = persistShaCachedSourceInMavenRepo(binFilePath, sourceFile);
+        if (mavenRepoSourceFile != null) {
+            sourceFile = mavenRepoSourceFile;
+            tempFile = mavenRepoSourceFile;
+        } else if (!tempFile.exists()) {
+            tempFile = sourceFile;
+        }
+        return new SourceFileResult(this, binFilePath, sourceFile, tempFile, 100);
+    }
+
+    private File persistShaCachedSourceInMavenRepo(String binFilePath, File sourceFile) {
+        try {
+            Optional<GAV> gav = findGAVFromFile(binFilePath);
+            if (!gav.isPresent()) {
+                return null;
+            }
+            File mavenRepoSourceFile = getMavenRepoSourceFile(gav.get());
+            if (mavenRepoSourceFile == null) {
+                return null;
+            }
+            if (mavenRepoSourceFile.exists()) {
+                return mavenRepoSourceFile;
+            }
+            File parent = mavenRepoSourceFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
+                return null;
+            }
+            Files.copy(sourceFile.toPath(), mavenRepoSourceFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return mavenRepoSourceFile;
+        } catch (IOException e) {
+            Logger.debug(e);
+        }
+        return null;
     }
 
     private static void addPrivateNexusRepo(List<SourceCodeFinder> finders) {

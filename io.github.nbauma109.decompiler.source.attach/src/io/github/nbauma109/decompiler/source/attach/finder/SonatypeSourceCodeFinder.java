@@ -67,8 +67,13 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
 
         Map<GAV, String> sourcesUrls = buildSourcesUrls(gavs);
 
+        // Try existing Maven repo files first
+        if (tryExistingMavenRepoSources(binFile, sourcesUrls, results)) {
+            return;
+        }
+
         // Try cached sources first
-        if (tryCachedSources(binFile, sourcesUrls, results)) {
+        if (tryCachedSources(binFile, sourcesUrls, results, true)) {
             return;
         }
 
@@ -110,13 +115,15 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
 
     private void downloadAndVerifySources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
-            String name = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + SOURCES_JAR;
+            File mavenRepoSourceFile = getMavenRepoTargetForDownload(entry.getKey(), entry.getValue());
             try {
-                String tmpFile = new UrlDownloader().download(entry.getValue());
+                String tmpFile = new UrlDownloader().download(entry.getValue(), mavenRepoSourceFile);
                 if (tmpFile != null && new File(tmpFile).exists()
                         && SourceAttachUtil.isSourceCodeFor(tmpFile, binFile)) {
                     setDownloadUrl(entry.getValue());
-                    SourceFileResult object = new SourceFileResult(this, binFile, tmpFile, name, 100);
+                    File downloadedFile = new File(tmpFile);
+                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
+                    SourceFileResult object = new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100);
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
                     results.add(object);
                     return;

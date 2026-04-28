@@ -63,7 +63,8 @@ public class SourceAttachUtil {
             File tempfile = new File(sourcePath.toOSString());
             File tempFile;
 
-            if (!tempfile.getAbsolutePath().equals(tempSourceFile.getAbsolutePath())) {
+            if (!tempfile.getAbsolutePath().equals(tempSourceFile.getAbsolutePath())
+                    || isInMavenRepo(tempSourceFile)) {
                 tempFile = tempSourceFile;
             } else {
                 String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
@@ -81,9 +82,7 @@ public class SourceAttachUtil {
             }
             JavaSourceAttacherHandler.attachSource(pkgRoot, tempFile);
 
-            // Only mark for deletion if not in Maven repo
-            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-            if (!isInMavenRepo) {
+            if (!isInMavenRepo(tempFile)) {
                 tempFile.deleteOnExit();
             }
 
@@ -128,6 +127,9 @@ public class SourceAttachUtil {
 
     private static boolean attachExistingTempFile(IPackageFragmentRoot root, File sourceFile, File tempFile, String sha) {
         try {
+            if (isInMavenRepo(sourceFile)) {
+                tempFile = sourceFile;
+            }
             JavaSourceAttacherHandler.attachSource(root, tempFile);
             SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, tempFile);
 
@@ -141,6 +143,12 @@ public class SourceAttachUtil {
 
     private static boolean createAndAttachTempFile(IPackageFragmentRoot root, File sourceFile, String sha) {
         try {
+            if (isInMavenRepo(sourceFile)) {
+                JavaSourceAttacherHandler.attachSource(root, sourceFile);
+                SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, sourceFile);
+                refreshRelatedLibrarySources(root, sourceFile);
+                return true;
+            }
             String suffix = "-" + System.currentTimeMillis() + ".jar"; //$NON-NLS-1$ //$NON-NLS-2$
             File tempFile = new File(SourceConstants.getSourceTempDir(),
                     sourceFile.getName().replaceAll(JAR_REGEX, suffix) // $NON-NLS-1$
@@ -148,9 +156,7 @@ public class SourceAttachUtil {
             FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
             JavaSourceAttacherHandler.attachSource(root, tempFile);
 
-            // Only mark for deletion if not in Maven repo
-            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-            if (!isInMavenRepo) {
+            if (!isInMavenRepo(tempFile)) {
                 tempFile.deleteOnExit();
             }
 
@@ -195,13 +201,16 @@ public class SourceAttachUtil {
             if (!sourceFile.exists()) {
                 return false;
             }
+            if (isInMavenRepo(sourceFile)) {
+                JavaSourceAttacherHandler.attachSource(root, sourceFile);
+                SourceBindingUtil.saveSourceBindingRecord(sourceFile, sha, null, sourceFile);
+                return true;
+            }
             File tempFile = new File(files[1]);
             if (files[1] != null && tempFile.exists()) {
                 JavaSourceAttacherHandler.attachSource(root, tempFile);
 
-                // Only mark for deletion if not in Maven repo
-                boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-                if (!isInMavenRepo) {
+                if (!isInMavenRepo(tempFile)) {
                     tempFile.deleteOnExit();
                 }
 
@@ -215,9 +224,7 @@ public class SourceAttachUtil {
             FileUtil.copyFile(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
             JavaSourceAttacherHandler.attachSource(root, tempFile);
 
-            // Only mark for deletion if not in Maven repo
-            boolean isInMavenRepo = tempFile.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
-            if (!isInMavenRepo) {
+            if (!isInMavenRepo(tempFile)) {
                 tempFile.deleteOnExit();
             }
 
@@ -347,6 +354,10 @@ public class SourceAttachUtil {
         }
 
         return result;
+    }
+
+    private static boolean isInMavenRepo(File file) {
+        return file != null && file.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
     }
 
     public static boolean isMavenLibrary(IPackageFragmentRoot library) {
