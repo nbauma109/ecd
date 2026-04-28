@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
-import java.net.URL;
+import java.net.Proxy;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.nio.file.StandardCopyOption;
 import org.apache.commons.io.file.PathUtils;
@@ -21,6 +23,9 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Target;
 import org.apache.tools.ant.taskdefs.Delete;
 import org.apache.tools.ant.taskdefs.Zip;
+import org.eclipse.core.net.proxy.IProxyData;
+import org.eclipse.core.net.proxy.IProxyService;
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public class UrlDownloader {
@@ -79,15 +84,12 @@ public class UrlDownloader {
                     throw new IOException("Failed to create directory: " + parent);
                 }
             }
-            final URLConnection conn = new URL(url).openConnection();
-            if (serviceUser != null && servicePassword != null) {
-                ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
-                    }
-                });
-            }
+
+            // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+            SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+            IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+
+            URLConnection conn = openConnectionWithProxy(url, proxyService);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
             PathUtils.copy(conn::getInputStream, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -96,6 +98,49 @@ public class UrlDownloader {
             file.delete();
         }
         return file.getAbsolutePath();
+    }
+
+    private URLConnection openConnectionWithProxy(final String url, IProxyService proxyService) throws IOException {
+        try {
+            URI uri = new URI(url);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            URLConnection conn = uri.toURL().openConnection(proxy);
+            if (conn instanceof HttpURLConnection) {
+                setConnectionAuthenticator((HttpURLConnection) conn, uri, proxyService);
+            }
+            return conn;
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            return URI.create(url).toURL().openConnection();
+        }
+    }
+
+    private void setConnectionAuthenticator(HttpURLConnection conn, URI uri, IProxyService proxyService) {
+        IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+        final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
+        final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
+                ? proxyData.getPassword().toCharArray() : null;
+        if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
+                || (serviceUser != null && servicePassword != null)) {
+            conn.setAuthenticator(buildAuthenticator(proxyUser, proxyPass));
+        }
+    }
+
+    private Authenticator buildAuthenticator(String proxyUser, char[] proxyPass) {
+        return new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                if (getRequestorType() == Authenticator.RequestorType.PROXY
+                        && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                    return new PasswordAuthentication(proxyUser, proxyPass);
+                }
+                if (getRequestorType() == Authenticator.RequestorType.SERVER
+                        && serviceUser != null && servicePassword != null) {
+                    return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
+                }
+                return null;
+            }
+        };
     }
 
     /**

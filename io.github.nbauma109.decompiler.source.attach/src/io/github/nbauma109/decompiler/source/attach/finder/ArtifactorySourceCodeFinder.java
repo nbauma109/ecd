@@ -11,7 +11,9 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.Proxy;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -25,6 +27,10 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
@@ -146,7 +152,21 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         String apiUrl = getArtifactApiUrl();
         String url = buildSearchUrl(apiUrl, g, a, v, c, sha1);
 
-        URLConnection connection = new URL(url).openConnection();
+        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+
+        // Open connection with proxy support
+        URLConnection connection;
+        try {
+            URI uri = new URI(url);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            connection = uri.toURL().openConnection(proxy);
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            connection = URI.create(url).toURL().openConnection();
+        }
+
         connection.setConnectTimeout(5000);
         connection.setReadTimeout(5000);
         connection.connect();

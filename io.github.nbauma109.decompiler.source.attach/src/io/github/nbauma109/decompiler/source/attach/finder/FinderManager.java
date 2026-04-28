@@ -43,6 +43,14 @@ public class FinderManager {
         }
     }
 
+    public void awaitCompletion() throws InterruptedException {
+        for (Worker worker : this.workers) {
+            if (worker != null) {
+                worker.join();
+            }
+        }
+    }
+
     public void findSources(List<String> libs, List<SourceFileResult> results) {
         WorkQueue queue = new WorkQueue();
 

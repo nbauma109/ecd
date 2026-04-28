@@ -12,6 +12,12 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +36,11 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyData;
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -48,9 +59,16 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         this.downloadUrl = downloadUrl;
     }
 
+    protected IProxyService resolveProxyService() {
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        return defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+    }
+
     protected String getString(URL url) {
         try {
-            URLConnection con = url.openConnection();
+            IProxyService proxyService = resolveProxyService();
+
+            URLConnection con = openConnectionWithProxy(url, proxyService);
             con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
             con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
             con.setConnectTimeout(5000);
@@ -72,6 +90,42 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             Logger.debug(e);
         }
         return "";
+    }
+
+    private URLConnection openConnectionWithProxy(URL url, IProxyService proxyService) throws IOException {
+        try {
+            URI uri = url.toURI();
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            URLConnection con = url.openConnection(proxy);
+            if (con instanceof HttpURLConnection) {
+                setProxyAuthenticator((HttpURLConnection) con, uri, proxyService);
+            }
+            return con;
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            return url.openConnection();
+        }
+    }
+
+    private void setProxyAuthenticator(HttpURLConnection con, URI uri, IProxyService proxyService) {
+        IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+        if (proxyData == null) {
+            return;
+        }
+        final String proxyUser = proxyData.getUserId();
+        final char[] proxyPass = proxyData.getPassword() != null
+                ? proxyData.getPassword().toCharArray() : null;
+        if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+            con.setAuthenticator(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    if (getRequestorType() == Authenticator.RequestorType.PROXY) {
+                        return new PasswordAuthentication(proxyUser, proxyPass);
+                    }
+                    return null;
+                }
+            });
+        }
     }
 
     protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {

@@ -18,7 +18,8 @@ Require-Bundle: org.eclipse.ui,
  org.apache.ant,
  org.eclipse.jgit;resolution:=optional,
  com.jcraft.jsch;resolution:=optional,
- org.eclipse.m2e.jdt;resolution:=optional
+ org.eclipse.m2e.jdt;resolution:=optional,
+ org.eclipse.core.net
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team
