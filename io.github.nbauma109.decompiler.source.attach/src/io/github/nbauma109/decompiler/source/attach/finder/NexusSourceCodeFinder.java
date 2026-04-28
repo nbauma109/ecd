@@ -34,9 +34,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -48,6 +48,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.HashUtils;
@@ -723,7 +727,21 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     }
 
     private HttpURLConnection open(String url, String method) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+
+        // Open connection with proxy support
+        HttpURLConnection c;
+        try {
+            URI uri = new URI(url);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            c = (HttpURLConnection) uri.toURL().openConnection(proxy);
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            c = (HttpURLConnection) URI.create(url).toURL().openConnection();
+        }
+
         c.setInstanceFollowRedirects(true);
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);

@@ -22,7 +22,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.junit4.runtime,
  org.eclipse.jdt.junit.core,
  org.eclipse.jdt.junit.runtime,
- io.github.nbauma109.decompiler.source.attach
+ io.github.nbauma109.decompiler.source.attach,
+ org.eclipse.core.net
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: ECD Project Team

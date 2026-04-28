@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.Proxy;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -24,6 +26,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
+import org.eclipse.core.net.proxy.IProxyService;
+
+import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
+import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -184,7 +190,21 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
     }
 
     private String postJson(String apiUrl, String payload) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+
+        // Open connection with proxy support
+        HttpURLConnection connection;
+        try {
+            URI uri = new URI(apiUrl);
+            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
+            connection = (HttpURLConnection) uri.toURL().openConnection(proxy);
+        } catch (URISyntaxException | IOException e) {
+            Logger.debug(e);
+            connection = (HttpURLConnection) URI.create(apiUrl).toURL().openConnection();
+        }
+
         connection.setRequestMethod("POST"); //$NON-NLS-1$
         connection.setRequestProperty("Content-Type", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$
         connection.setRequestProperty("Accept", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$
