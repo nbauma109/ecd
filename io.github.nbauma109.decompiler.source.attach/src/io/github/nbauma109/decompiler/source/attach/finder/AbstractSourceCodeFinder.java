@@ -59,11 +59,14 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         this.downloadUrl = downloadUrl;
     }
 
+    protected IProxyService resolveProxyService() {
+        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
+        return defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+    }
+
     protected String getString(URL url) {
         try {
-            // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
-            SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
-            IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+            IProxyService proxyService = resolveProxyService();
 
             URLConnection con = openConnectionWithProxy(url, proxyService);
             con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
