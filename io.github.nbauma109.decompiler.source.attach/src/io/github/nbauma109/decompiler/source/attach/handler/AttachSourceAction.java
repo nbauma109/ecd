@@ -44,7 +44,6 @@ public class AttachSourceAction extends Action {
             MessageDialog.openWarning(Display.getDefault().getActiveShell(),
                     Messages.getString("AttachSourceAction.Provider.Warning.Title"), //$NON-NLS-1$
                     Messages.getString("AttachSourceAction.Provider.Warning.Message")); //$NON-NLS-1$
-            return;
         }
 
         Object firstElement = selection.get(0);
