@@ -105,36 +105,42 @@ public class UrlDownloader {
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             URLConnection conn = uri.toURL().openConnection(proxy);
-
-            // Set per-connection authenticator (proxy auth + optional server auth)
             if (conn instanceof HttpURLConnection) {
-                IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
-                final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
-                final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
-                        ? proxyData.getPassword().toCharArray() : null;
-                if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
-                        || (serviceUser != null && servicePassword != null)) {
-                    ((HttpURLConnection) conn).setAuthenticator(new Authenticator() {
-                        @Override
-                        protected PasswordAuthentication getPasswordAuthentication() {
-                            if (getRequestorType() == Authenticator.RequestorType.PROXY
-                                    && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
-                                return new PasswordAuthentication(proxyUser, proxyPass);
-                            }
-                            if (getRequestorType() == Authenticator.RequestorType.SERVER
-                                    && serviceUser != null && servicePassword != null) {
-                                return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
-                            }
-                            return null;
-                        }
-                    });
-                }
+                setConnectionAuthenticator((HttpURLConnection) conn, uri, proxyService);
             }
             return conn;
         } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
             return URI.create(url).toURL().openConnection();
         }
+    }
+
+    private void setConnectionAuthenticator(HttpURLConnection conn, URI uri, IProxyService proxyService) {
+        IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+        final String proxyUser = proxyData != null ? proxyData.getUserId() : null;
+        final char[] proxyPass = proxyData != null && proxyData.getPassword() != null
+                ? proxyData.getPassword().toCharArray() : null;
+        if ((proxyUser != null && !proxyUser.isEmpty() && proxyPass != null)
+                || (serviceUser != null && servicePassword != null)) {
+            conn.setAuthenticator(buildAuthenticator(proxyUser, proxyPass));
+        }
+    }
+
+    private Authenticator buildAuthenticator(String proxyUser, char[] proxyPass) {
+        return new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                if (getRequestorType() == Authenticator.RequestorType.PROXY
+                        && proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+                    return new PasswordAuthentication(proxyUser, proxyPass);
+                }
+                if (getRequestorType() == Authenticator.RequestorType.SERVER
+                        && serviceUser != null && servicePassword != null) {
+                    return new PasswordAuthentication(serviceUser, servicePassword.toCharArray());
+                }
+                return null;
+            }
+        };
     }
 
     /**

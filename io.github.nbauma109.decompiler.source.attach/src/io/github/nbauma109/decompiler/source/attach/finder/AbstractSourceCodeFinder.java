@@ -94,31 +94,34 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             URI uri = url.toURI();
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             URLConnection con = url.openConnection(proxy);
-
-            // Set per-connection proxy authenticator if credentials are available
             if (con instanceof HttpURLConnection) {
-                IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
-                if (proxyData != null) {
-                    final String proxyUser = proxyData.getUserId();
-                    final char[] proxyPass = proxyData.getPassword() != null
-                            ? proxyData.getPassword().toCharArray() : null;
-                    if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
-                        ((HttpURLConnection) con).setAuthenticator(new Authenticator() {
-                            @Override
-                            protected PasswordAuthentication getPasswordAuthentication() {
-                                if (getRequestorType() == Authenticator.RequestorType.PROXY) {
-                                    return new PasswordAuthentication(proxyUser, proxyPass);
-                                }
-                                return null;
-                            }
-                        });
-                    }
-                }
+                setProxyAuthenticator((HttpURLConnection) con, uri, proxyService);
             }
             return con;
         } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
             return url.openConnection();
+        }
+    }
+
+    private void setProxyAuthenticator(HttpURLConnection con, URI uri, IProxyService proxyService) {
+        IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
+        if (proxyData == null) {
+            return;
+        }
+        final String proxyUser = proxyData.getUserId();
+        final char[] proxyPass = proxyData.getPassword() != null
+                ? proxyData.getPassword().toCharArray() : null;
+        if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
+            con.setAuthenticator(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    if (getRequestorType() == Authenticator.RequestorType.PROXY) {
+                        return new PasswordAuthentication(proxyUser, proxyPass);
+                    }
+                    return null;
+                }
+            });
         }
     }
 
