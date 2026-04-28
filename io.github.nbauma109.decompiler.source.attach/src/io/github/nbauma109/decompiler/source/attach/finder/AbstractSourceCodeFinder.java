@@ -272,6 +272,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                 SourceFileResult result = buildCachedSourceResult(binFile, entry, persistInMavenRepo);
                 if (result != null) {
                     results.add(result);
+                    setDownloadUrl(entry.getValue());
                     return true;
                 }
             } catch (Exception e) {
