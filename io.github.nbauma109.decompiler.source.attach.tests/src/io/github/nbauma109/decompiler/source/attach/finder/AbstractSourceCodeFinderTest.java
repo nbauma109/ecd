@@ -24,6 +24,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
+import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyData;
+import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyService;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTML;
@@ -31,10 +33,8 @@ import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.AttributeSet;
 
 import org.apache.commons.io.FileUtils;
-import org.eclipse.core.net.proxy.IProxyChangeListener;
 import org.eclipse.core.net.proxy.IProxyData;
 import org.eclipse.core.net.proxy.IProxyService;
-import org.eclipse.core.runtime.CoreException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -328,110 +328,6 @@ public class AbstractSourceCodeFinderTest {
         String result = finder.exposeGetString(new URL("http://localhost:0/nonexistent.txt")); //$NON-NLS-1$
 
         assertEquals("", result);
-    }
-
-    // -----------------------------------------------------------------------
-    // Stub helpers shared with proxy-service tests
-    // -----------------------------------------------------------------------
-
-    private static class StubProxyData implements IProxyData {
-        private final String type;
-        private String host;
-        private int port;
-        private String userId;
-        private String password;
-
-        StubProxyData(String type, String host, int port, String userId, String password) {
-            this.type = type;
-            this.host = host;
-            this.port = port;
-            this.userId = userId;
-            this.password = password;
-        }
-
-        @Override
-        public String getType() { return type; }
-
-        @Override
-        public String getHost() { return host; }
-
-        @Override
-        public int getPort() { return port; }
-
-        @Override
-        public String getUserId() { return userId; }
-
-        @Override
-        public String getPassword() { return password; }
-
-        @Override
-        public boolean isRequiresAuthentication() { return userId != null && !userId.isEmpty(); }
-
-        @Override
-        public void setHost(String h) { this.host = h; }
-
-        @Override
-        public void setPort(int p) { this.port = p; }
-
-        @Override
-        public void setUserid(String u) { this.userId = u; }
-
-        @Override
-        public void setPassword(String pw) { this.password = pw; }
-
-        @Override
-        public void disable() { this.host = null; this.port = -1; }
-    }
-
-    private static class StubProxyService implements IProxyService {
-        private final IProxyData[] data;
-
-        StubProxyService(IProxyData[] data) { this.data = data; }
-
-        @Override
-        public IProxyData[] select(java.net.URI uri) { return data; }
-
-        @Override
-        public IProxyData[] getProxyData() { return data; }
-
-        @Override
-        public IProxyData getProxyData(String type) { return null; }
-
-        @Override
-        public IProxyData[] getProxyDataForHost(String host) { return data; }
-
-        @Override
-        public IProxyData getProxyDataForHost(String host, String type) { return null; }
-
-        @Override
-        public boolean isProxiesEnabled() { return true; }
-
-        @Override
-        public boolean hasSystemProxies() { return false; }
-
-        @Override
-        public boolean isSystemProxiesEnabled() { return false; }
-
-        @Override
-        public void setProxiesEnabled(boolean e) { /* stub */ }
-
-        @Override
-        public void setSystemProxiesEnabled(boolean e) { /* stub */ }
-
-        @Override
-        public void setProxyData(IProxyData[] d) throws CoreException { /* stub */ }
-
-        @Override
-        public String[] getNonProxiedHosts() { return new String[0]; }
-
-        @Override
-        public void setNonProxiedHosts(String[] h) throws CoreException { /* stub */ }
-
-        @Override
-        public void addProxyChangeListener(IProxyChangeListener l) { /* stub */ }
-
-        @Override
-        public void removeProxyChangeListener(IProxyChangeListener l) { /* stub */ }
     }
 
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
