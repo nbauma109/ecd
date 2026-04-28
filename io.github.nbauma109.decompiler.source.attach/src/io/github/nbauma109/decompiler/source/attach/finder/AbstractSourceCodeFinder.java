@@ -269,20 +269,8 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             boolean persistInMavenRepo) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
-                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
-                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-                    File sourceFile = new File(sourceFiles[0]);
-                    File tempFile = sourceFiles.length > 1 && sourceFiles[1] != null
-                            ? new File(sourceFiles[1]) : sourceFile;
-                    if (persistInMavenRepo) {
-                        File mavenRepoSourceFile = persistCachedSourceInMavenRepo(entry.getKey(), entry.getValue(),
-                                sourceFile);
-                        if (mavenRepoSourceFile != null) {
-                            sourceFile = mavenRepoSourceFile;
-                            tempFile = mavenRepoSourceFile;
-                        }
-                    }
-                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+                SourceFileResult result = buildCachedSourceResult(binFile, entry, persistInMavenRepo);
+                if (result != null) {
                     results.add(result);
                     return true;
                 }
@@ -291,6 +279,24 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             }
         }
         return false;
+    }
+
+    private SourceFileResult buildCachedSourceResult(String binFile, Map.Entry<GAV, String> entry,
+            boolean persistInMavenRepo) {
+        String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
+        if (sourceFiles == null || sourceFiles[0] == null || !new File(sourceFiles[0]).exists()) {
+            return null;
+        }
+        File sourceFile = new File(sourceFiles[0]);
+        File tempFile = sourceFiles.length > 1 && sourceFiles[1] != null ? new File(sourceFiles[1]) : sourceFile;
+        if (persistInMavenRepo) {
+            File mavenRepoSourceFile = persistCachedSourceInMavenRepo(entry.getKey(), entry.getValue(), sourceFile);
+            if (mavenRepoSourceFile != null) {
+                sourceFile = mavenRepoSourceFile;
+                tempFile = mavenRepoSourceFile;
+            }
+        }
+        return new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
     }
 
     protected File persistCachedSourceInMavenRepo(GAV gav, String downloadUrl, File sourceFile) {

@@ -79,10 +79,7 @@ public class SourceCodeFinderFacade extends AbstractSourceCodeFinder {
         }
         String[] sourceFiles = SourceBindingUtil.getSourceFileBySha(sha1);
         if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-            SourceFileResult cachedResult = createCachedSourceResult(binFilePath, sourceFiles);
-            if (cachedResult != null) {
-                results.add(cachedResult);
-            }
+            results.add(createCachedSourceResult(binFilePath, sourceFiles));
             return;
         }
 
