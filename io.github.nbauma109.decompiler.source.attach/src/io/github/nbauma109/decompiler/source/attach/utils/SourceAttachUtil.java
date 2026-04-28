@@ -357,7 +357,17 @@ public class SourceAttachUtil {
     }
 
     private static boolean isInMavenRepo(File file) {
-        return file != null && file.getAbsolutePath().startsWith(SourceConstants.USER_M2_REPO_DIR.getAbsolutePath());
+        if (file == null) {
+            return false;
+        }
+        try {
+            File mavenRepoDir = SourceConstants.USER_M2_REPO_DIR.getCanonicalFile();
+            File candidateFile = file.getCanonicalFile();
+            return candidateFile.toPath().startsWith(mavenRepoDir.toPath());
+        } catch (IOException e) {
+            Logger.debug(e);
+        }
+        return false;
     }
 
     public static boolean isMavenLibrary(IPackageFragmentRoot library) {
