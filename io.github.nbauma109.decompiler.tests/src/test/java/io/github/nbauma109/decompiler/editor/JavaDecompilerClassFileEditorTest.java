@@ -69,7 +69,7 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String KEYWORD_CLASS = "class";
     private static final String CLASS = ".class";
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
-    private static final String TEST_JAR_PATH = "resources/test.jar";
+    private static final String TEST_JAR_PATH = "src/test/resources/test.jar";
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String NO_CLASS_ENTRY_FOUND = "No .class entry found in test.jar"; //$NON-NLS-1$
     private static final String TEST_PACKAGE = "test"; //$NON-NLS-1$

@@ -54,7 +54,7 @@ import io.github.nbauma109.decompiler.util.DecompileUtil;
 public class ExportSourceActionTest {
 
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests";
-    private static final String TEST_JAR_PATH = "resources/test.jar";
+    private static final String TEST_JAR_PATH = "src/test/resources/test.jar";
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;

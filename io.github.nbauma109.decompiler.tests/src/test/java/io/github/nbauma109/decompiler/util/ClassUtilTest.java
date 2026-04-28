@@ -14,7 +14,7 @@ public class ClassUtilTest {
     @Test
     public void testIsClassFile() throws IOException {
         assertTrue(ClassUtil.isClassFile(Files.readAllBytes(Paths.get("target/classes/HelloWorld.class"))));
-        assertFalse(ClassUtil.isClassFile(Files.readAllBytes(Paths.get("target/classes/Test.txt"))));
+        assertFalse(ClassUtil.isClassFile(Files.readAllBytes(Paths.get("target/test-classes/Test.txt"))));
     }
 
     @Test
