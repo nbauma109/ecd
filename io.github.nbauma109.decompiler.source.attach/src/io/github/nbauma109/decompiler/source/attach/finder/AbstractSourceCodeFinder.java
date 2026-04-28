@@ -309,7 +309,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             return mavenRepoSourceFile;
         }
         if (mavenRepoSourceFile.exists()) {
-            Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath()); //$NON-NLS-1$
+            Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath(), null); //$NON-NLS-1$
         }
         try {
             File parent = mavenRepoSourceFile.getParentFile();
