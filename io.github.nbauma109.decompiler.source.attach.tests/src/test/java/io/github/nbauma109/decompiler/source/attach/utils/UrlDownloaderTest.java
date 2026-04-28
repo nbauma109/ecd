@@ -227,7 +227,7 @@ public class UrlDownloaderTest {
      */
     private static void handleHttpRequest(Socket socket, byte[] body) throws IOException {
         try (InputStream in = socket.getInputStream();
-             OutputStream out = socket.getOutputStream()) {
+                OutputStream out = socket.getOutputStream()) {
             // Read request headers (until blank line)
             StringBuilder sb = new StringBuilder();
             int prev = -1;
@@ -254,10 +254,13 @@ public class UrlDownloaderTest {
                 out.write(statusLine);
                 out.write(body);
             } else {
-                byte[] challenge = ("HTTP/1.0 401 Unauthorized\r\n" //$NON-NLS-1$
-                        + "WWW-Authenticate: Basic realm=\"test\"\r\n" //$NON-NLS-1$
-                        + "Content-Length: 0\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
-                out.write(challenge);
+                byte[] challenge = ("""
+                        HTTP/1.0 401 Unauthorized\r
+                        WWW-Authenticate: Basic realm="test"\r
+                        Content-Length: 0\r
+                        \r
+                        """).getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+                        out.write(challenge);
             }
             out.flush();
         }

@@ -299,7 +299,7 @@ public class AbstractSourceCodeFinderTest {
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(null);
 
-        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL());
 
         assertEquals("", result);
     }
@@ -314,7 +314,7 @@ public class AbstractSourceCodeFinderTest {
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(new StubProxyService(new IProxyData[] { proxyData }));
 
-        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL());
 
         assertEquals("", result);
     }
@@ -327,7 +327,7 @@ public class AbstractSourceCodeFinderTest {
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(new StubProxyService(new IProxyData[] { proxyData }));
 
-        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL());
 
         assertEquals("", result);
     }
