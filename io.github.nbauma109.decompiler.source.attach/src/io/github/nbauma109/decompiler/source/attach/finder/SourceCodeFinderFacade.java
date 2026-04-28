@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -121,8 +122,11 @@ public class SourceCodeFinderFacade extends AbstractSourceCodeFinder {
             if (mavenRepoSourceFile == null) {
                 return null;
             }
-            if (mavenRepoSourceFile.exists()) {
+            if (mavenRepoSourceFile.exists() && SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFilePath)) {
                 return mavenRepoSourceFile;
+            }
+            if (mavenRepoSourceFile.exists()) {
+                Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath()); //$NON-NLS-1$
             }
             File parent = mavenRepoSourceFile.getParentFile();
             if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {

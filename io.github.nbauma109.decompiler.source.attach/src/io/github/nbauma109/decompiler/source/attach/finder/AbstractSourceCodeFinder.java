@@ -291,7 +291,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         File sourceFile = new File(sourceFiles[0]);
         File tempFile = sourceFiles.length > 1 && sourceFiles[1] != null ? new File(sourceFiles[1]) : sourceFile;
         if (persistInMavenRepo) {
-            File mavenRepoSourceFile = persistCachedSourceInMavenRepo(entry.getKey(), entry.getValue(), sourceFile);
+            File mavenRepoSourceFile = persistCachedSourceInMavenRepo(entry.getKey(), entry.getValue(), sourceFile, binFile);
             if (mavenRepoSourceFile != null) {
                 sourceFile = mavenRepoSourceFile;
                 tempFile = mavenRepoSourceFile;
@@ -300,13 +300,16 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         return new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
     }
 
-    protected File persistCachedSourceInMavenRepo(GAV gav, String downloadUrl, File sourceFile) {
+    protected File persistCachedSourceInMavenRepo(GAV gav, String downloadUrl, File sourceFile, String binFile) {
         File mavenRepoSourceFile = getMavenRepoTargetForDownload(gav, downloadUrl);
         if (mavenRepoSourceFile == null) {
             return null;
         }
-        if (mavenRepoSourceFile.exists()) {
+        if (mavenRepoSourceFile.exists() && SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFile)) {
             return mavenRepoSourceFile;
+        }
+        if (mavenRepoSourceFile.exists()) {
+            Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath()); //$NON-NLS-1$
         }
         try {
             File parent = mavenRepoSourceFile.getParentFile();
