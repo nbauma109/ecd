@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileWriter;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
@@ -45,6 +46,7 @@ public class AbstractSourceCodeFinderTest {
     private static final String DUMMY_JAR = "dummy.jar"; //$NON-NLS-1$
     private static final String SOURCES_JAR_SUFFIX = "-sources.jar"; //$NON-NLS-1$
     private static final String POM_PROPERTIES_PATH = "META-INF/maven/org.example/demo/pom.properties"; //$NON-NLS-1$
+    private static final String UNREACHABLE_HTTP_URL = "http://localhost:0/nonexistent.txt"; //$NON-NLS-1$
 
     private File testRoot;
 
@@ -291,19 +293,19 @@ public class AbstractSourceCodeFinderTest {
         return zip;
     }
     @Test
-    public void getStringReturnsEmptyForUnreachableHttpUrlNullProxyService() throws Exception {
+    public void getStringReturnsEmptyForUnreachableHttpUrlNullProxyService() throws IOException {
         // http://localhost:0 is unreachable but forces creation of HttpURLConnection,
         // exercising openConnectionWithProxy → setProxyAuthenticator (null-proxyData early-return path).
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(null);
 
-        String result = finder.exposeGetString(new URL("http://localhost:0/nonexistent.txt")); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
 
         assertEquals("", result);
     }
 
     @Test
-    public void getStringWithProxyDataAndCredentialsSetsPerConnectionAuthenticator() throws Exception {
+    public void getStringWithProxyDataAndCredentialsSetsPerConnectionAuthenticator() throws IOException {
         // Inject a proxy service that returns proxy data with credentials.
         // http://localhost:0 is unreachable but forces HttpURLConnection creation so that
         // setProxyAuthenticator is reached and calls conn.setAuthenticator().
@@ -312,20 +314,20 @@ public class AbstractSourceCodeFinderTest {
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(new StubProxyService(new IProxyData[] { proxyData }));
 
-        String result = finder.exposeGetString(new URL("http://localhost:0/nonexistent.txt")); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
 
         assertEquals("", result);
     }
 
     @Test
-    public void getStringWithProxyDataAndNullPasswordDoesNotSetAuthenticator() throws Exception {
+    public void getStringWithProxyDataAndNullPasswordDoesNotSetAuthenticator() throws IOException {
         // Proxy data present but password is null → the inner if-branch is false, setAuthenticator is NOT called.
         StubProxyData proxyData = new StubProxyData(IProxyData.HTTP_PROXY_TYPE,
                 "proxy.test.local", 3128, "proxyUser", null);
         ExposedFinder finder = new ExposedFinder();
         finder.setProxyService(new StubProxyService(new IProxyData[] { proxyData }));
 
-        String result = finder.exposeGetString(new URL("http://localhost:0/nonexistent.txt")); //$NON-NLS-1$
+        String result = finder.exposeGetString(URI.create(UNREACHABLE_HTTP_URL).toURL()); //$NON-NLS-1$
 
         assertEquals("", result);
     }

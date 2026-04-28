@@ -18,7 +18,6 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
 
-import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs;
 import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyData;
 import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyService;
 

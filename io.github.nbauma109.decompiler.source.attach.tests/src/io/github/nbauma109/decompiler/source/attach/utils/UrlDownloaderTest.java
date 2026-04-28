@@ -39,6 +39,9 @@ import org.junit.Test;
 
 public class UrlDownloaderTest {
 
+    private static final String TEST_USER = "alice"; //$NON-NLS-1$
+    private static final String TEST_PASSWORD = "secret"; //$NON-NLS-1$
+
     private File testRoot;
 
     @Before
@@ -153,20 +156,20 @@ public class UrlDownloaderTest {
         UrlDownloader downloader = new UrlDownloader();
         assertNull(downloader.getServiceUser());
 
-        downloader.setServiceUser("alice"); //$NON-NLS-1$
-        assertEquals("alice", downloader.getServiceUser()); //$NON-NLS-1$
+        downloader.setServiceUser(TEST_USER);
+        assertEquals(TEST_USER, downloader.getServiceUser());
 
         downloader.setServiceUser(null);
         assertNull(downloader.getServiceUser());
     }
 
     @Test
-    public void downloadWithServiceCredentialsSetsAuthenticatorForHttpConnection() throws Exception {
+    public void downloadWithServiceCredentialsSetsAuthenticatorForHttpConnection() throws IOException {
         // Setting serviceUser + servicePassword triggers the conn.setAuthenticator(buildAuthenticator(...))
         // path inside setConnectionAuthenticator, covering that line and the buildAuthenticator method entry.
         UrlDownloader downloader = new UrlDownloader();
-        downloader.setServiceUser("alice"); //$NON-NLS-1$
-        downloader.setServicePassword("secret"); //$NON-NLS-1$
+        downloader.setServiceUser(TEST_USER);
+        downloader.setServicePassword(TEST_PASSWORD);
 
         File targetFile = new File(testRoot, "auth-attempt.jar");
         // localhost:0 is unreachable but still creates an HttpURLConnection object so that
@@ -178,7 +181,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void downloadWithServiceCredentialsCoversServerAuthBranchOnChallenge() throws Exception {
+    public void downloadWithServiceCredentialsCoversServerAuthBranchOnChallenge() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
         //   1st request (no Authorization header) → 401 Unauthorized
         //   2nd request (with Authorization header) → 200 OK with body
@@ -188,40 +191,40 @@ public class UrlDownloaderTest {
         CountDownLatch serverReady = new CountDownLatch(1);
         AtomicBoolean serverRunning = new AtomicBoolean(true);
 
-        ServerSocket serverSocket = new ServerSocket(0);
-        int port = serverSocket.getLocalPort();
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
 
-        Thread serverThread = new Thread(() -> {
-            serverReady.countDown();
-            // Handle up to 2 connections: first the 401 challenge, then the authenticated retry.
-            for (int i = 0; i < 2 && serverRunning.get(); i++) {
-                try (Socket socket = serverSocket.accept()) {
-                    handleHttpRequest(socket, body);
-                } catch (IOException e) {
-                    if (serverRunning.get()) {
-                        Thread.currentThread().interrupt();
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                // Handle up to 2 connections: first the 401 challenge, then the authenticated retry.
+                for (int i = 0; i < 2 && serverRunning.get(); i++) {
+                    try (Socket socket = serverSocket.accept()) {
+                        handleHttpRequest(socket, body);
+                    } catch (IOException e) {
+                        if (serverRunning.get()) {
+                            Thread.currentThread().interrupt();
+                        }
+                        break;
                     }
-                    break;
                 }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                UrlDownloader downloader = new UrlDownloader();
+                downloader.setServiceUser("user"); //$NON-NLS-1$
+                downloader.setServicePassword("pass"); //$NON-NLS-1$
+
+                File targetFile = new File(testRoot, "authed.jar");
+                String result = downloader.download("http://localhost:" + port + "/auth.jar", targetFile); //$NON-NLS-1$
+
+                assertNotNull(result);
+            } finally {
+                serverRunning.set(false);
             }
-        });
-        serverThread.setDaemon(true);
-        serverThread.start();
-
-        assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
-
-        try {
-            UrlDownloader downloader = new UrlDownloader();
-            downloader.setServiceUser("user"); //$NON-NLS-1$
-            downloader.setServicePassword("pass"); //$NON-NLS-1$
-
-            File targetFile = new File(testRoot, "authed.jar");
-            String result = downloader.download("http://localhost:" + port + "/auth.jar", targetFile); //$NON-NLS-1$
-
-            assertNotNull(result);
-        } finally {
-            serverRunning.set(false);
-            serverSocket.close();
         }
     }
 
@@ -273,8 +276,8 @@ public class UrlDownloaderTest {
         UrlDownloader downloader = new UrlDownloader();
         assertNull(downloader.getServicePassword());
 
-        downloader.setServicePassword("secret"); //$NON-NLS-1$
-        assertEquals("secret", downloader.getServicePassword()); //$NON-NLS-1$
+        downloader.setServicePassword(TEST_PASSWORD);
+        assertEquals(TEST_PASSWORD, downloader.getServicePassword());
 
         downloader.setServicePassword(null);
         assertNull(downloader.getServicePassword());
