@@ -185,7 +185,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testOpeningAnonymousClassFileUsesTopLevelEditorInput()
-            throws CoreException, InterruptedException {
+            throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         IClassFile anonymousClassFile = pkg.getClassFile(TEST_ANONYMOUS_CLASS);
         assertTrue(anonymousClassFile.exists());
@@ -206,7 +206,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testOpenClassFileWithDecompilerEditorIdShowsSource()
-            throws IOException, CoreException, InterruptedException {
+            throws IOException, CoreException {
         String editorId = resolveDecompilerEditorIdFromRegistry();
         assertNotNull(editorId);
         assertTrue(!editorId.trim().isEmpty());
@@ -245,7 +245,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testReopenClassFileUsesDecompilerEditorAfterSourceWasCached()
-            throws IOException, CoreException, InterruptedException {
+            throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
@@ -278,7 +278,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testOpeningInnerClassFileUsesTopLevelEditorInput()
-            throws CoreException, InterruptedException {
+            throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
@@ -320,7 +320,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testOpeningInnerTypeFocusesNestedType()
-            throws CoreException, InterruptedException {
+            throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
@@ -336,7 +336,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testOpeningInnerTypeLinksPackageExplorerToNestedType()
-            throws CoreException, InterruptedException {
+            throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
         assertTrue(pkg.exists());
 
@@ -356,7 +356,7 @@ public class JavaDecompilerClassFileEditorTest {
 
     @Test
     public void testRefreshContentIfNeededReloadsBlankDocument()
-            throws IOException, CoreException, InterruptedException {
+            throws IOException, CoreException {
         ClassInJar classInJar = findPreferredClass(jarFileOnDisk).orElseThrow(
                 () -> new IllegalStateException(NO_CLASS_ENTRY_FOUND));
 
