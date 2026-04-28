@@ -15,6 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.StandardCopyOption;
@@ -120,7 +121,7 @@ public class UrlDownloader {
                         });
                     }
                 }
-            } catch (Exception e) {
+            } catch (URISyntaxException | IOException e) {
                 Logger.debug(e);
                 conn = new URL(url).openConnection();
             }

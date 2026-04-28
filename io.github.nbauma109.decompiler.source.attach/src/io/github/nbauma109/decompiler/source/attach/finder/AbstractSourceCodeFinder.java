@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -91,7 +92,7 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (URISyntaxException | IOException e) {
                 Logger.debug(e);
                 con = url.openConnection();
             }

@@ -44,7 +44,7 @@ public class ProxyUtil {
                 return Proxy.NO_PROXY;
             }
             return new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyData.getHost(), proxyData.getPort()));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             Logger.debug(e);
             return Proxy.NO_PROXY;
         }

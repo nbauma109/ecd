@@ -15,6 +15,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -200,7 +201,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
             URI uri = new URI(apiUrl);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             connection = (HttpURLConnection) new URL(apiUrl).openConnection(proxy);
-        } catch (Exception e) {
+        } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
             connection = (HttpURLConnection) new URL(apiUrl).openConnection();
         }

@@ -738,7 +738,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             c = (HttpURLConnection) new URL(url).openConnection(proxy);
-        } catch (Exception e) {
+        } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
             c = (HttpURLConnection) new URL(url).openConnection();
         }

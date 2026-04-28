@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Proxy;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -162,7 +163,7 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             connection = new URL(url).openConnection(proxy);
-        } catch (Exception e) {
+        } catch (URISyntaxException | IOException e) {
             Logger.debug(e);
             connection = new URL(url).openConnection();
         }
