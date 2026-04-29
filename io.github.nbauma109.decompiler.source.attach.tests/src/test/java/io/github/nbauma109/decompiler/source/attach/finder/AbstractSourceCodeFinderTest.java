@@ -2,6 +2,8 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -332,6 +334,126 @@ public class AbstractSourceCodeFinderTest {
         assertEquals("", result);
     }
 
+    // -----------------------------------------------------------------------
+    // persistCachedSourceInMavenRepo tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void persistCachedSourceInMavenRepoCopiesSourceToMavenRepo() throws IOException {
+        File binJar = createZip("bin-persist-copy.jar",
+                Collections.singletonMap("pkg/Demo.class", "bytecode")); //$NON-NLS-1$ //$NON-NLS-2$
+        File srcJar = createZip("src-persist-copy.jar",
+                Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        GAV gav = new GAV();
+        gav.setGroupId("io.test.copilot.persist");
+        gav.setArtifactId("persist-copy-test");
+        gav.setVersion("9.9.9");
+        String sourceUrl = "https://test.example.com/persist-copy-test-9.9.9-sources.jar"; //$NON-NLS-1$
+
+        ExposedFinder finder = new ExposedFinder();
+        File result = finder.exposePersistCachedSourceInMavenRepo(gav, sourceUrl, srcJar, binJar.getAbsolutePath());
+
+        assertNotNull(result);
+        assertTrue(result.exists());
+        FileUtils.deleteQuietly(result.getParentFile());
+    }
+
+    @Test
+    public void persistCachedSourceInMavenRepoReturnsNullForNonSourceUrl() throws IOException {
+        File binJar = createZip("bin-non-source.jar",
+                Collections.singletonMap("pkg/Demo.class", "bytecode")); //$NON-NLS-1$ //$NON-NLS-2$
+        File srcJar = createZip("src-non-source.jar",
+                Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        GAV gav = new GAV();
+        gav.setGroupId("io.test.copilot.nonsrc");
+        gav.setArtifactId("non-source-url-test");
+        gav.setVersion("9.9.9");
+        String nonSourceUrl = "https://test.example.com/non-source-url-test-9.9.9.jar"; // NOT -sources.jar //$NON-NLS-1$
+
+        File result = new ExposedFinder().exposePersistCachedSourceInMavenRepo(gav, nonSourceUrl, srcJar,
+                binJar.getAbsolutePath());
+
+        assertNull(result);
+    }
+
+    @Test
+    public void persistCachedSourceInMavenRepoReturnsMavenFileWhenValidAlreadyExists() throws IOException {
+        File binJar = createZip("bin-valid-exists.jar",
+                Collections.singletonMap("pkg/Demo.class", "bytecode")); //$NON-NLS-1$ //$NON-NLS-2$
+        File srcJar = createZip("src-valid-exists.jar",
+                Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        GAV gav = new GAV();
+        gav.setGroupId("io.test.copilot.validexists");
+        gav.setArtifactId("valid-exists-test");
+        gav.setVersion("9.9.9");
+        String sourceUrl = "https://test.example.com/valid-exists-test-9.9.9-sources.jar"; //$NON-NLS-1$
+
+        ExposedFinder finder = new ExposedFinder();
+        // First call creates the maven repo file
+        File result1 = finder.exposePersistCachedSourceInMavenRepo(gav, sourceUrl, srcJar, binJar.getAbsolutePath());
+        assertNotNull(result1);
+
+        // Second call: file already exists and is valid → returned directly
+        File result2 = finder.exposePersistCachedSourceInMavenRepo(gav, sourceUrl, srcJar, binJar.getAbsolutePath());
+        assertNotNull(result2);
+        assertEquals(result1.getAbsolutePath(), result2.getAbsolutePath());
+
+        FileUtils.deleteQuietly(result1.getParentFile());
+    }
+
+    @Test
+    public void persistCachedSourceInMavenRepoReturnsNullWhenSourceDoesNotMatchBinary() throws IOException {
+        File binJar = createZip("bin-mismatch-persist.jar",
+                Collections.singletonMap("pkg/Foo.class", "bytecode")); //$NON-NLS-1$ //$NON-NLS-2$
+        File srcJar = createZip("src-mismatch-persist.jar",
+                Collections.singletonMap("pkg/Bar.java", "class Bar {}")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        GAV gav = new GAV();
+        gav.setGroupId("io.test.copilot.mismatch");
+        gav.setArtifactId("mismatch-persist-test");
+        gav.setVersion("9.9.9");
+        String sourceUrl = "https://test.example.com/mismatch-persist-test-9.9.9-sources.jar"; //$NON-NLS-1$
+
+        File result = new ExposedFinder().exposePersistCachedSourceInMavenRepo(gav, sourceUrl, srcJar,
+                binJar.getAbsolutePath());
+
+        assertNull(result);
+    }
+
+    @Test
+    public void tryCachedSourcesWithPersistInMavenRepoReturnsTrueAndCopiesSource() throws IOException {
+        File binJar = createZip("bin-persist-cached.jar",
+                Collections.singletonMap("pkg/Demo.class", "bytecode")); //$NON-NLS-1$ //$NON-NLS-2$
+        File srcJar = createZip("src-persist-cached.jar",
+                Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
+        File tmpJar = createZip("tmp-persist-cached.jar",
+                Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        String testUrl = "https://test.persist.example.com/persist-cached-9.9.9-sources.jar"; //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(srcJar, "test-sha-persist-" + System.nanoTime(), testUrl, tmpJar); //$NON-NLS-1$
+
+        GAV gav = new GAV();
+        gav.setGroupId("io.test.copilot.persistcached");
+        gav.setArtifactId("persist-cached");
+        gav.setVersion("9.9.9");
+        Map<GAV, String> sourcesUrls = Collections.singletonMap(gav, testUrl);
+
+        ExposedFinder finder = new ExposedFinder();
+        List<SourceFileResult> results = new ArrayList<>();
+        boolean found = finder.exposeTryCachedSourcesWithPersist(binJar.getAbsolutePath(), sourcesUrls, results);
+
+        assertTrue(found);
+        assertEquals(1, results.size());
+
+        File mavenRepoFile = finder.exposeGetMavenRepoTargetForDownload(gav, testUrl);
+        if (mavenRepoFile != null) {
+            FileUtils.deleteQuietly(mavenRepoFile.getParentFile());
+        }
+    }
+
     private static final class ExposedFinder extends AbstractSourceCodeFinder {
         private IProxyService injectedProxyService;
 
@@ -358,6 +480,19 @@ public class AbstractSourceCodeFinderTest {
 
         boolean exposeTryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
             return tryCachedSources(binFile, sourcesUrls, results);
+        }
+
+        boolean exposeTryCachedSourcesWithPersist(String binFile, Map<GAV, String> sourcesUrls,
+                List<SourceFileResult> results) {
+            return tryCachedSources(binFile, sourcesUrls, results, true);
+        }
+
+        File exposePersistCachedSourceInMavenRepo(GAV gav, String downloadUrl, File sourceFile, String binFile) {
+            return persistCachedSourceInMavenRepo(gav, downloadUrl, sourceFile, binFile);
+        }
+
+        File exposeGetMavenRepoTargetForDownload(GAV gav, String downloadUrl) {
+            return getMavenRepoTargetForDownload(gav, downloadUrl);
         }
 
         @Override
