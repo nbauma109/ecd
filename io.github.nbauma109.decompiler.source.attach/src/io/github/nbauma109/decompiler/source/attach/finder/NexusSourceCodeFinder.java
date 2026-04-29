@@ -188,8 +188,14 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                 if (tmp != null && new File(tmp).exists() && SourceAttachUtil.isSourceCodeFor(tmp, binFile)) {
                     setDownloadUrl(downloadUrl);
                     File downloadedFile = new File(tmp);
-                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
-                    results.add(new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100));
+                    SourceFileResult result;
+                    if (mavenRepoSourceFile != null) {
+                        result = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
+                    } else {
+                        String suggestedName = e.getKey().getArtifactId() + '-' + e.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
+                        result = new SourceFileResult(this, binFile, downloadedFile.getAbsolutePath(), suggestedName, 100);
+                    }
+                    results.add(result);
                     return; // stop after the first verified match
                 }
             } catch (Throwable ex) {

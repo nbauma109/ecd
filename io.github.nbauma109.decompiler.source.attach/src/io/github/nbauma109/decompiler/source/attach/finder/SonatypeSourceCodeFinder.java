@@ -122,8 +122,13 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                         && SourceAttachUtil.isSourceCodeFor(tmpFile, binFile)) {
                     setDownloadUrl(entry.getValue());
                     File downloadedFile = new File(tmpFile);
-                    File sourceFileRef = mavenRepoSourceFile != null ? mavenRepoSourceFile : downloadedFile;
-                    SourceFileResult object = new SourceFileResult(this, binFile, sourceFileRef, sourceFileRef, 100);
+                    SourceFileResult object;
+                    if (mavenRepoSourceFile != null) {
+                        object = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
+                    } else {
+                        String suggestedName = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
+                        object = new SourceFileResult(this, binFile, downloadedFile.getAbsolutePath(), suggestedName, 100);
+                    }
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
                     results.add(object);
                     return;
