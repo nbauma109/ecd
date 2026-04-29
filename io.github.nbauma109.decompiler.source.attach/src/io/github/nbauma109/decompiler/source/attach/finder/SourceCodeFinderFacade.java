@@ -128,6 +128,10 @@ public class SourceCodeFinderFacade extends AbstractSourceCodeFinder {
             if (mavenRepoSourceFile.exists()) {
                 Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath(), null); //$NON-NLS-1$
             }
+            if (!SourceAttachUtil.isSourceCodeFor(sourceFile.getAbsolutePath(), binFilePath)) {
+                Logger.debug("SHA-cached source does not match binary, skipping Maven repo copy: " + sourceFile.getAbsolutePath(), null); //$NON-NLS-1$
+                return null;
+            }
             File parent = mavenRepoSourceFile.getParentFile();
             if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
                 return null;
