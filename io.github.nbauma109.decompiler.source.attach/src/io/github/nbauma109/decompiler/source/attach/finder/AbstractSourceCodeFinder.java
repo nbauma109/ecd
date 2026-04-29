@@ -180,8 +180,8 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             URI uri = url.toURI();
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             URLConnection con = url.openConnection(proxy);
-            if (con instanceof HttpURLConnection) {
-                setProxyAuthenticator((HttpURLConnection) con, uri, proxyService);
+            if (con instanceof HttpURLConnection httpURLConnection) {
+                setProxyAuthenticator(httpURLConnection, uri, proxyService);
             }
             return con;
         } catch (URISyntaxException | IOException e) {

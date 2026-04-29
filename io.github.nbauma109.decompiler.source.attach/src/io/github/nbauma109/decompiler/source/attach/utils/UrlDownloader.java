@@ -105,8 +105,8 @@ public class UrlDownloader {
             URI uri = new URI(url);
             Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
             URLConnection conn = uri.toURL().openConnection(proxy);
-            if (conn instanceof HttpURLConnection) {
-                setConnectionAuthenticator((HttpURLConnection) conn, uri, proxyService);
+            if (conn instanceof HttpURLConnection httpURLConnection) {
+                setConnectionAuthenticator(httpURLConnection, uri, proxyService);
             }
             return conn;
         } catch (URISyntaxException | IOException e) {
