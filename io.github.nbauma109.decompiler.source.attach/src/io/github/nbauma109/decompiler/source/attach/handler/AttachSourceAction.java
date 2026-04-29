@@ -18,6 +18,7 @@ import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.source.attach.finder.SourceCodeFinderFacade;
 import io.github.nbauma109.decompiler.source.attach.i18n.Messages;
@@ -41,9 +42,12 @@ public class AttachSourceAction extends Action {
         }
 
         if (!SourceCodeFinderFacade.hasConfiguredSourceProvider()) {
-            MessageDialog.openWarning(Display.getDefault().getActiveShell(),
-                    Messages.getString("AttachSourceAction.Provider.Warning.Title"), //$NON-NLS-1$
-                    Messages.getString("AttachSourceAction.Provider.Warning.Message")); //$NON-NLS-1$
+            Shell activeShell = Display.getDefault().getActiveShell();
+            if (activeShell != null) {
+                MessageDialog.openWarning(activeShell,
+                        Messages.getString("AttachSourceAction.Provider.Warning.Title"), //$NON-NLS-1$
+                        Messages.getString("AttachSourceAction.Provider.Warning.Message")); //$NON-NLS-1$
+            }
         }
 
         Object firstElement = selection.get(0);
