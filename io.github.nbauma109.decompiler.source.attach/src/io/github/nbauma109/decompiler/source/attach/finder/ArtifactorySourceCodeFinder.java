@@ -10,11 +10,6 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.Proxy;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,11 +21,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.eclipse.core.net.proxy.IProxyService;
 
-import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
-import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -151,26 +143,12 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
         String apiUrl = getArtifactApiUrl();
         String url = buildSearchUrl(apiUrl, g, a, v, c, sha1);
 
-        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
-        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
-        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
-
-        // Open connection with proxy support
-        URLConnection connection;
         try {
-            URI uri = new URI(url);
-            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            connection = uri.toURL().openConnection(proxy);
-        } catch (URISyntaxException | IOException e) {
-            Logger.debug(e);
-            connection = URI.create(url).toURL().openConnection();
-        }
-
-        connection.setConnectTimeout(5000);
-        connection.setReadTimeout(5000);
-        connection.connect();
-        try {
-            String json = readJsonResponse(connection);
+            EcfHttpClient client = new EcfHttpClient();
+            client.setNoProxy(true);
+            client.setConnectTimeout(5000);
+            client.setReadTimeout(5000);
+            String json = new String(client.downloadToBytes(url), StandardCharsets.UTF_8);
             JsonObject resp = Json.parse(json).asObject();
             processSearchResults(resp, getLink, results);
         } catch (Throwable e) {
@@ -185,12 +163,6 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
             return apiUrl + "search/checksum?sha1=" + sha1; //$NON-NLS-1$
         }
         return apiUrl + "search/gavc?g=" + g + "&a=" + a + "&v=" + v + (c != null ? "&c=" + c : ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-    }
-
-    private String readJsonResponse(URLConnection connection) throws IOException {
-        try (InputStream is = connection.getInputStream()) {
-            return IOUtils.toString(is, StandardCharsets.UTF_8);
-        }
     }
 
     private void processSearchResults(JsonObject resp, boolean getLink, Set<GAV> results) {

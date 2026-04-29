@@ -10,10 +10,8 @@ package io.github.nbauma109.decompiler.source.attach;
 
 import java.io.File;
 
-import org.eclipse.core.net.proxy.IProxyService;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
-import org.osgi.util.tracker.ServiceTracker;
 
 import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
 import io.github.nbauma109.decompiler.source.attach.attacher.SourceAttacher;
@@ -27,8 +25,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 
     private static SourceAttachPlugin plugin;
 
-    private ServiceTracker<IProxyService, IProxyService> proxyServiceTracker;
-
     public SourceAttachPlugin() {
         plugin = this;
     }
@@ -41,11 +37,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
         return (SourceAttacher) DecompilerAdapterManager.getAdapter(this, SourceAttacher.class);
     }
 
-    public IProxyService getProxyService() {
-        ServiceTracker<IProxyService, IProxyService> tracker = proxyServiceTracker;
-        return tracker != null ? tracker.getService() : null;
-    }
-
     /*
      * (non-Javadoc)
      *
@@ -55,8 +46,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
     @Override
     public void start(BundleContext context) throws Exception {
         super.start(context);
-        proxyServiceTracker = new ServiceTracker<>(context, IProxyService.class, null);
-        proxyServiceTracker.open();
         SourceBindingUtil.checkSourceBindingConfig();
         flagTempFileDeleteOnExit();
     }
@@ -75,10 +64,6 @@ public class SourceAttachPlugin extends AbstractUIPlugin {
 
     @Override
     public void stop(BundleContext context) throws Exception {
-        if (proxyServiceTracker != null) {
-            proxyServiceTracker.close();
-            proxyServiceTracker = null;
-        }
         super.stop(context);
         plugin = null;
     }

@@ -14,6 +14,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -156,16 +157,16 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void downloadWithServiceCredentialsSetsAuthenticatorForHttpConnection() throws IOException {
-        // Setting serviceUser + servicePassword triggers the conn.setAuthenticator(buildAuthenticator(...))
-        // path inside setConnectionAuthenticator, covering that line and the buildAuthenticator method entry.
+    public void downloadWithServiceCredentialsAddsAuthorizationHeader() throws IOException {
+        // Setting serviceUser + servicePassword adds the Basic Authorization header
+        // sent through the ECF file transfer request.
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(TEST_USER);
         downloader.setServicePassword(TEST_PASSWORD);
 
         File targetFile = new File(testRoot, "auth-attempt.jar");
-        // localhost:0 is unreachable but still creates an HttpURLConnection object so that
-        // setConnectionAuthenticator (and therefore buildAuthenticator) is invoked before connect.
+        // localhost:0 is unreachable; the test covers credential setup without needing
+        // an external repository.
         String result = downloader.download("http://localhost:0/test.jar", targetFile); //$NON-NLS-1$
 
         assertNotNull(result);
@@ -173,12 +174,48 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void downloadWithServiceCredentialsCoversServerAuthBranchOnChallenge() throws IOException, InterruptedException {
+    public void postJsonSendsPayloadThroughEcfHttpClient() throws Exception {
+        String payload = "{\"size\":20,\"searchTerm\":\"1:abcdef\",\"filter\":[]}"; //$NON-NLS-1$
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleJsonPostRequest(socket, payload);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                byte[] response = client.postJson(
+                        "http://localhost:" + port + "/api/internal/browse/components", payload); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals("ok", new String(response, StandardCharsets.UTF_8)); //$NON-NLS-1$
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
+    public void downloadWithServiceCredentialsSendsAuthorizationToServer() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
-        //   1st request (no Authorization header) → 401 Unauthorized
-        //   2nd request (with Authorization header) → 200 OK with body
-        // The JDK's HttpURLConnection will invoke the per-connection authenticator on 401
-        // and retry, exercising the SERVER branch inside buildAuthenticator.
+        //   request with Authorization header -> 200 OK with body
+        //   request without Authorization header -> 401 Unauthorized
         byte[] body = "secure-content".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
         CountDownLatch serverReady = new CountDownLatch(1);
         AtomicBoolean serverRunning = new AtomicBoolean(true);
@@ -188,7 +225,6 @@ public class UrlDownloaderTest {
 
             Thread serverThread = new Thread(() -> {
                 serverReady.countDown();
-                // Handle up to 2 connections: first the 401 challenge, then the authenticated retry.
                 for (int i = 0; i < 2 && serverRunning.get(); i++) {
                     try (Socket socket = serverSocket.accept()) {
                         handleHttpRequest(socket, body);
@@ -220,10 +256,69 @@ public class UrlDownloaderTest {
         }
     }
 
+    private static void handleJsonPostRequest(Socket socket, String expectedPayload) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            int contentLength = 0;
+            String contentType = ""; //$NON-NLS-1$
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                int separator = line.indexOf(':');
+                if (separator < 0) {
+                    continue;
+                }
+                String name = line.substring(0, separator).trim();
+                String value = line.substring(separator + 1).trim();
+                if ("Content-Length".equalsIgnoreCase(name)) { //$NON-NLS-1$
+                    contentLength = Integer.parseInt(value);
+                } else if ("Content-Type".equalsIgnoreCase(name)) { //$NON-NLS-1$
+                    contentType = value;
+                }
+            }
+
+            String body = new String(in.readNBytes(contentLength), StandardCharsets.UTF_8);
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("POST /api/internal/browse/components ") //$NON-NLS-1$
+                    && contentType.startsWith("application/json") //$NON-NLS-1$
+                    && expectedPayload.equals(body);
+
+            byte[] responseBody = (accepted ? "ok" : "bad").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: text/plain\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + responseBody.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.write(responseBody);
+            out.flush();
+        }
+    }
+
+    private static String readHttpLine(InputStream in) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        boolean readAny = false;
+        int c;
+        while ((c = in.read()) != -1) {
+            readAny = true;
+            if (c == '\r') {
+                int next = in.read();
+                if (next != '\n' && next != -1) {
+                    buffer.write(next);
+                }
+                break;
+            }
+            if (c == '\n') {
+                break;
+            }
+            buffer.write(c);
+        }
+        if (!readAny && buffer.size() == 0) {
+            return null;
+        }
+        return buffer.toString(StandardCharsets.ISO_8859_1);
+    }
+
     /**
      * Serves a single HTTP request: sends 401 if no Authorization header is present,
-     * otherwise sends 200 with the supplied body. Uses HTTP/1.0 so each request is
-     * a distinct TCP connection, allowing the retry to come in as a separate accept().
+     * otherwise sends 200 with the supplied body.
      */
     private static void handleHttpRequest(Socket socket, byte[] body) throws IOException {
         try (InputStream in = socket.getInputStream();

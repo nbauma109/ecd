@@ -10,8 +10,6 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -21,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
+import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -133,9 +131,10 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
                     + URLEncoder.encode(qVal, "UTF-8") //$NON-NLS-1$
                     + "&rows=20&wt=json"; //$NON-NLS-1$
             String json;
-            try (InputStream stream = new URL(url).openStream()) {
-                json = IOUtils.toString(stream, StandardCharsets.UTF_8);
-            }
+            // Use ECF for HTTP downloads with automatic proxy authentication
+            EcfHttpClient client = new EcfHttpClient();
+            byte[] bytes = client.downloadToBytes(url);
+            json = new String(bytes, StandardCharsets.UTF_8);
             JsonObject jsonObject = Json.parse(json).asObject();
             JsonObject response = jsonObject.get("response").asObject(); //$NON-NLS-1$
 
@@ -162,11 +161,13 @@ public class MavenRepoSourceCodeFinder extends AbstractSourceCodeFinder implemen
     private Collection<GAV> findArtifactsUsingMavenCentral(String sha1) throws IOException {
         Set<GAV> results = new HashSet<>();
         String json;
-        try (InputStream stream = new URL("https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
+        String url = "https://search.maven.org/solrsearch/select?q=" //$NON-NLS-1$
                 + URLEncoder.encode("1:\"" + sha1 + "\"", "UTF-8") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                + "&rows=20&wt=json").openStream()) { //$NON-NLS-1$
-            json = IOUtils.toString(stream, StandardCharsets.UTF_8);
-        }
+                + "&rows=20&wt=json"; //$NON-NLS-1$
+        // Use ECF for HTTP downloads with automatic proxy authentication
+        EcfHttpClient client = new EcfHttpClient();
+        byte[] bytes = client.downloadToBytes(url);
+        json = new String(bytes, StandardCharsets.UTF_8);
         JsonObject jsonObject = Json.parse(json).asObject();
         JsonObject response = jsonObject.get("response").asObject(); //$NON-NLS-1$
 

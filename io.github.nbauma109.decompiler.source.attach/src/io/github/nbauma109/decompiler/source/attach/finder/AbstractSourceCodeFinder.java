@@ -12,14 +12,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Authenticator;
-import java.net.HttpURLConnection;
-import java.net.PasswordAuthentication;
-import java.net.Proxy;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -38,11 +31,8 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
-import org.eclipse.core.net.proxy.IProxyData;
-import org.eclipse.core.net.proxy.IProxyService;
 
-import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
-import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
@@ -51,7 +41,6 @@ import io.github.nbauma109.decompiler.util.Logger;
 public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
     protected static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"; //$NON-NLS-1$
 
     protected String downloadUrl;
 
@@ -64,37 +53,37 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
         this.downloadUrl = downloadUrl;
     }
 
-    protected IProxyService resolveProxyService() {
-        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
-        return defaultPlugin != null ? defaultPlugin.getProxyService() : null;
-    }
-
     protected String getString(URL url) {
         try {
-            IProxyService proxyService = resolveProxyService();
+            byte[] bytes;
+            String protocol = url.getProtocol().toLowerCase();
 
-            URLConnection con = openConnectionWithProxy(url, proxyService);
-            con.setRequestProperty("User-Agent", USER_AGENT);//$NON-NLS-1$
-            con.setRequestProperty("Accept-Encoding", "gzip,deflate"); //$NON-NLS-1$ //$NON-NLS-2$
-            con.setConnectTimeout(5000);
-            con.setReadTimeout(5000);
-            byte[] bytes = null;
-            try {
-                try (InputStream conIs = con.getInputStream()) {
-                    bytes = IOUtils.toByteArray(conIs);
-                }
-                try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
-                    return IOUtils.toString(is, StandardCharsets.UTF_8);
-                }
-            } catch (IOException e) {
-                if (bytes != null) {
-                    return new String(bytes, StandardCharsets.UTF_8);
+            // Use ECF for HTTP/HTTPS with automatic proxy authentication
+            if ("http".equals(protocol) || "https".equals(protocol)) {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setConnectTimeout(5000);
+                client.setReadTimeout(5000);
+                bytes = client.downloadToBytes(url.toString());
+            } else {
+                // For file:// and other protocols, use standard URLConnection
+                try (InputStream is = url.openStream()) {
+                    bytes = IOUtils.toByteArray(is);
                 }
             }
+
+            return decompressOrDecode(bytes);
         } catch (IOException e) {
             Logger.debug(e);
         }
         return "";
+    }
+
+    private String decompressOrDecode(byte[] bytes) {
+        try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
+            return IOUtils.toString(is, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return new String(bytes, StandardCharsets.UTF_8);
+        }
     }
 
     /**
@@ -173,42 +162,6 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
                 || downloadUrl.contains("filepath=") && downloadUrl.contains(SOURCES_JAR) //$NON-NLS-1$
                 || downloadUrl.contains("c=sources") //$NON-NLS-1$
                 || downloadUrl.contains("classifier=sources")); //$NON-NLS-1$
-    }
-
-    private URLConnection openConnectionWithProxy(URL url, IProxyService proxyService) throws IOException {
-        try {
-            URI uri = url.toURI();
-            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            URLConnection con = url.openConnection(proxy);
-            if (con instanceof HttpURLConnection httpURLConnection) {
-                setProxyAuthenticator(httpURLConnection, uri, proxyService);
-            }
-            return con;
-        } catch (URISyntaxException | IOException e) {
-            Logger.debug(e);
-            return url.openConnection();
-        }
-    }
-
-    private void setProxyAuthenticator(HttpURLConnection con, URI uri, IProxyService proxyService) {
-        IProxyData proxyData = ProxyUtil.getProxyData(uri, proxyService);
-        if (proxyData == null) {
-            return;
-        }
-        final String proxyUser = proxyData.getUserId();
-        final char[] proxyPass = proxyData.getPassword() != null
-                ? proxyData.getPassword().toCharArray() : null;
-        if (proxyUser != null && !proxyUser.isEmpty() && proxyPass != null) {
-            con.setAuthenticator(new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    if (getRequestorType() == Authenticator.RequestorType.PROXY) {
-                        return new PasswordAuthentication(proxyUser, proxyPass);
-                    }
-                    return null;
-                }
-            });
-        }
     }
 
     protected Optional<GAV> findGAVFromFile(String binFile) throws IOException {
