@@ -21,6 +21,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -41,11 +43,14 @@ import org.eclipse.core.net.proxy.IProxyService;
 
 import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
 import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
+    protected static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"; //$NON-NLS-1$
 
     protected String downloadUrl;
@@ -90,6 +95,84 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             Logger.debug(e);
         }
         return "";
+    }
+
+    /**
+     * Calculate the Maven local repository path for a source JAR.
+     * Returns null if the GAV coordinates are incomplete or contain path traversal characters.
+     */
+    protected File getMavenRepoSourceFile(GAV gav) {
+        if (gav == null) {
+            return null;
+        }
+        String groupId = gav.getGroupId();
+        String artifactId = gav.getArtifactId();
+        String version = gav.getVersion();
+        if (groupId == null || artifactId == null || version == null) {
+            return null;
+        }
+        if (containsUnsafePathPart(groupId) || containsUnsafePathPart(artifactId) || containsUnsafePathPart(version)) {
+            return null;
+        }
+        String sourceFileName = artifactId + '-' + version + SOURCES_JAR;
+        File groupIdDir = new File(SourceConstants.USER_M2_REPO_DIR, groupId.replace('.', File.separatorChar));
+        File result = new File(groupIdDir, String.join(File.separator, artifactId, version, sourceFileName));
+        try {
+            String repoCanonical = SourceConstants.USER_M2_REPO_DIR.getCanonicalPath();
+            String resultCanonical = result.getCanonicalPath();
+            if (!resultCanonical.startsWith(repoCanonical + File.separator) && !resultCanonical.equals(repoCanonical)) {
+                return null;
+            }
+        } catch (IOException e) {
+            Logger.debug(e);
+            return null;
+        }
+        return result;
+    }
+
+    private boolean containsUnsafePathPart(String value) {
+        return value.contains("..") || value.contains("/") || value.contains("\\"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    }
+
+    protected boolean tryExistingMavenRepoSources(String binFile, Map<GAV, String> sourcesUrls,
+            List<SourceFileResult> results) {
+        for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
+            File mavenRepoSourceFile = getMavenRepoSourceFile(entry.getKey());
+            if (mavenRepoSourceFile != null && mavenRepoSourceFile.exists()
+                    && validateAndAddSource(binFile, mavenRepoSourceFile, mavenRepoSourceFile, entry.getValue(), results)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected boolean validateAndAddSource(String binFile, File sourceFile, File tempFile,
+            String downloadUrl, List<SourceFileResult> results) {
+        try {
+            if (SourceAttachUtil.isSourceCodeFor(sourceFile.getAbsolutePath(), binFile)) {
+                SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+                results.add(result);
+                setDownloadUrl(downloadUrl);
+                return true;
+            }
+        } catch (RuntimeException e) {
+            Logger.debug(e);
+        }
+        return false;
+    }
+
+    protected File getMavenRepoTargetForDownload(GAV gav, String downloadUrl) {
+        if (isSourceDownloadUrl(downloadUrl)) {
+            return getMavenRepoSourceFile(gav);
+        }
+        return null;
+    }
+
+    private boolean isSourceDownloadUrl(String downloadUrl) {
+        return downloadUrl != null && (downloadUrl.endsWith(SOURCES_JAR)
+                || downloadUrl.contains("filepath=") && downloadUrl.contains(SOURCES_JAR) //$NON-NLS-1$
+                || downloadUrl.contains("c=sources") //$NON-NLS-1$
+                || downloadUrl.contains("classifier=sources")); //$NON-NLS-1$
     }
 
     private URLConnection openConnectionWithProxy(URL url, IProxyService proxyService) throws IOException {
@@ -179,14 +262,17 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
      * @return true if a cached source was found and added to results
      */
     protected boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results) {
+        return tryCachedSources(binFile, sourcesUrls, results, false);
+    }
+
+    protected boolean tryCachedSources(String binFile, Map<GAV, String> sourcesUrls, List<SourceFileResult> results,
+            boolean persistInMavenRepo) {
         for (Map.Entry<GAV, String> entry : sourcesUrls.entrySet()) {
             try {
-                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
-                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-                    File sourceFile = new File(sourceFiles[0]);
-                    File tempFile = new File(sourceFiles[1]);
-                    SourceFileResult result = new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+                SourceFileResult result = buildCachedSourceResult(binFile, entry, persistInMavenRepo);
+                if (result != null) {
                     results.add(result);
+                    setDownloadUrl(entry.getValue());
                     return true;
                 }
             } catch (Exception e) {
@@ -194,5 +280,50 @@ public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
             }
         }
         return false;
+    }
+
+    private SourceFileResult buildCachedSourceResult(String binFile, Map.Entry<GAV, String> entry,
+            boolean persistInMavenRepo) {
+        String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(entry.getValue());
+        if (sourceFiles == null || sourceFiles[0] == null || !new File(sourceFiles[0]).exists()) {
+            return null;
+        }
+        File sourceFile = new File(sourceFiles[0]);
+        File tempFile = sourceFiles.length > 1 && sourceFiles[1] != null ? new File(sourceFiles[1]) : sourceFile;
+        if (persistInMavenRepo) {
+            File mavenRepoSourceFile = persistCachedSourceInMavenRepo(entry.getKey(), entry.getValue(), sourceFile, binFile);
+            if (mavenRepoSourceFile != null) {
+                sourceFile = mavenRepoSourceFile;
+                tempFile = mavenRepoSourceFile;
+            }
+        }
+        return new SourceFileResult(this, binFile, sourceFile, tempFile, 100);
+    }
+
+    protected File persistCachedSourceInMavenRepo(GAV gav, String downloadUrl, File sourceFile, String binFile) {
+        File mavenRepoSourceFile = getMavenRepoTargetForDownload(gav, downloadUrl);
+        if (mavenRepoSourceFile == null) {
+            return null;
+        }
+        if (mavenRepoSourceFile.exists() && SourceAttachUtil.isSourceCodeFor(mavenRepoSourceFile.getAbsolutePath(), binFile)) {
+            return mavenRepoSourceFile;
+        }
+        if (mavenRepoSourceFile.exists()) {
+            Logger.debug("Replacing stale/invalid Maven repo source: " + mavenRepoSourceFile.getAbsolutePath(), null); //$NON-NLS-1$
+        }
+        if (!SourceAttachUtil.isSourceCodeFor(sourceFile.getAbsolutePath(), binFile)) {
+            return null;
+        }
+        try {
+            File parent = mavenRepoSourceFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
+                return null;
+            }
+            Files.copy(sourceFile.toPath(), mavenRepoSourceFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return mavenRepoSourceFile;
+        } catch (IOException e) {
+            Logger.debug(e);
+            return null;
+        }
     }
 }

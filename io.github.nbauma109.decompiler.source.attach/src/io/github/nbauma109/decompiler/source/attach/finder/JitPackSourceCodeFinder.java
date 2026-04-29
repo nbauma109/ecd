@@ -10,11 +10,10 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
-import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
-import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -69,17 +68,9 @@ public class JitPackSourceCodeFinder extends AbstractSourceCodeFinder implements
                 }
             }
 
-            try {
-                String[] sourceFiles = SourceBindingUtil.getSourceFileByDownloadUrl(sourceUrl);
-                if (sourceFiles != null && sourceFiles[0] != null && new File(sourceFiles[0]).exists()) {
-                    File sourceFile = new File(sourceFiles[0]);
-                    File tempFile = new File(sourceFiles[1]);
-                    setDownloadUrl(sourceUrl);
-                    results.add(new SourceFileResult(this, binFile, sourceFile, tempFile, 100));
-                    return;
-                }
-            } catch (Throwable e) {
-                Logger.debug(e);
+            if (tryCachedSources(binFile, Collections.singletonMap(gav, sourceUrl), results, true)) {
+                setDownloadUrl(sourceUrl);
+                return;
             }
 
             try {
@@ -105,37 +96,5 @@ public class JitPackSourceCodeFinder extends AbstractSourceCodeFinder implements
         }
         return JITPACK_BASE_URL + groupId.replace('.', '/') + '/' + artifactId + '/' + version + '/' + artifactId
                 + '-' + version + SOURCES_JAR;
-    }
-
-    /**
-     * Calculate the Maven local repository path for a source JAR.
-     * Returns null if the GAV coordinates contain path traversal characters.
-     */
-    private File getMavenRepoSourceFile(GAV gav) {
-        String groupId = gav.getGroupId();
-        String artifactId = gav.getArtifactId();
-        String version = gav.getVersion();
-        if (groupId == null || artifactId == null || version == null) {
-            return null;
-        }
-        if (groupId.contains("..") || groupId.contains("/") || groupId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                || artifactId.contains("..") || artifactId.contains("/") || artifactId.contains("\\") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                || version.contains("..") || version.contains("/") || version.contains("\\")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            return null;
-        }
-        String sourceFileName = artifactId + '-' + version + SOURCES_JAR;
-        File groupIdDir = new File(SourceConstants.USER_M2_REPO_DIR, groupId.replace('.', File.separatorChar));
-        File result = new File(groupIdDir, String.join(File.separator, artifactId, version, sourceFileName));
-        try {
-            String repoCanonical = SourceConstants.USER_M2_REPO_DIR.getCanonicalPath();
-            String resultCanonical = result.getCanonicalPath();
-            if (!resultCanonical.startsWith(repoCanonical + File.separator) && !resultCanonical.equals(repoCanonical)) {
-                return null;
-            }
-        } catch (IOException e) {
-            Logger.debug(e);
-            return null;
-        }
-        return result;
     }
 }
