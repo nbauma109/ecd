@@ -29,6 +29,7 @@ import java.util.zip.ZipOutputStream;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyData;
 import io.github.nbauma109.decompiler.source.attach.testutil.ProxyStubs.StubProxyService;
+import io.github.nbauma109.decompiler.util.HashUtils;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTML;
@@ -433,7 +434,7 @@ public class AbstractSourceCodeFinderTest {
                 Collections.singletonMap("pkg/Demo.java", "class Demo {}")); //$NON-NLS-1$ //$NON-NLS-2$
 
         String testUrl = "https://test.persist.example.com/persist-cached-9.9.9-sources.jar"; //$NON-NLS-1$
-        SourceBindingUtil.saveSourceBindingRecord(srcJar, "test-sha-persist-" + System.nanoTime(), testUrl, tmpJar); //$NON-NLS-1$
+        SourceBindingUtil.saveSourceBindingRecord(srcJar, HashUtils.sha1Hash(srcJar), testUrl, tmpJar);
 
         GAV gav = new GAV();
         gav.setGroupId("io.test.copilot.persistcached");
