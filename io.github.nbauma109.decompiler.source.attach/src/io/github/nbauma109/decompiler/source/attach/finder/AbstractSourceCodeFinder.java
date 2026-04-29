@@ -50,7 +50,7 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public abstract class AbstractSourceCodeFinder implements SourceCodeFinder {
 
-    private static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
+    protected static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"; //$NON-NLS-1$
 
     protected String downloadUrl;

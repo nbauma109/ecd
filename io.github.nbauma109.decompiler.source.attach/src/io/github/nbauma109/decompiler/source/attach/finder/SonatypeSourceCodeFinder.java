@@ -126,7 +126,7 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
                     if (mavenRepoSourceFile != null) {
                         object = new SourceFileResult(this, binFile, mavenRepoSourceFile, mavenRepoSourceFile, 100);
                     } else {
-                        String suggestedName = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + "-sources.jar"; //$NON-NLS-1$
+                        String suggestedName = entry.getKey().getArtifactId() + '-' + entry.getKey().getVersion() + SOURCES_JAR;
                         object = new SourceFileResult(this, binFile, downloadedFile.getAbsolutePath(), suggestedName, 100);
                     }
                     Logger.debug(this.toString() + " FOUND: " + object, null); //$NON-NLS-1$
