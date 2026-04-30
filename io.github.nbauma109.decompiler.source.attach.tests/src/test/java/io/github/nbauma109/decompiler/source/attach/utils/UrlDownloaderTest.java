@@ -391,6 +391,45 @@ public class UrlDownloaderTest {
         }
     }
 
+    @Test
+    public void downloadDoesNotApplyTotalTransferTimeoutWhileDataArrives() throws Exception {
+        byte[] body = "slow-source".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleSlowHttpDownload(socket, body);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+                client.setConnectTimeout(500);
+                client.setReadTimeout(500);
+
+                byte[] actual = client.downloadToBytes("http://localhost:" + port + "/slow-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(new String(body, StandardCharsets.UTF_8), new String(actual, StandardCharsets.UTF_8));
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
     private static void handleHeadRedirect(Socket socket, String location) throws IOException {
         try (InputStream in = socket.getInputStream();
                 OutputStream out = socket.getOutputStream()) {
@@ -427,6 +466,36 @@ public class UrlDownloaderTest {
                     + "Content-Length: 10485760\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
             out.write(statusLine);
             out.flush();
+        }
+    }
+
+    private static void handleSlowHttpDownload(Socket socket, byte[] body) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("GET /slow-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + body.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.flush();
+            if (!accepted) {
+                return;
+            }
+            for (byte b : body) {
+                out.write(b);
+                out.flush();
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Slow response interrupted", e); //$NON-NLS-1$
+                }
+            }
         }
     }
 

@@ -290,8 +290,7 @@ public class EcfHttpClient {
             // Start the transfer
             adapter.sendRetrieveRequest(fileID, handler, options);
 
-            // Wait for completion (with timeout)
-            handler.waitForCompletion((long) connectTimeout + readTimeout);
+            handler.waitForCompletion();
 
             // Check for errors
             Exception ex = handler.exception.get();
@@ -484,19 +483,10 @@ public class EcfHttpClient {
             }
         }
 
-        public void waitForCompletion(long timeoutMs) throws InterruptedException, IOException {
+        public void waitForCompletion() throws InterruptedException {
             synchronized (lock) {
-                long startTime = System.currentTimeMillis();
-                long remaining = timeoutMs;
-
-                while (!completed && remaining > 0) {
-                    lock.wait(remaining);
-                    long elapsed = System.currentTimeMillis() - startTime;
-                    remaining = timeoutMs - elapsed;
-                }
-
-                if (!completed) {
-                    throw new IOException("Download timeout after " + timeoutMs + "ms");
+                while (!completed) {
+                    lock.wait();
                 }
             }
         }
