@@ -27,8 +27,11 @@ import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -486,16 +489,40 @@ public class UrlDownloaderTest {
             if (!accepted) {
                 return;
             }
-            for (byte b : body) {
-                out.write(b);
-                out.flush();
-                try {
-                    Thread.sleep(150);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("Slow response interrupted", e); //$NON-NLS-1$
-                }
+            writeSlowly(out, body);
+        }
+    }
+
+    private static void writeSlowly(OutputStream out, byte[] body) throws IOException {
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        CountDownLatch sent = new CountDownLatch(body.length);
+        AtomicReference<IOException> failure = new AtomicReference<>();
+        try {
+            for (int i = 0; i < body.length; i++) {
+                final int index = i;
+                executor.schedule(() -> {
+                    try {
+                        out.write(body[index]);
+                        out.flush();
+                    } catch (IOException e) {
+                        failure.compareAndSet(null, e);
+                    } finally {
+                        sent.countDown();
+                    }
+                }, 150L * i, TimeUnit.MILLISECONDS);
             }
+            if (!sent.await(5, TimeUnit.SECONDS)) {
+                throw new IOException("Timed out writing slow response"); //$NON-NLS-1$
+            }
+            IOException writeFailure = failure.get();
+            if (writeFailure != null) {
+                throw writeFailure;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Slow response interrupted", e); //$NON-NLS-1$
+        } finally {
+            executor.shutdownNow();
         }
     }
 
