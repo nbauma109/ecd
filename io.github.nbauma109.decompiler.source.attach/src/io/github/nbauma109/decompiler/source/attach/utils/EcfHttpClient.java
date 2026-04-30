@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.hc.client5.http.classic.methods.HttpHead;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -174,6 +175,30 @@ public class EcfHttpClient {
                 }
                 throw new EcfHttpStatusException("POST failed: HTTP " + statusCode, statusCode, null);
             });
+        } catch (URISyntaxException e) {
+            throw new IOException("Invalid URL: " + url, e);
+        } finally {
+            if (proxyHelper != null) {
+                proxyHelper.dispose();
+            }
+        }
+    }
+
+    public int getStatusCode(String url) throws IOException {
+        IHttpClientFactory factory = getHttpClientFactory();
+        HttpClientContext context = factory.newClientContext();
+        RequestConfig.Builder requestConfig = newRequestConfig(factory, context);
+        JREProxyHelper proxyHelper = null;
+
+        try (CloseableHttpClient client = newHttpClient(factory)) {
+            proxyHelper = setupProxy(url, requestConfig);
+
+            HttpHead head = new HttpHead(url);
+            for (Map.Entry<String, String> header : requestHeaders.entrySet()) {
+                head.setHeader(header.getKey(), header.getValue());
+            }
+            head.setConfig(requestConfig.build());
+            return client.execute(head, context, response -> response.getCode());
         } catch (URISyntaxException e) {
             throw new IOException("Invalid URL: " + url, e);
         } finally {
@@ -360,18 +385,6 @@ public class EcfHttpClient {
             }
         }
         return false;
-    }
-
-    public int getStatusCode(String url) throws IOException {
-        try {
-            downloadToStream(url, OutputStream.nullOutputStream());
-            return 200;
-        } catch (EcfHttpStatusException e) {
-            if (e.getStatusCode() > 0) {
-                return e.getStatusCode();
-            }
-            throw e;
-        }
     }
 
     private IOException toIOException(String message, Exception ex) {

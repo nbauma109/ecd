@@ -212,6 +212,42 @@ public class UrlDownloaderTest {
     }
 
     @Test
+    public void getStatusCodeUsesHeadRequest() throws Exception {
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleHeadRequest(socket);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + port + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(200, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
     public void downloadWithServiceCredentialsSendsAuthorizationToServer() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
         //   request with Authorization header -> 200 OK with body
@@ -253,6 +289,23 @@ public class UrlDownloaderTest {
             } finally {
                 serverRunning.set(false);
             }
+        }
+    }
+
+    private static void handleHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "405 Method Not Allowed") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: 10485760\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
         }
     }
 

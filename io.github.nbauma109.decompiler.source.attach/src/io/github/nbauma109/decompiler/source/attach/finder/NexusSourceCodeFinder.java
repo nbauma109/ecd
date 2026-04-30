@@ -65,6 +65,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     private final String serviceUrl;      // Base URL, for example: https://repo.example.com (with or without /nexus)
     private final String serviceUser;     // May be null for anonymous access
     private final String servicePassword; // May be null
+    private final boolean bypassProxy;
 
     // ---------------------------------------------------------------------------------
     // State
@@ -75,13 +76,18 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // Construction
     // ---------------------------------------------------------------------------------
     public NexusSourceCodeFinder(String serviceUrl) {
-        this(serviceUrl, null, null);
+        this(serviceUrl, null, null, false);
     }
 
     public NexusSourceCodeFinder(String serviceUrl, String user, String password) {
+        this(serviceUrl, user, password, true);
+    }
+
+    public NexusSourceCodeFinder(String serviceUrl, String user, String password, boolean bypassProxy) {
         this.serviceUrl = trimTrailingSlash(Objects.requireNonNull(serviceUrl, "serviceUrl"));
         this.serviceUser = user;
         this.servicePassword = password;
+        this.bypassProxy = bypassProxy;
     }
 
     @Override
@@ -168,7 +174,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(serviceUser);
         downloader.setServicePassword(servicePassword);
-        downloader.setNoProxy(hasServiceCredentials());
+        downloader.setNoProxy(bypassProxy);
 
         for (Map.Entry<GAV, String> e : candidates.entrySet()) {
             if (canceled) {
@@ -710,8 +716,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         client.setConnectTimeout(15000);
         client.setReadTimeout(30000);
         client.setRequestHeader("Accept", "application/json, */*;q=0.8");
-        // bypass proxy as private authenticated Nexus repo is expected to be on the intranet
-        client.setNoProxy(hasServiceCredentials());
+        client.setNoProxy(bypassProxy);
         if (hasServiceCredentials()) {
             String token = serviceUser + ":" + (servicePassword == null ? "" : servicePassword);
             String basic = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));

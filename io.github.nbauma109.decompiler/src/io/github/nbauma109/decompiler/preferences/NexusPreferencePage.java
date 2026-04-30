@@ -58,6 +58,9 @@ public class NexusPreferencePage extends FieldEditorPreferencePage implements IW
         addField(nexusUrl);
         addField(nexusUser);
         addField(nexusPassword);
+        addField(new CheckFieldEditor(JavaDecompilerPlugin.NEXUS_BYPASS_PROXY,
+                Messages.getString("NexusPreferencePage.Label.BypassProxy"), //$NON-NLS-1$
+                basicGroup));
 
         GridLayout layout = (GridLayout) basicGroup.getLayout();
         layout.marginWidth = layout.marginHeight = 5;
