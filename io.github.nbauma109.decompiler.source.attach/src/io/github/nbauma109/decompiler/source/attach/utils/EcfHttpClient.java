@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpHead;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -200,7 +201,18 @@ public class EcfHttpClient {
                 head.setHeader(header.getKey(), header.getValue());
             }
             head.setConfig(requestConfig.build());
-            return client.execute(head, context, HttpResponse::getCode);
+            int statusCode = client.execute(head, context, HttpResponse::getCode);
+            if (!isHeadRejected(statusCode)) {
+                return statusCode;
+            }
+
+            HttpGet get = new HttpGet(url);
+            for (Map.Entry<String, String> header : requestHeaders.entrySet()) {
+                get.setHeader(header.getKey(), header.getValue());
+            }
+            get.setHeader("Range", "bytes=0-0"); //$NON-NLS-1$ //$NON-NLS-2$
+            get.setConfig(requestConfig.build());
+            return client.execute(get, context, HttpResponse::getCode);
         } catch (URISyntaxException e) {
             throw new IOException("Invalid URL: " + url, e);
         } finally {
@@ -208,6 +220,10 @@ public class EcfHttpClient {
                 proxyHelper.dispose();
             }
         }
+    }
+
+    private boolean isHeadRejected(int statusCode) {
+        return statusCode == 400 || statusCode == 403 || statusCode == 405 || statusCode == 501;
     }
 
     private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {

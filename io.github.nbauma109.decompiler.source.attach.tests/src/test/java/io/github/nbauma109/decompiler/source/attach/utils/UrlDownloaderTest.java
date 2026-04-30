@@ -248,6 +248,49 @@ public class UrlDownloaderTest {
     }
 
     @Test
+    public void getStatusCodeFallsBackToRangedGetWhenHeadIsRejected() throws Exception {
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                for (int i = 0; i < 2 && serverRunning.get(); i++) {
+                    try (Socket socket = serverSocket.accept()) {
+                        if (i == 0) {
+                            handleRejectedHeadRequest(socket);
+                        } else {
+                            handleRangedGetRequest(socket);
+                        }
+                    } catch (IOException e) {
+                        if (serverRunning.get()) {
+                            Thread.currentThread().interrupt();
+                        }
+                        break;
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + port + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(206, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
     public void downloadWithServiceCredentialsSendsAuthorizationToServer() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
         //   request with Authorization header -> 200 OK with body
@@ -289,6 +332,47 @@ public class UrlDownloaderTest {
             } finally {
                 serverRunning.set(false);
             }
+        }
+    }
+
+    private static void handleRejectedHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "405 Method Not Allowed" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Length: 0\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleRangedGetRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            boolean hasRange = false;
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                if ("Range: bytes=0-0".equalsIgnoreCase(line)) { //$NON-NLS-1$
+                    hasRange = true;
+                }
+            }
+
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("GET /artifact-sources.jar ") //$NON-NLS-1$
+                    && hasRange;
+            byte[] responseBody = accepted ? new byte[] { 0 } : new byte[0];
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "206 Partial Content" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Range: bytes 0-0/10485760\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + responseBody.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.write(responseBody);
+            out.flush();
         }
     }
 
