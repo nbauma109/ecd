@@ -710,6 +710,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         client.setConnectTimeout(15000);
         client.setReadTimeout(30000);
         client.setRequestHeader("Accept", "application/json, */*;q=0.8");
+        // bypass proxy as private authenticated Nexus repo is expected to be on the intranet
         client.setNoProxy(hasServiceCredentials());
         if (hasServiceCredentials()) {
             String token = serviceUser + ":" + (servicePassword == null ? "" : servicePassword);

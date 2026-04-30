@@ -19,18 +19,17 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.Timeout;
 import org.eclipse.ecf.core.util.Proxy;
 import org.eclipse.ecf.core.util.ProxyAddress;
 import org.eclipse.ecf.filetransfer.IFileTransferListener;
@@ -162,7 +161,7 @@ public class EcfHttpClient {
                     org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
             post.setConfig(requestConfig.build());
 
-            try (CloseableHttpResponse response = client.execute(post, context)) {
+            return client.execute(post, context, response -> {
                 HttpEntity entity = response.getEntity();
                 byte[] responseBytes = entity == null ? new byte[0] : EntityUtils.toByteArray(entity);
                 int statusCode = response.getCode();
@@ -170,7 +169,7 @@ public class EcfHttpClient {
                     return responseBytes;
                 }
                 throw new EcfHttpStatusException("POST failed: HTTP " + statusCode, statusCode, null);
-            }
+            });
         } catch (URISyntaxException e) {
             throw new IOException("Invalid URL: " + url, e);
         } finally {
@@ -293,8 +292,7 @@ public class EcfHttpClient {
         options.put(HttpClientOptions.RETRIEVE_READ_TIMEOUT_PROP, readTimeout);
 
         RequestConfig.Builder requestConfig = factory.newRequestConfig(context, options);
-        requestConfig.setConnectTimeout(connectTimeout, TimeUnit.MILLISECONDS);
-        requestConfig.setResponseTimeout(readTimeout, TimeUnit.MILLISECONDS);
+        requestConfig.setResponseTimeout(Timeout.ofMilliseconds(readTimeout));
         return requestConfig;
     }
 

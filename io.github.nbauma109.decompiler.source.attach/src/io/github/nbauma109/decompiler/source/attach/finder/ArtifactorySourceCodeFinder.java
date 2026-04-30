@@ -145,7 +145,6 @@ public class ArtifactorySourceCodeFinder extends AbstractSourceCodeFinder implem
 
         try {
             EcfHttpClient client = new EcfHttpClient();
-            client.setNoProxy(true);
             client.setConnectTimeout(5000);
             client.setReadTimeout(5000);
             String json = new String(client.downloadToBytes(url), StandardCharsets.UTF_8);
