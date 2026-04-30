@@ -26,6 +26,7 @@ import org.apache.hc.client5.http.classic.methods.HttpHead;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.DefaultRedirectStrategy;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
@@ -33,9 +34,11 @@ import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.util.Timeout;
 import org.eclipse.ecf.core.util.Proxy;
 import org.eclipse.ecf.core.util.ProxyAddress;
@@ -70,11 +73,20 @@ public class EcfHttpClient {
 
     private static final String USER_AGENT = "ECD-SourceAttach/1.0 (Eclipse ECF)";
     private static final int DEFAULT_TIMEOUT_MS = 5000;
+    private static final DefaultRedirectStrategy SENSITIVE_HEADER_REDIRECT_STRATEGY =
+            new DefaultRedirectStrategy() {
+                @Override
+                public boolean isRedirectAllowed(HttpHost currentTarget, HttpHost newTarget,
+                        HttpRequest redirect, HttpContext context) {
+                    return true;
+                }
+            };
 
     private int connectTimeout = DEFAULT_TIMEOUT_MS;
     private int readTimeout = DEFAULT_TIMEOUT_MS;
     private final Map<String, String> requestHeaders = new HashMap<>();
     private boolean noProxy;
+    private boolean allowSensitiveHeaderRedirects;
 
     public EcfHttpClient() {
         requestHeaders.put("User-Agent", USER_AGENT);
@@ -99,6 +111,10 @@ public class EcfHttpClient {
 
     public void setNoProxy(boolean noProxy) {
         this.noProxy = noProxy;
+    }
+
+    public void setAllowSensitiveHeaderRedirects(boolean allowSensitiveHeaderRedirects) {
+        this.allowSensitiveHeaderRedirects = allowSensitiveHeaderRedirects;
     }
 
     /**
@@ -228,6 +244,9 @@ public class EcfHttpClient {
 
     private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {
         HttpClientBuilder clientBuilder = factory.newClient();
+        if (allowSensitiveHeaderRedirects) {
+            clientBuilder.setRedirectStrategy(SENSITIVE_HEADER_REDIRECT_STRATEGY);
+        }
         HttpClientConnectionManager connectionManager = clientBuilder.getConnManager();
         if (connectionManager instanceof PoolingHttpClientConnectionManager poolingManager) {
             poolingManager.setDefaultConnectionConfig(ConnectionConfig.custom()

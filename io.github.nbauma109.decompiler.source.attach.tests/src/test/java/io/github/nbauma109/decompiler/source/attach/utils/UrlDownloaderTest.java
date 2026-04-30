@@ -291,6 +291,62 @@ public class UrlDownloaderTest {
     }
 
     @Test
+    public void getStatusCodeAllowsSensitiveHeaderRedirectsToDifferentAuthority() throws Exception {
+        CountDownLatch redirectServerReady = new CountDownLatch(1);
+        CountDownLatch targetServerReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket targetSocket = new ServerSocket(0);
+                ServerSocket redirectSocket = new ServerSocket(0)) {
+            int targetPort = targetSocket.getLocalPort();
+            int redirectPort = redirectSocket.getLocalPort();
+            String redirectLocation = "http://localhost:" + targetPort + "/artifact-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+
+            Thread targetThread = new Thread(() -> {
+                targetServerReady.countDown();
+                try (Socket socket = targetSocket.accept()) {
+                    handleAuthorizedHeadRequest(socket);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            targetThread.setDaemon(true);
+            targetThread.start();
+
+            Thread redirectThread = new Thread(() -> {
+                redirectServerReady.countDown();
+                try (Socket socket = redirectSocket.accept()) {
+                    handleHeadRedirect(socket, redirectLocation);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            redirectThread.setDaemon(true);
+            redirectThread.start();
+
+            assertTrue("Redirect server did not start in time", redirectServerReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+            assertTrue("Target server did not start in time", targetServerReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+                client.setRequestHeader("Authorization", "Basic dXNlcjpwYXNz"); //$NON-NLS-1$ //$NON-NLS-2$
+                client.setAllowSensitiveHeaderRedirects(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + redirectPort + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(200, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
     public void downloadWithServiceCredentialsSendsAuthorizationToServer() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
         //   request with Authorization header -> 200 OK with body
@@ -332,6 +388,45 @@ public class UrlDownloaderTest {
             } finally {
                 serverRunning.set(false);
             }
+        }
+    }
+
+    private static void handleHeadRedirect(Socket socket, String location) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "302 Found" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nLocation: " + location //$NON-NLS-1$
+                    + "\r\nContent-Length: 0\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleAuthorizedHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            boolean hasAuth = false;
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                if (line.startsWith("Authorization: Basic dXNlcjpwYXNz")) { //$NON-NLS-1$
+                    hasAuth = true;
+                }
+            }
+
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("HEAD /artifact-sources.jar ") //$NON-NLS-1$
+                    && hasAuth;
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "401 Unauthorized") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: 10485760\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
         }
     }
 

@@ -721,6 +721,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             String token = serviceUser + ":" + (servicePassword == null ? "" : servicePassword);
             String basic = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
             client.setRequestHeader("Authorization", "Basic " + basic);
+            client.setAllowSensitiveHeaderRedirects(true);
         }
         return client;
     }
