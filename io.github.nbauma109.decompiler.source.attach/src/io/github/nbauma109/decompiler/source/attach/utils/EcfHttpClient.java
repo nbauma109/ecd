@@ -32,14 +32,15 @@ import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.Timeout;
 import org.eclipse.ecf.core.util.Proxy;
 import org.eclipse.ecf.core.util.ProxyAddress;
 import org.eclipse.ecf.filetransfer.IFileTransferListener;
-import org.eclipse.ecf.filetransfer.IRetrieveFileTransferOptions;
 import org.eclipse.ecf.filetransfer.IRetrieveFileTransferContainerAdapter;
+import org.eclipse.ecf.filetransfer.IRetrieveFileTransferOptions;
 import org.eclipse.ecf.filetransfer.IncomingFileTransferException;
 import org.eclipse.ecf.filetransfer.events.IFileTransferEvent;
 import org.eclipse.ecf.filetransfer.events.IIncomingFileTransferReceiveDataEvent;
@@ -49,6 +50,7 @@ import org.eclipse.ecf.filetransfer.identity.FileCreateException;
 import org.eclipse.ecf.filetransfer.identity.FileIDFactory;
 import org.eclipse.ecf.filetransfer.identity.IFileID;
 import org.eclipse.ecf.filetransfer.service.IRetrieveFileTransferFactory;
+import org.eclipse.ecf.internal.provider.filetransfer.httpclient5.Activator;
 import org.eclipse.ecf.internal.provider.filetransfer.httpclient5.IHttpClientFactory;
 import org.eclipse.ecf.provider.filetransfer.httpclient5.HttpClientOptions;
 import org.eclipse.ecf.provider.filetransfer.util.JREProxyHelper;
@@ -198,7 +200,7 @@ public class EcfHttpClient {
                 head.setHeader(header.getKey(), header.getValue());
             }
             head.setConfig(requestConfig.build());
-            return client.execute(head, context, response -> response.getCode());
+            return client.execute(head, context, HttpResponse::getCode);
         } catch (URISyntaxException e) {
             throw new IOException("Invalid URL: " + url, e);
         } finally {
@@ -211,9 +213,7 @@ public class EcfHttpClient {
     private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {
         HttpClientBuilder clientBuilder = factory.newClient();
         HttpClientConnectionManager connectionManager = clientBuilder.getConnManager();
-        if (connectionManager instanceof PoolingHttpClientConnectionManager) {
-            PoolingHttpClientConnectionManager poolingManager =
-                    (PoolingHttpClientConnectionManager) connectionManager;
+        if (connectionManager instanceof PoolingHttpClientConnectionManager poolingManager) {
             poolingManager.setDefaultConnectionConfig(ConnectionConfig.custom()
                     .setConnectTimeout(Timeout.ofMilliseconds(connectTimeout))
                     .build());
@@ -300,13 +300,10 @@ public class EcfHttpClient {
 
     private IHttpClientFactory getHttpClientFactory() throws IOException {
         BundleContext context = getBundleContext();
-        if (context == null) {
+        if (context == null || !startBundle(context, "org.eclipse.ecf.provider.filetransfer.httpclient5")) {
             throw new IOException("ECF httpclient5 service is not available");
         }
-        if (!startBundle(context, "org.eclipse.ecf.provider.filetransfer.httpclient5")) {
-            throw new IOException("ECF httpclient5 service is not available");
-        }
-        return org.eclipse.ecf.internal.provider.filetransfer.httpclient5.Activator.getDefault().getHttpClientFactory();
+        return Activator.getDefault().getHttpClientFactory();
     }
 
     private BundleContext getBundleContext() {
@@ -352,7 +349,7 @@ public class EcfHttpClient {
                 proxy = ProxySetupHelper.getProxy(targetUrl.toExternalForm());
             }
         } catch (NoClassDefFoundError e) {
-            org.eclipse.ecf.internal.provider.filetransfer.httpclient5.Activator.logNoProxyWarning(e);
+            Activator.logNoProxyWarning(e);
         }
 
         if (proxy == null) {
@@ -388,8 +385,7 @@ public class EcfHttpClient {
     }
 
     private IOException toIOException(String message, Exception ex) {
-        if (ex instanceof IncomingFileTransferException) {
-            IncomingFileTransferException transferException = (IncomingFileTransferException) ex;
+        if (ex instanceof IncomingFileTransferException transferException) {
             return new EcfHttpStatusException(message + ": " + ex.getMessage(),
                     transferException.getErrorCode(), transferException);
         }
@@ -427,8 +423,7 @@ public class EcfHttpClient {
 
         @Override
         public void handleTransferEvent(IFileTransferEvent event) {
-            if (event instanceof IIncomingFileTransferReceiveStartEvent) {
-                IIncomingFileTransferReceiveStartEvent startEvent = (IIncomingFileTransferReceiveStartEvent) event;
+            if (event instanceof IIncomingFileTransferReceiveStartEvent startEvent) {
                 try {
                     // Accept the transfer and start receiving
                     startEvent.receive(outputStream);
@@ -439,8 +434,7 @@ public class EcfHttpClient {
             } else if (event instanceof IIncomingFileTransferReceiveDataEvent) {
                 // Data is being received - nothing to do here as it goes directly to outputStream
                 // Could add progress monitoring here if needed
-            } else if (event instanceof IIncomingFileTransferReceiveDoneEvent) {
-                IIncomingFileTransferReceiveDoneEvent doneEvent = (IIncomingFileTransferReceiveDoneEvent) event;
+            } else if (event instanceof IIncomingFileTransferReceiveDoneEvent doneEvent) {
                 if (doneEvent.getException() != null) {
                     exception.set(doneEvent.getException());
                 }
