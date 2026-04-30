@@ -22,8 +22,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHost;
@@ -147,7 +151,7 @@ public class EcfHttpClient {
         RequestConfig.Builder requestConfig = newRequestConfig(factory, context);
         JREProxyHelper proxyHelper = null;
 
-        try (CloseableHttpClient client = factory.newClient().build()) {
+        try (CloseableHttpClient client = newHttpClient(factory)) {
             proxyHelper = setupProxy(url, requestConfig);
 
             HttpPost post = new HttpPost(url);
@@ -177,6 +181,19 @@ public class EcfHttpClient {
                 proxyHelper.dispose();
             }
         }
+    }
+
+    private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {
+        HttpClientBuilder clientBuilder = factory.newClient();
+        HttpClientConnectionManager connectionManager = clientBuilder.getConnManager();
+        if (connectionManager instanceof PoolingHttpClientConnectionManager) {
+            PoolingHttpClientConnectionManager poolingManager =
+                    (PoolingHttpClientConnectionManager) connectionManager;
+            poolingManager.setDefaultConnectionConfig(ConnectionConfig.custom()
+                    .setConnectTimeout(Timeout.ofMilliseconds(connectTimeout))
+                    .build());
+        }
+        return clientBuilder.build();
     }
 
     /**
