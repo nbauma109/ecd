@@ -14,6 +14,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -26,8 +27,11 @@ import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -156,16 +160,16 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void downloadWithServiceCredentialsSetsAuthenticatorForHttpConnection() throws IOException {
-        // Setting serviceUser + servicePassword triggers the conn.setAuthenticator(buildAuthenticator(...))
-        // path inside setConnectionAuthenticator, covering that line and the buildAuthenticator method entry.
+    public void downloadWithServiceCredentialsAddsAuthorizationHeader() throws IOException {
+        // Setting serviceUser + servicePassword adds the Basic Authorization header
+        // sent through the ECF file transfer request.
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(TEST_USER);
         downloader.setServicePassword(TEST_PASSWORD);
 
         File targetFile = new File(testRoot, "auth-attempt.jar");
-        // localhost:0 is unreachable but still creates an HttpURLConnection object so that
-        // setConnectionAuthenticator (and therefore buildAuthenticator) is invoked before connect.
+        // localhost:0 is unreachable; the test covers credential setup without needing
+        // an external repository.
         String result = downloader.download("http://localhost:0/test.jar", targetFile); //$NON-NLS-1$
 
         assertNotNull(result);
@@ -173,12 +177,183 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void downloadWithServiceCredentialsCoversServerAuthBranchOnChallenge() throws IOException, InterruptedException {
+    public void postJsonSendsPayloadThroughEcfHttpClient() throws Exception {
+        String payload = "{\"size\":20,\"searchTerm\":\"1:abcdef\",\"filter\":[]}"; //$NON-NLS-1$
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleJsonPostRequest(socket, payload);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                byte[] response = client.postJson(
+                        "http://localhost:" + port + "/api/internal/browse/components", payload); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals("ok", new String(response, StandardCharsets.UTF_8)); //$NON-NLS-1$
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
+    public void getStatusCodeUsesHeadRequest() throws Exception {
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleHeadRequest(socket);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + port + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(200, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
+    public void getStatusCodeTreatsPartialContentFallbackAsOkWhenHeadIsRejected() throws Exception {
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                for (int i = 0; i < 2 && serverRunning.get(); i++) {
+                    try (Socket socket = serverSocket.accept()) {
+                        if (i == 0) {
+                            handleRejectedHeadRequest(socket);
+                        } else {
+                            handleRangedGetRequest(socket);
+                        }
+                    } catch (IOException e) {
+                        if (serverRunning.get()) {
+                            Thread.currentThread().interrupt();
+                        }
+                        break;
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + port + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(200, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
+    public void getStatusCodeAllowsSensitiveHeaderRedirectsToDifferentAuthority() throws Exception {
+        CountDownLatch redirectServerReady = new CountDownLatch(1);
+        CountDownLatch targetServerReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket targetSocket = new ServerSocket(0);
+                ServerSocket redirectSocket = new ServerSocket(0)) {
+            int targetPort = targetSocket.getLocalPort();
+            int redirectPort = redirectSocket.getLocalPort();
+            String redirectLocation = "http://localhost:" + targetPort + "/artifact-sources.jar"; //$NON-NLS-1$ //$NON-NLS-2$
+
+            Thread targetThread = new Thread(() -> {
+                targetServerReady.countDown();
+                try (Socket socket = targetSocket.accept()) {
+                    handleAuthorizedHeadRequest(socket);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            targetThread.setDaemon(true);
+            targetThread.start();
+
+            Thread redirectThread = new Thread(() -> {
+                redirectServerReady.countDown();
+                try (Socket socket = redirectSocket.accept()) {
+                    handleHeadRedirect(socket, redirectLocation);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            redirectThread.setDaemon(true);
+            redirectThread.start();
+
+            assertTrue("Redirect server did not start in time", redirectServerReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+            assertTrue("Target server did not start in time", targetServerReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+                client.setRequestHeader("Authorization", "Basic dXNlcjpwYXNz"); //$NON-NLS-1$ //$NON-NLS-2$
+                client.setAllowSensitiveHeaderRedirects(true);
+
+                int statusCode = client.getStatusCode("http://localhost:" + redirectPort + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(200, statusCode);
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    @Test
+    public void downloadWithServiceCredentialsSendsAuthorizationToServer() throws IOException, InterruptedException {
         // Start a minimal HTTP/1.0 server that:
-        //   1st request (no Authorization header) → 401 Unauthorized
-        //   2nd request (with Authorization header) → 200 OK with body
-        // The JDK's HttpURLConnection will invoke the per-connection authenticator on 401
-        // and retry, exercising the SERVER branch inside buildAuthenticator.
+        //   request with Authorization header -> 200 OK with body
+        //   request without Authorization header -> 401 Unauthorized
         byte[] body = "secure-content".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
         CountDownLatch serverReady = new CountDownLatch(1);
         AtomicBoolean serverRunning = new AtomicBoolean(true);
@@ -188,7 +363,6 @@ public class UrlDownloaderTest {
 
             Thread serverThread = new Thread(() -> {
                 serverReady.countDown();
-                // Handle up to 2 connections: first the 401 challenge, then the authenticated retry.
                 for (int i = 0; i < 2 && serverRunning.get(); i++) {
                     try (Socket socket = serverSocket.accept()) {
                         handleHttpRequest(socket, body);
@@ -220,10 +394,259 @@ public class UrlDownloaderTest {
         }
     }
 
+    @Test
+    public void downloadDoesNotApplyTotalTransferTimeoutWhileDataArrives() throws Exception {
+        byte[] body = "slow-source".getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+        CountDownLatch serverReady = new CountDownLatch(1);
+        AtomicBoolean serverRunning = new AtomicBoolean(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            int port = serverSocket.getLocalPort();
+
+            Thread serverThread = new Thread(() -> {
+                serverReady.countDown();
+                try (Socket socket = serverSocket.accept()) {
+                    handleSlowHttpDownload(socket, body);
+                } catch (IOException e) {
+                    if (serverRunning.get()) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+
+            assertTrue("Server did not start in time", serverReady.await(5, TimeUnit.SECONDS)); //$NON-NLS-1$
+
+            try {
+                EcfHttpClient client = new EcfHttpClient();
+                client.setNoProxy(true);
+                client.setConnectTimeout(500);
+                client.setReadTimeout(500);
+
+                byte[] actual = client.downloadToBytes("http://localhost:" + port + "/slow-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+
+                assertEquals(new String(body, StandardCharsets.UTF_8), new String(actual, StandardCharsets.UTF_8));
+            } finally {
+                serverRunning.set(false);
+            }
+        }
+    }
+
+    private static void handleHeadRedirect(Socket socket, String location) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "302 Found" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nLocation: " + location //$NON-NLS-1$
+                    + "\r\nContent-Length: 0\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleAuthorizedHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            boolean hasAuth = false;
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                if (line.startsWith("Authorization: Basic dXNlcjpwYXNz")) { //$NON-NLS-1$
+                    hasAuth = true;
+                }
+            }
+
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("HEAD /artifact-sources.jar ") //$NON-NLS-1$
+                    && hasAuth;
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "401 Unauthorized") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: 10485760\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleSlowHttpDownload(Socket socket, byte[] body) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("GET /slow-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + body.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.flush();
+            if (!accepted) {
+                return;
+            }
+            writeSlowly(out, body);
+        }
+    }
+
+    private static void writeSlowly(OutputStream out, byte[] body) throws IOException {
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        CountDownLatch sent = new CountDownLatch(body.length);
+        AtomicReference<IOException> failure = new AtomicReference<>();
+        try {
+            for (int i = 0; i < body.length; i++) {
+                final int index = i;
+                executor.schedule(() -> {
+                    try {
+                        out.write(body[index]);
+                        out.flush();
+                    } catch (IOException e) {
+                        failure.compareAndSet(null, e);
+                    } finally {
+                        sent.countDown();
+                    }
+                }, 150L * i, TimeUnit.MILLISECONDS);
+            }
+            if (!sent.await(5, TimeUnit.SECONDS)) {
+                throw new IOException("Timed out writing slow response"); //$NON-NLS-1$
+            }
+            IOException writeFailure = failure.get();
+            if (writeFailure != null) {
+                throw writeFailure;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Slow response interrupted", e); //$NON-NLS-1$
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static void handleRejectedHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "405 Method Not Allowed" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Length: 0\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleRangedGetRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            boolean hasRange = false;
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                if ("Range: bytes=0-0".equalsIgnoreCase(line)) { //$NON-NLS-1$
+                    hasRange = true;
+                }
+            }
+
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("GET /artifact-sources.jar ") //$NON-NLS-1$
+                    && hasRange;
+            byte[] responseBody = accepted ? new byte[] { 0 } : new byte[0];
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "206 Partial Content" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Range: bytes 0-0/10485760\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + responseBody.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.write(responseBody);
+            out.flush();
+        }
+    }
+
+    private static void handleHeadRequest(Socket socket) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                // Consume request headers.
+            }
+
+            boolean accepted = requestLine != null && requestLine.startsWith("HEAD /artifact-sources.jar "); //$NON-NLS-1$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "405 Method Not Allowed") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: application/java-archive\r\n" //$NON-NLS-1$
+                    + "Content-Length: 10485760\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$
+            out.write(statusLine);
+            out.flush();
+        }
+    }
+
+    private static void handleJsonPostRequest(Socket socket, String expectedPayload) throws IOException {
+        try (InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+            String requestLine = readHttpLine(in);
+            int contentLength = 0;
+            String contentType = ""; //$NON-NLS-1$
+            for (String line = readHttpLine(in); line != null && !line.isEmpty(); line = readHttpLine(in)) {
+                int separator = line.indexOf(':');
+                if (separator < 0) {
+                    continue;
+                }
+                String name = line.substring(0, separator).trim();
+                String value = line.substring(separator + 1).trim();
+                if ("Content-Length".equalsIgnoreCase(name)) { //$NON-NLS-1$
+                    contentLength = Integer.parseInt(value);
+                } else if ("Content-Type".equalsIgnoreCase(name)) { //$NON-NLS-1$
+                    contentType = value;
+                }
+            }
+
+            String body = new String(in.readNBytes(contentLength), StandardCharsets.UTF_8);
+            boolean accepted = requestLine != null
+                    && requestLine.startsWith("POST /api/internal/browse/components ") //$NON-NLS-1$
+                    && contentType.startsWith("application/json") //$NON-NLS-1$
+                    && expectedPayload.equals(body);
+
+            byte[] responseBody = (accepted ? "ok" : "bad").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            byte[] statusLine = ("HTTP/1.0 " + (accepted ? "200 OK" : "400 Bad Request") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + "\r\nContent-Type: text/plain\r\n" //$NON-NLS-1$
+                    + "Content-Length: " + responseBody.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8); //$NON-NLS-1$ //$NON-NLS-2$
+            out.write(statusLine);
+            out.write(responseBody);
+            out.flush();
+        }
+    }
+
+    private static String readHttpLine(InputStream in) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        boolean readAny = false;
+        int c;
+        while ((c = in.read()) != -1) {
+            readAny = true;
+            if (c == '\r') {
+                int next = in.read();
+                if (next != '\n' && next != -1) {
+                    buffer.write(next);
+                }
+                break;
+            }
+            if (c == '\n') {
+                break;
+            }
+            buffer.write(c);
+        }
+        if (!readAny && buffer.size() == 0) {
+            return null;
+        }
+        return buffer.toString(StandardCharsets.ISO_8859_1);
+    }
+
     /**
      * Serves a single HTTP request: sends 401 if no Authorization header is present,
-     * otherwise sends 200 with the supplied body. Uses HTTP/1.0 so each request is
-     * a distinct TCP connection, allowing the retry to come in as a separate accept().
+     * otherwise sends 200 with the supplied body.
      */
     private static void handleHttpRequest(Socket socket, byte[] body) throws IOException {
         try (InputStream in = socket.getInputStream();

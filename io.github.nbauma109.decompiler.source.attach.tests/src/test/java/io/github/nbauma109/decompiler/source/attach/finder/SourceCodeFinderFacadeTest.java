@@ -147,8 +147,8 @@ public class SourceCodeFinderFacadeTest {
         File mavenRepoDir = new File(System.getProperty("user.home"), ".m2/repository"); //$NON-NLS-1$ //$NON-NLS-2$
         File mavenRepoFile = new File(mavenRepoDir,
                 groupId.replace('.', File.separatorChar) + File.separator
-                        + artifactId + File.separator + version + File.separator
-                        + artifactId + "-" + version + "-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
+                + artifactId + File.separator + version + File.separator
+                + artifactId + "-" + version + "-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
         if (mavenRepoFile.exists()) {
             FileUtils.deleteQuietly(mavenRepoFile.getParentFile());
         }

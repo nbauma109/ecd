@@ -81,6 +81,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     public static final String NEXUS_URL = "NEXUS_URL"; //$NON-NLS-1$
     public static final String NEXUS_USER = "NEXUS_USER"; //$NON-NLS-1$
     public static final String NEXUS_PASSWORD = "NEXUS_PASSWORD"; //$NON-NLS-1$
+    public static final String NEXUS_BYPASS_PROXY = "NEXUS_BYPASS_PROXY"; //$NON-NLS-1$
 
     public static final String PUBLIC_REPO_MAVEN_CENTRAL = "PUBLIC_REPO_MAVEN_CENTRAL"; //$NON-NLS-1$
     public static final String PUBLIC_REPO_SONATYPE_CENTRAL = "PUBLIC_REPO_SONATYPE_CENTRAL"; //$NON-NLS-1$
@@ -148,6 +149,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
         store.setDefault(ATTACH_SOURCE, true);
         store.setDefault(WAIT_FOR_SOURCES, true);
         store.setDefault(EXPORT_ENCODING, StandardCharsets.UTF_8.name());
+        store.setDefault(NEXUS_BYPASS_PROXY, true);
 
         store.setDefault(CLASS_FILE_ATTR_SHOW_CONSTANT_POOL, false);
         store.setDefault(CLASS_FILE_ATTR_SHOW_LINE_NUMBER_TABLE, false);

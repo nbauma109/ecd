@@ -28,13 +28,8 @@
 
 package io.github.nbauma109.decompiler.source.attach.finder;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -48,10 +43,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import org.eclipse.core.net.proxy.IProxyService;
-
-import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
-import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.HashUtils;
@@ -73,6 +65,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     private final String serviceUrl;      // Base URL, for example: https://repo.example.com (with or without /nexus)
     private final String serviceUser;     // May be null for anonymous access
     private final String servicePassword; // May be null
+    private final boolean bypassProxy;
 
     // ---------------------------------------------------------------------------------
     // State
@@ -83,13 +76,18 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // Construction
     // ---------------------------------------------------------------------------------
     public NexusSourceCodeFinder(String serviceUrl) {
-        this(serviceUrl, null, null);
+        this(serviceUrl, null, null, false);
     }
 
     public NexusSourceCodeFinder(String serviceUrl, String user, String password) {
+        this(serviceUrl, user, password, true);
+    }
+
+    public NexusSourceCodeFinder(String serviceUrl, String user, String password, boolean bypassProxy) {
         this.serviceUrl = trimTrailingSlash(Objects.requireNonNull(serviceUrl, "serviceUrl"));
         this.serviceUser = user;
         this.servicePassword = password;
+        this.bypassProxy = bypassProxy;
     }
 
     @Override
@@ -176,6 +174,7 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
         UrlDownloader downloader = new UrlDownloader();
         downloader.setServiceUser(serviceUser);
         downloader.setServicePassword(servicePassword);
+        downloader.setNoProxy(bypassProxy);
 
         for (Map.Entry<GAV, String> e : candidates.entrySet()) {
             if (canceled) {
@@ -684,28 +683,15 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
     // HTTP
     // ---------------------------------------------------------------------------------
     private int httpStatusCode(String url) throws IOException {
-        HttpURLConnection c = open(url, "GET");
-        try {
-            c.connect();
-            drainQuietly(c);
-            return c.getResponseCode();
-        } finally {
-            safeClose(c);
-        }
+        EcfHttpClient client = newHttpClient();
+        return client.getStatusCode(normalizeSchemeByPort(url));
     }
 
     private boolean httpExists(String url) {
         url = normalizeSchemeByPort(url);
         try {
-            HttpURLConnection c = open(url, "GET");
-            try {
-                c.connect();
-                int code = c.getResponseCode();
-                drainQuietly(c);
-                return code >= 200 && code < 300;
-            } finally {
-                safeClose(c);
-            }
+            int code = newHttpClient().getStatusCode(url);
+            return code >= 200 && code < 300;
         } catch (Throwable t) {
             return false;
         }
@@ -716,74 +702,32 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
             return null;
         }
         url = normalizeSchemeByPort(url);
-        HttpURLConnection c = null;
         try {
-            c = open(url, "GET");
-            int code = c.getResponseCode();
-            if (code != 200) {
-                drainQuietly(c);
-                return null;
-            }
-            try (InputStream is = c.getInputStream();
-                    BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-                StringBuilder sb = new StringBuilder(256);
-                String line;
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
-                }
-                return Json.parse(sb.toString()).asObject();
-            }
+            byte[] bytes = newHttpClient().downloadToBytes(url);
+            return Json.parse(new String(bytes, StandardCharsets.UTF_8)).asObject();
         } catch (Throwable t) {
             Logger.debug(t);
             return null;
-        } finally {
-            safeClose(c);
         }
     }
 
-    private HttpURLConnection open(String url, String method) throws IOException {
-        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
-        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
-        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
-
-        // Open connection with proxy support
-        HttpURLConnection c;
-        try {
-            URI uri = new URI(url);
-            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            c = (HttpURLConnection) uri.toURL().openConnection(proxy);
-        } catch (URISyntaxException | IOException e) {
-            Logger.debug(e);
-            c = (HttpURLConnection) URI.create(url).toURL().openConnection();
-        }
-
-        c.setInstanceFollowRedirects(true);
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(30000);
-        c.setRequestMethod(method);
-        c.setRequestProperty("Accept", "application/json, */*;q=0.8");
-        if (!isEmpty(serviceUser)) {
+    private EcfHttpClient newHttpClient() {
+        EcfHttpClient client = new EcfHttpClient();
+        client.setConnectTimeout(15000);
+        client.setReadTimeout(30000);
+        client.setRequestHeader("Accept", "application/json, */*;q=0.8");
+        client.setNoProxy(bypassProxy);
+        if (hasServiceCredentials()) {
             String token = serviceUser + ":" + (servicePassword == null ? "" : servicePassword);
             String basic = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
-            c.setRequestProperty("Authorization", "Basic " + basic);
+            client.setRequestHeader("Authorization", "Basic " + basic);
+            client.setAllowSensitiveHeaderRedirects(true);
         }
-        return c;
+        return client;
     }
 
-    private void drainQuietly(HttpURLConnection c) {
-        try (InputStream es = c.getErrorStream()) {
-            if (es != null) {
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(es, StandardCharsets.UTF_8))) {
-                    while (br.readLine() != null) { /* drain */ }
-                }
-            }
-        } catch (Throwable ignored) {}
-    }
-
-    private void safeClose(HttpURLConnection c) {
-        if (c != null) {
-            try { c.disconnect(); } catch (Throwable ignored) {}
-        }
+    private boolean hasServiceCredentials() {
+        return !isEmpty(serviceUser);
     }
 
     // ---------------------------------------------------------------------------------

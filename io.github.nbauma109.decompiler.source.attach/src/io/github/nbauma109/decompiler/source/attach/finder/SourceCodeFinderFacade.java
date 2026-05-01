@@ -149,9 +149,10 @@ public class SourceCodeFinderFacade extends AbstractSourceCodeFinder {
         String nexusUrl = prefs.getString(JavaDecompilerPlugin.NEXUS_URL);
         String nexusUser = prefs.getString(JavaDecompilerPlugin.NEXUS_USER);
         String nexusPassword = prefs.getString(JavaDecompilerPlugin.NEXUS_PASSWORD);
+        boolean bypassProxy = prefs.getBoolean(JavaDecompilerPlugin.NEXUS_BYPASS_PROXY);
         if (!nexusUrl.isBlank()) {
             if (!nexusUser.isBlank() && !nexusPassword.isBlank()) {
-                finders.add(new NexusSourceCodeFinder(nexusUrl, nexusUser, nexusPassword));
+                finders.add(new NexusSourceCodeFinder(nexusUrl, nexusUser, nexusPassword, bypassProxy));
             } else {
                 finders.add(new NexusSourceCodeFinder(nexusUrl));
             }

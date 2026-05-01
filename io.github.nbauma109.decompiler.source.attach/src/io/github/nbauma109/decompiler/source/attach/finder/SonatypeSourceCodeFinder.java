@@ -10,12 +10,6 @@ package io.github.nbauma109.decompiler.source.attach.finder;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,11 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
-import org.eclipse.core.net.proxy.IProxyService;
-
-import io.github.nbauma109.decompiler.source.attach.SourceAttachPlugin;
-import io.github.nbauma109.decompiler.source.attach.utils.ProxyUtil;
+import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -42,7 +32,8 @@ import com.eclipsesource.json.JsonValue;
 public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implements SourceCodeFinder {
 
     private static final String SOURCES_JAR = "-sources.jar"; //$NON-NLS-1$
-    private static final String SONATYPE_BROWSE_COMPONENTS_API = "https://central.sonatype.com/api/internal/browse/components"; //$NON-NLS-1$
+    private static final String SONATYPE_BROWSE_COMPONENTS_API =
+            "https://central.sonatype.com/api/internal/browse/components"; //$NON-NLS-1$
     private static final String MAVEN_CENTRAL_BASE_URL = "https://repo1.maven.org/maven2/"; //$NON-NLS-1$
     private static final int PAGE_SIZE = 20;
 
@@ -145,25 +136,31 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
             return results;
         }
 
-        JsonArray componentArray = fetchComponents(sha1);
-        extractGAVsFromComponents(componentArray, results);
+        JsonArray components = fetchComponents(sha1);
+        extractGAVsFromComponents(components, results);
         return results;
     }
 
     private JsonArray fetchComponents(String sha1) throws IOException {
-        String payload = "{\"size\":" + PAGE_SIZE + ",\"searchTerm\":\"1:" //$NON-NLS-1$ //$NON-NLS-2$
-                + sha1.toLowerCase(Locale.ROOT) + "\",\"filter\":[]}"; //$NON-NLS-1$
-        JsonObject response = Json.parse(postJson(SONATYPE_BROWSE_COMPONENTS_API, payload)).asObject();
-        JsonValue components = response.get("components"); //$NON-NLS-1$
-
-        if (components == null || !components.isArray()) {
+        String payload = "{\"size\":" + PAGE_SIZE //$NON-NLS-1$
+                + ",\"searchTerm\":\"1:" + sha1.toLowerCase(Locale.ROOT) //$NON-NLS-1$
+                + "\",\"filter\":[]}"; //$NON-NLS-1$
+        String json = postJson(SONATYPE_BROWSE_COMPONENTS_API, payload);
+        try {
+            JsonObject response = Json.parse(json).asObject();
+            JsonValue components = response.get("components"); //$NON-NLS-1$
+            if (components == null || !components.isArray()) {
+                return new JsonArray();
+            }
+            return components.asArray();
+        } catch (RuntimeException e) {
+            Logger.debug(e);
             return new JsonArray();
         }
-        return components.asArray();
     }
 
-    private void extractGAVsFromComponents(JsonArray componentArray, Set<GAV> results) {
-        for (JsonValue value : componentArray) {
+    private void extractGAVsFromComponents(JsonArray components, Set<GAV> results) {
+        for (JsonValue value : components) {
             if (value == null || !value.isObject()) {
                 continue;
             }
@@ -192,44 +189,24 @@ public class SonatypeSourceCodeFinder extends AbstractSourceCodeFinder implement
 
     private String getVersionFromComponent(JsonObject component) {
         String version = component.getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
-        if (version.isBlank()) {
-            JsonValue latestVersionInfo = component.get("latestVersionInfo"); //$NON-NLS-1$
-            if (latestVersionInfo != null && latestVersionInfo.isObject()) {
-                version = latestVersionInfo.asObject().getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
-            }
+        if (!version.isBlank()) {
+            return version;
         }
-        return version;
+
+        JsonValue latestVersionInfo = component.get("latestVersionInfo"); //$NON-NLS-1$
+        if (latestVersionInfo != null && latestVersionInfo.isObject()) {
+            return latestVersionInfo.asObject().getString("version", ""); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        return ""; //$NON-NLS-1$
     }
 
     private String postJson(String apiUrl, String payload) throws IOException {
-        // Get Eclipse proxy service via activator (ServiceTracker, no OSGi service leak)
-        SourceAttachPlugin defaultPlugin = SourceAttachPlugin.getDefault();
-        IProxyService proxyService = defaultPlugin != null ? defaultPlugin.getProxyService() : null;
+        EcfHttpClient client = new EcfHttpClient();
+        client.setConnectTimeout(5000);
+        client.setReadTimeout(5000);
 
-        // Open connection with proxy support
-        HttpURLConnection connection;
-        try {
-            URI uri = new URI(apiUrl);
-            Proxy proxy = ProxyUtil.getProxy(uri, proxyService);
-            connection = (HttpURLConnection) uri.toURL().openConnection(proxy);
-        } catch (URISyntaxException | IOException e) {
-            Logger.debug(e);
-            connection = (HttpURLConnection) URI.create(apiUrl).toURL().openConnection();
-        }
-
-        connection.setRequestMethod("POST"); //$NON-NLS-1$
-        connection.setRequestProperty("Content-Type", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$
-        connection.setRequestProperty("Accept", "application/json"); //$NON-NLS-1$ //$NON-NLS-2$
-        connection.setConnectTimeout(5000);
-        connection.setReadTimeout(5000);
-        connection.setDoOutput(true);
-
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(payload.getBytes(StandardCharsets.UTF_8));
-        }
-        try (InputStream is = connection.getInputStream()) {
-            return IOUtils.toString(is, StandardCharsets.UTF_8);
-        }
+        byte[] responseBytes = client.postJson(apiUrl, payload);
+        return new String(responseBytes, StandardCharsets.UTF_8);
     }
 
     private String buildSourcesUrl(GAV gav) {
