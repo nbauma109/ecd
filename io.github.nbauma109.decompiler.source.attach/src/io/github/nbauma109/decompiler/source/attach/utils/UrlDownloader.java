@@ -102,8 +102,6 @@ public class UrlDownloader {
         } catch (IOException | RuntimeException ex) {
             Logger.error(ex);
             file.delete();
-            // Return the path even on failure so callers can use exists() to detect the failure
-            return file.getAbsolutePath();
         }
         return file.getAbsolutePath();
     }
