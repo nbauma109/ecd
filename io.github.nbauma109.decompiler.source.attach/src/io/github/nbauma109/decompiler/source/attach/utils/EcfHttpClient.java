@@ -228,7 +228,7 @@ public class EcfHttpClient {
             }
             get.setHeader("Range", "bytes=0-0"); //$NON-NLS-1$ //$NON-NLS-2$
             get.setConfig(requestConfig.build());
-            return client.execute(get, context, HttpResponse::getCode);
+            return normalizeRangedGetStatus(client.execute(get, context, HttpResponse::getCode));
         } catch (URISyntaxException e) {
             throw new IOException("Invalid URL: " + url, e);
         } finally {
@@ -240,6 +240,10 @@ public class EcfHttpClient {
 
     private boolean isHeadRejected(int statusCode) {
         return statusCode == 400 || statusCode == 403 || statusCode == 405 || statusCode == 501;
+    }
+
+    private int normalizeRangedGetStatus(int statusCode) {
+        return statusCode == 206 ? 200 : statusCode;
     }
 
     private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {

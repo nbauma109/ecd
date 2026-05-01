@@ -251,7 +251,7 @@ public class UrlDownloaderTest {
     }
 
     @Test
-    public void getStatusCodeFallsBackToRangedGetWhenHeadIsRejected() throws Exception {
+    public void getStatusCodeTreatsPartialContentFallbackAsOkWhenHeadIsRejected() throws Exception {
         CountDownLatch serverReady = new CountDownLatch(1);
         AtomicBoolean serverRunning = new AtomicBoolean(true);
 
@@ -286,7 +286,7 @@ public class UrlDownloaderTest {
 
                 int statusCode = client.getStatusCode("http://localhost:" + port + "/artifact-sources.jar"); //$NON-NLS-1$ //$NON-NLS-2$
 
-                assertEquals(206, statusCode);
+                assertEquals(200, statusCode);
             } finally {
                 serverRunning.set(false);
             }
