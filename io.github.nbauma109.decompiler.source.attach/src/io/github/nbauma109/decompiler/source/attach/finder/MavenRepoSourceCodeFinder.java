@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
+import io.github.nbauma109.decompiler.util.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.UrlDownloader;
 import io.github.nbauma109.decompiler.util.Logger;

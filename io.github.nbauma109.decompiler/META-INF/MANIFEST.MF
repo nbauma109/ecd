@@ -44,7 +44,14 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.search,
  org.eclipse.core.filesystem,
  org.eclipse.equinox.p2.metadata;resolution:=optional,
- org.eclipse.help.base
+ org.eclipse.help.base,
+ org.eclipse.ecf.filetransfer;resolution:=optional,
+ org.eclipse.ecf;resolution:=optional,
+ org.eclipse.ecf.identity;resolution:=optional,
+ org.eclipse.ecf.provider.filetransfer;resolution:=optional,
+ org.eclipse.ecf.provider.filetransfer.httpclient5;resolution:=optional,
+ org.apache.httpcomponents.client5.httpclient5;resolution:=optional,
+ org.apache.httpcomponents.core5.httpcore5;resolution:=optional
 Bundle-Vendor: ECD Project Team
 Bundle-Version: 2026.3.7
 Bundle-ManifestVersion: 2
