@@ -46,7 +46,7 @@ public class UpdateCheckJob extends Job {
     }
 
     @Override
-    protected IStatus run(IProgressMonitor monitor) {
+    public IStatus run(IProgressMonitor monitor) {
         try {
             String latestVersion = fetchLatestVersion();
             if (latestVersion == null) {
