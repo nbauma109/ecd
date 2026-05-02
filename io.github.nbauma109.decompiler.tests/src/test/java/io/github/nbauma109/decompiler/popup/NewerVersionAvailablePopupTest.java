@@ -49,6 +49,10 @@ public class NewerVersionAvailablePopupTest {
             NewerVersionAvailablePopup popup2 = new NewerVersionAvailablePopup("2026.5.0"); //$NON-NLS-1$
             popup1.create();
             popup2.create();
+            assertNotNull("first popup shell should be non-null", popup1.getShell()); //$NON-NLS-1$
+            assertNotNull("second popup shell should be non-null", popup2.getShell()); //$NON-NLS-1$
+            assertFalse("first popup shell should not be disposed", popup1.getShell().isDisposed()); //$NON-NLS-1$
+            assertFalse("second popup shell should not be disposed", popup2.getShell().isDisposed()); //$NON-NLS-1$
             popup1.close();
             popup2.close();
         });

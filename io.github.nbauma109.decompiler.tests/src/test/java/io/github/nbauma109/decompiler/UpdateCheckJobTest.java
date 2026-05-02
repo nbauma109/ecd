@@ -17,6 +17,8 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,6 +26,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.jobs.Job;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 public class UpdateCheckJobTest {
 
@@ -39,11 +44,23 @@ public class UpdateCheckJobTest {
     }
 
     // ---------------------------------------------------------------------------
+    // run() – connection refused
+    // ---------------------------------------------------------------------------
+
+    @Test
+    public void runHandlesConnectionRefusedGracefully() {
+        // Port 1 is normally inaccessible — simulate unreachable host
+        UpdateCheckJob job = new UpdateCheckJob("http://localhost:1/releases/latest"); //$NON-NLS-1$
+        IStatus status = job.run(null);
+        assertEquals(IStatus.OK, status.getSeverity());
+    }
+
+    // ---------------------------------------------------------------------------
     // run() – mock GitHub API server helpers
     // ---------------------------------------------------------------------------
 
     /** Runs {@code job.run(null)} against a local HTTP server that serves {@code responseBody}. */
-    private IStatus runJobAgainstMockServer(String responseBody) throws Exception {
+    static IStatus runJobAgainstMockServer(String responseBody) throws Exception {
         CountDownLatch serverReady = new CountDownLatch(1);
         AtomicBoolean serverRunning = new AtomicBoolean(true);
 
@@ -77,7 +94,6 @@ public class UpdateCheckJobTest {
 
     private static void drainRequest(Socket socket) throws IOException {
         InputStream in = socket.getInputStream();
-        byte[] buf = new byte[4096];
         // Read until the blank line that ends the HTTP request headers
         StringBuilder sb = new StringBuilder();
         int b;
@@ -103,70 +119,36 @@ public class UpdateCheckJobTest {
     }
 
     // ---------------------------------------------------------------------------
-    // run() – various GitHub API response scenarios
+    // run() – various GitHub API response scenarios (parameterized)
     // ---------------------------------------------------------------------------
 
-    @Test
-    public void runReturnsOkWhenNewerVersionIsAvailable() throws Exception {
-        // A version far in the future triggers the "show popup" path
-        String body = "{\"tag_name\":\"v9999.0.0\"}"; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
+    @RunWith(Parameterized.class)
+    public static class MockServerResponseTest {
 
-    @Test
-    public void runReturnsOkWhenCurrentVersionIsAlreadyLatest() throws Exception {
-        // Same version as what's in the bundle — no popup should be shown
-        String currentVersion = JavaDecompilerPlugin.getDefault().getBundle().getVersion().toString();
-        String body = "{\"tag_name\":\"v" + currentVersion + "\"}"; //$NON-NLS-1$ //$NON-NLS-2$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
+        @Parameters(name = "{0}")
+        public static Collection<Object[]> data() {
+            String currentVersion = JavaDecompilerPlugin.getDefault().getBundle().getVersion().toString();
+            return Arrays.asList(new Object[][] {
+                { "newer version triggers showPopup path",        "{\"tag_name\":\"v9999.0.0\"}" },                                            //$NON-NLS-1$ //$NON-NLS-2$
+                { "current version already latest",              "{\"tag_name\":\"v" + currentVersion + "\"}" },                              //$NON-NLS-1$ //$NON-NLS-2$
+                { "tag_name missing from response",              "{\"name\":\"Some Release\",\"published_at\":\"2026-01-01T00:00:00Z\"}" },    //$NON-NLS-1$ //$NON-NLS-2$
+                { "response is not a JSON object",               "\"not-an-object\"" },                                                        //$NON-NLS-1$ //$NON-NLS-2$
+                { "response is invalid JSON",                    "not-json-at-all" },                                                          //$NON-NLS-1$ //$NON-NLS-2$
+                { "version string is unparseable",               "{\"tag_name\":\"not-a-version\"}" },                                         //$NON-NLS-1$ //$NON-NLS-2$
+                { "version has no v prefix",                     "{\"tag_name\":\"9999.0.0\"}" },                                              //$NON-NLS-1$ //$NON-NLS-2$
+            });
+        }
 
-    @Test
-    public void runReturnsOkWhenTagNameIsMissingFromResponse() throws Exception {
-        // JSON object without "tag_name" — fetchLatestVersion returns null
-        String body = "{\"name\":\"Some Release\",\"published_at\":\"2026-01-01T00:00:00Z\"}"; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
+        private final String responseBody;
 
-    @Test
-    public void runReturnsOkWhenResponseIsNotAJsonObject() throws Exception {
-        // A plain string is not a JSON object
-        String body = "\"not-an-object\""; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
+        public MockServerResponseTest(String description, String responseBody) {
+            this.responseBody = responseBody;
+        }
 
-    @Test
-    public void runReturnsOkWhenResponseIsInvalidJson() throws Exception {
-        String body = "not-json-at-all"; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
-
-    @Test
-    public void runReturnsOkWhenVersionStringIsUnparseable() throws Exception {
-        // tag_name present but version string is not a valid OSGi version
-        String body = "{\"tag_name\":\"not-a-version\"}"; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
-
-    @Test
-    public void runReturnsOkWhenVersionHasNoVPrefix() throws Exception {
-        // Version without "v" prefix — parseVersion should still work
-        String body = "{\"tag_name\":\"9999.0.0\"}"; //$NON-NLS-1$
-        IStatus status = runJobAgainstMockServer(body);
-        assertEquals(IStatus.OK, status.getSeverity());
-    }
-
-    @Test
-    public void runHandlesConnectionRefusedGracefully() {
-        // Port 1 is normally inaccessible — simulate unreachable host
-        UpdateCheckJob job = new UpdateCheckJob("http://localhost:1/releases/latest"); //$NON-NLS-1$
-        IStatus status = job.run(null);
-        assertEquals(IStatus.OK, status.getSeverity());
+        @Test
+        public void runReturnsOkForAllResponseVariants() throws Exception {
+            IStatus status = runJobAgainstMockServer(responseBody);
+            assertEquals(IStatus.OK, status.getSeverity());
+        }
     }
 }
