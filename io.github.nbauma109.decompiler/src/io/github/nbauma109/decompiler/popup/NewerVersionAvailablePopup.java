@@ -62,9 +62,9 @@ public class NewerVersionAvailablePopup extends Window {
 
         Label messageLabel = new Label(composite, SWT.WRAP);
         messageLabel.setText(
-            "A newer version of ECD++ has been released: " + version + ".\n" //$NON-NLS-1$ //$NON-NLS-2$
-            + "Feel free to check it out or trigger an update. In case no update is available in your IDE, " //$NON-NLS-1$
-            + "the plugin might have been installed manually or is managed by your organization."); //$NON-NLS-1$
+                "A newer version of ECD++ has been released: " + version + ".\n" //$NON-NLS-1$ //$NON-NLS-2$
+                + "Feel free to check it out or trigger an update. In case no update is available in your IDE, " //$NON-NLS-1$
+                + "the plugin might have been installed manually or is managed by your organization."); //$NON-NLS-1$
         GridData msgData = new GridData(SWT.FILL, SWT.FILL, true, true);
         msgData.widthHint = POPUP_WIDTH - 24;
         messageLabel.setLayoutData(msgData);
@@ -124,8 +124,8 @@ public class NewerVersionAvailablePopup extends Window {
     private void openBrowser(String url) {
         try {
             PlatformUI.getWorkbench().getBrowserSupport()
-                .getExternalBrowser()
-                .openURL(URI.create(url).toURL());
+            .getExternalBrowser()
+            .openURL(URI.create(url).toURL());
         } catch (Exception e) {
             Logger.debug(e);
         }
