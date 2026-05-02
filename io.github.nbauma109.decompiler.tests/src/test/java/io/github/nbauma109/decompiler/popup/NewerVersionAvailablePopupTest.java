@@ -69,12 +69,12 @@ public class NewerVersionAvailablePopupTest {
     }
 
     /**
-     * Fires selection events on the "Check for updates" and "Close" links to cover
-     * the {@code executeP2Update}/{@code executeUpdateManager} catch branches and
-     * the close-link handler.
+     * Fires selection events on all three links to cover the {@code openBrowser},
+     * {@code executeP2Update}/{@code executeUpdateManager} catch branches, and the
+     * close-link handler.
      */
     @Test
-    public void linkHandlersCoverUpdateAndCloseCodePaths() {
+    public void linkHandlersCoverBrowserUpdateAndCloseCodePaths() {
         Display display = Display.getDefault();
         display.syncExec(() -> {
             NewerVersionAvailablePopup popup = new NewerVersionAvailablePopup("v99.0.0"); //$NON-NLS-1$
@@ -84,6 +84,11 @@ public class NewerVersionAvailablePopupTest {
 
             List<Link> links = collectLinks(shell);
             assertEquals("expected 3 links (browser, update, close)", 3, links.size()); //$NON-NLS-1$
+
+            // Fire "Check out in browser" link — exercises openBrowser() catch branch
+            // (external browser not available in test env); popup stays open
+            fireSelection(links.get(0));
+            assertFalse("shell should remain open after browser-link click", shell.isDisposed()); //$NON-NLS-1$
 
             // Fire "Check for updates" link — exercises executeP2Update and executeUpdateManager
             // catch branches (commands not available in test env); popup stays open
