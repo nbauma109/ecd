@@ -40,6 +40,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.github.nbauma109.decompiler.util.EcfHttpClient;
+
 public class UrlDownloaderTest {
 
     private static final String TEST_USER = "alice"; //$NON-NLS-1$

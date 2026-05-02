@@ -32,7 +32,7 @@ import javax.swing.text.html.HTMLDocument;
 
 import org.apache.commons.io.IOUtils;
 
-import io.github.nbauma109.decompiler.source.attach.utils.EcfHttpClient;
+import io.github.nbauma109.decompiler.util.EcfHttpClient;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceAttachUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceBindingUtil;
 import io.github.nbauma109.decompiler.source.attach.utils.SourceConstants;

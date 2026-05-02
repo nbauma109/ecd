@@ -6,7 +6,7 @@
  * https://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package io.github.nbauma109.decompiler.source.attach.utils;
+package io.github.nbauma109.decompiler.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

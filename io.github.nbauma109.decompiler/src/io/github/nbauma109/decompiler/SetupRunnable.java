@@ -49,6 +49,7 @@ public class SetupRunnable implements Runnable {
                 setupPartListener();
                 DecompilerSourceLookupBridge.install();
                 BreakpointPresentationBridge.install();
+                new UpdateCheckJob().schedule(2000L);
             }
         } catch (Throwable e) {
             Logger.debug(e);

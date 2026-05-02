@@ -22,6 +22,7 @@ import org.apache.tools.ant.Target;
 import org.apache.tools.ant.taskdefs.Delete;
 import org.apache.tools.ant.taskdefs.Zip;
 
+import io.github.nbauma109.decompiler.util.EcfHttpClient;
 import io.github.nbauma109.decompiler.util.Logger;
 
 /**
