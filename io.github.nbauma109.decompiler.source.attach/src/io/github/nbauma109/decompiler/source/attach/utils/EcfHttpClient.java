@@ -356,8 +356,8 @@ public class EcfHttpClient {
         } catch (BundleException e) {
             return null;
         }
-        BundleContext context = bundle.getBundleContext();
-        return context;
+
+        return bundle.getBundleContext();
     }
 
     private RequestConfig.Builder newRequestConfig(IHttpClientFactory factory, HttpClientContext context) {
