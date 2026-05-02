@@ -75,12 +75,12 @@ public class EcfHttpClient {
     private static final int DEFAULT_TIMEOUT_MS = 5000;
     private static final DefaultRedirectStrategy SENSITIVE_HEADER_REDIRECT_STRATEGY =
             new DefaultRedirectStrategy() {
-                @Override
-                public boolean isRedirectAllowed(HttpHost currentTarget, HttpHost newTarget,
-                        HttpRequest redirect, HttpContext context) {
-                    return true;
-                }
-            };
+        @Override
+        public boolean isRedirectAllowed(HttpHost currentTarget, HttpHost newTarget,
+                HttpRequest redirect, HttpContext context) {
+            return true;
+        }
+    };
 
     private int connectTimeout = DEFAULT_TIMEOUT_MS;
     private int readTimeout = DEFAULT_TIMEOUT_MS;
@@ -356,11 +356,8 @@ public class EcfHttpClient {
         } catch (BundleException e) {
             return null;
         }
-        BundleContext context = bundle.getBundleContext();
-        if (context == null) {
-            return null;
-        }
-        return context;
+
+        return bundle.getBundleContext();
     }
 
     private RequestConfig.Builder newRequestConfig(IHttpClientFactory factory, HttpClientContext context) {
