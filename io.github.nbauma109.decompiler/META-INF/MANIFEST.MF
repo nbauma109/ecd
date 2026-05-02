@@ -65,6 +65,7 @@ Export-Package: com.eclipsesource.json,
  io.github.nbauma109.decompiler.editor,
  io.github.nbauma109.decompiler.extension,
  io.github.nbauma109.decompiler.i18n,
+ io.github.nbauma109.decompiler.popup,
  io.github.nbauma109.decompiler.preferences,
  io.github.nbauma109.decompiler.source.attach,
  io.github.nbauma109.decompiler.util
