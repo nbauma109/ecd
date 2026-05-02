@@ -38,7 +38,7 @@ public class UpdateCheckJob extends Job {
         this(GITHUB_API_URL);
     }
 
-    UpdateCheckJob(String apiUrl) {
+    public UpdateCheckJob(String apiUrl) {
         super("Checking for ECD++ updates"); //$NON-NLS-1$
         this.apiUrl = apiUrl;
         setSystem(true);
