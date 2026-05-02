@@ -16,6 +16,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.PlatformUI;
 import org.osgi.framework.Version;
 
 import com.eclipsesource.json.Json;
@@ -92,7 +93,10 @@ public class UpdateCheckJob extends Job {
     }
 
     private void showPopup(String version) {
-        Display display = Display.getDefault();
+        if (!PlatformUI.isWorkbenchRunning()) {
+            return;
+        }
+        Display display = PlatformUI.getWorkbench().getDisplay();
         if (display == null || display.isDisposed()) {
             return;
         }
