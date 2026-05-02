@@ -139,9 +139,11 @@ public class UpdateCheckJobTest {
             });
         }
 
+        private final String description;
         private final String responseBody;
 
         public MockServerResponseTest(String description, String responseBody) {
+            this.description = description;
             this.responseBody = responseBody;
         }
 
