@@ -5,7 +5,7 @@
  * © 2018 helospark (@helospark)
  * © 2021 Jan Peter Stotz (@jpstotz)
  * © 2022-2026 Nicolas Baumann (@nbauma109)
- * © 2026 Hélios GILLES
+ * © 2026 Hélios GILLES (@RoiSoleil)
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
