@@ -21,6 +21,7 @@
     <signing.storetype>PKCS12</signing.storetype>
     <signing.alias></signing.alias>
     <signing.storepass></signing.storepass>
+    <swt.vmargs></swt.vmargs>
     <sonar.projectKey>nbauma109_ecd</sonar.projectKey>
     <sonar.organization>nbauma109</sonar.organization>
   </properties>
@@ -62,7 +63,7 @@
           <useUIHarness>true</useUIHarness>
           <useUIThread>true</useUIThread>
           <application>org.eclipse.ui.ide.workbench</application>
-          <argLine>${tycho.testArgLine} -Djava.awt.headless=false</argLine>
+          <argLine>${tycho.testArgLine} ${swt.vmargs} -Djava.awt.headless=false</argLine>
           <showEclipseLog>true</showEclipseLog>
         </configuration>
       </plugin>
@@ -111,7 +112,7 @@
               <arch>x86_64</arch>
             </environment>
 
-            <!-- MacOSX (Intel 32bit/64bit and ARM64) -->
+            <!-- MacOSX (Intel 32bit/64bit and ARM64/AArch64) -->
             <environment>
               <os>macosx</os>
               <ws>cocoa</ws>
@@ -126,6 +127,11 @@
               <os>macosx</os>
               <ws>cocoa</ws>
               <arch>arm64</arch>
+            </environment>
+            <environment>
+              <os>macosx</os>
+              <ws>cocoa</ws>
+              <arch>aarch64</arch>
             </environment>
           </environments>
         </configuration>
@@ -227,4 +233,18 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <profiles>
+    <profile>
+      <id>macos-swt</id>
+      <activation>
+        <os>
+          <family>mac</family>
+        </os>
+      </activation>
+      <properties>
+        <swt.vmargs>-XstartOnFirstThread</swt.vmargs>
+      </properties>
+    </profile>
+  </profiles>
 </project>
