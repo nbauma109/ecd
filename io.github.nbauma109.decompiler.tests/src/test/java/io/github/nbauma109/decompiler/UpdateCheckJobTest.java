@@ -99,7 +99,7 @@ public class UpdateCheckJobTest {
         int b;
         while ((b = in.read()) != -1) {
             sb.append((char) b);
-            if (sb.length() >= 4 && sb.substring(sb.length() - 4).equals("\r\n\r\n")) { //$NON-NLS-1$
+            if (sb.length() >= 4 && "\r\n\r\n".equals(sb.substring(sb.length() - 4))) { //$NON-NLS-1$
                 break;
             }
         }
