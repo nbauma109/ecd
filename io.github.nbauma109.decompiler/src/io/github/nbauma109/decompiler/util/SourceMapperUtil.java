@@ -1,5 +1,8 @@
 /*******************************************************************************
- * Copyright (c) 2019 ECD project contributors.
+ * (C) 2018 helospark (@helospark)
+ * (C) 2018 Robert Zenz (@RobertZenz)
+ * (C) 2021 Jan S. (@jpstotz)
+ * (C) 2025-2026 Nicolas Baumann (@nbauma109)
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
