@@ -53,7 +53,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.httpcomponents.client5.httpclient5;resolution:=optional,
  org.apache.httpcomponents.core5.httpcore5;resolution:=optional
 Bundle-Vendor: ECD Project Team
-Bundle-Version: 2026.3.9
+Bundle-Version: 2026.3.8
 Bundle-ManifestVersion: 2
 Bundle-Activator: io.github.nbauma109.decompiler.JavaDecompilerPlugin
 Bundle-SymbolicName: io.github.nbauma109.decompiler;singleton:=true
