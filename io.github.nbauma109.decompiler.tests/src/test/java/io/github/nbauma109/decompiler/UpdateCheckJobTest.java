@@ -134,7 +134,7 @@ public class UpdateCheckJobTest {
                 { "tag_name missing from response",              "{\"name\":\"Some Release\",\"published_at\":\"2026-01-01T00:00:00Z\"}" },    //$NON-NLS-1$ //$NON-NLS-2$
                 { "response is not a JSON object",               "\"not-an-object\"" },                                                        //$NON-NLS-1$ //$NON-NLS-2$
                 { "response is invalid JSON",                    "not-json-at-all" },                                                          //$NON-NLS-1$ //$NON-NLS-2$
-                { "version string is unparseable",               "{\"tag_name\":\"not-a-version\"}" },                                         //$NON-NLS-1$ //$NON-NLS-2$
+                { "version string is unparsable",               "{\"tag_name\":\"not-a-version\"}" },                                         //$NON-NLS-1$ //$NON-NLS-2$
                 { "version has no v prefix",                     "{\"tag_name\":\"9999.0.0\"}" },                                              //$NON-NLS-1$ //$NON-NLS-2$
             });
         }
