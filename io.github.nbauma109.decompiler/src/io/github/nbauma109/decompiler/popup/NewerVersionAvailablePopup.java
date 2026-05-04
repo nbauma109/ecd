@@ -155,8 +155,8 @@ public class NewerVersionAvailablePopup extends Window {
     private void openBrowser(String url) {
         try {
             PlatformUI.getWorkbench().getBrowserSupport()
-                .getExternalBrowser()
-                .openURL(URI.create(url).toURL());
+            .getExternalBrowser()
+            .openURL(URI.create(url).toURL());
         } catch (Exception e) {
             Logger.debug(e);
         }
