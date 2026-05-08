@@ -39,6 +39,7 @@ public class NewerVersionAvailablePopup extends Window {
     private static final int PADDING_EDGE = 10;
     private static final int AVATAR_SIZE = 48;
     private static final String GITHUB_RELEASES_URL = "https://github.com/nbauma109/ecd/releases"; //$NON-NLS-1$
+    private static final String JAVA_DECOMPILER_ORG = "https://www.javadecompiler.org/"; //$NON-NLS-1$
     private static final String COMMAND_P2_UPDATE = "org.eclipse.equinox.p2.ui.sdk.update"; //$NON-NLS-1$
     private static final String COMMAND_UPDATE_MANAGER = "org.eclipse.ui.update.findAndInstallUpdates"; //$NON-NLS-1$
 
@@ -123,12 +124,12 @@ public class NewerVersionAvailablePopup extends Window {
             }
         });
 
-        Link closeLink = new Link(linksComposite, SWT.NONE);
-        closeLink.setText("<a>Close</a>"); //$NON-NLS-1$
-        closeLink.addSelectionListener(new SelectionAdapter() {
+        Link websiteLink = new Link(linksComposite, SWT.NONE);
+        websiteLink.setText("<a>Visit www.javadecompiler.org</a>"); //$NON-NLS-1$
+        websiteLink.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                close();
+            	openBrowser(JAVA_DECOMPILER_ORG);
             }
         });
 
