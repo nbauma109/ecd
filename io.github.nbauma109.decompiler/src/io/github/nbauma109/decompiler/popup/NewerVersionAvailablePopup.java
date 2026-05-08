@@ -129,7 +129,7 @@ public class NewerVersionAvailablePopup extends Window {
         websiteLink.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-            	openBrowser(JAVA_DECOMPILER_ORG);
+                openBrowser(JAVA_DECOMPILER_ORG);
             }
         });
 
