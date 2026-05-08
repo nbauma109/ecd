@@ -30,3 +30,8 @@ mvn wrapper:wrapper -Dmaven=${M3_VERSION} --no-transfer-progress
 ./mvnw \
 	org.eclipse.tycho:tycho-versions-plugin:${TYCHO_VERSION}:update-eclipse-metadata \
 	-DnewVersion="$VERSION" -Dtycho.mode=maven --no-transfer-progress
+
+BUILD_DATE=$(date +%Y%m%d)
+# Requires GNU sed (as provided by ubuntu-latest runners)
+sed -i "s/^0=.*/0=${BUILD_DATE}/" io.github.nbauma109.decompiler/about.mappings
+sed -i "s/^1=.*/1=${VERSION}/" io.github.nbauma109.decompiler/about.mappings

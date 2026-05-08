@@ -77,7 +77,7 @@ public class NewerVersionAvailablePopup extends Window {
         composite.setLayout(layout);
 
         Label avatarLabel = new Label(composite, SWT.NONE);
-        Image avatar = loadBundleImage("icons/nbauma109.png"); //$NON-NLS-1$
+        Image avatar = loadBundleImage("icons/logo_48.png"); //$NON-NLS-1$
         if (avatar != null) {
             avatarLabel.setImage(avatar);
             avatarLabel.addDisposeListener(e -> avatar.dispose());

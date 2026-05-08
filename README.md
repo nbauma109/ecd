@@ -66,7 +66,7 @@ It also allows Java developers to **debug class files without source code direct
 ![image](https://javadecompiler.org/ecd/debug.png)
 
 ## Description
-Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates multiple decompilers seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
+ECD++ - Fork of Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates multiple decompilers seamlessly with Eclipse, allows you to display all the Java sources during your debugging process, even if you do not have them all, and you can debug these class files without source code directly.
 
 ## Why a fork?
   * Compatibility with latest version of Eclipse over backward compatibility : upstream project aims at supporting all versions of Eclipse which is not maintainable from my point of view ([2b13e85](https://github.com/ecd-plugin/ecd/commit/2b13e856e0e557b155d658e5077c05efa8218e9c), [b518dd3](https://github.com/ecd-plugin/ecd/commit/b518dd30c4a045621f7a7e8c3b38ebedefb4cd09), [f2b6022](https://github.com/ecd-plugin/ecd/commit/f2b6022063dec1b4e15d9ddc7a31524240da1481), [8538745](https://github.com/ecd-plugin/ecd/commit/8538745e48485482bb8e0abc3fecc00f62527ca0), [8b47e95](https://github.com/ecd-plugin/ecd/commit/8b47e959916c337991c8ff4fe4637538df339565))
@@ -79,7 +79,7 @@ Enhanced Class Decompiler is a plug-in for the Eclipse platform. It integrates m
 ## Why is this plug-in "enhanced"?
 This is an ad-free fork of the Eclipse Decompiler Plugin. So we enhanced it by removing all code which might compromise your privacy or security (to the best of our knowledge).
 
-## How to install Enhanced Class Decompiler?
+## How to install ECD++?
 
 _If you have currently the "Eclipse" Class Decompiler installed, it is recommended to uninstall that plug-in first and remove the corresponding update site from your Eclipse installation._
 
@@ -112,7 +112,7 @@ In Eclipse, click on _"Help > Eclipse Marketplace..."_, search and install ecd++
   2. _"*.class"_ : _"Class Decompiler Viewer"_ is selected by default.
   3. _"*.class without source"_ : _"Class Decompiler Viewer"_ is selected by default.
 
-## How to configure Enhanced Class Decompiler?
+## How to configure ECD++?
   1. Click on _"Window > Preferences > Java > Decompiler"_
 
 Source attach:
@@ -190,9 +190,9 @@ The following keyboard shortcuts are available when working with decompiled clas
 - **Ctrl+Alt+,** - Trigger decompilation
 - **Ctrl+Alt+.** - Toggle debug mode
 
-## How to uninstall Enhanced Class Decompiler?
+## How to uninstall ECD++?
   1. Click on _"Help > About Eclipse > Installation Details > Installation Software"_,
-  2. Select _"Enhanced Class Decompiler"_,
+  2. Select _"ECD++"_,
   3. Click on _"Uninstall..."_.
 
 ## How to build from source?
