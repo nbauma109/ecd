@@ -21,6 +21,10 @@ Configure these GitHub repository secrets:
 3. `ECD_SIGNING_STORETYPE`: `PKCS12`.
 4. `ECD_SIGNING_ALIAS`: Alias of the signing key inside the keystore.
 5. `ECD_SIGNING_STOREPASS`: Keystore password.
+6. `ECLIPSE_MARKETPLACE_USERNAME`: Eclipse Foundation account username or e-mail used to manage the marketplace listing.
+7. `ECLIPSE_MARKETPLACE_PASSWORD`: Eclipse Foundation account password for the above account.
+
+Secrets 6 and 7 are used by the **Update Eclipse Marketplace** workflow, which runs automatically after each release is published and updates the version field on the marketplace listing.
 
 Examples for `ECD_SIGNING_KEYSTORE_BASE64`:
 
