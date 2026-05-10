@@ -1,0 +1,36 @@
+name: Update Eclipse Marketplace
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to set on the marketplace listing (e.g. 2026.3.10)'
+        required: true
+
+jobs:
+  update-marketplace:
+    name: Update Eclipse Marketplace listing
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
+
+      - name: Update Eclipse Marketplace listing version
+        env:
+          ECLIPSE_MARKETPLACE_USERNAME: ${{ secrets.ECLIPSE_MARKETPLACE_USERNAME }}
+          ECLIPSE_MARKETPLACE_PASSWORD: ${{ secrets.ECLIPSE_MARKETPLACE_PASSWORD }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.version }}
+        run: |
+          python .github/scripts/update_marketplace.py "$RELEASE_VERSION"
