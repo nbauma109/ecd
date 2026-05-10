@@ -24,8 +24,8 @@ jobs:
 
       - name: Install Playwright
         run: |
-          pip install playwright
-          playwright install chromium --with-deps
+          pip install playwright==1.59.1 --only-binary :all:
+          python -m playwright install chromium --with-deps
 
       - name: Update Eclipse Marketplace listing version
         env:

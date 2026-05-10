@@ -5,12 +5,15 @@ Update the Eclipse Marketplace listing version after a release.
 Usage:
     update_marketplace.py <version>
 
-Environment variables (required):
+Environment variables:
     ECLIPSE_MARKETPLACE_USERNAME  Eclipse Foundation account username or e-mail
+                                  (prompted interactively when absent)
     ECLIPSE_MARKETPLACE_PASSWORD  Eclipse Foundation account password
+                                  (prompted interactively when absent)
 
 The version lives inside the first "Solution" entry (a two-level Drupal IEF).
-The script clicks through both Edit buttons to reach the version text field.
+The script clicks through both Edit buttons to reach the version text field,
+then saves the sub-form and the outer listing in two separate submits.
 """
 
 import argparse
@@ -18,7 +21,7 @@ import getpass
 import os
 import sys
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
 
 LISTING_URL = "https://marketplace.eclipse.org/content/ecd-fork-enhanced-class-decompiler"
 EDIT_URL = f"{LISTING_URL}/edit"
@@ -64,7 +67,7 @@ def _wait_for_ajax(page) -> None:
     # Drupal renders a throbber while AJAX is in flight; wait for it to disappear.
     try:
         page.wait_for_selector(".ajax-progress", state="hidden", timeout=10_000)
-    except Exception:
+    except PlaywrightTimeoutError:
         pass  # throbber may not appear for fast responses
 
 
@@ -88,7 +91,11 @@ def update_version(page, version: str) -> None:
     print(f"Setting version to {version!r}")
     field.fill(version)
 
-    page.locator('input[name="op"][value="Update"]').first.click()
+    # First submit collapses the open IEF sub-forms back into the parent form.
+    _click_ajax_btn(page, 'input[name="op"][value="Update"]', "IEF Update")
+
+    # Second submit saves the outer listing node.
+    page.locator("#edit-moderation-state-published").click()
     page.wait_for_load_state("networkidle")
 
     print(f"Saved. Final URL: {page.url}")
