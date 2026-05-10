@@ -91,12 +91,10 @@ def update_version(page, version: str) -> None:
     print(f"Setting version to {version!r}")
     field.fill(version)
 
-    # First submit collapses the open IEF sub-forms back into the parent form.
-    _click_ajax_btn(page, 'input[name="op"][value="Update"]', "IEF Update")
-
-    # Second submit posts the outer listing form.  Use the stable id of the
-    # bottom Save/Update button so we don't accidentally hit an IEF control.
-    page.locator("#edit-moderation-state-published").click()
+    # The main form's Update button appears at the top of the page, before the
+    # IEF section, so .first reliably targets it rather than any IEF control.
+    # Drupal IEF includes open sub-form data in the outer form submission.
+    page.locator('input[name="op"][value="Update"]').first.click()
     page.wait_for_load_state("networkidle")
 
     if page.url.rstrip("/").endswith("/edit"):
