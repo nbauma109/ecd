@@ -22,6 +22,7 @@ jobs:
         with:
           feed-url: https://github.com/${{ github.repository }}/releases.atom
           limit: 1
+          since: 15
           filter-urls: |
             /releases/tag/${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.event.release.tag_name }}
           message: |
