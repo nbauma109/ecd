@@ -60,8 +60,12 @@ import jd.core.DecompilationResult;
 
 public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
+    private static final String JAVA_CLASS_SUFFIX = ".class"; //$NON-NLS-1$
+    private static final String JAVA_SOURCE_SUFFIX = ".java"; //$NON-NLS-1$
+
     protected Decompiler<?> currentDecompiler;
     private String classLocation;
+    private IPackageFragmentRoot mappedRoot;
 
     private static Map<String, String> compilerOptions = new HashMap<>();
     static {
@@ -91,6 +95,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         Collection<Exception> exceptions = new LinkedList<>();
         IPackageFragment pkgFrag = type.getPackageFragment();
         IPackageFragmentRoot root = (IPackageFragmentRoot) pkgFrag.getParent();
+        mappedRoot = root;
 
         JavaDecompilerPlugin.getDefault().syncLibrarySource(root);
         char[] attachedSource = null;
@@ -191,6 +196,7 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             return null;
         }
         className = fullName.substring(classNameIndex);
+        String sortClassName = className;
 
         int index = className.lastIndexOf('/');
         className = className.substring(index + 1);
@@ -198,59 +204,12 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         classLocation = ""; //$NON-NLS-1$
 
         DecompilationResult res = decompile(type, exceptions, root, className);
-
-        if (res == null || res.getDecompiledOutput() == null || res.getDecompiledOutput().isEmpty()) {
+        String renderedSource = renderDecompiledSource(res, classLocation, exceptions, type, sortClassName);
+        if (renderedSource == null) {
             return null;
         }
 
-        String code = UnicodeUtil.decode(res.getDecompiledOutput());
-
-        boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
-
-        boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
-        boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
-        RealignStatus realignStatus = RealignStatus.TURNED_OFF;
-        if ((showLineNumber && align)
-                || JavaDecompilerPlugin.getDefault().isDebug()
-                || UIUtil.isDebugPerspective()) {
-            if (currentDecompiler.supportsRealignment()) {
-                realignStatus = RealignStatus.NATIVELY_REALIGNED;
-            } else {
-                try {
-                    code = new ParserRealigner().realign(code);
-                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
-                } catch (ParseException e) {
-                    exceptions.add(e);
-                    realignStatus = RealignStatus.PARSE_ERROR;
-                }
-            }
-        }
-
-        StringBuilder source = new StringBuilder();
-
-        if (!JavaDecompilerPlugin.getDefault().isDebug() && !UIUtil.isDebugPerspective()) {
-            boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
-            if (useSorter) {
-                className = new String(info.getName());
-                fullName = new String(info.getFileName());
-                if (fullName.lastIndexOf(className) != -1) {
-                    className = fullName.substring(fullName.lastIndexOf(className));
-                }
-
-                code = SortMemberUtil.sortMember(type.getPackageFragment().getElementName(), className, code);
-            }
-
-            source.append(formatSource(code));
-
-        } else {
-            source.append(code);
-        }
-
-        if (showReport) {
-            printDecompileReport(source, classLocation, exceptions, realignStatus);
-        }
-
-        char[] sourceAsCharArray = source.toString().toCharArray();
+        char[] sourceAsCharArray = renderedSource.toCharArray();
         if (originalSourceMapper.containsKey(root)) {
             SourceMapper rootSourceMapper = originalSourceMapper.get(root);
             if (rootSourceMapper.findSource(type, info) == null) {
@@ -260,6 +219,52 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
 
         updateSourceRanges(type, sourceAsCharArray);
         return sourceAsCharArray;
+    }
+
+    @Override
+    public char[] findSource(String javaSourcePath) {
+        if (javaSourcePath == null) {
+            return null;
+        }
+
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        if (!prefs.getBoolean(JavaDecompilerPlugin.IGNORE_EXISTING)) {
+            char[] attachedSource = findAttachedSource(javaSourcePath);
+            if (attachedSource != null) {
+                isAttachedSource = true;
+                return attachedSource;
+            }
+        }
+
+        if (mappedRoot == null || !javaSourcePath.endsWith(JAVA_SOURCE_SUFFIX)) {
+            return null;
+        }
+
+        isAttachedSource = false;
+        String classPath = javaSourcePath.replace('\\', '/');
+        classPath = classPath.substring(0, classPath.length() - JAVA_SOURCE_SUFFIX.length()) + JAVA_CLASS_SUFFIX;
+        int packageEnd = classPath.lastIndexOf('/');
+        String pkg = packageEnd < 0 ? "" : classPath.substring(0, packageEnd); //$NON-NLS-1$
+        String className = packageEnd < 0 ? classPath : classPath.substring(packageEnd + 1);
+
+        List<Exception> exceptions = new LinkedList<>();
+        classLocation = ""; //$NON-NLS-1$
+        DecompilationResult res = decompile(mappedRoot, pkg, className, exceptions);
+        String renderedSource = renderDecompiledSource(res, classLocation, exceptions, null, className);
+        return renderedSource == null ? null : renderedSource.toCharArray();
+    }
+
+    private char[] findAttachedSource(String javaSourcePath) {
+        if (mappedRoot != null) {
+            SourceMapper mapper = originalSourceMapper.get(mappedRoot);
+            if (mapper != null && mapper != this) {
+                char[] attachedSource = mapper.findSource(javaSourcePath);
+                if (attachedSource != null) {
+                    return attachedSource;
+                }
+            }
+        }
+        return super.findSource(javaSourcePath);
     }
 
     public boolean isSourceLookupEligible(IType type, String[] excludedPackages) {
@@ -314,9 +319,14 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
     private DecompilationResult decompile(IType type, Collection<Exception> exceptions,
             IPackageFragmentRoot root, String className) {
 
-        DecompilationResult result = null;
-
         String pkg = type.getPackageFragment().getElementName().replace('.', '/');
+        return decompile(root, pkg, className, exceptions);
+    }
+
+    private DecompilationResult decompile(IPackageFragmentRoot root, String pkg, String className,
+            Collection<Exception> exceptions) {
+
+        DecompilationResult result = null;
 
         Boolean displayNumber = null;
         if (JavaDecompilerPlugin.getDefault().isDebug() || UIUtil.isDebugPerspective()) {
@@ -357,6 +367,57 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
             JavaDecompilerPlugin.getDefault().displayLineNumber(displayNumber);
         }
         return result;
+    }
+
+    private String renderDecompiledSource(DecompilationResult res, String fileLocation,
+            Collection<Exception> exceptions, IType type, String className) {
+        if (res == null || res.getDecompiledOutput() == null || res.getDecompiledOutput().isEmpty()) {
+            return null;
+        }
+
+        String code = UnicodeUtil.decode(res.getDecompiledOutput());
+
+        IPreferenceStore prefs = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        boolean showReport = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_METADATA);
+
+        boolean showLineNumber = prefs.getBoolean(JavaDecompilerPlugin.PREF_DISPLAY_LINE_NUMBERS);
+        boolean align = prefs.getBoolean(JavaDecompilerPlugin.ALIGN);
+        RealignStatus realignStatus = RealignStatus.TURNED_OFF;
+        if ((showLineNumber && align)
+                || JavaDecompilerPlugin.getDefault().isDebug()
+                || UIUtil.isDebugPerspective()) {
+            if (currentDecompiler.supportsRealignment()) {
+                realignStatus = RealignStatus.NATIVELY_REALIGNED;
+            } else {
+                try {
+                    code = new ParserRealigner().realign(code);
+                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
+                } catch (ParseException e) {
+                    exceptions.add(e);
+                    realignStatus = RealignStatus.PARSE_ERROR;
+                }
+            }
+        }
+
+        StringBuilder source = new StringBuilder();
+
+        if (!JavaDecompilerPlugin.getDefault().isDebug() && !UIUtil.isDebugPerspective()) {
+            boolean useSorter = prefs.getBoolean(JavaDecompilerPlugin.USE_ECLIPSE_SORTER);
+            if (type != null && useSorter) {
+                code = SortMemberUtil.sortMember(type.getPackageFragment().getElementName(), className, code);
+            }
+
+            source.append(formatSource(code));
+
+        } else {
+            source.append(code);
+        }
+
+        if (showReport) {
+            printDecompileReport(source, fileLocation, exceptions, realignStatus);
+        }
+
+        return source.toString();
     }
 
     @Override

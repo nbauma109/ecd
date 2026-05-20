@@ -53,6 +53,8 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.texteditor.ITextEditor;
+import org.eclipse.jdt.internal.core.ClassFile;
+import org.eclipse.jdt.internal.core.SourceMapper;
 import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
 import org.junit.After;
 import org.junit.Before;
@@ -274,6 +276,32 @@ public class JavaDecompilerClassFileEditorTest {
         assertTrue("Expected reopen to use JavaDecompilerClassFileEditor but got: " + openedEditor.getClass().getName(), //$NON-NLS-1$
                 openedEditor instanceof JavaDecompilerClassFileEditor);
         assertSame(JavaDecompilerPlugin.getDecompilerImage(DECOMPILER_FERNFLOWER), openedEditor.getTitleImage());
+    }
+
+    @Test
+    public void testPathBasedSourceLookupReturnsDecompiledJarSource()
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile classFile = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(classFile.exists());
+
+        openedEditor = openDefault(classFile);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
+
+        SourceMapper sourceMapper = ((ClassFile) classFile).getSourceMapper();
+        assertNotNull(sourceMapper);
+
+        char[] source = sourceMapper.findSource("test/Test.java"); //$NON-NLS-1$
+        assertNotNull(source);
+        assertTrue(new String(source).contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
     }
 
     @Test
