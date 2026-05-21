@@ -28,6 +28,7 @@ jobs:
 
   crosspost:
     name: "Crosspost to Social Media"
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
