@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Crosspost to Bluesky and Mastodon
         uses: tgagor/action-crosspost@9523ff489bc74e1a9849c5d3071b6bcbad40042d # v1.6.3
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
         with:
           feed-url: https://github.com/${{ github.repository }}/releases.atom
           limit: 1
@@ -42,7 +44,7 @@ jobs:
           filter-urls: |
             /releases/tag/${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.event.release.tag_name }}
           message: |
-            🎉 New release of ${{ github.event.repository.name }} is out!
+            🎉 New release of ECD++ ${RELEASE_TAG} is out!
             {url}
             #Java #JavaDecompiler #OpenSource #ReverseEngineering
           bluesky-host: bsky.social
