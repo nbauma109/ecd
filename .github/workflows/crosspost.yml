@@ -11,7 +11,7 @@ on:
         type: string
 
 env:
-  RELEASE_TAG: ${{ github.event.inputs.tag }}
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.event.release.tag_name }}
 
 jobs:
   validate:
@@ -42,9 +42,9 @@ jobs:
           limit: 1
           since: 15
           filter-urls: |
-            /releases/tag/${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.event.release.tag_name }}
+            /releases/tag/${{ env.RELEASE_TAG }}
           message: |
-            🎉 New release of ECD++ ${RELEASE_TAG} is out!
+            🎉 New release of ECD++ ${{ env.RELEASE_TAG }} is out!
             {url}
             #Java #JavaDecompiler #OpenSource #ReverseEngineering
           bluesky-host: bsky.social
