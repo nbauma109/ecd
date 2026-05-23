@@ -25,12 +25,14 @@ import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
+import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ConstructorInvocation;
@@ -46,9 +48,9 @@ import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodReference;
+import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.TypeMethodReference;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -79,14 +81,24 @@ final class BytecodeSourceRangeResolver {
     Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
         ParsedClassFile parsed = source == null || source.isBlank() ? null : parse(source);
         Map<BytecodeSearchEntry, SourceRange> ranges = new IdentityHashMap<>(entries.size());
+        Map<ReferenceKey, Integer> ordinals = new HashMap<>();
         for (BytecodeSearchEntry entry : entries) {
-            ranges.put(entry, selectRange(entry, rangesFor(entry, source, parsed)));
+            ReferenceKey key = ReferenceKey.from(entry);
+            int ordinal = ordinals.merge(key, Integer.valueOf(1), Integer::sum).intValue() - 1;
+            ranges.put(entry, selectRange(entry, rangesFor(entry, source, parsed), ordinal));
         }
         return ranges;
     }
 
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges) {
-        return ranges.isEmpty() ? enclosingRange(entry) : ranges.get(0);
+        return selectRange(entry, ranges, 0);
+    }
+
+    private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges, int ordinal) {
+        if (ranges.isEmpty()) {
+            return enclosingRange(entry);
+        }
+        return ranges.get(Math.min(Math.max(0, ordinal), ranges.size() - 1));
     }
 
     private List<SourceRange> rangesFor(BytecodeSearchEntry entry, String source, ParsedClassFile parsedSource) {
@@ -242,6 +254,7 @@ final class BytecodeSourceRangeResolver {
         private final IJavaElement element;
         private final TypePath typePath;
         private final List<String> typeStack = new ArrayList<>();
+        private int anonymousTypeCounter;
         private SourceRange range;
 
         private AstDeclarationWindow(IJavaElement element) {
@@ -307,6 +320,17 @@ final class BytecodeSourceRangeResolver {
         }
 
         @Override
+        public boolean visit(AnonymousClassDeclaration node) {
+            typeStack.add(Integer.toString(++anonymousTypeCounter));
+            return range == null;
+        }
+
+        @Override
+        public void endVisit(AnonymousClassDeclaration node) {
+            popType();
+        }
+
+        @Override
         public boolean visit(MethodDeclaration node) {
             if (element instanceof IMethod method && matchesCurrentType() && matches(method, node)) {
                 range = range(node);
@@ -333,14 +357,73 @@ final class BytecodeSourceRangeResolver {
                 if (!sameName(method.getElementName(), node.getName())) {
                     return false;
                 }
-                long parameterCount = node.parameters().stream()
-                        .filter(VariableDeclaration.class::isInstance)
-                        .count();
-                return method.getParameterTypes().length == parameterCount;
+                return sameParameterTypes(method, node);
             } catch (JavaModelException e) {
                 Logger.debug(e);
                 return false;
             }
+        }
+
+        private static boolean sameParameterTypes(IMethod method, MethodDeclaration node) throws JavaModelException {
+            String[] methodParameterTypes = method.getParameterTypes();
+            List<?> nodeParameters = node.parameters();
+            if (methodParameterTypes.length != nodeParameters.size()) {
+                return false;
+            }
+            for (int i = 0; i < methodParameterTypes.length; i++) {
+                if (!(nodeParameters.get(i) instanceof SingleVariableDeclaration parameter)
+                        || !sameType(normalizeJdtType(methodParameterTypes[i]), normalizeAstType(parameter))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static String normalizeJdtType(String signature) {
+            int arrayDepth = Signature.getArrayCount(signature);
+            String elementType = Signature.getElementType(signature);
+            String normalized = switch (Signature.getTypeSignatureKind(elementType)) {
+            case Signature.BASE_TYPE_SIGNATURE -> primitiveName(elementType);
+            case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('$', '.');
+            default -> Signature.getSignatureSimpleName(elementType);
+            };
+            return normalized.toLowerCase(java.util.Locale.ROOT) + "[]".repeat(arrayDepth); //$NON-NLS-1$
+        }
+
+        private static String normalizeAstType(SingleVariableDeclaration parameter) {
+            Type type = parameter.getType();
+            String text = type == null ? "" : type.toString(); //$NON-NLS-1$
+            int genericStart = text.indexOf('<');
+            if (genericStart >= 0) {
+                text = text.substring(0, genericStart);
+            }
+            String normalized = text.replaceAll("\\s+", "").toLowerCase(java.util.Locale.ROOT); //$NON-NLS-1$ //$NON-NLS-2$
+            return parameter.isVarargs() ? normalized + "[]" : normalized; //$NON-NLS-1$
+        }
+
+        private static String primitiveName(String signature) {
+            return switch (signature) {
+            case "Z" -> "boolean"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "B" -> "byte"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "C" -> "char"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "D" -> "double"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "F" -> "float"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "I" -> "int"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "J" -> "long"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "S" -> "short"; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> signature;
+            };
+        }
+
+        private static boolean sameType(String left, String right) {
+            if (sameName(left, right)) {
+                return true;
+            }
+            int leftSeparator = left.lastIndexOf('.');
+            int rightSeparator = right.lastIndexOf('.');
+            String leftSimple = leftSeparator < 0 ? left : left.substring(leftSeparator + 1);
+            String rightSimple = rightSeparator < 0 ? right : right.substring(rightSeparator + 1);
+            return sameName(leftSimple, rightSimple);
         }
 
         private static boolean sameName(String name, SimpleName simpleName) {
@@ -356,7 +439,7 @@ final class BytecodeSourceRangeResolver {
         }
 
         private boolean matchesCurrentType() {
-            return typePath == null || typePath.hasAnonymousSegment() || typePath.matches(typeStack);
+            return typePath == null || typePath.matches(typeStack);
         }
 
         private void popType() {
@@ -366,7 +449,7 @@ final class BytecodeSourceRangeResolver {
         }
     }
 
-    private record TypePath(List<String> names, boolean hasAnonymousSegment) {
+    private record TypePath(List<String> names) {
 
         private static TypePath from(IJavaElement element) {
             IClassFile classFile = classFile(element);
@@ -376,7 +459,7 @@ final class BytecodeSourceRangeResolver {
                     classFileName = classFileName.substring(0, classFileName.length() - ".class".length()); //$NON-NLS-1$
                 }
                 List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
-                return new TypePath(names, names.stream().anyMatch(TypePath::isAnonymousSegment));
+                return new TypePath(names);
             }
             IType type = null;
             if (element instanceof IType directType) {
@@ -389,7 +472,7 @@ final class BytecodeSourceRangeResolver {
             }
             String typeName = type.getTypeQualifiedName('.');
             List<String> names = Arrays.asList(typeName.split("\\.")); //$NON-NLS-1$
-            return new TypePath(names, names.stream().anyMatch(TypePath::isAnonymousSegment));
+            return new TypePath(names);
         }
 
         private boolean matches(List<String> currentTypeStack) {
@@ -404,18 +487,15 @@ final class BytecodeSourceRangeResolver {
             }
             return true;
         }
-
-        private static boolean isAnonymousSegment(String segment) {
-            return segment != null && !segment.isEmpty() && segment.chars().allMatch(Character::isDigit);
-        }
     }
 
     private record ReferenceKey(String elementHandle, Kind kind, String name, String qualifiedName,
-            String declaringTypeName, String descriptor) {
+            String declaringTypeName, String descriptor, BytecodeSearchEntry.Access access) {
 
         private static ReferenceKey from(BytecodeSearchEntry entry) {
             return new ReferenceKey(entry.getElementHandle() == null ? "" : entry.getElementHandle(), entry.getKind(),
-                    entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor());
+                    entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor(),
+                    entry.getAccess());
         }
     }
 
@@ -426,7 +506,7 @@ final class BytecodeSourceRangeResolver {
         }
 
         private boolean contains(int nodeOffset, int nodeLength) {
-            return nodeOffset >= offset && nodeOffset + Math.max(0, nodeLength) <= offset + length;
+            return nodeOffset >= offset && nodeLength > 0 && nodeOffset + nodeLength <= offset + length;
         }
     }
 
@@ -581,7 +661,16 @@ final class BytecodeSourceRangeResolver {
         }
 
         private LastName lastName(ASTNode node) {
-            String text = source.substring(node.getStartPosition(), node.getStartPosition() + node.getLength());
+            int nodeOffset = node.getStartPosition();
+            int nodeLength = node.getLength();
+            if (nodeOffset < 0 || nodeLength <= 0 || nodeOffset > source.length()) {
+                return null;
+            }
+            int nodeEnd = nodeOffset + nodeLength;
+            if (nodeEnd < nodeOffset || nodeEnd > source.length()) {
+                return null;
+            }
+            String text = source.substring(nodeOffset, nodeEnd);
             int end = text.length();
             while (end > 0 && !Character.isJavaIdentifierPart(text.charAt(end - 1))) {
                 end--;
@@ -591,7 +680,7 @@ final class BytecodeSourceRangeResolver {
                 start--;
             }
             if (start < end) {
-                return new LastName(node.getStartPosition() + start, end - start, text.substring(start, end));
+                return new LastName(nodeOffset + start, end - start, text.substring(start, end));
             }
             return null;
         }

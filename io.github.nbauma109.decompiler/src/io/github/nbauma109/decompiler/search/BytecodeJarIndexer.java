@@ -48,6 +48,7 @@ import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 
 final class BytecodeJarIndexer {
@@ -166,9 +167,9 @@ final class BytecodeJarIndexer {
         private final Set<String> typeReferences = new HashSet<>();
         private final Set<String> descriptorSet = new HashSet<>();
         private final Map<IJavaElement, Set<String>> typeReferencesByElement = new HashMap<>();
-        private final Map<IJavaElement, Set<MemberName>> methodReferencesByElement = new HashMap<>();
-        private final Map<IJavaElement, Set<MemberName>> constructorReferencesByElement = new HashMap<>();
-        private final Map<IJavaElement, Set<MemberName>> fieldReferencesByElement = new HashMap<>();
+        private final Map<IJavaElement, List<MemberReference>> methodReferencesByElement = new HashMap<>();
+        private final Map<IJavaElement, List<MemberReference>> constructorReferencesByElement = new HashMap<>();
+        private final Map<IJavaElement, List<MemberReference>> fieldReferencesByElement = new HashMap<>();
         private final Set<String> moduleReferences = new HashSet<>();
         private final SignatureIndexer signatureIndexer = new SignatureIndexer();
         private final ClassVisitor visitor = new LightweightClassVisitor();
@@ -389,7 +390,7 @@ final class BytecodeJarIndexer {
             if (handle.getTag() == Opcodes.H_GETFIELD || handle.getTag() == Opcodes.H_GETSTATIC
                     || handle.getTag() == Opcodes.H_PUTFIELD || handle.getTag() == Opcodes.H_PUTSTATIC) {
                 addReference(Kind.FIELD, handle.getName(), handle.getName(), qualifiedTypeName(handle.getOwner()),
-                        handle.getDesc(), element);
+                        handle.getDesc(), element, fieldAccess(handle.getTag()));
             } else if (CONSTRUCTOR.equals(handle.getName())) {
                 addReference(Kind.CONSTRUCTOR, simpleTypeName(handle.getOwner()), qualifiedTypeName(handle.getOwner()),
                         qualifiedTypeName(handle.getOwner()), handle.getDesc(), element);
@@ -401,19 +402,30 @@ final class BytecodeJarIndexer {
 
         private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
+            addReference(kind, name, qualifiedName, owner, descriptor, element, Access.NONE);
+        }
+
+        private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, Access access) {
             IJavaElement enclosingElement = element == null ? type : element;
-            MemberName member = new MemberName(name, owner, descriptor);
+            MemberReference member = new MemberReference(name, owner, descriptor, access);
             switch (kind) {
-              case Kind.FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
-              case Kind.METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
-              case Kind.CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
+              case Kind.FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+              case Kind.METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+              case Kind.CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               default -> add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
             }
         }
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
-            add(kind, false, element, pool(name), pool(qualifiedName), pool(owner), pool(descriptor));
+            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, Access.NONE);
+        }
+
+        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, Access access) {
+            add(newEntry(kind, false, element, pool(name), pool(qualifiedName), pool(owner), pool(descriptor), access),
+                    true);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
@@ -445,36 +457,52 @@ final class BytecodeJarIndexer {
             }
         }
 
-        private void flushMemberReferences(Map<IJavaElement, Set<MemberName>> references, Kind kind) {
-            for (Map.Entry<IJavaElement, Set<MemberName>> entry : references.entrySet()) {
-                for (MemberName member : entry.getValue()) {
+        private void flushMemberReferences(Map<IJavaElement, List<MemberReference>> references, Kind kind) {
+            for (Map.Entry<IJavaElement, List<MemberReference>> entry : references.entrySet()) {
+                for (MemberReference member : entry.getValue()) {
                     String qualifiedName = member.name();
                     if (kind == Kind.METHOD && "<init>".equals(member.name())) {
                         qualifiedName = member.owner();
                     }
                     addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
-                            entry.getKey());
+                            entry.getKey(), member.access());
                 }
             }
         }
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
                 String declaringTypeName, String descriptor) {
-            String elementHandle = elementHandle(element);
-            IJavaElement fallback = anonymousElementFallback(elementHandle, element);
-            add(new BytecodeSearchEntry(kind, declaration, BytecodeSearchEntry.elementReference(elementHandle, fallback),
-                    BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor)));
+            add(newEntry(kind, declaration, element, name, qualifiedName, declaringTypeName, descriptor, Access.NONE),
+                    false);
         }
 
-        private void add(BytecodeSearchEntry entry) {
+        private BytecodeSearchEntry newEntry(Kind kind, boolean declaration, IJavaElement element, String name,
+                String qualifiedName, String declaringTypeName, String descriptor, Access access) {
+            String elementHandle = elementHandle(element);
+            IJavaElement fallback = anonymousElementFallback(elementHandle, element);
+            return new BytecodeSearchEntry(kind, declaration,
+                    BytecodeSearchEntry.elementReference(elementHandle, fallback),
+                    BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor), access);
+        }
+
+        private void add(BytecodeSearchEntry entry, boolean preserveDuplicate) {
             if (entry.getElementHandle() == null) {
                 return;
             }
-            EntryKey key = new EntryKey(entry.getKind(), entry.isDeclaration(), entry.getElementHandle(), entry.getName(),
-                    entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor());
-            if (seen.add(key)) {
+            EntryKey key = new EntryKey(entry.getKind(), entry.isDeclaration(), entry.getElementHandle(),
+                    entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor(),
+                    entry.getAccess());
+            if (preserveDuplicate || seen.add(key)) {
                 entries.add(entry);
             }
+        }
+
+        private static Access fieldAccess(int opcode) {
+            return switch (opcode) {
+            case Opcodes.GETFIELD, Opcodes.GETSTATIC, Opcodes.H_GETFIELD, Opcodes.H_GETSTATIC -> Access.READ;
+            case Opcodes.PUTFIELD, Opcodes.PUTSTATIC, Opcodes.H_PUTFIELD, Opcodes.H_PUTSTATIC -> Access.WRITE;
+            default -> Access.NONE;
+            };
         }
 
         private String elementHandle(IJavaElement element) {
@@ -688,7 +716,8 @@ final class BytecodeJarIndexer {
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                 addTypeReference(owner, method);
                 addDescriptorReferences(descriptor, method);
-                addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method);
+                addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method,
+                        fieldAccess(opcode));
             }
 
             @Override
@@ -781,11 +810,11 @@ final class BytecodeJarIndexer {
         }
     }
 
-    private record MemberName(String name, String owner, String descriptor) {
+    private record MemberReference(String name, String owner, String descriptor, Access access) {
     }
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,
-            String declaringTypeName, String descriptor) {
+            String declaringTypeName, String descriptor, Access access) {
     }
 
     record JarWork(List<JarEntryWork> entries, long totalImpact) {

@@ -732,7 +732,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         Matcher matcher = Pattern.compile("\\b" + Pattern.quote(methodName) + "\\s*\\(").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
         matcher.region(typeOffset, boundedEnd(source, typeEnd));
         while (matcher.find()) {
-            if (hasParameterCount(source, matcher.end() - 1, method.getNumberOfParameters())) {
+            int openParenOffset = matcher.end() - 1;
+            if (hasParameterCount(source, openParenOffset, method.getNumberOfParameters())
+                    && isMethodDeclaration(source, openParenOffset)) {
                 return matcher.start();
             }
         }
@@ -795,6 +797,34 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             return expectedParameterCount == 0;
         }
         return countParameters(parameters) == expectedParameterCount;
+    }
+
+    private boolean isMethodDeclaration(String source, int openParenOffset) {
+        int closeParen = findClosingParen(source, openParenOffset);
+        if (closeParen < 0) {
+            return false;
+        }
+        int nextToken = skipWhitespace(source, closeParen + 1);
+        if (nextToken >= source.length()) {
+            return false;
+        }
+        if (source.charAt(nextToken) == '{') {
+            return true;
+        }
+        if (!source.startsWith("throws", nextToken)) { //$NON-NLS-1$
+            return false;
+        }
+        int brace = source.indexOf('{', nextToken + "throws".length()); //$NON-NLS-1$
+        int semicolon = source.indexOf(';', nextToken);
+        return brace >= 0 && (semicolon < 0 || brace < semicolon);
+    }
+
+    private int skipWhitespace(String source, int offset) {
+        int current = Math.max(0, offset);
+        while (current < source.length() && Character.isWhitespace(source.charAt(current))) {
+            current++;
+        }
+        return current;
     }
 
     private int findClosingParen(String source, int openParenOffset) {

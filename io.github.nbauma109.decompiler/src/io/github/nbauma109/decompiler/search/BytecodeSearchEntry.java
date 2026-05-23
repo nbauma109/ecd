@@ -22,6 +22,12 @@ final class BytecodeSearchEntry {
         MODULE
     }
 
+    enum Access {
+        NONE,
+        READ,
+        WRITE
+    }
+
     private final Kind kind;
     private final boolean declaration;
     private final String elementHandle;
@@ -30,9 +36,15 @@ final class BytecodeSearchEntry {
     private final String qualifiedName;
     private final String declaringTypeName;
     private final String descriptor;
+    private final Access access;
 
     BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference) {
+        this(kind, declaration, elementReference, symbolReference, Access.NONE);
+    }
+
+    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+            SymbolReference symbolReference, Access access) {
         this.kind = kind;
         this.declaration = declaration;
         this.elementHandle = elementReference.handle();
@@ -41,6 +53,7 @@ final class BytecodeSearchEntry {
         this.qualifiedName = symbolReference.qualifiedName() == null ? this.name : symbolReference.qualifiedName();
         this.declaringTypeName = symbolReference.declaringTypeName();
         this.descriptor = symbolReference.descriptor();
+        this.access = access == null ? Access.NONE : access;
     }
 
     BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
@@ -111,6 +124,10 @@ final class BytecodeSearchEntry {
 
     String getDescriptor() {
         return descriptor;
+    }
+
+    Access getAccess() {
+        return access;
     }
 
 }

@@ -30,6 +30,7 @@ import org.eclipse.jdt.ui.search.ISearchRequestor;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jdt.ui.search.QuerySpecification;
 
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -43,7 +44,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         if (matcher == null) {
             return;
         }
-        int[] reported = new int[1];
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {
@@ -53,7 +53,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
                 BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
                 requestor.reportMatch(match);
-                reported[0]++;
             }
         });
     }
@@ -77,6 +76,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final String qualifiedName;
         private final String declaringTypeName;
         private final String descriptor;
+        private final String[] parameterTypes;
         private final boolean caseSensitive;
         private final Pattern wildcardPattern;
 
@@ -87,6 +87,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             this.qualifiedName = searchPattern.qualifiedName();
             this.declaringTypeName = searchPattern.declaringTypeName();
             this.descriptor = searchPattern.descriptor();
+            this.parameterTypes = searchPattern.parameterTypes();
             this.caseSensitive = searchPattern.caseSensitive();
             this.wildcardPattern = searchPattern.wildcardPattern();
         }
@@ -100,10 +101,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 if (kind == null) {
                     return null;
                 }
-                String pattern = patternSpecification.getPattern();
                 return new SearchMatcher(specification.getLimitTo(), kind,
-                        new SearchPattern(pattern, pattern, null, null, patternSpecification.isCaseSensitive(),
-                                wildcardPattern(pattern, patternSpecification.isCaseSensitive())));
+                        parsePattern(kind, patternSpecification.getPattern(), patternSpecification.isCaseSensitive()));
             }
             if (specification instanceof ElementQuerySpecification elementSpecification) {
                 return forElement(specification.getLimitTo(), elementSpecification.getElement());
@@ -114,20 +113,20 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private static SearchMatcher forElement(int limitTo, IJavaElement element) {
             if (element instanceof IType type) {
                 return new SearchMatcher(limitTo, Kind.TYPE,
-                        new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null, true, null));
+                        new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null, null, true, null));
             }
             if (element instanceof IField field) {
                 return new SearchMatcher(limitTo, Kind.FIELD,
                         new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
-                                null, true, null));
+                                null, null, true, null));
             }
             if (element instanceof IMethod method) {
                 try {
                     boolean constructor = method.isConstructor();
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
-                                    method.getElementName(), normalizeDeclaringType(method), method.getSignature(), true,
-                                    null));
+                                    method.getElementName(), normalizeDeclaringType(method), method.getSignature(), null,
+                                    true, null));
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
@@ -135,17 +134,17 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             if (element instanceof IPackageFragment pkg) {
                 return new SearchMatcher(limitTo, Kind.PACKAGE,
-                        new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, true, null));
+                        new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, null, true, null));
             }
             if (element instanceof IModuleDescription module) {
                 return new SearchMatcher(limitTo, Kind.MODULE,
-                        new SearchPattern(module.getElementName(), module.getElementName(), null, null, true, null));
+                        new SearchPattern(module.getElementName(), module.getElementName(), null, null, null, true, null));
             }
             return null;
         }
 
         private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                boolean caseSensitive, Pattern wildcardPattern) {
+                String[] parameterTypes, boolean caseSensitive, Pattern wildcardPattern) {
         }
 
         boolean matches(BytecodeSearchEntry entry) {
@@ -156,6 +155,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return false;
             }
             if (descriptor != null && entry.getDescriptor() != null && !sameDescriptor(descriptor, entry.getDescriptor())) {
+                return false;
+            }
+            if (parameterTypes != null && !sameParameterTypes(parameterTypes, entry.getDescriptor())) {
                 return false;
             }
             if (wildcardPattern != null) {
@@ -190,9 +192,14 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (maskedLimit == IJavaSearchConstants.DECLARATIONS) {
                 return false;
             }
-            if (maskedLimit == IJavaSearchConstants.REFERENCES || maskedLimit == IJavaSearchConstants.READ_ACCESSES
-                    || maskedLimit == IJavaSearchConstants.WRITE_ACCESSES) {
+            if (maskedLimit == IJavaSearchConstants.REFERENCES) {
                 return !entry.isDeclaration();
+            }
+            if (maskedLimit == IJavaSearchConstants.READ_ACCESSES) {
+                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.READ;
+            }
+            if (maskedLimit == IJavaSearchConstants.WRITE_ACCESSES) {
+                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.WRITE;
             }
             return false;
         }
@@ -213,14 +220,143 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return normalizedJdt.equals(normalizedBytecode);
         }
 
+        private boolean sameParameterTypes(String[] expectedTypes, String bytecodeDescriptor) {
+            if (bytecodeDescriptor == null) {
+                return false;
+            }
+            try {
+                org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(bytecodeDescriptor);
+                if (argumentTypes.length != expectedTypes.length) {
+                    return false;
+                }
+                for (int i = 0; i < argumentTypes.length; i++) {
+                    if (!sameType(expectedTypes[i], normalizeAsmType(argumentTypes[i]))) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
+
+        private boolean sameType(String expectedType, String actualType) {
+            if (sameName(expectedType, actualType)) {
+                return true;
+            }
+            int separator = actualType.lastIndexOf('.');
+            return separator >= 0 && sameName(expectedType, actualType.substring(separator + 1));
+        }
+
         private static boolean supportsLimitTo(int limitTo) {
             int maskedLimit = limitTo & ~(IJavaSearchConstants.IGNORE_DECLARING_TYPE
                     | IJavaSearchConstants.IGNORE_RETURN_TYPE);
             return maskedLimit == IJavaSearchConstants.ALL_OCCURRENCES
-                    || maskedLimit == IJavaSearchConstants.DECLARATIONS
                     || maskedLimit == IJavaSearchConstants.REFERENCES
                     || maskedLimit == IJavaSearchConstants.READ_ACCESSES
                     || maskedLimit == IJavaSearchConstants.WRITE_ACCESSES;
+        }
+
+        private static SearchPattern parsePattern(Kind kind, String pattern, boolean caseSensitive) {
+            String text = pattern == null ? "" : pattern.trim(); //$NON-NLS-1$
+            String memberPattern = text;
+            String[] parameterTypes = null;
+            if ((kind == Kind.METHOD || kind == Kind.CONSTRUCTOR) && text.indexOf('(') >= 0) {
+                int openParen = text.indexOf('(');
+                int closeParen = text.lastIndexOf(')');
+                memberPattern = text.substring(0, openParen).trim();
+                if (closeParen > openParen) {
+                    parameterTypes = parseParameterTypes(text.substring(openParen + 1, closeParen));
+                }
+            }
+
+            String name = memberPattern;
+            String qualifiedName = memberPattern;
+            String declaringTypeName = null;
+            if (kind == Kind.METHOD || kind == Kind.FIELD) {
+                int separator = memberPattern.lastIndexOf('.');
+                if (separator >= 0) {
+                    declaringTypeName = memberPattern.substring(0, separator);
+                    name = memberPattern.substring(separator + 1);
+                    qualifiedName = name;
+                }
+            } else if (kind == Kind.CONSTRUCTOR) {
+                declaringTypeName = memberPattern;
+                name = simpleName(memberPattern);
+                qualifiedName = memberPattern;
+            } else if (kind == Kind.TYPE) {
+                name = simpleName(memberPattern);
+            }
+
+            return new SearchPattern(name, qualifiedName, emptyToNull(declaringTypeName), null, parameterTypes,
+                    caseSensitive, wildcardPattern(name, caseSensitive));
+        }
+
+        private static String[] parseParameterTypes(String parameters) {
+            String trimmed = parameters.trim();
+            if (trimmed.isEmpty()) {
+                return new String[0];
+            }
+            if ("*".equals(trimmed)) { //$NON-NLS-1$
+                return null;
+            }
+            return splitParameterTypes(trimmed);
+        }
+
+        private static String[] splitParameterTypes(String parameters) {
+            java.util.List<String> types = new java.util.ArrayList<>();
+            int depth = 0;
+            int start = 0;
+            for (int i = 0; i < parameters.length(); i++) {
+                char ch = parameters.charAt(i);
+                if (ch == '<') {
+                    depth++;
+                } else if (ch == '>') {
+                    depth = Math.max(0, depth - 1);
+                } else if (ch == ',' && depth == 0) {
+                    types.add(normalizePatternType(parameters.substring(start, i)));
+                    start = i + 1;
+                }
+            }
+            types.add(normalizePatternType(parameters.substring(start)));
+            return types.toArray(String[]::new);
+        }
+
+        private static String normalizePatternType(String type) {
+            String normalized = type.trim().replace("...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
+            int genericStart = normalized.indexOf('<');
+            if (genericStart >= 0) {
+                normalized = normalized.substring(0, genericStart);
+            }
+            normalized = normalized.replace("[]", " array ").replaceAll("\\s+", "") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    .replace("array", "[]").toLowerCase(Locale.ROOT); //$NON-NLS-1$ //$NON-NLS-2$
+            return primitiveDescriptor(normalized);
+        }
+
+        private static String primitiveDescriptor(String type) {
+            int arrayStart = type.indexOf("[]"); //$NON-NLS-1$
+            String baseType = arrayStart < 0 ? type : type.substring(0, arrayStart);
+            String suffix = arrayStart < 0 ? "" : type.substring(arrayStart); //$NON-NLS-1$
+            return switch (baseType) {
+            case "boolean" -> "z"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "byte" -> "b"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "char" -> "c"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "double" -> "d"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "float" -> "f"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "int" -> "i"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "long" -> "j"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "short" -> "s"; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> baseType;
+            } + suffix;
+        }
+
+        private static String simpleName(String name) {
+            int separator = name.lastIndexOf('.');
+            return separator < 0 ? name : name.substring(separator + 1);
+        }
+
+        private static String emptyToNull(String value) {
+            return value == null || value.isBlank() ? null : value;
         }
 
         private static Kind kindFor(int searchFor) {

@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -41,6 +42,7 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.swt.widgets.Display;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -277,37 +279,42 @@ public final class BytecodeSearchIndex {
             throws JavaModelException {
         IJavaModel javaModel = JavaCore.create(ResourcesPlugin.getWorkspace().getRoot());
         Map<IPath, IPackageFragmentRoot> candidates = new LinkedHashMap<>();
-        Map<IPath, Boolean> sourceAttached = new HashMap<>();
 
         for (IJavaProject project : javaModel.getJavaProjects()) {
             if (!project.exists() || !project.getProject().isOpen()) {
                 continue;
             }
             for (IPackageFragmentRoot root : project.getAllPackageFragmentRoots()) {
-                collectRoot(root, candidates, sourceAttached);
+                collectRoot(root, candidates);
             }
         }
 
-        candidates.keySet().removeIf(path -> Boolean.TRUE.equals(sourceAttached.get(path)));
         return candidates;
     }
 
-    private static void collectRoot(IPackageFragmentRoot root, Map<IPath, IPackageFragmentRoot> candidates,
-            Map<IPath, Boolean> sourceAttached) throws JavaModelException {
+    private static void collectRoot(IPackageFragmentRoot root, Map<IPath, IPackageFragmentRoot> candidates)
+            throws JavaModelException {
         if (root.getKind() != IPackageFragmentRoot.K_BINARY || !root.isArchive() || isJreRoot(root)) {
             return;
         }
 
-        IPath path = root.getPath();
+        IPath path = archivePath(root);
         if (path == null || !"jar".equalsIgnoreCase(path.getFileExtension()) || !path.toFile().isFile()) { //$NON-NLS-1$
             return;
         }
 
         boolean hasSource = root.getSourceAttachmentPath() != null;
-        sourceAttached.merge(path, Boolean.valueOf(hasSource), Boolean::logicalOr);
         if (!hasSource) {
             candidates.putIfAbsent(path, root);
         }
+    }
+
+    private static IPath archivePath(IPackageFragmentRoot root) {
+        IResource resource = root.getResource();
+        if (resource != null && resource.getLocation() != null) {
+            return resource.getLocation();
+        }
+        return root.getPath();
     }
 
     private static boolean isJreRoot(IPackageFragmentRoot root) {
@@ -533,7 +540,8 @@ public final class BytecodeSearchIndex {
                                 anonymousElementFallback(elementHandleId)),
                         BytecodeSearchEntry.symbolReference(string(nameIds[entryId]),
                                 string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
-                                string(descriptorIds[entryId])));
+                                string(descriptorIds[entryId])),
+                        access(entryId));
             }
 
             private Kind kind(int entryId) {
@@ -542,6 +550,10 @@ public final class BytecodeSearchIndex {
 
             private boolean declaration(int entryId) {
                 return (kindAndFlags[entryId] & 0x10) != 0;
+            }
+
+            private Access access(int entryId) {
+                return Access.values()[(kindAndFlags[entryId] >>> 5) & 0x03];
             }
 
             private String string(int id) {
@@ -561,6 +573,7 @@ public final class BytecodeSearchIndex {
                 if (entry.isDeclaration()) {
                     flags |= 0x10;
                 }
+                flags |= entry.getAccess().ordinal() << 5;
                 return (byte) flags;
             }
         }

@@ -172,6 +172,68 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void qualifiedMethodPatternFindsPrintlnReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-qualified-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream.println(*)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library qualified println references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Qualified Java search patterns must match application-library bytecode references", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void fieldReadAndWriteAccessLimitsAreHonored()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-field-access-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> readMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "java.lang.System.out", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.READ_ACCESSES,
+                scope,
+                "Application library System.out reads")); //$NON-NLS-1$
+        List<Match> writeMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "java.lang.System.out", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.WRITE_ACCESSES,
+                scope,
+                "Application library System.out writes")); //$NON-NLS-1$
+
+        assertFalse("System.out getstatic bytecode instructions must be reported as field reads", readMatches.isEmpty()); //$NON-NLS-1$
+        assertTrue("System.out getstatic bytecode instructions must not be reported as field writes", writeMatches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
     public void bytecodeMatchesFromInnerClassesAreShownInTopLevelEditor()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
