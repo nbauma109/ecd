@@ -182,8 +182,13 @@ public final class BytecodeSearchIndex {
                             subMonitor.split(plan.ticks())));
                 }
             }
-            indexes = Collections.unmodifiableMap(rebuilt);
-            refreshCompleted = true;
+            synchronized (this) {
+                if (!started) {
+                    return;
+                }
+                indexes = Collections.unmodifiableMap(rebuilt);
+                refreshCompleted = true;
+            }
         } catch (CoreException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index application library bytecode"); //$NON-NLS-1$
         } finally {
