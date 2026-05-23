@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.ui.JavaElementLabelProvider;
@@ -30,6 +31,9 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.texteditor.ITextEditor;
+
+import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
+import io.github.nbauma109.decompiler.util.ClassUtil;
 
 final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentation {
 
@@ -54,7 +58,7 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
             return;
         }
 
-        IEditorPart editor = openJavaElement(javaElement, activate);
+        IEditorPart editor = openJavaElement(editorOpenTarget(match, javaElement), activate);
         String source = documentText(editor);
         BytecodeSearchDebug.info("showMatch opened editor: " + editor.getClass().getName() //$NON-NLS-1$
                 + ", textEditor=" + (editor instanceof ITextEditor) //$NON-NLS-1$
@@ -77,6 +81,7 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
         }
         if (editor instanceof ITextEditor textEditor && currentOffset >= 0 && currentLength > 0) {
             BytecodeSearchDebug.info("showMatch selectAndReveal offset=" + currentOffset + ", length=" + currentLength); //$NON-NLS-1$ //$NON-NLS-2$
+            protectExternalTextSelection(editor);
             BytecodeSearchEditorHighlighter.highlight(textEditor, highlights == null || highlights.isEmpty()
                     ? List.of(new BytecodeSourceRangeResolver.SourceRange(currentOffset, currentLength))
                     : highlights);
@@ -126,14 +131,15 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
             return List.of();
         }
         IJavaElement editorElement = textEditor.getEditorInput().getAdapter(IJavaElement.class);
-        Object editorOpenable = editorElement == null ? null : editorElement.getOpenable();
-        if (editorOpenable == null) {
+        IClassFile editorClassFile = classFile(editorElement);
+        IClassFile editorTopLevelClassFile = ClassUtil.getTopLevelClassFile(editorClassFile);
+        if (editorTopLevelClassFile == null) {
             return List.of();
         }
         List<BytecodeSearchMatch> matches = new ArrayList<>();
         for (Object element : result.getElements()) {
             if (element instanceof BytecodeSearchElement bytecodeElement
-                    && isShownInEditor(bytecodeElement, editorOpenable)) {
+                    && isShownInSameTopLevelClass(editorTopLevelClassFile, bytecodeElement.getJavaElement())) {
                 for (Match match : result.getMatches(element)) {
                     if (match instanceof BytecodeSearchMatch bytecodeMatch) {
                         matches.add(bytecodeMatch);
@@ -144,10 +150,16 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
         return matches;
     }
 
-    private static boolean isShownInEditor(BytecodeSearchElement element, Object editorOpenable) {
-        IJavaElement javaElement = element.getJavaElement();
-        Object openable = javaElement == null ? null : javaElement.getOpenable();
-        return editorOpenable.equals(openable);
+    static boolean isShownInSameTopLevelClass(IJavaElement editorElement, IJavaElement javaElement) {
+        IClassFile editorClassFile = classFile(editorElement);
+        IClassFile editorTopLevelClassFile = ClassUtil.getTopLevelClassFile(editorClassFile);
+        return editorTopLevelClassFile != null && isShownInSameTopLevelClass(editorTopLevelClassFile, javaElement);
+    }
+
+    private static boolean isShownInSameTopLevelClass(IClassFile editorTopLevelClassFile, IJavaElement javaElement) {
+        IClassFile classFile = classFile(javaElement);
+        IClassFile topLevelClassFile = ClassUtil.getTopLevelClassFile(classFile);
+        return editorTopLevelClassFile.equals(topLevelClassFile);
     }
 
     private record ResolvedRanges(BytecodeSourceRangeResolver.SourceRange selected,
@@ -164,6 +176,17 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
         });
     }
 
+    private static void protectExternalTextSelection(IEditorPart editor) {
+        if (editor instanceof JavaDecompilerClassFileEditor decompilerEditor) {
+            decompilerEditor.protectExternalTextSelection();
+            return;
+        }
+        JavaDecompilerClassFileEditor decompilerEditor = editor.getAdapter(JavaDecompilerClassFileEditor.class);
+        if (decompilerEditor != null) {
+            decompilerEditor.protectExternalTextSelection();
+        }
+    }
+
     private static String documentText(IEditorPart editor) {
         if (!(editor instanceof ITextEditor textEditor)) {
             return null;
@@ -178,6 +201,23 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
         } catch (JavaModelException e) {
             throw new PartInitException(e.getMessage(), e);
         }
+    }
+
+    private static IJavaElement editorOpenTarget(Match match, IJavaElement javaElement) {
+        if (!(match instanceof BytecodeSearchMatch)) {
+            return javaElement;
+        }
+        IClassFile classFile = classFile(javaElement);
+        IClassFile topLevelClassFile = ClassUtil.getTopLevelClassFile(classFile);
+        return topLevelClassFile == null ? javaElement : topLevelClassFile;
+    }
+
+    private static IClassFile classFile(IJavaElement javaElement) {
+        if (javaElement instanceof IClassFile classFile) {
+            return classFile;
+        }
+        IJavaElement classFile = javaElement.getAncestor(IJavaElement.CLASS_FILE);
+        return classFile instanceof IClassFile cf ? cf : null;
     }
 
     private static IJavaElement javaElement(Match match) {

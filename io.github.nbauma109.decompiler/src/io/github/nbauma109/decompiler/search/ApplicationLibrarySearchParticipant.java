@@ -203,10 +203,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             int maskedLimit = limitTo & ~(IJavaSearchConstants.IGNORE_DECLARING_TYPE
                     | IJavaSearchConstants.IGNORE_RETURN_TYPE);
             if (maskedLimit == IJavaSearchConstants.ALL_OCCURRENCES) {
-                return true;
+                return !entry.isDeclaration();
             }
             if (maskedLimit == IJavaSearchConstants.DECLARATIONS) {
-                return entry.isDeclaration();
+                return false;
             }
             if (maskedLimit == IJavaSearchConstants.REFERENCES || maskedLimit == IJavaSearchConstants.READ_ACCESSES
                     || maskedLimit == IJavaSearchConstants.WRITE_ACCESSES) {

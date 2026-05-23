@@ -34,6 +34,7 @@ import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -42,6 +43,7 @@ import org.eclipse.jdt.ui.IPackagesViewPart;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
@@ -335,6 +337,14 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testOpeningInnerMethodDeclarationsSelectsEachNestedMethod()
+            throws CoreException {
+        assertInnerMethodDeclarationSelection("Test$Inner1.class", "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertInnerMethodDeclarationSelection("Test$Inner3.class", "Inner3.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertInnerMethodDeclarationSelection("Test$Inner4.class", "Inner4.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void testOpeningInnerTypeLinksPackageExplorerToNestedType()
             throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
@@ -564,6 +574,81 @@ public class JavaDecompilerClassFileEditorTest {
             return elementName.equals(javaElement.getElementName());
         }
         return false;
+    }
+
+    private void assertInnerMethodDeclarationSelection(String classFileName, String selectedSource)
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(classFileName);
+        assertTrue(innerClassFile.exists());
+
+        IMethod method = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        assertTrue(method.exists());
+
+        openedEditor = openDefault(method);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+        assertTrue("Expected opening " + classFileName + "#method1 to select " + selectedSource //$NON-NLS-1$ //$NON-NLS-2$
+                + ", actual selection: " + selectedText(openedEditor) //$NON-NLS-1$
+                + ", context: " + selectedContext(openedEditor), //$NON-NLS-1$
+                waitForNestedMethodDeclarationSelection(openedEditor, selectedSource));
+    }
+
+    private static boolean waitForNestedMethodDeclarationSelection(IEditorPart editor, String expectedMarker) {
+        int attempts = 250;
+        for (int i = 0; i < attempts; i++) {
+            if (hasNestedMethodDeclarationSelection(editor, expectedMarker)) {
+                return true;
+            }
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(25L));
+            drainUiEvents();
+        }
+        return hasNestedMethodDeclarationSelection(editor, expectedMarker);
+    }
+
+    private static boolean hasNestedMethodDeclarationSelection(IEditorPart editor, String expectedMarker) {
+        ITextSelection selection = selectedSelection(editor);
+        if (selection == null || !"method1".equals(selection.getText())) { //$NON-NLS-1$
+            return false;
+        }
+        String source = documentText(editor);
+        int markerOffset = source.indexOf(expectedMarker);
+        int selectionOffset = selection.getOffset();
+        return markerOffset > selectionOffset && markerOffset - selectionOffset < 200;
+    }
+
+    private static String selectedText(IEditorPart editor) {
+        ITextSelection selection = selectedSelection(editor);
+        return selection == null ? "" : selection.getText(); //$NON-NLS-1$
+    }
+
+    private static ITextSelection selectedSelection(IEditorPart editor) {
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        if (textEditor == null || !(textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection)) {
+            return null;
+        }
+        return selection;
+    }
+
+    private static String selectedContext(IEditorPart editor) {
+        ITextSelection selection = selectedSelection(editor);
+        if (selection == null) {
+            return "<none>"; //$NON-NLS-1$
+        }
+        String source = documentText(editor);
+        int start = Math.max(0, selection.getOffset() - 80);
+        int end = Math.min(source.length(), selection.getOffset() + Math.max(selection.getLength(), 1) + 160);
+        return source.substring(start, end).replaceAll("\\s+", " "); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private static String documentText(IEditorPart editor) {
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        if (textEditor == null) {
+            return ""; //$NON-NLS-1$
+        }
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        return document == null ? "" : document.get(); //$NON-NLS-1$
     }
 
     private static boolean waitForPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames) {

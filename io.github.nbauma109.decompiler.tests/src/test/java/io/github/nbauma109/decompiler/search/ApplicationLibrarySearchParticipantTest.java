@@ -15,6 +15,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,7 +25,11 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchEngine;
@@ -32,6 +37,7 @@ import org.eclipse.jdt.ui.search.IMatchPresentation;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
@@ -55,6 +61,7 @@ public class ApplicationLibrarySearchParticipantTest {
 
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests"; //$NON-NLS-1$
     private static final String TEST_JAR_PATH = "src/test/resources/test.jar"; //$NON-NLS-1$
+    private static final String TEST_PACKAGE = "test"; //$NON-NLS-1$
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String PRINTLN = "println"; //$NON-NLS-1$
     private static final String SEARCH_ANNOTATION_TYPE = "org.eclipse.search.results"; //$NON-NLS-1$
@@ -128,8 +135,63 @@ public class ApplicationLibrarySearchParticipantTest {
             String selectedText = selectedText(match);
             assertTrue("Search result must point at the println invocation", selectedText.startsWith(PRINTLN + "(")); //$NON-NLS-1$ //$NON-NLS-2$
             assertTrue("Search result must include method arguments", selectedText.endsWith(")")); //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals("Editor selection must stay on the println invocation after pending editor reveals run", //$NON-NLS-1$
+                    selectedText, activeSelectedText());
+            waitForUiIdle();
+            assertEquals("Editor selection must not jump back to the enclosing method declaration", //$NON-NLS-1$
+                    selectedText, activeSelectedText());
             assertSearchAnnotation(match);
         }
+    }
+
+    @Test
+    public void participantDoesNotDuplicateJdtMethodDeclarationsFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-declaration-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "method1", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.DECLARATIONS,
+                scope,
+                "Application library method1 declarations"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertTrue("JDT already reports binary declarations; the ASM participant must not duplicate them", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void bytecodeMatchesFromInnerClassesAreShownInTopLevelEditor()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-inner-editor-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        IPackageFragment pkg = setup.jarRoot().getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevelClassFile = pkg.getClassFile("Test.class"); //$NON-NLS-1$
+        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        assertTrue(topLevelClassFile.exists());
+        assertTrue(innerClassFile.exists());
+
+        IMethod innerMethod = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        assertTrue(innerMethod.exists());
+
+        assertTrue("Inner-class bytecode matches must remain highlighted in the top-level decompiled editor", //$NON-NLS-1$
+                isShownInSameTopLevelClass(topLevelClassFile, innerMethod));
     }
 
     private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
@@ -164,6 +226,17 @@ public class ApplicationLibrarySearchParticipantTest {
         int length = match.getLength();
         assertTrue("Resolved range must be inside the editor document", offset >= 0 && offset + length <= document.getLength()); //$NON-NLS-1$
         return document.get(offset, length);
+    }
+
+    private static String activeSelectedText() throws CoreException {
+        return runInUiThreadWithResult(() -> {
+            ITextEditor textEditor = activeTextEditor();
+            assertNotNull("Expected search result consultation to keep a text editor active", textEditor); //$NON-NLS-1$
+            if (textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
+                return selection.getText();
+            }
+            return ""; //$NON-NLS-1$
+        });
     }
 
     private static void assertSearchAnnotation(Match match) throws Exception {
@@ -208,6 +281,23 @@ public class ApplicationLibrarySearchParticipantTest {
 
     private static void refreshDecompilerEditorAssociations() throws CoreException {
         runInUiThread(() -> new SetupRunnableAccessor().apply());
+    }
+
+    private static org.eclipse.jdt.core.IType getType(IClassFile classFile) {
+        if (classFile instanceof IOrdinaryClassFile ordinaryClassFile) {
+            return ordinaryClassFile.getType();
+        }
+        throw new IllegalArgumentException("Class file is not ordinary: " + classFile.getElementName()); //$NON-NLS-1$
+    }
+
+    private static boolean isShownInSameTopLevelClass(IJavaElement editorElement, IJavaElement javaElement)
+            throws Exception {
+        Class<?> presentationClass =
+                Class.forName("io.github.nbauma109.decompiler.search.ApplicationLibrarySearchMatchPresentation"); //$NON-NLS-1$
+        Method method = presentationClass.getDeclaredMethod(
+                "isShownInSameTopLevelClass", IJavaElement.class, IJavaElement.class); //$NON-NLS-1$
+        method.setAccessible(true);
+        return Boolean.TRUE.equals(method.invoke(null, editorElement, javaElement));
     }
 
     private static void closeAllEditors() throws CoreException {
