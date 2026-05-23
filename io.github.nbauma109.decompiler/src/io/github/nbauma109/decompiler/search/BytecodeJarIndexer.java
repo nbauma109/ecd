@@ -89,10 +89,11 @@ final class BytecodeJarIndexer {
         Map<String, String> strings = new HashMap<>();
 
         try (ZipFile zip = new ZipFile(jar)) {
+            IndexContext context = new IndexContext(root, jar, zip, entries, seen, strings);
             SubMonitor subMonitor = SubMonitor.convert(monitor, impactTicks(work.totalImpact()));
             for (JarEntryWork entryWork : work.entries()) {
                 if (!subMonitor.isCanceled()) {
-                    indexEntry(root, jar, zip, entryWork, entries, seen, strings, subMonitor);
+                    indexEntry(context, entryWork, subMonitor);
                 }
             }
         } catch (IOException e) {
@@ -101,26 +102,23 @@ final class BytecodeJarIndexer {
         return new BytecodeSearchIndex.JarIndex(jar, entries);
     }
 
-    private static void indexEntry(IPackageFragmentRoot root, File jar, ZipFile zip, JarEntryWork entryWork,
-            List<BytecodeSearchEntry> entries, Set<EntryKey> seen, Map<String, String> strings,
-            SubMonitor subMonitor) {
+    private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {
         subMonitor.subTask(entryWork.name());
         try {
-            ZipEntry entry = zip.getEntry(entryWork.name());
+            ZipEntry entry = context.zip().getEntry(entryWork.name());
             if (entry != null) {
-                indexZipEntry(root, jar, zip, entry, entries, seen, strings);
+                indexZipEntry(context, entry);
             }
         } finally {
             subMonitor.worked(impactTicks(entryWork.impactBytes()));
         }
     }
 
-    private static void indexZipEntry(IPackageFragmentRoot root, File jar, ZipFile zip, ZipEntry entry,
-            List<BytecodeSearchEntry> entries, Set<EntryKey> seen, Map<String, String> strings) {
-        try (InputStream input = zip.getInputStream(entry)) {
-            indexClass(root, input, entries, seen, strings);
+    private static void indexZipEntry(IndexContext context, ZipEntry entry) {
+        try (InputStream input = context.zip().getInputStream(entry)) {
+            indexClass(context.root(), input, context.entries(), context.seen(), context.strings());
         } catch (IOException | RuntimeException e) {
-            JavaDecompilerPlugin.logError(e, "Failed to index class file from " + jar.getAbsolutePath()); //$NON-NLS-1$
+            JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
         }
     }
 
@@ -418,8 +416,8 @@ final class BytecodeJarIndexer {
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
-            add(newEntry(kind, false, element, pool(name), pool(qualifiedName), pool(owner), pool(descriptor), access),
-                    true);
+            add(newEntry(element, new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
+                    pool(descriptor), access)), true);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
@@ -466,17 +464,17 @@ final class BytecodeJarIndexer {
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
                 String declaringTypeName, String descriptor) {
-            add(newEntry(kind, declaration, element, name, qualifiedName, declaringTypeName, descriptor, Access.NONE),
-                    false);
+            add(newEntry(element, new EntrySpec(kind, declaration, name, qualifiedName, declaringTypeName, descriptor,
+                    Access.NONE)), false);
         }
 
-        private BytecodeSearchEntry newEntry(Kind kind, boolean declaration, IJavaElement element, String name,
-                String qualifiedName, String declaringTypeName, String descriptor, Access access) {
+        private BytecodeSearchEntry newEntry(IJavaElement element, EntrySpec spec) {
             String elementHandle = elementHandle(element);
             IJavaElement fallback = anonymousElementFallback(elementHandle, element);
-            return new BytecodeSearchEntry(kind, declaration,
+            return new BytecodeSearchEntry(spec.kind(), spec.declaration(),
                     BytecodeSearchEntry.elementReference(elementHandle, fallback),
-                    BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor), access);
+                    BytecodeSearchEntry.symbolReference(spec.name(), spec.qualifiedName(), spec.declaringTypeName(),
+                            spec.descriptor()), spec.access());
         }
 
         private void add(BytecodeSearchEntry entry, boolean preserveDuplicate) {
@@ -796,6 +794,14 @@ final class BytecodeJarIndexer {
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,
             String declaringTypeName, String descriptor, Access access) {
+    }
+
+    private record EntrySpec(Kind kind, boolean declaration, String name, String qualifiedName,
+            String declaringTypeName, String descriptor, Access access) {
+    }
+
+    private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,
+            Set<EntryKey> seen, Map<String, String> strings) {
     }
 
     record JarWork(List<JarEntryWork> entries, long totalImpact) {
