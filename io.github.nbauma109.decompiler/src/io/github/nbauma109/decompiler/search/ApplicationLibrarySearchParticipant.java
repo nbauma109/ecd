@@ -80,6 +80,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final boolean matchParameterTypes;
         private final boolean caseSensitive;
         private final Pattern wildcardPattern;
+        private final Pattern declaringTypePattern;
 
         private SearchMatcher(int limitTo, Kind kind, SearchPattern searchPattern) {
             this.limitTo = limitTo;
@@ -92,6 +93,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             this.matchParameterTypes = searchPattern.matchParameterTypes();
             this.caseSensitive = searchPattern.caseSensitive();
             this.wildcardPattern = searchPattern.wildcardPattern();
+            this.declaringTypePattern = searchPattern.declaringTypePattern();
         }
 
         static SearchMatcher create(QuerySpecification specification) {
@@ -116,12 +118,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element instanceof IType type) {
                 return new SearchMatcher(limitTo, Kind.TYPE,
                         new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null,
-                                ParameterPattern.NONE, true, null));
+                                ParameterPattern.NONE, true, null, null));
             }
             if (element instanceof IField field) {
                 return new SearchMatcher(limitTo, Kind.FIELD,
                         new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
-                                null, ParameterPattern.NONE, true, null));
+                                null, ParameterPattern.NONE, true, null, null));
             }
             if (element instanceof IMethod method) {
                 try {
@@ -129,7 +131,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
                                     method.getElementName(), normalizeDeclaringType(method), method.getSignature(),
-                                    ParameterPattern.NONE, true, null));
+                                    ParameterPattern.NONE, true, null, null));
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
@@ -138,12 +140,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element instanceof IPackageFragment pkg) {
                 return new SearchMatcher(limitTo, Kind.PACKAGE,
                         new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, ParameterPattern.NONE,
-                                true, null));
+                                true, null, null));
             }
             if (element instanceof IModuleDescription module) {
                 return new SearchMatcher(limitTo, Kind.MODULE,
                         new SearchPattern(module.getElementName(), module.getElementName(), null, null,
-                                ParameterPattern.NONE, true, null));
+                                ParameterPattern.NONE, true, null, null));
             }
             return null;
         }
@@ -157,9 +159,11 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             private final ParameterPattern parameterPattern;
             private final boolean caseSensitive;
             private final Pattern wildcardPattern;
+            private final Pattern declaringTypePattern;
 
             private SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                    ParameterPattern parameterPattern, boolean caseSensitive, Pattern wildcardPattern) {
+                    ParameterPattern parameterPattern, boolean caseSensitive, Pattern wildcardPattern,
+                    Pattern declaringTypePattern) {
                 this.name = name;
                 this.qualifiedName = qualifiedName;
                 this.declaringTypeName = declaringTypeName;
@@ -167,6 +171,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 this.parameterPattern = parameterPattern;
                 this.caseSensitive = caseSensitive;
                 this.wildcardPattern = wildcardPattern;
+                this.declaringTypePattern = declaringTypePattern;
             }
 
             private String name() {
@@ -200,9 +205,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             private Pattern wildcardPattern() {
                 return wildcardPattern;
             }
+
+            private Pattern declaringTypePattern() {
+                return declaringTypePattern;
+            }
         }
 
-        private static final class ParameterPattern {
+        private static class ParameterPattern {
 
             private static final ParameterPattern NONE = new ParameterPattern(new String[0], false);
 
@@ -227,7 +236,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (kind != entry.getKind() || !matchesLimit(entry)) {
                 return false;
             }
-            if (declaringTypeName != null && !sameName(declaringTypeName, entry.getDeclaringTypeName())) {
+            if (declaringTypeName != null && !matchesNameOrPattern(declaringTypeName, declaringTypePattern,
+                    entry.getDeclaringTypeName())) {
                 return false;
             }
             if (descriptor != null && entry.getDescriptor() != null && !sameDescriptor(descriptor, entry.getDescriptor())) {
@@ -241,6 +251,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         || wildcardPattern.matcher(entry.getQualifiedName()).matches();
             }
             return sameName(name, entry.getName()) || sameName(qualifiedName, entry.getQualifiedName());
+        }
+
+        private boolean matchesNameOrPattern(String expected, Pattern pattern, String actual) {
+            if (actual == null) {
+                return false;
+            }
+            return pattern == null ? sameName(expected, actual) : pattern.matcher(actual).matches();
         }
 
         Kind kind() {
@@ -291,9 +308,21 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean sameDescriptor(String jdtSignature, String bytecodeDescriptor) {
-            String normalizedJdt = normalizeJdtMethodSignature(jdtSignature);
-            String normalizedBytecode = normalizeBytecodeMethodDescriptor(bytecodeDescriptor);
-            return normalizedJdt.equals(normalizedBytecode);
+            try {
+                String[] jdtTypes = normalizeJdtMethodParameterTypes(jdtSignature);
+                String[] bytecodeTypes = normalizeBytecodeMethodParameterTypes(bytecodeDescriptor);
+                if (jdtTypes.length != bytecodeTypes.length) {
+                    return false;
+                }
+                for (int i = 0; i < jdtTypes.length; i++) {
+                    if (!sameType(jdtTypes[i], bytecodeTypes[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
         }
 
         private boolean sameParameterTypes(String[] expectedTypes, String bytecodeDescriptor) {
@@ -365,8 +394,14 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 name = simpleName(memberPattern);
             }
 
+            String wildcardTarget = hasWildcard(qualifiedName) ? qualifiedName : name;
             return new SearchPattern(name, qualifiedName, emptyToNull(declaringTypeName), null, parameterPattern,
-                    caseSensitive, wildcardPattern(name, caseSensitive));
+                    caseSensitive, wildcardPattern(wildcardTarget, caseSensitive),
+                    wildcardPattern(declaringTypeName, caseSensitive));
+        }
+
+        private static boolean hasWildcard(String pattern) {
+            return pattern != null && (pattern.indexOf('*') >= 0 || pattern.indexOf('?') >= 0);
         }
 
         private static String[] parseParameterTypes(String parameters) {
@@ -492,34 +527,28 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return method.getElementName();
         }
 
-        private static String normalizeJdtMethodSignature(String signature) {
+        private static String[] normalizeJdtMethodParameterTypes(String signature) {
             if (signature == null) {
-                return ""; //$NON-NLS-1$
+                return new String[0];
             }
-            try {
-                StringBuilder builder = new StringBuilder();
-                for (String parameterType : Signature.getParameterTypes(signature)) {
-                    builder.append(normalizeJdtTypeSignature(parameterType)).append(';');
-                }
-                return builder.toString();
-            } catch (IllegalArgumentException e) {
-                return signature.replace('/', '.').toLowerCase(Locale.ROOT);
+            String[] parameterTypes = Signature.getParameterTypes(signature);
+            String[] normalized = new String[parameterTypes.length];
+            for (int i = 0; i < parameterTypes.length; i++) {
+                normalized[i] = normalizeJdtTypeSignature(parameterTypes[i]);
             }
+            return normalized;
         }
 
-        private static String normalizeBytecodeMethodDescriptor(String descriptor) {
+        private static String[] normalizeBytecodeMethodParameterTypes(String descriptor) {
             if (descriptor == null) {
-                return ""; //$NON-NLS-1$
+                return new String[0];
             }
-            try {
-                StringBuilder builder = new StringBuilder();
-                for (org.objectweb.asm.Type parameterType : org.objectweb.asm.Type.getArgumentTypes(descriptor)) {
-                    builder.append(normalizeAsmType(parameterType)).append(';');
-                }
-                return builder.toString();
-            } catch (IllegalArgumentException e) {
-                return descriptor.replace('/', '.').toLowerCase(Locale.ROOT);
+            org.objectweb.asm.Type[] parameterTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+            String[] normalized = new String[parameterTypes.length];
+            for (int i = 0; i < parameterTypes.length; i++) {
+                normalized[i] = normalizeAsmType(parameterTypes[i]);
             }
+            return normalized;
         }
 
         private static String normalizeJdtTypeSignature(String signature) {

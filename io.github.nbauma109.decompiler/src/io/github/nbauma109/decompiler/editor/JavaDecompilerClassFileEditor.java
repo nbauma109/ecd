@@ -744,7 +744,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private int findFieldNameOffset(String source, IField field, int typeOffset, int typeEnd) {
         Matcher matcher = Pattern.compile("\\b" + Pattern.quote(field.getElementName()) + "\\b").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
         matcher.region(typeOffset, boundedEnd(source, typeEnd));
-        return matcher.find() ? matcher.start() : -1;
+        while (matcher.find()) {
+            if (isFieldDeclaration(source, typeOffset, matcher.start(), matcher.end())) {
+                return matcher.start();
+            }
+        }
+        return -1;
     }
 
     private int boundedEnd(String source, int typeEnd) {
@@ -817,6 +822,38 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         int brace = source.indexOf('{', nextToken + "throws".length()); //$NON-NLS-1$
         int semicolon = source.indexOf(';', nextToken);
         return brace >= 0 && (semicolon < 0 || brace < semicolon);
+    }
+
+    private boolean isFieldDeclaration(String source, int typeOffset, int nameStart, int nameEnd) {
+        if (!isDirectTypeMember(source, typeOffset, nameStart)) {
+            return false;
+        }
+        int nextToken = skipWhitespace(source, nameEnd);
+        if (nextToken >= source.length()) {
+            return false;
+        }
+        char next = source.charAt(nextToken);
+        return next == ';' || next == '=' || next == ',';
+    }
+
+    private boolean isDirectTypeMember(String source, int typeOffset, int offset) {
+        int openBrace = source.indexOf('{', typeOffset);
+        if (openBrace < 0 || offset <= openBrace) {
+            return false;
+        }
+        int depth = 1;
+        for (int i = openBrace + 1; i < offset; i++) {
+            char ch = source.charAt(i);
+            if (ch == '{') {
+                depth++;
+            } else if (ch == '}') {
+                depth--;
+                if (depth <= 0) {
+                    return false;
+                }
+            }
+        }
+        return depth == 1;
     }
 
     private int skipWhitespace(String source, int offset) {

@@ -197,6 +197,9 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
     }
 
     private static IClassFile classFile(IJavaElement javaElement) {
+        if (javaElement == null) {
+            return null;
+        }
         if (javaElement instanceof IClassFile classFile) {
             return classFile;
         }

@@ -544,7 +544,7 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(MethodInvocation node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName())) {
+            if (entry.getKind() == Kind.METHOD && matches(node.getName(), node.arguments().size())) {
                 addFromNameThroughNode(node.getName(), node);
             }
             return true;
@@ -552,7 +552,7 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SuperMethodInvocation node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName())) {
+            if (entry.getKind() == Kind.METHOD && matches(node.getName(), node.arguments().size())) {
                 addFromNameThroughNode(node.getName(), node);
             }
             return true;
@@ -584,7 +584,8 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(ClassInstanceCreation node) {
-            if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())) {
+            if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())
+                    && matchesArgumentCount(node.arguments().size())) {
                 addLastName(node.getType());
             }
             return true;
@@ -600,7 +601,7 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(ConstructorInvocation node) {
-            if (entry.getKind() == Kind.CONSTRUCTOR) {
+            if (entry.getKind() == Kind.CONSTRUCTOR && targetsEnclosingType() && matchesArgumentCount(node.arguments().size())) {
                 addKeyword(node, "this"); //$NON-NLS-1$
             }
             return true;
@@ -608,7 +609,7 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SuperConstructorInvocation node) {
-            if (entry.getKind() == Kind.CONSTRUCTOR) {
+            if (entry.getKind() == Kind.CONSTRUCTOR && matchesArgumentCount(node.arguments().size())) {
                 addKeyword(node, "super"); //$NON-NLS-1$
             }
             return true;
@@ -618,8 +619,47 @@ final class BytecodeSourceRangeResolver {
             return sameName(node.getIdentifier(), entry.getName()) || sameName(node.getIdentifier(), simpleName());
         }
 
+        private boolean matches(SimpleName node, int argumentCount) {
+            return matches(node) && matchesArgumentCount(argumentCount);
+        }
+
+        private boolean matchesArgumentCount(int argumentCount) {
+            String descriptor = entry.getDescriptor();
+            if (descriptor == null || descriptor.isBlank()) {
+                return true;
+            }
+            try {
+                return org.objectweb.asm.Type.getArgumentTypes(descriptor).length == argumentCount;
+            } catch (IllegalArgumentException e) {
+                return true;
+            }
+        }
+
+        private boolean targetsEnclosingType() {
+            String declaringTypeName = entry.getDeclaringTypeName();
+            if (declaringTypeName == null) {
+                return true;
+            }
+            String enclosingTypeName = enclosingTypeName(entry.getElement());
+            return enclosingTypeName == null || sameName(declaringTypeName, enclosingTypeName)
+                    || sameName(simpleName(declaringTypeName), simpleName(enclosingTypeName));
+        }
+
+        private static String enclosingTypeName(IJavaElement element) {
+            IJavaElement ancestor = element == null ? null : element.getAncestor(IJavaElement.TYPE);
+            if (ancestor instanceof IType type) {
+                return type.getFullyQualifiedName('.').replace('$', '.');
+            }
+            return null;
+        }
+
         private String simpleName() {
             String qualifiedName = entry.getQualifiedName();
+            int separator = qualifiedName == null ? -1 : qualifiedName.lastIndexOf('.');
+            return separator < 0 ? qualifiedName : qualifiedName.substring(separator + 1);
+        }
+
+        private static String simpleName(String qualifiedName) {
             int separator = qualifiedName == null ? -1 : qualifiedName.lastIndexOf('.');
             return separator < 0 ? qualifiedName : qualifiedName.substring(separator + 1);
         }
