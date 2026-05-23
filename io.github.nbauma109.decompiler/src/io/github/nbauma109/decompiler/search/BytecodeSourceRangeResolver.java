@@ -72,13 +72,8 @@ final class BytecodeSourceRangeResolver {
     }
 
     SourceRange rangeFor(BytecodeSearchEntry entry, String source) {
-        BytecodeSearchDebug.info("rangeFor started: sourceLength=" + (source == null ? -1 : source.length()) //$NON-NLS-1$
-                + ", " + BytecodeSearchDebug.describeEntry(entry)); //$NON-NLS-1$
         List<SourceRange> ranges = rangesFor(entry, source, null);
-        SourceRange range = selectRange(entry, ranges);
-        BytecodeSearchDebug.info("rangeFor completed: candidateCount=" + ranges.size() + ", selected=" //$NON-NLS-1$ //$NON-NLS-2$
-                + BytecodeSearchDebug.describeRange(range, source));
-        return range;
+        return selectRange(entry, ranges);
     }
 
     Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
@@ -97,7 +92,6 @@ final class BytecodeSourceRangeResolver {
     private List<SourceRange> rangesFor(BytecodeSearchEntry entry, String source, ParsedClassFile parsedSource) {
         if (entry.isDeclaration()) {
             SourceRange declarationRange = declarationRange(entry);
-            BytecodeSearchDebug.info("rangesFor declaration: " + BytecodeSearchDebug.describeRange(declarationRange, source)); //$NON-NLS-1$
             return List.of(declarationRange);
         }
 
@@ -105,35 +99,25 @@ final class BytecodeSourceRangeResolver {
                 : source == null || source.isBlank() ? parsedClassFile(entry.getElement()) : parse(source);
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
-            BytecodeSearchDebug.info("rangesFor fallback: no parsed source, using enclosing " //$NON-NLS-1$
-                    + BytecodeSearchDebug.describeRange(fallback, source));
             return List.of(fallback);
         }
 
         List<SourceRange> ranges = parsed.references(entry);
         if (!ranges.isEmpty()) {
-            BytecodeSearchDebug.info("rangesFor references matched: count=" + ranges.size() + ", first=" //$NON-NLS-1$ //$NON-NLS-2$
-                    + BytecodeSearchDebug.describeRange(ranges.get(0), source));
             return ranges;
         }
         SourceRange fallback = enclosingRange(entry);
-        BytecodeSearchDebug.info("rangesFor fallback: no AST references matched, using enclosing " //$NON-NLS-1$
-                + BytecodeSearchDebug.describeRange(fallback, source));
         return List.of(fallback);
     }
 
     private ParsedClassFile parse(String source) {
         try {
-            BytecodeSearchDebug.info("parse source started: length=" + (source == null ? -1 : source.length())); //$NON-NLS-1$
             ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setSource(source.toCharArray());
             CompilationUnit unit = (CompilationUnit) parser.createAST(null);
-            BytecodeSearchDebug.info("parse source completed: rootLength=" + unit.getLength()); //$NON-NLS-1$
             return new ParsedClassFile(source, unit);
         } catch (RuntimeException e) {
-            BytecodeSearchDebug.info("parse source failed: " + e.getClass().getName() + ": " //$NON-NLS-1$ //$NON-NLS-2$
-                    + BytecodeSearchDebug.safeText(e.getMessage()));
             Logger.debug(e);
             return null;
         }
@@ -149,17 +133,12 @@ final class BytecodeSourceRangeResolver {
 
     private ParsedClassFile parse(IClassFile classFile) {
         try {
-            BytecodeSearchDebug.info("parse class file source started: " //$NON-NLS-1$
-                    + BytecodeSearchDebug.describeElement(classFile));
             String source = classFile.getSource();
             if (source == null || source.isBlank()) {
-                BytecodeSearchDebug.info("parse class file source unavailable"); //$NON-NLS-1$
                 return null;
             }
             return parse(source);
         } catch (JavaModelException | RuntimeException e) {
-            BytecodeSearchDebug.info("parse class file source failed: " + e.getClass().getName() + ": " //$NON-NLS-1$ //$NON-NLS-2$
-                    + BytecodeSearchDebug.safeText(e.getMessage()));
             Logger.debug(e);
             return null;
         }
@@ -234,36 +213,24 @@ final class BytecodeSourceRangeResolver {
         private List<SourceRange> computeReferences(BytecodeSearchEntry entry) {
             SourceRange enclosing = enclosingSourceRange(entry.getElement(), unit);
             if (enclosing == null) {
-                BytecodeSearchDebug.info("computeReferences: no enclosing source range for " //$NON-NLS-1$
-                        + BytecodeSearchDebug.describeElement(entry.getElement()));
                 return List.of();
             }
-            BytecodeSearchDebug.info("computeReferences: window=" + BytecodeSearchDebug.describeRange(enclosing, source)); //$NON-NLS-1$
             SourceWindow window = new SourceWindow(enclosing.offset(), enclosing.length());
             List<SourceRange> ranges = new ArrayList<>();
             unit.accept(new ReferenceVisitor(source, entry, window, ranges));
             ranges.sort(Comparator.comparingInt(SourceRange::offset));
-            BytecodeSearchDebug.info("computeReferences: matched " + ranges.size() + " references for " //$NON-NLS-1$ //$NON-NLS-2$
-                    + BytecodeSearchDebug.describeEntry(entry));
             return List.copyOf(ranges);
         }
 
         private static SourceRange enclosingSourceRange(IJavaElement element, CompilationUnit unit) {
             SourceRange declarationRange = AstDeclarationWindow.find(element, unit);
             if (declarationRange != null) {
-                BytecodeSearchDebug.info("enclosingSourceRange: AST declaration window " //$NON-NLS-1$
-                        + BytecodeSearchDebug.describeRange(declarationRange, null));
                 return declarationRange;
             }
             ISourceRange sourceRange = sourceRange(element, false);
             if (isValid(sourceRange)) {
-                SourceRange jdtRange = new SourceRange(sourceRange.getOffset(), sourceRange.getLength());
-                BytecodeSearchDebug.info("enclosingSourceRange: JDT source range " //$NON-NLS-1$
-                        + BytecodeSearchDebug.describeRange(jdtRange, null));
-                return jdtRange;
+                return new SourceRange(sourceRange.getOffset(), sourceRange.getLength());
             }
-            BytecodeSearchDebug.info("enclosingSourceRange: no AST/JDT source range for " //$NON-NLS-1$
-                    + BytecodeSearchDebug.describeElement(element));
             return null;
         }
     }

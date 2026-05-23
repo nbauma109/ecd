@@ -208,6 +208,36 @@ final class BytecodeJarIndexer {
             flushMemberReferences(constructorReferencesByElement, Kind.CONSTRUCTOR);
         }
 
+        private static String jdtTypeSignature(org.objectweb.asm.Type type) {
+            if (type.getSort() == org.objectweb.asm.Type.ARRAY) {
+                return type.getDescriptor().replace('/', '.');
+            }
+            if (type.getSort() == org.objectweb.asm.Type.OBJECT) {
+                return Signature.createTypeSignature(type.getClassName(), true);
+            }
+            return type.getDescriptor();
+        }
+
+        private static String packageName(String internalName) {
+            int separator = internalName.lastIndexOf('/');
+            return separator < 0 ? "" : internalName.substring(0, separator).replace('/', '.'); //$NON-NLS-1$
+        }
+
+        private static String classFileName(String internalName) {
+            int separator = internalName.lastIndexOf('/');
+            String className = separator < 0 ? internalName : internalName.substring(separator + 1);
+            return className + CLASS_FILE_EXTENSION;
+        }
+
+        private static String simpleTypeName(String internalName) {
+            int separator = Math.max(internalName.lastIndexOf('/'), internalName.lastIndexOf('$'));
+            return separator < 0 ? internalName : internalName.substring(separator + 1);
+        }
+
+        private static String qualifiedTypeName(String internalName) {
+            return internalName == null ? null : internalName.replace('/', '.').replace('$', '.');
+        }
+
         private void addTypeReference(String internalName) {
             if (internalName == null || internalName.isBlank() || MODULE_INFO.equals(internalName)) {
                 return;
@@ -297,6 +327,16 @@ final class BytecodeJarIndexer {
             }
         }
 
+        private static boolean isTypeSignature(String signature) {
+            char first = signature.charAt(0);
+            return first == 'L' || first == '[' || first == 'T' || first == '+' || first == '-' || first == '*';
+        }
+
+        private static boolean isClassSignature(String signature) {
+            char first = signature.charAt(0);
+            return first == '<' || first == 'L';
+        }
+
         private AnnotationVisitor annotationVisitor(IJavaElement element) {
             return new AnnotationVisitor(Opcodes.ASM9) {
                 @Override
@@ -348,40 +388,16 @@ final class BytecodeJarIndexer {
             }
         }
 
-        private void addReference(Kind kind, String name, String qualifiedName, String owner) {
-            MemberName member = new MemberName(name, owner, null);
-            if (kind == Kind.FIELD) {
-                fieldReferencesByElement.computeIfAbsent(type, key -> new HashSet<>()).add(member);
-            } else if (kind == Kind.METHOD) {
-                methodReferencesByElement.computeIfAbsent(type, key -> new HashSet<>()).add(member);
-            } else if (kind == Kind.CONSTRUCTOR) {
-                constructorReferencesByElement.computeIfAbsent(type, key -> new HashSet<>()).add(member);
-            } else {
-                add(kind, false, type, pool(name), pool(qualifiedName), pool(owner), null);
-            }
-        }
-
-        private void addReference(Kind kind, String name, String qualifiedName, String owner, IJavaElement element) {
-            addReference(kind, name, qualifiedName, owner, null, element);
-        }
-
         private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
             IJavaElement enclosingElement = element == null ? type : element;
             MemberName member = new MemberName(name, owner, descriptor);
-            if (kind == Kind.FIELD) {
-                fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
-            } else if (kind == Kind.METHOD) {
-                methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
-            } else if (kind == Kind.CONSTRUCTOR) {
-                constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
-            } else {
-                add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
+            switch (kind) {
+              case Kind.FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
+              case Kind.METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
+              case Kind.CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
+              default -> add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
             }
-        }
-
-        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, IJavaElement element) {
-            addReferenceEntry(kind, name, qualifiedName, owner, null, element);
         }
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
@@ -542,6 +558,26 @@ final class BytecodeJarIndexer {
                 }
                 return new MethodIndexer(annotationIndexer, method);
             }
+        }
+
+        private static IType typeForInternalName(IPackageFragmentRoot root, String internalName) {
+            IPackageFragment pkg = root.getPackageFragment(packageName(internalName));
+            IClassFile classFile = pkg.getClassFile(classFileName(internalName));
+            try {
+                return classFile.getType();
+            } catch (UnsupportedOperationException e) {
+                JavaDecompilerPlugin.logError(e, "Unsupported class file model for " + internalName); //$NON-NLS-1$
+                return null;
+            }
+        }
+
+        private static String[] jdtParameterTypes(String descriptor) {
+            org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+            String[] result = new String[argumentTypes.length];
+            for (int i = 0; i < argumentTypes.length; i++) {
+                result[i] = jdtTypeSignature(argumentTypes[i]);
+            }
+            return result;
         }
 
         private final class SignatureIndexer extends SignatureVisitor {
@@ -750,65 +786,5 @@ final class BytecodeJarIndexer {
     }
 
     record JarEntryWork(String name, long impactBytes) {
-    }
-
-    private static IType typeForInternalName(IPackageFragmentRoot root, String internalName) {
-        IPackageFragment pkg = root.getPackageFragment(packageName(internalName));
-        IClassFile classFile = pkg.getClassFile(classFileName(internalName));
-        try {
-            return classFile.getType();
-        } catch (UnsupportedOperationException e) {
-            JavaDecompilerPlugin.logError(e, "Unsupported class file model for " + internalName); //$NON-NLS-1$
-            return null;
-        }
-    }
-
-    private static String[] jdtParameterTypes(String descriptor) {
-        org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
-        String[] result = new String[argumentTypes.length];
-        for (int i = 0; i < argumentTypes.length; i++) {
-            result[i] = jdtTypeSignature(argumentTypes[i]);
-        }
-        return result;
-    }
-
-    private static String jdtTypeSignature(org.objectweb.asm.Type type) {
-        if (type.getSort() == org.objectweb.asm.Type.ARRAY) {
-            return type.getDescriptor().replace('/', '.');
-        }
-        if (type.getSort() == org.objectweb.asm.Type.OBJECT) {
-            return Signature.createTypeSignature(type.getClassName(), true);
-        }
-        return type.getDescriptor();
-    }
-
-    private static boolean isTypeSignature(String signature) {
-        char first = signature.charAt(0);
-        return first == 'L' || first == '[' || first == 'T' || first == '+' || first == '-' || first == '*';
-    }
-
-    private static boolean isClassSignature(String signature) {
-        char first = signature.charAt(0);
-        return first == '<' || first == 'L';
-    }
-
-    private static String packageName(String internalName) {
-        int separator = internalName.lastIndexOf('/');
-        return separator < 0 ? "" : internalName.substring(0, separator).replace('/', '.'); //$NON-NLS-1$
-    }
-
-    private static String classFileName(String internalName) {
-        int separator = internalName.lastIndexOf('/');
-        String className = separator < 0 ? internalName : internalName.substring(separator + 1);
-        return className + CLASS_FILE_EXTENSION;
-    }
-
-    private static String simpleTypeName(String internalName) {
-        int separator = Math.max(internalName.lastIndexOf('/'), internalName.lastIndexOf('$'));
-        return separator < 0 ? internalName : internalName.substring(separator + 1);
-    }
-
-    private static String qualifiedTypeName(String internalName) {
-        return internalName == null ? null : internalName.replace('/', '.').replace('$', '.');
     }
 }

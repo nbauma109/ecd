@@ -41,32 +41,21 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
 
     @Override
     public ILabelProvider createLabelProvider() {
-        BytecodeSearchDebug.info("createLabelProvider requested"); //$NON-NLS-1$
         return new BytecodeSearchLabelProvider();
     }
 
     @Override
     public void showMatch(Match match, int currentOffset, int currentLength, boolean activate)
             throws PartInitException {
-        BytecodeSearchDebug.info("showMatch entered: currentOffset=" + currentOffset //$NON-NLS-1$
-                + ", currentLength=" + currentLength + ", activate=" + activate + ", " //$NON-NLS-1$ //$NON-NLS-2$
-                + BytecodeSearchDebug.describeMatch(match));
         IJavaElement javaElement = javaElement(match);
         if (javaElement == null) {
-            BytecodeSearchDebug.info("showMatch ignored non-Java element: " //$NON-NLS-1$
-                    + BytecodeSearchDebug.describeElement(match.getElement()));
             return;
         }
 
         IEditorPart editor = openJavaElement(editorOpenTarget(match, javaElement), activate);
         String source = documentText(editor);
-        BytecodeSearchDebug.info("showMatch opened editor: " + editor.getClass().getName() //$NON-NLS-1$
-                + ", textEditor=" + (editor instanceof ITextEditor) //$NON-NLS-1$
-                + ", documentLength=" + (source == null ? -1 : source.length())); //$NON-NLS-1$
         List<BytecodeSourceRangeResolver.SourceRange> highlights = null;
         if (match instanceof BytecodeSearchMatch bytecodeMatch) {
-            BytecodeSearchDebug.info("showMatch resolving bytecode match: " //$NON-NLS-1$
-                    + BytecodeSearchDebug.describeEntry(bytecodeMatch.getEntry()));
             ResolvedRanges resolved = editor instanceof ITextEditor textEditor
                     ? resolveRanges(bytecodeMatch, textEditor, source)
                     : new ResolvedRanges(sourceRangeResolver.rangeFor(bytecodeMatch.getEntry(), source), List.of());
@@ -75,19 +64,15 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
             bytecodeMatch.update(range);
             currentOffset = range.offset();
             currentLength = range.length();
-            BytecodeSearchDebug.info("showMatch resolved range: " + BytecodeSearchDebug.describeRange(range, source)); //$NON-NLS-1$
         } else {
-            BytecodeSearchDebug.info("showMatch received non-bytecode match; using existing offset/length"); //$NON-NLS-1$
         }
         if (editor instanceof ITextEditor textEditor && currentOffset >= 0 && currentLength > 0) {
-            BytecodeSearchDebug.info("showMatch selectAndReveal offset=" + currentOffset + ", length=" + currentLength); //$NON-NLS-1$ //$NON-NLS-2$
             protectExternalTextSelection(editor);
             BytecodeSearchEditorHighlighter.highlight(textEditor, highlights == null || highlights.isEmpty()
                     ? List.of(new BytecodeSourceRangeResolver.SourceRange(currentOffset, currentLength))
                     : highlights);
             selectAndReveal(textEditor, currentOffset, currentLength);
         } else {
-            BytecodeSearchDebug.info("showMatch falling back to JavaUI.revealInEditor"); //$NON-NLS-1$
             JavaUI.revealInEditor(editor, javaElement);
         }
     }

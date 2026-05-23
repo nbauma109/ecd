@@ -43,17 +43,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         BytecodeSearchIndex.getDefault().start();
         SearchMatcher matcher = SearchMatcher.create(querySpecification);
         if (matcher == null) {
-            BytecodeSearchDebug.info("search ignored unsupported query specification: " //$NON-NLS-1$
-                    + querySpecification.getClass().getName() + ", limitTo=" + querySpecification.getLimitTo()); //$NON-NLS-1$
             return;
         }
-        BytecodeSearchDebug.info("search started: " + matcher.describe() //$NON-NLS-1$
-                + ", scope=" + BytecodeSearchDebug.safeText(String.valueOf(querySpecification.getScope()))); //$NON-NLS-1$
         int[] reported = new int[1];
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {
-                BytecodeSearchDebug.info("search canceled after reporting " + reported[0] + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
                 throw new OperationCanceledException();
             }
             IJavaElement element = entry.getElement();
@@ -62,12 +57,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 requestor.reportMatch(match);
                 reported[0]++;
                 if (reported[0] <= SEARCH_MATCH_LOG_LIMIT) {
-                    BytecodeSearchDebug.info("reported match " + reported[0] + ": " //$NON-NLS-1$ //$NON-NLS-2$
-                            + BytecodeSearchDebug.describeEntry(entry));
                 }
             }
         });
-        BytecodeSearchDebug.info("search completed: reported " + reported[0] + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Override
@@ -186,17 +178,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         boolean isWildcard() {
             return wildcardPattern != null;
-        }
-
-        String describe() {
-            return "matcher[kind=" + kind //$NON-NLS-1$
-                    + ", limitTo=" + limitTo //$NON-NLS-1$
-                    + ", name=" + BytecodeSearchDebug.safeText(name) //$NON-NLS-1$
-                    + ", qualifiedName=" + BytecodeSearchDebug.safeText(qualifiedName) //$NON-NLS-1$
-                    + ", declaringTypeName=" + BytecodeSearchDebug.safeText(declaringTypeName) //$NON-NLS-1$
-                    + ", descriptor=" + BytecodeSearchDebug.safeText(descriptor) //$NON-NLS-1$
-                    + ", caseSensitive=" + caseSensitive //$NON-NLS-1$
-                    + ", wildcard=" + (wildcardPattern != null) + ']'; //$NON-NLS-1$
         }
 
         private boolean matchesLimit(BytecodeSearchEntry entry) {
