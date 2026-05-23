@@ -283,7 +283,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             } else if (kind == Kind.CONSTRUCTOR) {
                 declaringTypeName = memberPattern;
                 name = simpleName(memberPattern);
-                qualifiedName = memberPattern;
             } else if (kind == Kind.TYPE) {
                 name = simpleName(memberPattern);
             }

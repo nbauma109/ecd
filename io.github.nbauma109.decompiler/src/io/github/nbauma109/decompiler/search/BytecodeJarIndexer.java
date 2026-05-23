@@ -287,12 +287,6 @@ final class BytecodeJarIndexer {
             }
         }
 
-        private void addDescriptor(String descriptor) {
-            if (descriptor != null && !descriptor.isBlank()) {
-                descriptorSet.add(descriptor);
-            }
-        }
-
         private void addDescriptorReferences(String descriptor) {
             addDescriptorReferences(descriptor, null);
         }
@@ -461,7 +455,7 @@ final class BytecodeJarIndexer {
             for (Map.Entry<IJavaElement, List<MemberReference>> entry : references.entrySet()) {
                 for (MemberReference member : entry.getValue()) {
                     String qualifiedName = member.name();
-                    if (kind == Kind.METHOD && "<init>".equals(member.name())) {
+                    if (kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
                         qualifiedName = member.owner();
                     }
                     addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
@@ -529,11 +523,16 @@ final class BytecodeJarIndexer {
 
         private final class LightweightClassVisitor extends ClassVisitor {
 
-            private final AnnotationIndexer annotationIndexer = new AnnotationIndexer();
             private final ModuleIndexer moduleIndexer = new ModuleIndexer();
 
             private LightweightClassVisitor() {
                 super(Opcodes.ASM9);
+            }
+
+            private void addDescriptor(String descriptor) {
+                if (descriptor != null && !descriptor.isBlank()) {
+                    descriptorSet.add(descriptor);
+                }
             }
 
             @Override
@@ -635,24 +634,6 @@ final class BytecodeJarIndexer {
             @Override
             public void visitClassType(String name) {
                 addTypeReference(name, element);
-            }
-        }
-
-        private final class AnnotationIndexer extends AnnotationVisitor {
-
-            private AnnotationIndexer() {
-                super(Opcodes.ASM9);
-            }
-
-            @Override
-            public void visitEnum(String name, String descriptor, String value) {
-                addDescriptor(descriptor);
-            }
-
-            @Override
-            public AnnotationVisitor visitAnnotation(String name, String descriptor) {
-                addDescriptor(descriptor);
-                return this;
             }
         }
 

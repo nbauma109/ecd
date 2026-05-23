@@ -364,7 +364,7 @@ final class BytecodeSourceRangeResolver {
             }
         }
 
-        private static boolean sameParameterTypes(IMethod method, MethodDeclaration node) throws JavaModelException {
+        private static boolean sameParameterTypes(IMethod method, MethodDeclaration node) {
             String[] methodParameterTypes = method.getParameterTypes();
             List<?> nodeParameters = node.parameters();
             if (methodParameterTypes.length != nodeParameters.size()) {
