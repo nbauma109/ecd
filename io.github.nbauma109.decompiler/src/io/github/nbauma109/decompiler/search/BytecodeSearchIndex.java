@@ -9,16 +9,14 @@
 package io.github.nbauma109.decompiler.search;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -319,14 +317,14 @@ public final class BytecodeSearchIndex {
 
         private final long lastModified;
         private final long length;
-        private final Map<Kind, Map<String, List<BytecodeSearchEntry>>> byKindAndName;
-        private final int entryCount;
+        private final CompactEntries entries;
+        private final Map<Kind, Map<String, int[]>> byKindAndName;
 
         JarIndex(File jar, List<BytecodeSearchEntry> entries) {
             this.lastModified = jar.lastModified();
             this.length = jar.length();
-            this.entryCount = entries.size();
             this.byKindAndName = buildNameIndex(entries);
+            this.entries = CompactEntries.from(entries);
         }
 
         boolean matches(File jar) {
@@ -334,7 +332,7 @@ public final class BytecodeSearchIndex {
         }
 
         int entryCount() {
-            return entryCount;
+            return entries.size();
         }
 
         void collect(Kind kind, String name, String qualifiedName, boolean wildcard, EntryConsumer consumer)
@@ -343,78 +341,93 @@ public final class BytecodeSearchIndex {
                 collectWildcard(kind, consumer);
                 return;
             }
-            Map<String, List<BytecodeSearchEntry>> nameIndex = byKindAndName.get(kind);
+            Map<String, int[]> nameIndex = byKindAndName.get(kind);
             if (nameIndex == null) {
                 return;
             }
-            Set<BytecodeSearchEntry> seen = new HashSet<>();
-            collectExact(nameIndex, name, consumer, seen);
+            int[] firstPostings = postings(nameIndex, name);
+            collectPostings(firstPostings, consumer);
             if (!sameKey(name, qualifiedName)) {
-                collectExact(nameIndex, qualifiedName, consumer, seen);
+                collectPostingsSkipping(postings(nameIndex, qualifiedName), firstPostings, consumer);
             }
         }
 
-        private static void collectExact(Map<String, List<BytecodeSearchEntry>> nameIndex, String name,
-                EntryConsumer consumer, Set<BytecodeSearchEntry> seen) throws CoreException {
+        private static int[] postings(Map<String, int[]> nameIndex, String name) {
             if (name == null || name.isBlank()) {
+                return null;
+            }
+            return nameIndex.get(normalizeKey(name));
+        }
+
+        private void collectPostings(int[] postings, EntryConsumer consumer) throws CoreException {
+            if (postings == null) {
                 return;
             }
-            for (BytecodeSearchEntry entry : nameIndex.getOrDefault(normalizeKey(name), Collections.emptyList())) {
-                if (seen.add(entry)) {
-                    consumer.accept(entry);
+            for (int entryId : postings) {
+                consumer.accept(entries.entry(entryId));
+            }
+        }
+
+        private void collectPostingsSkipping(int[] postings, int[] skip, EntryConsumer consumer) throws CoreException {
+            if (postings == null) {
+                return;
+            }
+            for (int entryId : postings) {
+                if (skip == null || java.util.Arrays.binarySearch(skip, entryId) < 0) {
+                    consumer.accept(entries.entry(entryId));
                 }
             }
         }
 
         private void collectWildcard(Kind kind, EntryConsumer consumer) throws CoreException {
-            Map<String, List<BytecodeSearchEntry>> nameIndex = byKindAndName.get(kind);
+            Map<String, int[]> nameIndex = byKindAndName.get(kind);
             if (nameIndex == null) {
                 return;
             }
-            Set<BytecodeSearchEntry> seen = new HashSet<>();
-            for (List<BytecodeSearchEntry> bucket : nameIndex.values()) {
-                for (BytecodeSearchEntry entry : bucket) {
-                    if (seen.add(entry)) {
-                        consumer.accept(entry);
+            BitSet emitted = new BitSet(entries.size());
+            for (int[] postings : nameIndex.values()) {
+                for (int entryId : postings) {
+                    if (!emitted.get(entryId)) {
+                        emitted.set(entryId);
+                        consumer.accept(entries.entry(entryId));
                     }
                 }
             }
         }
 
-        private static Map<Kind, Map<String, List<BytecodeSearchEntry>>> buildNameIndex(
+        private static Map<Kind, Map<String, int[]>> buildNameIndex(
                 List<BytecodeSearchEntry> entries) {
-            Map<Kind, Map<String, List<BytecodeSearchEntry>>> result = new EnumMap<>(Kind.class);
-            for (BytecodeSearchEntry entry : entries) {
-                Map<String, List<BytecodeSearchEntry>> nameIndex = result.computeIfAbsent(entry.getKind(),
+            Map<Kind, Map<String, IntPostings>> builders = new EnumMap<>(Kind.class);
+            for (int entryId = 0; entryId < entries.size(); entryId++) {
+                BytecodeSearchEntry entry = entries.get(entryId);
+                Map<String, IntPostings> nameIndex = builders.computeIfAbsent(entry.getKind(),
                         key -> new HashMap<>());
-                addToNameIndex(nameIndex, entry.getName(), entry);
+                addToNameIndex(nameIndex, entry.getName(), entryId);
                 if (indexesQualifiedName(entry.getKind())
                         && !normalizeKey(entry.getName()).equals(normalizeKey(entry.getQualifiedName()))) {
-                    addToNameIndex(nameIndex, entry.getQualifiedName(), entry);
+                    addToNameIndex(nameIndex, entry.getQualifiedName(), entryId);
                 }
             }
-            freeze(result);
-            return result;
+            return freeze(builders);
         }
 
-        private static void addToNameIndex(Map<String, List<BytecodeSearchEntry>> nameIndex, String name,
-                BytecodeSearchEntry entry) {
+        private static void addToNameIndex(Map<String, IntPostings> nameIndex, String name, int entryId) {
             if (name == null || name.isBlank()) {
                 return;
             }
-            nameIndex.computeIfAbsent(normalizeKey(name), key -> new ArrayList<>()).add(entry);
+            nameIndex.computeIfAbsent(normalizeKey(name), key -> new IntPostings()).add(entryId);
         }
 
-        private static void freeze(Map<Kind, Map<String, List<BytecodeSearchEntry>>> index) {
-            ArrayDeque<Kind> keys = new ArrayDeque<>(index.keySet());
-            while (!keys.isEmpty()) {
-                Kind kind = keys.removeFirst();
-                Map<String, List<BytecodeSearchEntry>> nameIndex = index.get(kind);
-                for (Map.Entry<String, List<BytecodeSearchEntry>> entry : nameIndex.entrySet()) {
-                    entry.setValue(List.copyOf(entry.getValue()));
+        private static Map<Kind, Map<String, int[]>> freeze(Map<Kind, Map<String, IntPostings>> builders) {
+            Map<Kind, Map<String, int[]>> frozen = new EnumMap<>(Kind.class);
+            for (Map.Entry<Kind, Map<String, IntPostings>> kindEntry : builders.entrySet()) {
+                Map<String, int[]> nameIndex = new HashMap<>();
+                for (Map.Entry<String, IntPostings> entry : kindEntry.getValue().entrySet()) {
+                    nameIndex.put(entry.getKey(), entry.getValue().toArray());
                 }
-                index.put(kind, Collections.unmodifiableMap(nameIndex));
+                frozen.put(kindEntry.getKey(), Collections.unmodifiableMap(nameIndex));
             }
+            return Collections.unmodifiableMap(frozen);
         }
 
         private static String normalizeKey(String name) {
@@ -430,6 +443,165 @@ public final class BytecodeSearchIndex {
 
         private static boolean indexesQualifiedName(Kind kind) {
             return kind == Kind.TYPE || kind == Kind.PACKAGE || kind == Kind.MODULE;
+        }
+
+        private static final class CompactEntries {
+
+            private static final int NULL_ID = -1;
+
+            private final String[] strings;
+            private final String[] elementHandles;
+            private final IJavaElement[] anonymousElementFallbacks;
+            private final byte[] kindAndFlags;
+            private final int[] elementHandleIds;
+            private final int[] nameIds;
+            private final int[] qualifiedNameIds;
+            private final int[] declaringTypeNameIds;
+            private final int[] descriptorIds;
+
+            private CompactEntries(String[] strings, String[] elementHandles, IJavaElement[] anonymousElementFallbacks,
+                    byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds, int[] qualifiedNameIds,
+                    int[] declaringTypeNameIds, int[] descriptorIds) {
+                this.strings = strings;
+                this.elementHandles = elementHandles;
+                this.anonymousElementFallbacks = anonymousElementFallbacks;
+                this.kindAndFlags = kindAndFlags;
+                this.elementHandleIds = elementHandleIds;
+                this.nameIds = nameIds;
+                this.qualifiedNameIds = qualifiedNameIds;
+                this.declaringTypeNameIds = declaringTypeNameIds;
+                this.descriptorIds = descriptorIds;
+            }
+
+            private static CompactEntries from(List<BytecodeSearchEntry> entries) {
+                Dictionary strings = new Dictionary();
+                ElementDictionary elements = new ElementDictionary();
+                int size = entries.size();
+                byte[] kindAndFlags = new byte[size];
+                int[] elementHandleIds = new int[size];
+                int[] nameIds = new int[size];
+                int[] qualifiedNameIds = new int[size];
+                int[] declaringTypeNameIds = new int[size];
+                int[] descriptorIds = new int[size];
+                for (int i = 0; i < size; i++) {
+                    BytecodeSearchEntry entry = entries.get(i);
+                    kindAndFlags[i] = kindAndFlags(entry);
+                    elementHandleIds[i] = elements.id(entry.getElementHandle(), entry.getAnonymousElementFallback());
+                    nameIds[i] = strings.id(entry.getName());
+                    qualifiedNameIds[i] = strings.id(entry.getQualifiedName());
+                    declaringTypeNameIds[i] = strings.id(entry.getDeclaringTypeName());
+                    descriptorIds[i] = strings.id(entry.getDescriptor());
+                }
+                return new CompactEntries(strings.values(), elements.handles(), elements.fallbacks(), kindAndFlags,
+                        elementHandleIds, nameIds, qualifiedNameIds, declaringTypeNameIds, descriptorIds);
+            }
+
+            private int size() {
+                return kindAndFlags.length;
+            }
+
+            private BytecodeSearchEntry entry(int entryId) {
+                int elementHandleId = elementHandleIds[entryId];
+                return new BytecodeSearchEntry(kind(entryId), declaration(entryId), elementHandle(elementHandleId),
+                        anonymousElementFallback(elementHandleId), string(nameIds[entryId]),
+                        string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
+                        string(descriptorIds[entryId]));
+            }
+
+            private Kind kind(int entryId) {
+                return Kind.values()[kindAndFlags[entryId] & 0x0F];
+            }
+
+            private boolean declaration(int entryId) {
+                return (kindAndFlags[entryId] & 0x10) != 0;
+            }
+
+            private String string(int id) {
+                return id == NULL_ID ? null : strings[id];
+            }
+
+            private String elementHandle(int id) {
+                return id == NULL_ID ? null : elementHandles[id];
+            }
+
+            private IJavaElement anonymousElementFallback(int id) {
+                return id == NULL_ID ? null : anonymousElementFallbacks[id];
+            }
+
+            private static byte kindAndFlags(BytecodeSearchEntry entry) {
+                int flags = entry.getKind().ordinal();
+                if (entry.isDeclaration()) {
+                    flags |= 0x10;
+                }
+                return (byte) flags;
+            }
+        }
+
+        private static class Dictionary {
+
+            private final Map<String, Integer> ids = new HashMap<>();
+            private final List<String> values = new ArrayList<>();
+
+            private int id(String value) {
+                if (value == null) {
+                    return CompactEntries.NULL_ID;
+                }
+                Integer existing = ids.get(value);
+                if (existing != null) {
+                    return existing.intValue();
+                }
+                int id = values.size();
+                ids.put(value, Integer.valueOf(id));
+                values.add(value);
+                return id;
+            }
+
+            protected String[] values() {
+                return values.toArray(String[]::new);
+            }
+        }
+
+        private static final class ElementDictionary extends Dictionary {
+
+            private final List<IJavaElement> fallbacks = new ArrayList<>();
+
+            private int id(String handle, IJavaElement fallback) {
+                int id = super.id(handle);
+                if (id != CompactEntries.NULL_ID) {
+                    while (fallbacks.size() <= id) {
+                        fallbacks.add(null);
+                    }
+                    if (fallbacks.get(id) == null && fallback != null) {
+                        fallbacks.set(id, fallback);
+                    }
+                }
+                return id;
+            }
+
+            private String[] handles() {
+                return values();
+            }
+
+            private IJavaElement[] fallbacks() {
+                return fallbacks.toArray(IJavaElement[]::new);
+            }
+        }
+
+        private static final class IntPostings {
+
+            private int[] values = new int[4];
+            private int size;
+
+            private void add(int value) {
+                if (size == values.length) {
+                    values = java.util.Arrays.copyOf(values, values.length * 2);
+                }
+                values[size++] = value;
+            }
+
+            private int[] toArray() {
+                return java.util.Arrays.copyOf(values, size);
+            }
         }
     }
 

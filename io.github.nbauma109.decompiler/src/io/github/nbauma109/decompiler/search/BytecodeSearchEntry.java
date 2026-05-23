@@ -71,6 +71,10 @@ final class BytecodeSearchEntry {
         return elementHandle;
     }
 
+    IJavaElement getAnonymousElementFallback() {
+        return anonymousElementFallback;
+    }
+
     String getName() {
         return name;
     }
