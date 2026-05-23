@@ -404,9 +404,9 @@ final class BytecodeJarIndexer {
             IJavaElement enclosingElement = element == null ? type : element;
             MemberReference member = new MemberReference(name, owner, descriptor, access);
             switch (kind) {
-              case Kind.FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              case Kind.METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              case Kind.CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+              case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+              case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+              case CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               default -> add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
             }
         }
