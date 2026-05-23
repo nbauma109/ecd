@@ -437,7 +437,11 @@ final class BytecodeJarIndexer {
         private void flushMemberReferences(Map<IJavaElement, Set<MemberName>> references, Kind kind) {
             for (Map.Entry<IJavaElement, Set<MemberName>> entry : references.entrySet()) {
                 for (MemberName member : entry.getValue()) {
-                    addReferenceEntry(kind, member.name(), member.owner(), member.owner(), member.descriptor(),
+                    String qualifiedName = member.name();
+                    if (kind == Kind.METHOD && "<init>".equals(member.name())) {
+                        qualifiedName = member.owner();
+                    }
+                    addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
                             entry.getKey());
                 }
             }
