@@ -31,27 +31,49 @@ final class BytecodeSearchEntry {
     private final String declaringTypeName;
     private final String descriptor;
 
-    BytecodeSearchEntry(Kind kind, boolean declaration, String elementHandle, IJavaElement anonymousElementFallback,
-            String name, String qualifiedName, String declaringTypeName, String descriptor) {
+    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+            SymbolReference symbolReference) {
         this.kind = kind;
         this.declaration = declaration;
-        this.elementHandle = elementHandle;
-        this.anonymousElementFallback = anonymousElementFallback;
-        this.name = name == null ? "" : name; //$NON-NLS-1$
-        this.qualifiedName = qualifiedName == null ? this.name : qualifiedName;
-        this.declaringTypeName = declaringTypeName;
-        this.descriptor = descriptor;
+        this.elementHandle = elementReference.handle();
+        this.anonymousElementFallback = elementReference.anonymousFallback();
+        this.name = symbolReference.name() == null ? "" : symbolReference.name(); //$NON-NLS-1$
+        this.qualifiedName = symbolReference.qualifiedName() == null ? this.name : symbolReference.qualifiedName();
+        this.declaringTypeName = symbolReference.declaringTypeName();
+        this.descriptor = symbolReference.descriptor();
     }
 
     BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
             String declaringTypeName, String descriptor) {
-        this(kind, declaration, element == null ? null : element.getHandleIdentifier(),
-                element == null ? null : anonymousElementFallback(element.getHandleIdentifier(), element), name,
-                qualifiedName, declaringTypeName, descriptor);
+        this(kind, declaration, elementReference(element),
+                new SymbolReference(name, qualifiedName, declaringTypeName, descriptor));
+    }
+
+    static ElementReference elementReference(String handle, IJavaElement anonymousFallback) {
+        return new ElementReference(handle, anonymousFallback);
+    }
+
+    static SymbolReference symbolReference(String name, String qualifiedName, String declaringTypeName,
+            String descriptor) {
+        return new SymbolReference(name, qualifiedName, declaringTypeName, descriptor);
+    }
+
+    private static ElementReference elementReference(IJavaElement element) {
+        if (element == null) {
+            return new ElementReference(null, null);
+        }
+        String handle = element.getHandleIdentifier();
+        return new ElementReference(handle, anonymousElementFallback(handle, element));
     }
 
     private static IJavaElement anonymousElementFallback(String elementHandle, IJavaElement element) {
         return elementHandle != null && elementHandle.contains("[~") ? element : null; //$NON-NLS-1$
+    }
+
+    record ElementReference(String handle, IJavaElement anonymousFallback) {
+    }
+
+    record SymbolReference(String name, String qualifiedName, String declaringTypeName, String descriptor) {
     }
 
     Kind getKind() {

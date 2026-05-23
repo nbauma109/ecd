@@ -35,8 +35,6 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
-    private static final int SEARCH_MATCH_LOG_LIMIT = 8;
-
     @Override
     public void search(ISearchRequestor requestor, QuerySpecification querySpecification, IProgressMonitor monitor)
             throws CoreException {
@@ -56,8 +54,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
                 requestor.reportMatch(match);
                 reported[0]++;
-                if (reported[0] <= SEARCH_MATCH_LOG_LIMIT) {
-                }
             }
         });
     }
@@ -84,16 +80,15 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final boolean caseSensitive;
         private final Pattern wildcardPattern;
 
-        private SearchMatcher(int limitTo, Kind kind, String name, String qualifiedName, String declaringTypeName,
-                String descriptor, boolean caseSensitive, Pattern wildcardPattern) {
+        private SearchMatcher(int limitTo, Kind kind, SearchPattern searchPattern) {
             this.limitTo = limitTo;
             this.kind = kind;
-            this.name = name;
-            this.qualifiedName = qualifiedName;
-            this.declaringTypeName = declaringTypeName;
-            this.descriptor = descriptor;
-            this.caseSensitive = caseSensitive;
-            this.wildcardPattern = wildcardPattern;
+            this.name = searchPattern.name();
+            this.qualifiedName = searchPattern.qualifiedName();
+            this.declaringTypeName = searchPattern.declaringTypeName();
+            this.descriptor = searchPattern.descriptor();
+            this.caseSensitive = searchPattern.caseSensitive();
+            this.wildcardPattern = searchPattern.wildcardPattern();
         }
 
         static SearchMatcher create(QuerySpecification specification) {
@@ -106,9 +101,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                     return null;
                 }
                 String pattern = patternSpecification.getPattern();
-                return new SearchMatcher(specification.getLimitTo(), kind, pattern, pattern, null, null,
-                        patternSpecification.isCaseSensitive(), wildcardPattern(pattern,
-                                patternSpecification.isCaseSensitive()));
+                return new SearchMatcher(specification.getLimitTo(), kind,
+                        new SearchPattern(pattern, pattern, null, null, patternSpecification.isCaseSensitive(),
+                                wildcardPattern(pattern, patternSpecification.isCaseSensitive())));
             }
             if (specification instanceof ElementQuerySpecification elementSpecification) {
                 return forElement(specification.getLimitTo(), elementSpecification.getElement());
@@ -118,33 +113,39 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static SearchMatcher forElement(int limitTo, IJavaElement element) {
             if (element instanceof IType type) {
-                return new SearchMatcher(limitTo, Kind.TYPE, type.getElementName(), normalizeTypeName(type), null, null,
-                        true, null);
+                return new SearchMatcher(limitTo, Kind.TYPE,
+                        new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null, true, null));
             }
             if (element instanceof IField field) {
-                return new SearchMatcher(limitTo, Kind.FIELD, field.getElementName(), field.getElementName(),
-                        normalizeDeclaringType(field), null, true, null);
+                return new SearchMatcher(limitTo, Kind.FIELD,
+                        new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
+                                null, true, null));
             }
             if (element instanceof IMethod method) {
                 try {
                     boolean constructor = method.isConstructor();
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
-                            constructor ? declaringSimpleName(method) : method.getElementName(), method.getElementName(),
-                            normalizeDeclaringType(method), method.getSignature(), true, null);
+                            new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
+                                    method.getElementName(), normalizeDeclaringType(method), method.getSignature(), true,
+                                    null));
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
                 }
             }
             if (element instanceof IPackageFragment pkg) {
-                return new SearchMatcher(limitTo, Kind.PACKAGE, pkg.getElementName(), pkg.getElementName(), null, null,
-                        true, null);
+                return new SearchMatcher(limitTo, Kind.PACKAGE,
+                        new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, true, null));
             }
             if (element instanceof IModuleDescription module) {
-                return new SearchMatcher(limitTo, Kind.MODULE, module.getElementName(), module.getElementName(), null,
-                        null, true, null);
+                return new SearchMatcher(limitTo, Kind.MODULE,
+                        new SearchPattern(module.getElementName(), module.getElementName(), null, null, true, null));
             }
             return null;
+        }
+
+        private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
+                boolean caseSensitive, Pattern wildcardPattern) {
         }
 
         boolean matches(BytecodeSearchEntry entry) {

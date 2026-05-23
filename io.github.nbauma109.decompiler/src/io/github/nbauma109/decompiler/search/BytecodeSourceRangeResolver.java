@@ -95,8 +95,10 @@ final class BytecodeSourceRangeResolver {
             return List.of(declarationRange);
         }
 
-        ParsedClassFile parsed = parsedSource != null ? parsedSource
-                : source == null || source.isBlank() ? parsedClassFile(entry.getElement()) : parse(source);
+        ParsedClassFile parsed = parsedSource;
+        if (parsed == null) {
+            parsed = source == null || source.isBlank() ? parsedClassFile(entry.getElement()) : parse(source);
+        }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
             return List.of(fallback);
@@ -376,8 +378,12 @@ final class BytecodeSourceRangeResolver {
                 List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
                 return new TypePath(names, names.stream().anyMatch(TypePath::isAnonymousSegment));
             }
-            IType type = element instanceof IType directType ? directType
-                    : element == null ? null : (IType) element.getAncestor(IJavaElement.TYPE);
+            IType type = null;
+            if (element instanceof IType directType) {
+                type = directType;
+            } else if (element != null) {
+                type = (IType) element.getAncestor(IJavaElement.TYPE);
+            }
             if (type == null) {
                 return null;
             }

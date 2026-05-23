@@ -30,6 +30,7 @@ import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IModuleDescription;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
@@ -68,12 +69,11 @@ final class BytecodeJarIndexer {
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
-                if (entry.isDirectory() || !entry.getName().endsWith(CLASS_FILE_EXTENSION)) {
-                    continue;
+                if (!entry.isDirectory() && entry.getName().endsWith(CLASS_FILE_EXTENSION)) {
+                    long impact = entryImpactBytes(entry);
+                    totalImpact += impact;
+                    entries.add(new JarEntryWork(entry.getName(), impact));
                 }
-                long impact = entryImpactBytes(entry);
-                totalImpact += impact;
-                entries.add(new JarEntryWork(entry.getName(), impact));
             }
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
@@ -90,26 +90,37 @@ final class BytecodeJarIndexer {
         try (ZipFile zip = new ZipFile(jar)) {
             SubMonitor subMonitor = SubMonitor.convert(monitor, impactTicks(work.totalImpact()));
             for (JarEntryWork entryWork : work.entries()) {
-                if (subMonitor.isCanceled()) {
-                    break;
-                }
-                subMonitor.subTask(entryWork.name());
-                ZipEntry entry = zip.getEntry(entryWork.name());
-                if (entry == null) {
-                    continue;
-                }
-                try (InputStream input = zip.getInputStream(entry)) {
-                    indexClass(root, input, entries, seen, strings);
-                } catch (IOException | RuntimeException e) {
-                    JavaDecompilerPlugin.logError(e, "Failed to index class file from " + jar.getAbsolutePath()); //$NON-NLS-1$
-                } finally {
-                    subMonitor.worked(impactTicks(entryWork.impactBytes()));
+                if (!subMonitor.isCanceled()) {
+                    indexEntry(root, jar, zip, entryWork, entries, seen, strings, subMonitor);
                 }
             }
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
         return new BytecodeSearchIndex.JarIndex(jar, entries);
+    }
+
+    private static void indexEntry(IPackageFragmentRoot root, File jar, ZipFile zip, JarEntryWork entryWork,
+            List<BytecodeSearchEntry> entries, Set<EntryKey> seen, Map<String, String> strings,
+            SubMonitor subMonitor) {
+        subMonitor.subTask(entryWork.name());
+        try {
+            ZipEntry entry = zip.getEntry(entryWork.name());
+            if (entry != null) {
+                indexZipEntry(root, jar, zip, entry, entries, seen, strings);
+            }
+        } finally {
+            subMonitor.worked(impactTicks(entryWork.impactBytes()));
+        }
+    }
+
+    private static void indexZipEntry(IPackageFragmentRoot root, File jar, ZipFile zip, ZipEntry entry,
+            List<BytecodeSearchEntry> entries, Set<EntryKey> seen, Map<String, String> strings) {
+        try (InputStream input = zip.getInputStream(entry)) {
+            indexClass(root, input, entries, seen, strings);
+        } catch (IOException | RuntimeException e) {
+            JavaDecompilerPlugin.logError(e, "Failed to index class file from " + jar.getAbsolutePath()); //$NON-NLS-1$
+        }
     }
 
     static int impactTicks(long impactBytes) {
@@ -451,8 +462,8 @@ final class BytecodeJarIndexer {
                 String declaringTypeName, String descriptor) {
             String elementHandle = elementHandle(element);
             IJavaElement fallback = anonymousElementFallback(elementHandle, element);
-            add(new BytecodeSearchEntry(kind, declaration, elementHandle, fallback, name, qualifiedName,
-                    declaringTypeName, descriptor));
+            add(new BytecodeSearchEntry(kind, declaration, BytecodeSearchEntry.elementReference(elementHandle, fallback),
+                    BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor)));
         }
 
         private void add(BytecodeSearchEntry entry) {
@@ -538,7 +549,7 @@ final class BytecodeJarIndexer {
                 add(Kind.FIELD, true, field, pool(name), pool(name), pool(qualifiedTypeName(className)),
                         pool(descriptor));
                 addDescriptorReferences(signature == null ? descriptor : signature, field);
-                return new FieldIndexer(annotationIndexer, field);
+                return new FieldIndexer(field);
             }
 
             @Override
@@ -560,19 +571,14 @@ final class BytecodeJarIndexer {
                         addTypeReference(exception, method);
                     }
                 }
-                return new MethodIndexer(annotationIndexer, method);
+                return new MethodIndexer(method);
             }
         }
 
         private static IType typeForInternalName(IPackageFragmentRoot root, String internalName) {
             IPackageFragment pkg = root.getPackageFragment(packageName(internalName));
             IClassFile classFile = pkg.getClassFile(classFileName(internalName));
-            try {
-                return classFile.getType();
-            } catch (UnsupportedOperationException e) {
-                JavaDecompilerPlugin.logError(e, "Unsupported class file model for " + internalName); //$NON-NLS-1$
-                return null;
-            }
+            return classFile instanceof IOrdinaryClassFile ordinaryClassFile ? ordinaryClassFile.getType() : null;
         }
 
         private static String[] jdtParameterTypes(String descriptor) {
@@ -624,12 +630,10 @@ final class BytecodeJarIndexer {
 
         private final class FieldIndexer extends FieldVisitor {
 
-            private final AnnotationIndexer annotationIndexer;
             private final IJavaElement field;
 
-            private FieldIndexer(AnnotationIndexer annotationIndexer, IJavaElement field) {
+            private FieldIndexer(IJavaElement field) {
                 super(Opcodes.ASM9);
-                this.annotationIndexer = annotationIndexer;
                 this.field = field;
             }
 
@@ -649,12 +653,10 @@ final class BytecodeJarIndexer {
 
         private final class MethodIndexer extends MethodVisitor {
 
-            private final AnnotationIndexer annotationIndexer;
             private final IJavaElement method;
 
-            private MethodIndexer(AnnotationIndexer annotationIndexer, IJavaElement method) {
+            private MethodIndexer(IJavaElement method) {
                 super(Opcodes.ASM9);
-                this.annotationIndexer = annotationIndexer;
                 this.method = method;
             }
 

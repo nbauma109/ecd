@@ -14,7 +14,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +69,7 @@ public class ApplicationLibrarySearchParticipantTest {
     private File tempDir;
 
     @Before
-    public void setUp() throws IOException, CoreException {
+    public void setUp() throws CoreException {
         refreshDecompilerEditorAssociations();
         tempDir = DecompilerTestSupport.createTargetTempDir("application-library-search"); //$NON-NLS-1$
         configurePreferences(tempDir);

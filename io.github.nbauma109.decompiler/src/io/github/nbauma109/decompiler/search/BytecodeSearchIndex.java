@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -44,6 +46,7 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public final class BytecodeSearchIndex {
 
+    @SuppressWarnings("java:S6548")
     private static final BytecodeSearchIndex INSTANCE = new BytecodeSearchIndex();
     private static final long STARTUP_DELAY = 5000L;
     private static final long REFRESH_DELAY = 2000L;
@@ -51,7 +54,6 @@ public final class BytecodeSearchIndex {
             | IJavaElementDelta.F_RESOLVED_CLASSPATH_CHANGED
             | IJavaElementDelta.F_ADDED_TO_CLASSPATH
             | IJavaElementDelta.F_REMOVED_FROM_CLASSPATH
-            | IJavaElementDelta.F_CLASSPATH_REORDER
             | IJavaElementDelta.F_SOURCEATTACHED
             | IJavaElementDelta.F_SOURCEDETACHED
             | IJavaElementDelta.F_ARCHIVE_CONTENT_CHANGED
@@ -59,9 +61,10 @@ public final class BytecodeSearchIndex {
 
     private final IElementChangedListener classpathListener = this::classpathChanged;
 
-    private volatile Map<IPath, JarIndex> indexes = Collections.emptyMap();
-    private volatile boolean started;
-    private volatile boolean refreshCompleted;
+    private final AtomicReference<Map<IPath, JarIndex>> indexes =
+            new AtomicReference<>(Collections.emptyMap());
+    private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean refreshCompleted = new AtomicBoolean();
     private boolean refreshRequested;
     private Job indexJob;
 
@@ -73,33 +76,33 @@ public final class BytecodeSearchIndex {
     }
 
     public synchronized void start() {
-        if (started) {
+        if (started.get()) {
             return;
         }
-        started = true;
+        started.set(true);
         JavaCore.addElementChangedListener(classpathListener, ElementChangedEvent.POST_CHANGE);
         scheduleRefresh(STARTUP_DELAY);
     }
 
     public synchronized void stop() {
-        if (!started) {
+        if (!started.get()) {
             return;
         }
         JavaCore.removeElementChangedListener(classpathListener);
-        started = false;
+        started.set(false);
         if (indexJob != null) {
             indexJob.cancel();
             indexJob = null;
         }
-        indexes = Collections.emptyMap();
-        refreshCompleted = false;
+        indexes.set(Collections.emptyMap());
+        refreshCompleted.set(false);
         refreshRequested = false;
     }
 
     void forEachEntry(Kind kind, String name, String qualifiedName, boolean wildcard, IProgressMonitor monitor,
             EntryConsumer consumer) throws CoreException {
         waitForInitialRefresh(monitor);
-        for (JarIndex index : indexes.values()) {
+        for (JarIndex index : indexes.get().values()) {
             if (monitor != null && monitor.isCanceled()) {
                 return;
             }
@@ -109,7 +112,7 @@ public final class BytecodeSearchIndex {
 
     int entryCount() {
         int count = 0;
-        for (JarIndex index : indexes.values()) {
+        for (JarIndex index : indexes.get().values()) {
             count += index.entryCount();
         }
         return count;
@@ -120,7 +123,7 @@ public final class BytecodeSearchIndex {
     }
 
     private synchronized void scheduleRefresh(long delay) {
-        if (!started) {
+        if (!started.get()) {
             return;
         }
         if (indexJob != null && indexJob.getState() != Job.NONE) {
@@ -183,11 +186,11 @@ public final class BytecodeSearchIndex {
                 }
             }
             synchronized (this) {
-                if (!started) {
+                if (!started.get()) {
                     return;
                 }
-                indexes = Collections.unmodifiableMap(rebuilt);
-                refreshCompleted = true;
+                indexes.set(Collections.unmodifiableMap(rebuilt));
+                refreshCompleted.set(true);
             }
         } catch (CoreException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index application library bytecode"); //$NON-NLS-1$
@@ -195,7 +198,7 @@ public final class BytecodeSearchIndex {
             monitor.done();
             synchronized (this) {
                 indexJob = null;
-                scheduleAgain = refreshRequested && started;
+                scheduleAgain = refreshRequested && started.get();
                 refreshRequested = false;
             }
         }
@@ -209,7 +212,7 @@ public final class BytecodeSearchIndex {
         for (Map.Entry<IPath, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
             IPath path = rootEntry.getKey();
             File jar = path.toFile();
-            JarIndex existing = indexes.get(path);
+            JarIndex existing = indexes.get().get(path);
             if (existing != null && existing.matches(jar)) {
                 plans.add(new JarPlan(rootEntry.getValue(), jar, path, existing, null, 1));
             } else {
@@ -229,28 +232,33 @@ public final class BytecodeSearchIndex {
         return Math.max(1, (int) Math.min(Integer.MAX_VALUE, total));
     }
 
-    private void waitForInitialRefresh(IProgressMonitor monitor) throws CoreException {
+    private void waitForInitialRefresh(IProgressMonitor monitor) {
         start();
-        if (refreshCompleted || Display.getCurrent() != null) {
+        if (refreshCompleted.get() || Display.getCurrent() != null) {
             return;
         }
-        Job job;
-        synchronized (this) {
-            if (!refreshCompleted && indexJob != null && indexJob.getState() == Job.SLEEPING) {
-                indexJob.cancel();
-                indexJob = null;
-                refreshRequested = false;
-            }
-            if (!refreshCompleted && indexJob == null) {
-                scheduleRefresh(0L);
-            }
-            job = indexJob;
-        }
+        Job job = prepareInitialRefreshJob();
         if (job == null) {
             return;
         }
+        waitForJob(job, monitor);
+    }
+
+    private synchronized Job prepareInitialRefreshJob() {
+        if (!refreshCompleted.get() && indexJob != null && indexJob.getState() == Job.SLEEPING) {
+            indexJob.cancel();
+            indexJob = null;
+            refreshRequested = false;
+        }
+        if (!refreshCompleted.get() && indexJob == null) {
+            scheduleRefresh(0L);
+        }
+        return indexJob;
+    }
+
+    private void waitForJob(Job job, IProgressMonitor monitor) {
         try {
-            while (!refreshCompleted && job.getState() != Job.NONE) {
+            while (!refreshCompleted.get() && job.getState() != Job.NONE) {
                 if (monitor != null && monitor.isCanceled()) {
                     return;
                 }
@@ -320,6 +328,8 @@ public final class BytecodeSearchIndex {
 
     static final class JarIndex {
 
+        private static final int[] EMPTY_POSTINGS = new int[0];
+
         private final long lastModified;
         private final long length;
         private final CompactEntries entries;
@@ -359,13 +369,13 @@ public final class BytecodeSearchIndex {
 
         private static int[] postings(Map<String, int[]> nameIndex, String name) {
             if (name == null || name.isBlank()) {
-                return null;
+                return EMPTY_POSTINGS;
             }
-            return nameIndex.get(normalizeKey(name));
+            return nameIndex.getOrDefault(normalizeKey(name), EMPTY_POSTINGS);
         }
 
         private void collectPostings(int[] postings, EntryConsumer consumer) throws CoreException {
-            if (postings == null) {
+            if (postings == null || postings.length == 0) {
                 return;
             }
             for (int entryId : postings) {
@@ -374,11 +384,11 @@ public final class BytecodeSearchIndex {
         }
 
         private void collectPostingsSkipping(int[] postings, int[] skip, EntryConsumer consumer) throws CoreException {
-            if (postings == null) {
+            if (postings == null || postings.length == 0) {
                 return;
             }
             for (int entryId : postings) {
-                if (skip == null || java.util.Arrays.binarySearch(skip, entryId) < 0) {
+                if (skip.length == 0 || java.util.Arrays.binarySearch(skip, entryId) < 0) {
                     consumer.accept(entries.entry(entryId));
                 }
             }
@@ -441,7 +451,7 @@ public final class BytecodeSearchIndex {
 
         private static boolean sameKey(String left, String right) {
             if (left == null || right == null) {
-                return left == right;
+                return left == null && right == null;
             }
             return normalizeKey(left).equals(normalizeKey(right));
         }
@@ -464,18 +474,16 @@ public final class BytecodeSearchIndex {
             private final int[] declaringTypeNameIds;
             private final int[] descriptorIds;
 
-            private CompactEntries(String[] strings, String[] elementHandles, IJavaElement[] anonymousElementFallbacks,
-                    byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds, int[] qualifiedNameIds,
-                    int[] declaringTypeNameIds, int[] descriptorIds) {
-                this.strings = strings;
-                this.elementHandles = elementHandles;
-                this.anonymousElementFallbacks = anonymousElementFallbacks;
-                this.kindAndFlags = kindAndFlags;
-                this.elementHandleIds = elementHandleIds;
-                this.nameIds = nameIds;
-                this.qualifiedNameIds = qualifiedNameIds;
-                this.declaringTypeNameIds = declaringTypeNameIds;
-                this.descriptorIds = descriptorIds;
+            private CompactEntries(EntryArrays arrays) {
+                this.strings = arrays.tables().strings();
+                this.elementHandles = arrays.tables().elementHandles();
+                this.anonymousElementFallbacks = arrays.tables().anonymousElementFallbacks();
+                this.kindAndFlags = arrays.columns().kindAndFlags();
+                this.elementHandleIds = arrays.columns().elementHandleIds();
+                this.nameIds = arrays.columns().nameIds();
+                this.qualifiedNameIds = arrays.columns().qualifiedNameIds();
+                this.declaringTypeNameIds = arrays.columns().declaringTypeNameIds();
+                this.descriptorIds = arrays.columns().descriptorIds();
             }
 
             private static CompactEntries from(List<BytecodeSearchEntry> entries) {
@@ -497,8 +505,21 @@ public final class BytecodeSearchIndex {
                     declaringTypeNameIds[i] = strings.id(entry.getDeclaringTypeName());
                     descriptorIds[i] = strings.id(entry.getDescriptor());
                 }
-                return new CompactEntries(strings.values(), elements.handles(), elements.fallbacks(), kindAndFlags,
-                        elementHandleIds, nameIds, qualifiedNameIds, declaringTypeNameIds, descriptorIds);
+                StringTables tables = new StringTables(strings.values(), elements.handles(), elements.fallbacks());
+                EntryColumns columns = new EntryColumns(kindAndFlags, elementHandleIds, nameIds, qualifiedNameIds,
+                        declaringTypeNameIds, descriptorIds);
+                return new CompactEntries(new EntryArrays(tables, columns));
+            }
+
+            private record EntryArrays(StringTables tables, EntryColumns columns) {
+            }
+
+            private record StringTables(String[] strings, String[] elementHandles,
+                    IJavaElement[] anonymousElementFallbacks) {
+            }
+
+            private record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
+                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
             }
 
             private int size() {
@@ -507,10 +528,12 @@ public final class BytecodeSearchIndex {
 
             private BytecodeSearchEntry entry(int entryId) {
                 int elementHandleId = elementHandleIds[entryId];
-                return new BytecodeSearchEntry(kind(entryId), declaration(entryId), elementHandle(elementHandleId),
-                        anonymousElementFallback(elementHandleId), string(nameIds[entryId]),
-                        string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
-                        string(descriptorIds[entryId]));
+                return new BytecodeSearchEntry(kind(entryId), declaration(entryId),
+                        BytecodeSearchEntry.elementReference(elementHandle(elementHandleId),
+                                anonymousElementFallback(elementHandleId)),
+                        BytecodeSearchEntry.symbolReference(string(nameIds[entryId]),
+                                string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
+                                string(descriptorIds[entryId])));
             }
 
             private Kind kind(int entryId) {

@@ -64,7 +64,6 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
             bytecodeMatch.update(range);
             currentOffset = range.offset();
             currentLength = range.length();
-        } else {
         }
         if (editor instanceof ITextEditor textEditor && currentOffset >= 0 && currentLength > 0) {
             protectExternalTextSelection(editor);
