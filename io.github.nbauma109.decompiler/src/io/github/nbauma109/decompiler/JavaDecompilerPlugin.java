@@ -40,6 +40,7 @@ import io.github.nbauma109.decompiler.editor.DecompilerSourceMapper;
 import io.github.nbauma109.decompiler.editor.DecompilerType;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerBufferManager;
 import io.github.nbauma109.decompiler.extension.DecompilerAdapterManager;
+import io.github.nbauma109.decompiler.search.BytecodeSearchIndex;
 import io.github.nbauma109.decompiler.source.attach.IAttachSourceHandler;
 import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.SortMemberUtil;
@@ -178,6 +179,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
         super.start(context);
         getPreferenceStore().addPropertyChangeListener(this);
         SortMemberUtil.deleteDecompilerProject();
+        BytecodeSearchIndex.getDefault().start();
         Display.getDefault().asyncExec(new SetupRunnable());
     }
 
@@ -193,9 +195,10 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     public void stop(BundleContext context) throws Exception {
         FileUtils.deleteQuietly(new File(getPreferenceStore().getString(JavaDecompilerPlugin.TEMP_DIR)));
 
-        super.stop(context);
-
         getPreferenceStore().removePropertyChangeListener(this);
+        BytecodeSearchIndex.getDefault().stop();
+
+        super.stop(context);
 
         plugin = null;
     }
