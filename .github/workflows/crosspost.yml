@@ -46,7 +46,7 @@ jobs:
           message: |
             🎉 New release of ECD++ ${{ env.RELEASE_TAG }} is out!
             {url}
-            #Java #JavaDecompiler #OpenSource #ReverseEngineering
+            #Java #JavaDecompiler #OpenSource #ReverseEngineering #Eclipse
           bluesky-host: bsky.social
           bluesky-identifier: ${{ secrets.BLUESKY_IDENTIFIER }}
           bluesky-password: ${{ secrets.BLUESKY_PASSWORD }}
