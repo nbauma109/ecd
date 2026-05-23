@@ -9,10 +9,10 @@
 package io.github.nbauma109.decompiler.search;
 
 import java.io.File;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -98,14 +98,15 @@ public final class BytecodeSearchIndex {
         refreshRequested = false;
     }
 
-    List<BytecodeSearchEntry> entries(Kind kind, String name, String qualifiedName, boolean wildcard,
-            IProgressMonitor monitor) throws CoreException {
+    void forEachEntry(Kind kind, String name, String qualifiedName, boolean wildcard, IProgressMonitor monitor,
+            EntryConsumer consumer) throws CoreException {
         waitForInitialRefresh(monitor);
-        List<BytecodeSearchEntry> result = new ArrayList<>();
         for (JarIndex index : indexes.values()) {
-            index.collect(kind, name, qualifiedName, wildcard, result);
+            if (monitor != null && monitor.isCanceled()) {
+                return;
+            }
+            index.collect(kind, name, qualifiedName, wildcard, consumer);
         }
-        return result;
     }
 
     int entryCount() {
@@ -336,9 +337,10 @@ public final class BytecodeSearchIndex {
             return entryCount;
         }
 
-        void collect(Kind kind, String name, String qualifiedName, boolean wildcard, List<BytecodeSearchEntry> result) {
+        void collect(Kind kind, String name, String qualifiedName, boolean wildcard, EntryConsumer consumer)
+                throws CoreException {
             if (wildcard) {
-                collectWildcard(kind, result);
+                collectWildcard(kind, consumer);
                 return;
             }
             Map<String, List<BytecodeSearchEntry>> nameIndex = byKindAndName.get(kind);
@@ -346,23 +348,25 @@ public final class BytecodeSearchIndex {
                 return;
             }
             Set<BytecodeSearchEntry> seen = new HashSet<>();
-            collectExact(nameIndex, name, result, seen);
-            collectExact(nameIndex, qualifiedName, result, seen);
+            collectExact(nameIndex, name, consumer, seen);
+            if (!sameKey(name, qualifiedName)) {
+                collectExact(nameIndex, qualifiedName, consumer, seen);
+            }
         }
 
         private static void collectExact(Map<String, List<BytecodeSearchEntry>> nameIndex, String name,
-                List<BytecodeSearchEntry> result, Set<BytecodeSearchEntry> seen) {
+                EntryConsumer consumer, Set<BytecodeSearchEntry> seen) throws CoreException {
             if (name == null || name.isBlank()) {
                 return;
             }
             for (BytecodeSearchEntry entry : nameIndex.getOrDefault(normalizeKey(name), Collections.emptyList())) {
                 if (seen.add(entry)) {
-                    result.add(entry);
+                    consumer.accept(entry);
                 }
             }
         }
 
-        private void collectWildcard(Kind kind, List<BytecodeSearchEntry> result) {
+        private void collectWildcard(Kind kind, EntryConsumer consumer) throws CoreException {
             Map<String, List<BytecodeSearchEntry>> nameIndex = byKindAndName.get(kind);
             if (nameIndex == null) {
                 return;
@@ -371,7 +375,7 @@ public final class BytecodeSearchIndex {
             for (List<BytecodeSearchEntry> bucket : nameIndex.values()) {
                 for (BytecodeSearchEntry entry : bucket) {
                     if (seen.add(entry)) {
-                        result.add(entry);
+                        consumer.accept(entry);
                     }
                 }
             }
@@ -417,9 +421,21 @@ public final class BytecodeSearchIndex {
             return name.toLowerCase(java.util.Locale.ROOT);
         }
 
+        private static boolean sameKey(String left, String right) {
+            if (left == null || right == null) {
+                return left == right;
+            }
+            return normalizeKey(left).equals(normalizeKey(right));
+        }
+
         private static boolean indexesQualifiedName(Kind kind) {
             return kind == Kind.TYPE || kind == Kind.PACKAGE || kind == Kind.MODULE;
         }
+    }
+
+    @FunctionalInterface
+    interface EntryConsumer {
+        void accept(BytecodeSearchEntry entry) throws CoreException;
     }
 
     private record JarPlan(IPackageFragmentRoot root, File jar, IPath path, JarIndex existing,

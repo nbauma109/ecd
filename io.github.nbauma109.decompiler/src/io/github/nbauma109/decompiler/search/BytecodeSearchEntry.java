@@ -31,16 +31,27 @@ final class BytecodeSearchEntry {
     private final String declaringTypeName;
     private final String descriptor;
 
-    BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
-            String declaringTypeName, String descriptor) {
+    BytecodeSearchEntry(Kind kind, boolean declaration, String elementHandle, IJavaElement anonymousElementFallback,
+            String name, String qualifiedName, String declaringTypeName, String descriptor) {
         this.kind = kind;
         this.declaration = declaration;
-        this.elementHandle = element == null ? null : element.getHandleIdentifier();
-        this.anonymousElementFallback = elementHandle != null && elementHandle.contains("[~") ? element : null; //$NON-NLS-1$
+        this.elementHandle = elementHandle;
+        this.anonymousElementFallback = anonymousElementFallback;
         this.name = name == null ? "" : name; //$NON-NLS-1$
         this.qualifiedName = qualifiedName == null ? this.name : qualifiedName;
         this.declaringTypeName = declaringTypeName;
         this.descriptor = descriptor;
+    }
+
+    BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
+            String declaringTypeName, String descriptor) {
+        this(kind, declaration, element == null ? null : element.getHandleIdentifier(),
+                element == null ? null : anonymousElementFallback(element.getHandleIdentifier(), element), name,
+                qualifiedName, declaringTypeName, descriptor);
+    }
+
+    private static IJavaElement anonymousElementFallback(String elementHandle, IJavaElement element) {
+        return elementHandle != null && elementHandle.contains("[~") ? element : null; //$NON-NLS-1$
     }
 
     Kind getKind() {

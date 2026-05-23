@@ -150,6 +150,8 @@ final class BytecodeJarIndexer {
         private final List<BytecodeSearchEntry> entries;
         private final Set<EntryKey> seen;
         private final Map<String, String> strings;
+        private final Map<String, String> elementHandles = new HashMap<>();
+        private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
         private final Set<String> typeReferences = new HashSet<>();
         private final Set<String> descriptorSet = new HashSet<>();
         private final Map<IJavaElement, Set<String>> typeReferencesByElement = new HashMap<>();
@@ -181,8 +183,7 @@ final class BytecodeJarIndexer {
         private void flush() {
             if (moduleElement != null) {
                 for (String module : moduleReferences) {
-                    add(new BytecodeSearchEntry(Kind.MODULE, false, moduleElement, pool(module), pool(module), null,
-                            null));
+                    add(Kind.MODULE, false, moduleElement, pool(module), pool(module), null, null);
                 }
                 for (String internalName : typeReferences) {
                     addTypeReferenceEntry(internalName, moduleElement);
@@ -195,8 +196,7 @@ final class BytecodeJarIndexer {
                 return;
             }
 
-            add(new BytecodeSearchEntry(Kind.TYPE, true, type, pool(simpleTypeName(className)),
-                    pool(qualifiedTypeName(className)), null, null));
+            add(Kind.TYPE, true, type, pool(simpleTypeName(className)), pool(qualifiedTypeName(className)), null, null);
             addPackageDeclaration(packageName(className));
             for (String internalName : typeReferences) {
                 addTypeReferenceEntry(internalName, type);
@@ -357,7 +357,7 @@ final class BytecodeJarIndexer {
             } else if (kind == Kind.CONSTRUCTOR) {
                 constructorReferencesByElement.computeIfAbsent(type, key -> new HashSet<>()).add(member);
             } else {
-                add(new BytecodeSearchEntry(kind, false, type, pool(name), pool(qualifiedName), pool(owner), null));
+                add(kind, false, type, pool(name), pool(qualifiedName), pool(owner), null);
             }
         }
 
@@ -376,8 +376,7 @@ final class BytecodeJarIndexer {
             } else if (kind == Kind.CONSTRUCTOR) {
                 constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new HashSet<>()).add(member);
             } else {
-                add(new BytecodeSearchEntry(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner),
-                        null));
+                add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
             }
         }
 
@@ -387,8 +386,7 @@ final class BytecodeJarIndexer {
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
-            add(new BytecodeSearchEntry(kind, false, element, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor)));
+            add(kind, false, element, pool(name), pool(qualifiedName), pool(owner), pool(descriptor));
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
@@ -401,14 +399,14 @@ final class BytecodeJarIndexer {
                 return;
             }
             IPackageFragment pkg = root.getPackageFragment(packageName);
-            add(new BytecodeSearchEntry(Kind.PACKAGE, true, pkg, pool(packageName), pool(packageName), null, null));
+            add(Kind.PACKAGE, true, pkg, pool(packageName), pool(packageName), null, null);
         }
 
         private void addPackageReference(String packageName, IJavaElement element) {
             if (packageName == null || packageName.isBlank()) {
                 return;
             }
-            add(new BytecodeSearchEntry(Kind.PACKAGE, false, element, pool(packageName), pool(packageName), null, null));
+            add(Kind.PACKAGE, false, element, pool(packageName), pool(packageName), null, null);
         }
 
         private void flushTypeReferencesByElement() {
@@ -429,6 +427,14 @@ final class BytecodeJarIndexer {
             }
         }
 
+        private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
+                String declaringTypeName, String descriptor) {
+            String elementHandle = elementHandle(element);
+            IJavaElement fallback = anonymousElementFallback(elementHandle, element);
+            add(new BytecodeSearchEntry(kind, declaration, elementHandle, fallback, name, qualifiedName,
+                    declaringTypeName, descriptor));
+        }
+
         private void add(BytecodeSearchEntry entry) {
             if (entry.getElementHandle() == null) {
                 return;
@@ -438,6 +444,21 @@ final class BytecodeJarIndexer {
             if (seen.add(key)) {
                 entries.add(entry);
             }
+        }
+
+        private String elementHandle(IJavaElement element) {
+            if (element == null) {
+                return null;
+            }
+            String handle = element.getHandleIdentifier();
+            return handle == null ? null : elementHandles.computeIfAbsent(handle, key -> key);
+        }
+
+        private IJavaElement anonymousElementFallback(String elementHandle, IJavaElement element) {
+            if (elementHandle == null || !elementHandle.contains("[~")) { //$NON-NLS-1$
+                return null;
+            }
+            return anonymousElementFallbacks.computeIfAbsent(elementHandle, ignored -> element);
         }
 
         private String pool(String value) {
@@ -474,7 +495,7 @@ final class BytecodeJarIndexer {
             public ModuleVisitor visitModule(String name, int access, String version) {
                 IModuleDescription module = root.getModuleDescription();
                 moduleElement = module == null ? root : module;
-                add(new BytecodeSearchEntry(Kind.MODULE, true, moduleElement, pool(name), pool(name), null, null));
+                add(Kind.MODULE, true, moduleElement, pool(name), pool(name), null, null);
                 return moduleIndexer;
             }
 
@@ -494,8 +515,8 @@ final class BytecodeJarIndexer {
             @Override
             public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
                 IField field = type == null ? null : type.getField(name);
-                add(new BytecodeSearchEntry(Kind.FIELD, true, field, pool(name), pool(name),
-                        pool(qualifiedTypeName(className)), pool(descriptor)));
+                add(Kind.FIELD, true, field, pool(name), pool(name), pool(qualifiedTypeName(className)),
+                        pool(descriptor));
                 addDescriptorReferences(signature == null ? descriptor : signature, field);
                 return new FieldIndexer(annotationIndexer, field);
             }
@@ -506,12 +527,12 @@ final class BytecodeJarIndexer {
                 IMethod method = null;
                 if (CONSTRUCTOR.equals(name)) {
                     method = type == null ? null : type.getMethod(type.getElementName(), jdtParameterTypes(descriptor));
-                    add(new BytecodeSearchEntry(Kind.CONSTRUCTOR, true, method, pool(simpleTypeName(className)),
-                            pool(simpleTypeName(className)), pool(qualifiedTypeName(className)), pool(descriptor)));
+                    add(Kind.CONSTRUCTOR, true, method, pool(simpleTypeName(className)), pool(simpleTypeName(className)),
+                            pool(qualifiedTypeName(className)), pool(descriptor));
                 } else if (!CLASS_INITIALIZER.equals(name)) {
                     method = type == null ? null : type.getMethod(name, jdtParameterTypes(descriptor));
-                    add(new BytecodeSearchEntry(Kind.METHOD, true, method, pool(name), pool(name),
-                            pool(qualifiedTypeName(className)), pool(descriptor)));
+                    add(Kind.METHOD, true, method, pool(name), pool(name), pool(qualifiedTypeName(className)),
+                            pool(descriptor));
                 }
                 addDescriptorReferences(signature == null ? descriptor : signature, method);
                 if (exceptions != null) {

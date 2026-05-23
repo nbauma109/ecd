@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
@@ -48,25 +49,25 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
         BytecodeSearchDebug.info("search started: " + matcher.describe() //$NON-NLS-1$
                 + ", scope=" + BytecodeSearchDebug.safeText(String.valueOf(querySpecification.getScope()))); //$NON-NLS-1$
-        int reported = 0;
-        for (BytecodeSearchEntry entry : BytecodeSearchIndex.getDefault().entries(matcher.kind(), matcher.name(),
-                matcher.qualifiedName(), matcher.isWildcard(), monitor)) {
+        int[] reported = new int[1];
+        BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
+                matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {
-                BytecodeSearchDebug.info("search canceled after reporting " + reported + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
-                return;
+                BytecodeSearchDebug.info("search canceled after reporting " + reported[0] + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
+                throw new OperationCanceledException();
             }
             IJavaElement element = entry.getElement();
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
                 BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
                 requestor.reportMatch(match);
-                reported++;
-                if (reported <= SEARCH_MATCH_LOG_LIMIT) {
-                    BytecodeSearchDebug.info("reported match " + reported + ": " //$NON-NLS-1$ //$NON-NLS-2$
+                reported[0]++;
+                if (reported[0] <= SEARCH_MATCH_LOG_LIMIT) {
+                    BytecodeSearchDebug.info("reported match " + reported[0] + ": " //$NON-NLS-1$ //$NON-NLS-2$
                             + BytecodeSearchDebug.describeEntry(entry));
                 }
             }
-        }
-        BytecodeSearchDebug.info("search completed: reported " + reported + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
+        });
+        BytecodeSearchDebug.info("search completed: reported " + reported[0] + " matches"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Override
