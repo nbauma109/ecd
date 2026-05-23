@@ -521,12 +521,74 @@ public final class BytecodeSearchIndex {
             private record EntryArrays(StringTables tables, EntryColumns columns) {
             }
 
-            private record StringTables(String[] strings, String[] elementHandles,
-                    IJavaElement[] anonymousElementFallbacks) {
+            private static class StringTables {
+
+                private final String[] strings;
+                private final String[] elementHandles;
+                private final IJavaElement[] anonymousElementFallbacks;
+
+                private StringTables(String[] strings, String[] elementHandles,
+                        IJavaElement[] anonymousElementFallbacks) {
+                    this.strings = strings;
+                    this.elementHandles = elementHandles;
+                    this.anonymousElementFallbacks = anonymousElementFallbacks;
+                }
+
+                private String[] strings() {
+                    return strings;
+                }
+
+                private String[] elementHandles() {
+                    return elementHandles;
+                }
+
+                private IJavaElement[] anonymousElementFallbacks() {
+                    return anonymousElementFallbacks;
+                }
             }
 
-            private record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
-                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
+            private static class EntryColumns {
+
+                private final byte[] kindAndFlags;
+                private final int[] elementHandleIds;
+                private final int[] nameIds;
+                private final int[] qualifiedNameIds;
+                private final int[] declaringTypeNameIds;
+                private final int[] descriptorIds;
+
+                private EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
+                        int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
+                    this.kindAndFlags = kindAndFlags;
+                    this.elementHandleIds = elementHandleIds;
+                    this.nameIds = nameIds;
+                    this.qualifiedNameIds = qualifiedNameIds;
+                    this.declaringTypeNameIds = declaringTypeNameIds;
+                    this.descriptorIds = descriptorIds;
+                }
+
+                private byte[] kindAndFlags() {
+                    return kindAndFlags;
+                }
+
+                private int[] elementHandleIds() {
+                    return elementHandleIds;
+                }
+
+                private int[] nameIds() {
+                    return nameIds;
+                }
+
+                private int[] qualifiedNameIds() {
+                    return qualifiedNameIds;
+                }
+
+                private int[] declaringTypeNameIds() {
+                    return declaringTypeNameIds;
+                }
+
+                private int[] descriptorIds() {
+                    return descriptorIds;
+                }
             }
 
             private int size() {

@@ -143,8 +143,54 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return null;
         }
 
-        private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                String[] parameterTypes, boolean caseSensitive, Pattern wildcardPattern) {
+        private static class SearchPattern {
+
+            private final String name;
+            private final String qualifiedName;
+            private final String declaringTypeName;
+            private final String descriptor;
+            private final String[] parameterTypes;
+            private final boolean caseSensitive;
+            private final Pattern wildcardPattern;
+
+            private SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
+                    String[] parameterTypes, boolean caseSensitive, Pattern wildcardPattern) {
+                this.name = name;
+                this.qualifiedName = qualifiedName;
+                this.declaringTypeName = declaringTypeName;
+                this.descriptor = descriptor;
+                this.parameterTypes = parameterTypes;
+                this.caseSensitive = caseSensitive;
+                this.wildcardPattern = wildcardPattern;
+            }
+
+            private String name() {
+                return name;
+            }
+
+            private String qualifiedName() {
+                return qualifiedName;
+            }
+
+            private String declaringTypeName() {
+                return declaringTypeName;
+            }
+
+            private String descriptor() {
+                return descriptor;
+            }
+
+            private String[] parameterTypes() {
+                return parameterTypes;
+            }
+
+            private boolean caseSensitive() {
+                return caseSensitive;
+            }
+
+            private Pattern wildcardPattern() {
+                return wildcardPattern;
+            }
         }
 
         boolean matches(BytecodeSearchEntry entry) {
