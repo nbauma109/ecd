@@ -35,7 +35,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.util.ClassUtil;
 
-final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentation {
+public class ApplicationLibrarySearchMatchPresentation implements IMatchPresentation {
 
     private final BytecodeSourceRangeResolver sourceRangeResolver = new BytecodeSourceRangeResolver();
 
@@ -134,7 +134,7 @@ final class ApplicationLibrarySearchMatchPresentation implements IMatchPresentat
         return matches;
     }
 
-    static boolean isShownInSameTopLevelClass(IJavaElement editorElement, IJavaElement javaElement) {
+    public static boolean isShownInSameTopLevelClass(IJavaElement editorElement, IJavaElement javaElement) {
         IClassFile editorClassFile = classFile(editorElement);
         IClassFile editorTopLevelClassFile = ClassUtil.getTopLevelClassFile(editorClassFile);
         return editorTopLevelClassFile != null && isShownInSameTopLevelClass(editorTopLevelClassFile, javaElement);

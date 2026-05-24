@@ -12,9 +12,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static io.github.nbauma109.decompiler.search.ApplicationLibrarySearchMatchPresentation.isShownInSameTopLevelClass;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -56,6 +56,7 @@ import io.github.nbauma109.decompiler.SetupRunnable;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 
+@SuppressWarnings("restriction")
 public class ApplicationLibrarySearchParticipantTest {
 
     private static final String TEST_BUNDLE_ID = "io.github.nbauma109.decompiler.tests"; //$NON-NLS-1$
@@ -122,8 +123,8 @@ public class ApplicationLibrarySearchParticipantTest {
             assertFalse("Application library matches must not expose a directly openable Java element", //$NON-NLS-1$
                     match.getElement() instanceof IJavaElement);
             assertTrue("Application library matches must keep an adaptable Java tree element", //$NON-NLS-1$
-                    match.getElement() instanceof IAdaptable
-                            && ((IAdaptable) match.getElement()).getAdapter(IJavaElement.class) != null);
+                    match.getElement() instanceof IAdaptable ia
+                            && ia.getAdapter(IJavaElement.class) != null);
             runInUiThread(() -> {
                 int offset = match.getOffset();
                 int length = match.getLength();
@@ -200,6 +201,90 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void genericMethodPatternWithReturnTypeFindsPrintlnReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-generic-method-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "<String>println(*) void", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library generic println references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Generic method type arguments and return type filters must match bytecode references", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void returnTypeConstrainedMethodPatternFiltersMismatches()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-return-type-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream.println(*) int", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library println references returning int"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertTrue("Return-type-constrained method patterns must reject bytecode descriptors with another return type", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void parameterizedTypePatternFindsPrintStreamReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-parameterized-type-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream<String>", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library parameterized PrintStream references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Parameterized type search patterns must match erased bytecode type references", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+	@Test
     public void fieldReadAndWriteAccessLimitsAreHonored()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
@@ -231,6 +316,62 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertFalse("System.out getstatic bytecode instructions must be reported as field reads", readMatches.isEmpty()); //$NON-NLS-1$
         assertTrue("System.out getstatic bytecode instructions must not be reported as field writes", writeMatches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void typedFieldPatternFindsSystemOutReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-typed-field-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.System.out java.io.PrintStream", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.READ_ACCESSES,
+                scope,
+                "Application library typed System.out reads"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Typed Java field search patterns must match application-library bytecode references", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void unqualifiedConstructorPatternFindsOwnerReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-constructor-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "Object()", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library unqualified Object constructor references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Unqualified constructor search patterns must match fully qualified bytecode owners", //$NON-NLS-1$
+                matches.isEmpty());
     }
 
     @Test
@@ -349,16 +490,6 @@ public class ApplicationLibrarySearchParticipantTest {
             return ordinaryClassFile.getType();
         }
         throw new IllegalArgumentException("Class file is not ordinary: " + classFile.getElementName()); //$NON-NLS-1$
-    }
-
-    private static boolean isShownInSameTopLevelClass(IJavaElement editorElement, IJavaElement javaElement)
-            throws Exception {
-        Class<?> presentationClass =
-                Class.forName("io.github.nbauma109.decompiler.search.ApplicationLibrarySearchMatchPresentation"); //$NON-NLS-1$
-        Method method = presentationClass.getDeclaredMethod(
-                "isShownInSameTopLevelClass", IJavaElement.class, IJavaElement.class); //$NON-NLS-1$
-        method.setAccessible(true);
-        return Boolean.TRUE.equals(method.invoke(null, editorElement, javaElement));
     }
 
     private static void closeAllEditors() throws CoreException {

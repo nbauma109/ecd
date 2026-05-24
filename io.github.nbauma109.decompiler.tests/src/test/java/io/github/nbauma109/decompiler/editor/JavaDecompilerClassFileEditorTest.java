@@ -66,6 +66,7 @@ import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 import io.github.nbauma109.decompiler.util.ClassUtil;
 
+@SuppressWarnings("restriction")
 public class JavaDecompilerClassFileEditorTest {
 
     private static final String KEYWORD_CLASS = "class";
@@ -207,6 +208,15 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testSourceTypeSegmentDropsLocalClassOrdinalPrefix() {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+
+        assertEquals("Local", editor.sourceTypeSegment("1Local")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Inner1", editor.sourceTypeSegment("Inner1")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("1", editor.sourceTypeSegment("1")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void testOpenClassFileWithDecompilerEditorIdShowsSource()
             throws IOException, CoreException {
         String editorId = resolveDecompilerEditorIdFromRegistry();
@@ -339,7 +349,7 @@ public class JavaDecompilerClassFileEditorTest {
     @Test
     public void testOpeningInnerMethodDeclarationsSelectsEachNestedMethod()
             throws CoreException {
-        assertInnerMethodDeclarationSelection("Test$Inner1.class", "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertInnerMethodDeclarationSelection(TEST_INNER_CLASS, "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$
         assertInnerMethodDeclarationSelection("Test$Inner3.class", "Inner3.method1"); //$NON-NLS-1$ //$NON-NLS-2$
         assertInnerMethodDeclarationSelection("Test$Inner4.class", "Inner4.method1"); //$NON-NLS-1$ //$NON-NLS-2$
     }

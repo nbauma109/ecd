@@ -81,8 +81,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final String qualifiedName;
         private final String declaringTypeName;
         private final String descriptor;
+        private final String returnType;
         private final String[] parameterTypes;
         private final boolean matchParameterTypes;
+        private final boolean matchReturnType;
         private final boolean caseSensitive;
         private final Pattern wildcardPattern;
         private final Pattern declaringTypePattern;
@@ -94,8 +96,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             this.qualifiedName = searchPattern.qualifiedName();
             this.declaringTypeName = searchPattern.declaringTypeName();
             this.descriptor = searchPattern.descriptor();
+            this.returnType = searchPattern.returnType();
             this.parameterTypes = searchPattern.parameterTypes();
             this.matchParameterTypes = searchPattern.matchParameterTypes();
+            this.matchReturnType = searchPattern.matchReturnType(limitTo);
             this.caseSensitive = searchPattern.caseSensitive();
             this.wildcardPattern = searchPattern.wildcardPattern();
             this.declaringTypePattern = searchPattern.declaringTypePattern();
@@ -122,13 +126,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private static SearchMatcher forElement(int limitTo, IJavaElement element) {
             if (element instanceof IType type) {
                 return new SearchMatcher(limitTo, Kind.TYPE,
-                        new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null,
+                        new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null, null,
                                 ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IField field) {
                 return new SearchMatcher(limitTo, Kind.FIELD,
                         new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
-                                null, ParameterPattern.NONE, MatchPatterns.exact(true)));
+                                null, null, ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IMethod method) {
                 try {
@@ -136,7 +140,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
                                     method.getElementName(), normalizeDeclaringType(method), method.getSignature(),
-                                    ParameterPattern.NONE, MatchPatterns.exact(true)));
+                                    null, ParameterPattern.NONE, MatchPatterns.exact(true)));
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
@@ -144,19 +148,19 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             if (element instanceof IPackageFragment pkg) {
                 return new SearchMatcher(limitTo, Kind.PACKAGE,
-                        new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, ParameterPattern.NONE,
-                                MatchPatterns.exact(true)));
+                        new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, null,
+                                ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IModuleDescription module) {
                 return new SearchMatcher(limitTo, Kind.MODULE,
-                        new SearchPattern(module.getElementName(), module.getElementName(), null, null,
+                        new SearchPattern(module.getElementName(), module.getElementName(), null, null, null,
                                 ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             return null;
         }
 
         private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                ParameterPattern parameterPattern, MatchPatterns matchPatterns) {
+                String returnType, ParameterPattern parameterPattern, MatchPatterns matchPatterns) {
 
             private String[] parameterTypes() {
                 return parameterPattern.types();
@@ -164,6 +168,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
             private boolean matchParameterTypes() {
                 return parameterPattern.match();
+            }
+
+            private boolean matchReturnType(int limitTo) {
+                return returnType != null && (limitTo & IJavaSearchConstants.IGNORE_RETURN_TYPE) == 0;
             }
 
             private boolean caseSensitive() {
@@ -192,6 +200,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         .append(qualifiedName, that.qualifiedName)
                         .append(declaringTypeName, that.declaringTypeName)
                         .append(descriptor, that.descriptor)
+                        .append(returnType, that.returnType)
                         .append(parameterPattern, that.parameterPattern)
                         .append(matchPatterns, that.matchPatterns)
                         .isEquals();
@@ -204,6 +213,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         .append(qualifiedName)
                         .append(declaringTypeName)
                         .append(descriptor)
+                        .append(returnType)
                         .append(parameterPattern)
                         .append(matchPatterns)
                         .toHashCode();
@@ -216,6 +226,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         .append("qualifiedName", qualifiedName) //$NON-NLS-1$
                         .append("declaringTypeName", declaringTypeName) //$NON-NLS-1$
                         .append("descriptor", descriptor) //$NON-NLS-1$
+                        .append("returnType", returnType) //$NON-NLS-1$
                         .append("parameterPattern", parameterPattern) //$NON-NLS-1$
                         .append("matchPatterns", matchPatterns) //$NON-NLS-1$
                         .toString();
@@ -283,6 +294,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return false;
             }
             if (matchParameterTypes && !sameParameterTypes(parameterTypes, entry.getDescriptor())) {
+                return false;
+            }
+            if (matchReturnType && !sameReturnType(returnType, entry.getDescriptor())) {
                 return false;
             }
             if (wildcardPattern != null) {
@@ -383,6 +397,17 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
         }
 
+        private boolean sameReturnType(String expectedType, String bytecodeDescriptor) {
+            if (bytecodeDescriptor == null) {
+                return false;
+            }
+            try {
+                return sameType(expectedType, normalizeAsmType(org.objectweb.asm.Type.getReturnType(bytecodeDescriptor)));
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
+
         private boolean sameType(String expectedType, String actualType) {
             if (sameName(expectedType, actualType)) {
                 return true;
@@ -404,43 +429,60 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             String text = StringUtils.trimToEmpty(pattern);
             String memberPattern = text;
             ParameterPattern parameterPattern = ParameterPattern.NONE;
-            if ((kind == Kind.METHOD || kind == Kind.CONSTRUCTOR) && text.indexOf('(') >= 0) {
+            String returnType = null;
+            if (isMethodOrConstructor(kind, text)) {
                 int openParen = text.indexOf('(');
                 int closeParen = text.lastIndexOf(')');
-                memberPattern = StringUtils.trim(text.substring(0, openParen));
+                memberPattern = stripLeadingTypeArguments(StringUtils.trim(text.substring(0, openParen)));
                 if (closeParen > openParen) {
                     String parameters = text.substring(openParen + 1, closeParen);
                     parameterPattern = new ParameterPattern(parseParameterTypes(parameters),
                             !isAnyParameterPattern(parameters));
+                    String trailing = StringUtils.trimToNull(text.substring(closeParen + 1));
+                    if (kind == Kind.METHOD && trailing != null) {
+                        returnType = normalizePatternType(trailing);
+                    }
                 }
             }
 
             if (kind == Kind.FIELD) {
                 memberPattern = stripFieldType(memberPattern);
+            } else if (kind == Kind.TYPE) {
+                memberPattern = stripTypeArguments(memberPattern);
             }
 
             String name = memberPattern;
             String qualifiedName = memberPattern;
             String declaringTypeName = null;
-            if (kind == Kind.METHOD || kind == Kind.FIELD) {
-                if (Strings.CS.contains(memberPattern, ".")) { //$NON-NLS-1$
-                    declaringTypeName = StringUtils.substringBeforeLast(memberPattern, "."); //$NON-NLS-1$
-                    name = StringUtils.substringAfterLast(memberPattern, "."); //$NON-NLS-1$
-                    qualifiedName = name;
-                }
-            } else if (kind == Kind.CONSTRUCTOR) {
-                declaringTypeName = memberPattern;
-                name = simpleName(memberPattern);
-            } else if (kind == Kind.TYPE) {
-                name = simpleName(memberPattern);
+            switch (kind) {
+                case METHOD, FIELD:
+                    if (Strings.CS.contains(memberPattern, ".")) { //$NON-NLS-1$
+                        declaringTypeName = StringUtils.substringBeforeLast(memberPattern, "."); //$NON-NLS-1$
+                        name = StringUtils.substringAfterLast(memberPattern, "."); //$NON-NLS-1$
+                        qualifiedName = name;
+                    }
+                    break;
+                case CONSTRUCTOR:
+                    declaringTypeName = memberPattern;
+                    name = simpleName(memberPattern);
+                    break;
+                case TYPE:
+                    name = simpleName(memberPattern);
+                    break;
+                default:
+                    break;
             }
 
             String normalizedDeclaringTypeName = emptyToNull(declaringTypeName);
             String wildcardTarget = hasWildcard(qualifiedName) ? qualifiedName : name;
             MatchPatterns matchPatterns = new MatchPatterns(caseSensitive, wildcardPattern(wildcardTarget, caseSensitive),
                     declaringTypePattern(normalizedDeclaringTypeName, caseSensitive));
-            return new SearchPattern(name, qualifiedName, normalizedDeclaringTypeName, null, parameterPattern,
+            return new SearchPattern(name, qualifiedName, normalizedDeclaringTypeName, null, returnType, parameterPattern,
                     matchPatterns);
+        }
+
+        private static boolean isMethodOrConstructor(Kind kind, String text) {
+            return (kind == Kind.METHOD || kind == Kind.CONSTRUCTOR) && text.indexOf('(') >= 0;
         }
 
         private static boolean hasWildcard(String pattern) {
@@ -449,6 +491,48 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static String stripFieldType(String pattern) {
             return StringUtils.substringBefore(StringUtils.trimToEmpty(pattern), " "); //$NON-NLS-1$
+        }
+
+        private static String stripLeadingTypeArguments(String pattern) {
+            String trimmed = StringUtils.trimToEmpty(pattern);
+            if (!Strings.CS.startsWith(trimmed, "<")) { //$NON-NLS-1$
+                return trimmed;
+            }
+            int end = closingTypeArgumentOffset(trimmed, 0);
+            return end < 0 ? trimmed : StringUtils.trim(trimmed.substring(end + 1));
+        }
+
+        private static String stripTypeArguments(String pattern) {
+            String text = StringUtils.trimToEmpty(pattern);
+            StringBuilder stripped = new StringBuilder(text.length());
+            int depth = 0;
+            for (int i = 0; i < text.length(); i++) {
+                char ch = text.charAt(i);
+                if (ch == '<') {
+                    depth++;
+                } else if (ch == '>') {
+                    depth = Math.max(0, depth - 1);
+                } else if (depth == 0) {
+                    stripped.append(ch);
+                }
+            }
+            return StringUtils.trim(stripped.toString());
+        }
+
+        private static int closingTypeArgumentOffset(String text, int openOffset) {
+            int depth = 0;
+            for (int i = openOffset; i < text.length(); i++) {
+                char ch = text.charAt(i);
+                if (ch == '<') {
+                    depth++;
+                } else if (ch == '>') {
+                    depth--;
+                    if (depth == 0) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
         }
 
         private static String[] parseParameterTypes(String parameters) {
@@ -506,6 +590,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             case "int" -> "i"; //$NON-NLS-1$ //$NON-NLS-2$
             case "long" -> "j"; //$NON-NLS-1$ //$NON-NLS-2$
             case "short" -> "s"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "void" -> "v"; //$NON-NLS-1$ //$NON-NLS-2$
             default -> baseType;
             } + suffix;
         }

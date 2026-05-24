@@ -101,6 +101,7 @@ import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.ReflectionUtils;
 import io.github.nbauma109.decompiler.util.UIUtil;
 
+@SuppressWarnings("restriction")
 public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file"; //$NON-NLS-1$
@@ -701,10 +702,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         int typeOffset = -1;
         String suffix = nestedName.substring(topLevelName.length() + 1);
         for (String segment : suffix.split("\\$")) { //$NON-NLS-1$
-            if (segment.isEmpty()) {
+            String sourceSegment = sourceTypeSegment(segment);
+            if (sourceSegment.isEmpty()) {
                 return -1;
             }
-            typeOffset = findTypeDeclarationOffset(source, segment, offset);
+            typeOffset = findTypeDeclarationOffset(source, sourceSegment, offset);
             if (typeOffset < 0) {
                 return -1;
             }
@@ -712,6 +714,18 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             offset = openBrace < 0 ? typeOffset + segment.length() : openBrace + 1;
         }
         return typeOffset;
+    }
+
+    public String sourceTypeSegment(String classFileSegment) {
+        int offset = 0;
+        while (offset < classFileSegment.length() && Character.isDigit(classFileSegment.charAt(offset))) {
+            offset++;
+        }
+        if (offset == 0 || offset >= classFileSegment.length()
+                || !Character.isJavaIdentifierStart(classFileSegment.charAt(offset))) {
+            return classFileSegment;
+        }
+        return classFileSegment.substring(offset);
     }
 
     private int findTypeDeclarationOffset(String source, String typeName, int fromIndex) {
@@ -1038,7 +1052,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             suffix.insert(0, segment).insert(0, NESTED_CLASS_SEPARATOR);
             current = currentType.getParent();
         }
-        if (suffix.length() == 0) {
+        if (suffix.isEmpty()) {
             return null;
         }
         return topLevelName + suffix + CLASS_FILE_EXTENSION;
