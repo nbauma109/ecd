@@ -25,14 +25,18 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchEngine;
+import org.eclipse.jdt.ui.search.ElementQuerySpecification;
 import org.eclipse.jdt.ui.search.IMatchPresentation;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -432,6 +436,165 @@ public class ApplicationLibrarySearchParticipantTest {
                 matches.isEmpty());
     }
 
+    // -----------------------------------------------------------------------
+    // ElementQuerySpecification tests — cover forElement, normalizeTypeName,
+    // normalizeDeclaringType, declaringSimpleName, sameDescriptor,
+    // normalizeJdtMethodParameterTypes, normalizeBytecodeMethodParameterTypes,
+    // normalizeJdtTypeSignature, and (via pattern) splitParameterTypes.
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void elementQueryForPrintStreamTypeFindsReferences()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-type-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // forElement(TYPE) + normalizeTypeName
+        IType printStream = setup.javaProject().findType("java.io.PrintStream"); //$NON-NLS-1$
+        assertNotNull("java.io.PrintStream must be resolvable from the test project", printStream); //$NON-NLS-1$
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(printStream,
+                IJavaSearchConstants.REFERENCES, scope, "element-type-refs"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, spec);
+        assertFalse("PrintStream type references should be found in test.jar", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void elementQueryForSystemOutFieldFindsReferences()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-field-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // forElement(FIELD) + normalizeDeclaringType (parent is IType)
+        IType system = setup.javaProject().findType("java.lang.System"); //$NON-NLS-1$
+        assertNotNull(system);
+        IField outField = system.getField("out"); //$NON-NLS-1$
+        assertTrue(outField.exists());
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(outField,
+                IJavaSearchConstants.READ_ACCESSES, scope, "element-field-refs"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, spec);
+        assertFalse("System.out field reads should be found in test.jar", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void elementQueryForPrintlnMethodCoversSameDescriptor()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-method-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // forElement(METHOD) + normalizeDeclaringType + sameDescriptor +
+        // normalizeJdtMethodParameterTypes + normalizeBytecodeMethodParameterTypes +
+        // normalizeJdtTypeSignature (CLASS_TYPE_SIGNATURE branch via String/Object param)
+        IType printStream = setup.javaProject().findType("java.io.PrintStream"); //$NON-NLS-1$
+        assertNotNull(printStream);
+        IMethod printlnWithClassParam = null;
+        for (IMethod m : printStream.getMethods()) {
+            if ("println".equals(m.getElementName()) && m.getParameterTypes().length == 1 //$NON-NLS-1$
+                    && Signature.getTypeSignatureKind(
+                            Signature.getElementType(m.getParameterTypes()[0])) == Signature.CLASS_TYPE_SIGNATURE) {
+                printlnWithClassParam = m;
+                break;
+            }
+        }
+        assertNotNull("Expected a println overload with a class-type parameter (e.g. String or Object)", //$NON-NLS-1$
+                printlnWithClassParam);
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(printlnWithClassParam,
+                IJavaSearchConstants.REFERENCES, scope, "element-method-descriptor"); //$NON-NLS-1$
+
+        // sameDescriptor is exercised for every println bytecode entry iterated from test.jar,
+        // regardless of whether the result list ends up empty or not.
+        runSearchInBackground(participant, spec);
+    }
+
+    @Test
+    public void elementQueryForObjectConstructorCoversDeclaringSimpleName()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-constructor-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // forElement(CONSTRUCTOR) + declaringSimpleName
+        IType objectType = setup.javaProject().findType("java.lang.Object"); //$NON-NLS-1$
+        assertNotNull(objectType);
+        IMethod objectConstructor = null;
+        for (IMethod m : objectType.getMethods()) {
+            if (m.isConstructor()) {
+                objectConstructor = m;
+                break;
+            }
+        }
+        assertNotNull("java.lang.Object must have a constructor", objectConstructor); //$NON-NLS-1$
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(objectConstructor,
+                IJavaSearchConstants.REFERENCES, scope, "element-constructor-refs"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, spec);
+        assertFalse("Object() constructor references should be found in test.jar", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void patternWithMultipleExplicitParameterTypesCoversSplitParameterTypes()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-split-params-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        // Two explicit parameter types (not "*") cause parseParameterTypes → splitParameterTypes to run.
+        // The result may be empty because test.jar may not call this particular overload;
+        // executing the split logic is the coverage goal.
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "println(String,boolean)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library split-parameter-types coverage"); //$NON-NLS-1$
+
+        runSearchInBackground(participant, specification);
+    }
+
     @Test
     public void bytecodeMatchesFromInnerClassesAreShownInTopLevelEditor()
             throws Exception {
@@ -452,6 +615,29 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertTrue("Inner-class bytecode matches must remain highlighted in the top-level decompiled editor", //$NON-NLS-1$
                 isShownInSameTopLevelClass(topLevelClassFile, innerMethod));
+    }
+
+    private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
+            ElementQuerySpecification specification) throws Exception {
+        List<Match> matches = new ArrayList<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread searchThread = new Thread(() -> {
+            try {
+                participant.search(matches::add, specification, new NullProgressMonitor());
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        }, "application-library-search-test"); //$NON-NLS-1$
+
+        searchThread.start();
+        while (searchThread.isAlive()) {
+            searchThread.join(25L);
+            drainUiEvents();
+        }
+        if (failure.get() != null) {
+            throw new AssertionError("Search failed", failure.get()); //$NON-NLS-1$
+        }
+        return matches;
     }
 
     private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
