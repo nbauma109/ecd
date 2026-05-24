@@ -45,6 +45,7 @@ import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.QualifiedName;
+import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
@@ -790,13 +791,34 @@ final class BytecodeSourceRangeResolver {
 
         private boolean isDeclarationName(SimpleName node) {
             ASTNode parent = node.getParent();
+            return isTypeDeclarationName(parent, node)
+                    || isExecutableDeclarationName(parent, node)
+                    || isVariableDeclarationName(parent, node)
+                    || isEnumDeclarationName(parent, node)
+                    || isAnnotationDeclarationName(parent, node);
+        }
+
+        private boolean isTypeDeclarationName(ASTNode parent, SimpleName node) {
             return parent instanceof TypeDeclaration type && type.getName() == node
-                    || parent instanceof MethodDeclaration method && method.getName() == node
-                    || parent instanceof VariableDeclarationFragment variable && variable.getName() == node
-                    || parent instanceof SingleVariableDeclaration variable && variable.getName() == node
-                    || parent instanceof EnumDeclaration enumDeclaration && enumDeclaration.getName() == node
-                    || parent instanceof EnumConstantDeclaration enumConstant && enumConstant.getName() == node
-                    || parent instanceof AnnotationTypeDeclaration annotation && annotation.getName() == node
+                    || parent instanceof RecordDeclaration r && r.getName() == node;
+        }
+
+        private boolean isExecutableDeclarationName(ASTNode parent, SimpleName node) {
+            return parent instanceof MethodDeclaration method && method.getName() == node;
+        }
+
+        private boolean isVariableDeclarationName(ASTNode parent, SimpleName node) {
+            return parent instanceof VariableDeclarationFragment v && v.getName() == node
+                    || parent instanceof SingleVariableDeclaration s && s.getName() == node;
+        }
+
+        private boolean isEnumDeclarationName(ASTNode parent, SimpleName node) {
+            return parent instanceof EnumDeclaration enumDeclaration && enumDeclaration.getName() == node
+                    || parent instanceof EnumConstantDeclaration enumConstant && enumConstant.getName() == node;
+        }
+
+        private boolean isAnnotationDeclarationName(ASTNode parent, SimpleName node) {
+            return parent instanceof AnnotationTypeDeclaration annotation && annotation.getName() == node
                     || parent instanceof AnnotationTypeMemberDeclaration member && member.getName() == node;
         }
     }

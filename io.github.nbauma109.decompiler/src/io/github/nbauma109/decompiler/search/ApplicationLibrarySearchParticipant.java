@@ -276,8 +276,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (kind != entry.getKind() || !matchesLimit(entry)) {
                 return false;
             }
-            if (declaringTypeName != null && !matchesNameOrPattern(declaringTypeName, declaringTypePattern,
-                    entry.getDeclaringTypeName())) {
+            if (declaringTypeName != null && !matchesDeclaringType(entry.getDeclaringTypeName())) {
                 return false;
             }
             if (descriptor != null && entry.getDescriptor() != null && !sameDescriptor(descriptor, entry.getDescriptor())) {
@@ -293,11 +292,16 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return sameName(name, entry.getName()) || sameName(qualifiedName, entry.getQualifiedName());
         }
 
-        private boolean matchesNameOrPattern(String expected, Pattern pattern, String actual) {
+        private boolean matchesDeclaringType(String actual) {
             if (actual == null) {
                 return false;
             }
-            return pattern == null ? sameName(expected, actual) : pattern.matcher(actual).matches();
+            if (declaringTypePattern != null) {
+                return declaringTypePattern.matcher(actual).matches()
+                        || declaringTypePattern.matcher(simpleName(actual)).matches();
+            }
+            return sameName(declaringTypeName, actual)
+                    || kind == Kind.CONSTRUCTOR && sameName(declaringTypeName, simpleName(actual));
         }
 
         Kind kind() {
@@ -431,10 +435,11 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 name = simpleName(memberPattern);
             }
 
+            String normalizedDeclaringTypeName = emptyToNull(declaringTypeName);
             String wildcardTarget = hasWildcard(qualifiedName) ? qualifiedName : name;
             MatchPatterns matchPatterns = new MatchPatterns(caseSensitive, wildcardPattern(wildcardTarget, caseSensitive),
-                    wildcardPattern(declaringTypeName, caseSensitive));
-            return new SearchPattern(name, qualifiedName, emptyToNull(declaringTypeName), null, parameterPattern,
+                    declaringTypePattern(normalizedDeclaringTypeName, caseSensitive));
+            return new SearchPattern(name, qualifiedName, normalizedDeclaringTypeName, null, parameterPattern,
                     matchPatterns);
         }
 
@@ -544,6 +549,18 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 }
             }
             return Pattern.compile(regex.toString(), caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
+        }
+
+        private static Pattern declaringTypePattern(String pattern, boolean caseSensitive) {
+            if (pattern == null) {
+                return null;
+            }
+            Pattern wildcard = wildcardPattern(pattern, caseSensitive);
+            return wildcard == null ? exactPattern(pattern, caseSensitive) : wildcard;
+        }
+
+        private static Pattern exactPattern(String pattern, boolean caseSensitive) {
+            return Pattern.compile(Pattern.quote(pattern), caseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
         }
 
         private static String normalizeTypeName(IType type) {
