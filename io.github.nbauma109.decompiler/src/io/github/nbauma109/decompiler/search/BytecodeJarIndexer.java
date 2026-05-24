@@ -73,7 +73,7 @@ final class BytecodeJarIndexer {
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
-                if (!entry.isDirectory() && Strings.CS.endsWith(entry.getName(), CLASS_FILE_EXTENSION)) {
+                if (isIndexableClassEntry(entry)) {
                     long impact = entryImpactBytes(entry);
                     int ticks = impactTicks(impact);
                     totalImpact += impact;
@@ -85,6 +85,12 @@ final class BytecodeJarIndexer {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
         return new JarWork(entries, totalImpact, (int) totalTicks);
+    }
+
+    private static boolean isIndexableClassEntry(ZipEntry entry) {
+        return !entry.isDirectory()
+                && Strings.CS.endsWith(entry.getName(), CLASS_FILE_EXTENSION)
+                && !Strings.CS.startsWith(entry.getName(), "META-INF/versions/"); //$NON-NLS-1$
     }
 
     static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,

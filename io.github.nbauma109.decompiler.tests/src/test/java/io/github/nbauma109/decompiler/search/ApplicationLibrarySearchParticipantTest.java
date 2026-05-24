@@ -201,6 +201,33 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void ignoreDeclaringTypeWidensQualifiedMethodPattern()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-ignore-declaring-type-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "wrong.Owner.println(*)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES | IJavaSearchConstants.IGNORE_DECLARING_TYPE,
+                scope,
+                "Application library println references ignoring declaring type"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("IGNORE_DECLARING_TYPE must let method matches ignore the parsed declaring type", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
     public void genericMethodPatternWithReturnTypeFindsPrintlnReferencesFromTestJar()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(

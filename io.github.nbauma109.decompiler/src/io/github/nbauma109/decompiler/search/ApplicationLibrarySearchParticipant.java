@@ -287,7 +287,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (kind != entry.getKind() || !matchesLimit(entry)) {
                 return false;
             }
-            if (declaringTypeName != null && !matchesDeclaringType(entry.getDeclaringTypeName())) {
+            if (matchesDeclaringType() && !matchesDeclaringType(entry.getDeclaringTypeName())) {
                 return false;
             }
             if (descriptor != null && entry.getDescriptor() != null && !sameDescriptor(descriptor, entry.getDescriptor())) {
@@ -316,6 +316,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             return sameName(declaringTypeName, actual)
                     || kind == Kind.CONSTRUCTOR && sameName(declaringTypeName, simpleName(actual));
+        }
+
+        private boolean matchesDeclaringType() {
+            return declaringTypeName != null && (limitTo & IJavaSearchConstants.IGNORE_DECLARING_TYPE) == 0;
         }
 
         Kind kind() {
