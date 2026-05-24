@@ -156,9 +156,6 @@ public final class JavaSourceMemberParser {
         if (brace < 0) {
             return semicolon >= 0;
         }
-        if (semicolon < 0) {
-            return true;
-        }
-        return true; // either '{' or ';' after throws clause — both are declarations
+        return true; // brace found — concrete or throws-declared method is a declaration regardless of ';'
     }
 }

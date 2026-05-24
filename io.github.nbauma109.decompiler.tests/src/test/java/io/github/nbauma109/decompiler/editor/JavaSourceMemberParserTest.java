@@ -11,7 +11,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 public class JavaSourceMemberParserTest {
 
@@ -19,49 +24,45 @@ public class JavaSourceMemberParserTest {
     // findMatchingClose
     // -------------------------------------------------------------------------
 
-    @Test
-    public void findMatchingClose_parentheses_emptyParams() {
-        String s = "foo()";
-        assertEquals(4, JavaSourceMemberParser.findMatchingClose(s, 3, '(', ')'));
+    private static final String CLASS_FOO_VOID_BAR = "class Foo { void bar() { } }";
+
+	@Test
+    public void findMatchingCloseEmptyParens() {
+        assertEquals(4, JavaSourceMemberParser.findMatchingClose("foo()", 3, '(', ')'));
     }
 
     @Test
-    public void findMatchingClose_parentheses_withParams() {
-        String s = "foo(a, b)";
-        assertEquals(8, JavaSourceMemberParser.findMatchingClose(s, 3, '(', ')'));
+    public void findMatchingCloseParensWithArgs() {
+        assertEquals(8, JavaSourceMemberParser.findMatchingClose("foo(a, b)", 3, '(', ')'));
     }
 
     @Test
-    public void findMatchingClose_parentheses_nested() {
-        String s = "foo(bar(x))";
-        assertEquals(10, JavaSourceMemberParser.findMatchingClose(s, 3, '(', ')'));
+    public void findMatchingCloseNestedParens() {
+        assertEquals(10, JavaSourceMemberParser.findMatchingClose("foo(bar(x))", 3, '(', ')'));
     }
 
     @Test
-    public void findMatchingClose_braces_simple() {
-        String s = "{ int x; }";
-        assertEquals(9, JavaSourceMemberParser.findMatchingClose(s, 0, '{', '}'));
+    public void findMatchingCloseSimpleBraces() {
+        assertEquals(9, JavaSourceMemberParser.findMatchingClose("{ int x; }", 0, '{', '}'));
     }
 
     @Test
-    public void findMatchingClose_braces_nested() {
-        String s = "{ void m() { } }";
-        assertEquals(15, JavaSourceMemberParser.findMatchingClose(s, 0, '{', '}'));
+    public void findMatchingCloseNestedBraces() {
+        assertEquals(15, JavaSourceMemberParser.findMatchingClose("{ void m() { } }", 0, '{', '}'));
     }
 
     @Test
-    public void findMatchingClose_brackets() {
-        String s = "a[b[0]]";
-        assertEquals(6, JavaSourceMemberParser.findMatchingClose(s, 1, '[', ']'));
+    public void findMatchingCloseNestedBrackets() {
+        assertEquals(6, JavaSourceMemberParser.findMatchingClose("a[b[0]]", 1, '[', ']'));
     }
 
     @Test
-    public void findMatchingClose_noneFound_returnsMinusOne() {
+    public void findMatchingCloseReturnsMinusOneWhenUnmatched() {
         assertEquals(-1, JavaSourceMemberParser.findMatchingClose("foo(bar", 3, '(', ')'));
     }
 
     @Test
-    public void findMatchingClose_offsetBeyondEnd_returnsMinusOne() {
+    public void findMatchingCloseReturnsMinusOneWhenOffsetPastEnd() {
         assertEquals(-1, JavaSourceMemberParser.findMatchingClose("()", 5, '(', ')'));
     }
 
@@ -70,209 +71,158 @@ public class JavaSourceMemberParserTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void skipWhitespace_noWhitespace() {
+    public void skipWhitespaceAtNonWhitespace() {
         assertEquals(0, JavaSourceMemberParser.skipWhitespace("abc", 0));
     }
 
     @Test
-    public void skipWhitespace_leadingSpaces() {
+    public void skipWhitespaceLeadingSpaces() {
         assertEquals(3, JavaSourceMemberParser.skipWhitespace("   abc", 0));
     }
 
     @Test
-    public void skipWhitespace_fromMiddle() {
+    public void skipWhitespaceFromMiddle() {
         assertEquals(4, JavaSourceMemberParser.skipWhitespace("ab  cd", 2));
     }
 
     @Test
-    public void skipWhitespace_negativeOffset_clampsToZero() {
+    public void skipWhitespaceClampsNegativeOffsetToZero() {
         assertEquals(0, JavaSourceMemberParser.skipWhitespace("abc", -5));
     }
 
     @Test
-    public void skipWhitespace_allWhitespace_returnsLength() {
+    public void skipWhitespaceReturnsLengthForAllWhitespace() {
         String s = "   ";
         assertEquals(s.length(), JavaSourceMemberParser.skipWhitespace(s, 0));
     }
 
     // -------------------------------------------------------------------------
-    // isDirectTypeMember
+    // isDirectTypeMember — edge cases not covered by the parameterized group
     // -------------------------------------------------------------------------
 
     @Test
-    public void isDirectTypeMember_field_isDirectMember() {
-        // "class Foo { int x; }"
-        //              0123456789...
-        String s = "class Foo { int x; }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf('x');
-        assertTrue(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
+    public void isDirectTypeMemberReturnsFalseWhenOffsetBeforeOpenBrace() {
+        // typeOffset=5 puts the brace search past the offset=2 position
+        assertFalse(JavaSourceMemberParser.isDirectTypeMember(CLASS_FOO_VOID_BAR, 5, 2));
     }
 
     @Test
-    public void isDirectTypeMember_methodHeader_isDirectMember() {
-        String s = "class Foo { void bar() { } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("bar");
-        assertTrue(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
-    }
-
-    @Test
-    public void isDirectTypeMember_callInsideMethod_isNotDirectMember() {
-        // foo() call is inside bar()'s body — depth 2
-        String s = "class Foo { void bar() { foo(); } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("foo");
-        assertFalse(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
-    }
-
-    @Test
-    public void isDirectTypeMember_abstractMethodHeader_isDirectMember() {
-        String s = "abstract class Foo { abstract void baz(); }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("baz");
-        assertTrue(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
-    }
-
-    @Test
-    public void isDirectTypeMember_secondMethodAfterFirstMethod_isDirectMember() {
-        String s = "class Foo { void m1() { } void m2() { } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("m2");
-        assertTrue(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
-    }
-
-    @Test
-    public void isDirectTypeMember_interfaceMethod_isDirectMember() {
-        String s = "interface Foo { void run(); }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("run");
-        assertTrue(JavaSourceMemberParser.isDirectTypeMember(s, typeOffset, nameStart));
-    }
-
-    @Test
-    public void isDirectTypeMember_offsetBeforeOpenBrace_returnsFalse() {
-        String s = "class Foo { void bar() { } }";
-        // typeOffset is already past the type body
-        assertFalse(JavaSourceMemberParser.isDirectTypeMember(s, 5, 2));
-    }
-
-    @Test
-    public void isDirectTypeMember_noBraceAtAll_returnsFalse() {
+    public void isDirectTypeMemberReturnsFalseWhenNoBrace() {
         assertFalse(JavaSourceMemberParser.isDirectTypeMember("no braces here", 0, 3));
     }
 
     // -------------------------------------------------------------------------
-    // isMethodDeclaration — concrete methods (next char is '{')
+    // isMethodDeclaration — test suite and edge cases
     // -------------------------------------------------------------------------
-
-    @Test
-    public void isMethodDeclaration_concreteMethod_returnsTrue() {
-        String s = "class Foo { void bar() { } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("bar");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
-    }
-
-    @Test
-    public void isMethodDeclaration_concreteMethodWithParams_returnsTrue() {
-        String s = "class Foo { int add(int a, int b) { return a + b; } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("add");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
-    }
-
-    // -------------------------------------------------------------------------
-    // isMethodDeclaration — abstract / interface methods (next char is ';')
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void isMethodDeclaration_abstractMethod_returnsTrue() {
-        String s = "abstract class Foo { abstract void baz(); }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("baz");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
-    }
-
-    @Test
-    public void isMethodDeclaration_interfaceMethod_returnsTrue() {
-        String s = "interface Foo { void run(); }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("run");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
-    }
 
     /**
-     * The key regression for P2: a same-named invocation inside a method body
-     * must NOT be recognised as a declaration even though ')' is followed by ';'.
+     * A call-statement and an abstract declaration both produce the token sequence
+     * {@code ) ;}, so {@code isMethodDeclaration} must not rely on {@code ';'} alone.
+     * When the same method name appears first as a call inside a method body and then
+     * as an abstract declaration, only the brace-depth check ({@code isDirectTypeMember})
+     * can tell them apart: the call site is at depth&nbsp;2, the declaration at depth&nbsp;1.
      */
     @Test
-    public void isMethodDeclaration_invocationInsideMethodBody_returnsFalse() {
+    public void isMethodDeclarationReturnsFalseForInvocationInsideMethodBody() {
         String s = "class Foo { void bar() { baz(); } abstract void baz(); }";
-        int typeOffset = 0;
-        // Point at the 'baz' that is the call-site inside bar(), not the declaration
         int callSiteNameStart = s.indexOf("baz");
-        int callSiteOpenParen = s.indexOf('(', callSiteNameStart);
-        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, callSiteNameStart, callSiteOpenParen));
+        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, callSiteNameStart, s.indexOf('(', callSiteNameStart)));
     }
 
     @Test
-    public void isMethodDeclaration_declarationAfterInvocationOfSameName_returnsTrue() {
+    public void isMethodDeclarationReturnsTrueForDeclarationAfterSameNamedInvocation() {
         String s = "class Foo { void bar() { baz(); } abstract void baz(); }";
-        int typeOffset = 0;
-        // Second occurrence of 'baz' is the abstract declaration
         int declNameStart = s.indexOf("baz", s.indexOf("baz") + 1);
-        int declOpenParen = s.indexOf('(', declNameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, declNameStart, declOpenParen));
-    }
-
-    // -------------------------------------------------------------------------
-    // isMethodDeclaration — throws clause
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void isMethodDeclaration_concreteMethodWithThrows_returnsTrue() {
-        String s = "class Foo { void bar() throws Exception { } }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("bar");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
+        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, 0, declNameStart, s.indexOf('(', declNameStart)));
     }
 
     @Test
-    public void isMethodDeclaration_abstractMethodWithThrows_returnsTrue() {
-        String s = "abstract class Foo { abstract void bar() throws Exception; }";
-        int typeOffset = 0;
-        int nameStart = s.indexOf("bar");
-        int openParen = s.indexOf('(', nameStart);
-        assertTrue(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
-    }
-
-    // -------------------------------------------------------------------------
-    // isMethodDeclaration — non-declaration patterns
-    // -------------------------------------------------------------------------
-
-    @Test
-    public void isMethodDeclaration_unclosedParen_returnsFalse() {
-        // no closing paren at all
+    public void isMethodDeclarationReturnsFalseForUnclosedParen() {
         String s = "class Foo { void bar( }";
-        int typeOffset = 0;
         int nameStart = s.indexOf("bar");
-        int openParen = s.indexOf('(', nameStart);
-        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, nameStart, openParen));
+        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, nameStart, s.indexOf('(', nameStart)));
     }
 
     @Test
-    public void isMethodDeclaration_assignmentContext_returnsFalse() {
-        // result = bar(x) — next non-whitespace after ')' is ';' but inside a method body
+    public void isMethodDeclarationReturnsFalseForCallInAssignmentContext() {
+        // bar(x) is a call inside a method body; the declaration follows it
         String s = "class Foo { void m() { int r = bar(x); } void bar(int x) { } }";
-        int typeOffset = 0;
-        int callNameStart = s.indexOf("bar(");
-        int callOpenParen = s.indexOf('(', callNameStart);
-        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, typeOffset, callNameStart, callOpenParen));
+        int callNameStart = s.indexOf("bar");
+        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, callNameStart, s.indexOf('(', callNameStart)));
+    }
+
+    // -------------------------------------------------------------------------
+    // isDirectTypeMember — parameterized: all follow (source, searchToken, expected)
+    // -------------------------------------------------------------------------
+
+    @RunWith(Parameterized.class)
+    public static class IsDirectTypeMemberTest {
+
+        record Case(String description, String source, String searchToken, boolean expected) {
+            @Override
+            public String toString() { return description; }
+        }
+
+        @Parameters(name = "{0}")
+        public static List<Case> data() {
+            return List.of(
+                new Case("field is direct member",               "class Foo { int x; }",                        "x",   true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("method header is direct member",       CLASS_FOO_VOID_BAR,                "bar", true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("call inside method body is not direct","class Foo { void bar() { foo(); } }",         "foo", false), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("abstract method header is direct",     "abstract class Foo { abstract void baz(); }", "baz", true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("second method after first is direct",  "class Foo { void m1() { } void m2() { } }",  "m2",  true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("interface method is direct member",    "interface Foo { void run(); }",               "run", true)   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            );
+        }
+
+        private final Case testCase;
+
+        public IsDirectTypeMemberTest(Case testCase) {
+            this.testCase = testCase;
+        }
+
+        @Test
+        public void isDirectTypeMemberMatchesExpected() {
+            int offset = testCase.source().indexOf(testCase.searchToken());
+            assertEquals(testCase.expected(), JavaSourceMemberParser.isDirectTypeMember(testCase.source(), 0, offset));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // isMethodDeclaration — parameterized: positive cases (all return true)
+    // -------------------------------------------------------------------------
+
+    @RunWith(Parameterized.class)
+    public static class IsMethodDeclarationTest {
+
+        record Case(String description, String source, String methodName) {
+            @Override
+            public String toString() { return description; }
+        }
+
+        @Parameters(name = "{0}")
+        public static List<Case> data() {
+            return List.of(
+                new Case("concrete method",            CLASS_FOO_VOID_BAR,                                  "bar"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("concrete method with params","class Foo { int add(int a, int b) { return a + b; } }",         "add"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("abstract method",            "abstract class Foo { abstract void baz(); }",                   "baz"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("interface method",           "interface Foo { void run(); }",                                  "run"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("concrete with throws",       "class Foo { void bar() throws Exception { } }",                 "bar"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("abstract with throws",       "abstract class Foo { abstract void bar() throws Exception; }",  "bar")  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            );
+        }
+
+        private final Case testCase;
+
+        public IsMethodDeclarationTest(Case testCase) {
+            this.testCase = testCase;
+        }
+
+        @Test
+        public void isMethodDeclarationReturnsTrue() {
+            int nameStart = testCase.source().indexOf(testCase.methodName());
+            int openParen = testCase.source().indexOf('(', nameStart);
+            assertTrue(JavaSourceMemberParser.isMethodDeclaration(testCase.source(), 0, nameStart, openParen));
+        }
     }
 }
