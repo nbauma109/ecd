@@ -514,7 +514,7 @@ public class ApplicationLibrarySearchParticipantTest {
         assertNotNull(printStream);
         IMethod printlnWithClassParam = null;
         for (IMethod m : printStream.getMethods()) {
-            if ("println".equals(m.getElementName()) && m.getParameterTypes().length == 1 //$NON-NLS-1$
+            if (PRINTLN.equals(m.getElementName()) && m.getParameterTypes().length == 1 //$NON-NLS-1$
                     && Signature.getTypeSignatureKind(
                             Signature.getElementType(m.getParameterTypes()[0])) == Signature.CLASS_TYPE_SIGNATURE) {
                 printlnWithClassParam = m;
@@ -582,7 +582,7 @@ public class ApplicationLibrarySearchParticipantTest {
         ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
         IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
         // Two explicit parameter types (not "*") cause parseParameterTypes → splitParameterTypes to run.
-        // The result may be empty because test.jar may not call this particular overload;
+        // The result may be empty because test.jar may not call this particular overload
         // executing the split logic is the coverage goal.
         PatternQuerySpecification specification = new PatternQuerySpecification(
                 "println(String,boolean)", //$NON-NLS-1$
@@ -592,7 +592,7 @@ public class ApplicationLibrarySearchParticipantTest {
                 scope,
                 "Application library split-parameter-types coverage"); //$NON-NLS-1$
 
-        runSearchInBackground(participant, specification);
+        assertNotNull(runSearchInBackground(participant, specification));
     }
 
     @Test
