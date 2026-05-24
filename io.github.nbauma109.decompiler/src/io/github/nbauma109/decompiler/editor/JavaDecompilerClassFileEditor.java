@@ -748,7 +748,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         while (matcher.find()) {
             int openParenOffset = matcher.end() - 1;
             if (hasParameterCount(source, openParenOffset, method.getNumberOfParameters())
-                    && isMethodDeclaration(source, openParenOffset)) {
+                    && isMethodDeclaration(source, typeOffset, matcher.start(), openParenOffset)) {
                 return matcher.start();
             }
         }
@@ -790,24 +790,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (openBrace < 0) {
             return -1;
         }
-
-        int depth = 0;
-        for (int i = openBrace; i < source.length(); i++) {
-            char ch = source.charAt(i);
-            if (ch == '{') {
-                depth++;
-            } else if (ch == '}') {
-                depth--;
-                if (depth == 0) {
-                    return i;
-                }
-            }
-        }
-        return -1;
+        return JavaSourceMemberParser.findMatchingClose(source, openBrace, '{', '}');
     }
 
     private boolean hasParameterCount(String source, int openParenOffset, int expectedParameterCount) {
-        int closeParen = findClosingParen(source, openParenOffset);
+        int closeParen = JavaSourceMemberParser.findMatchingClose(source, openParenOffset, '(', ')');
         if (closeParen < 0) {
             return true;
         }
@@ -818,88 +805,20 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return countParameters(parameters) == expectedParameterCount;
     }
 
-    private boolean isMethodDeclaration(String source, int openParenOffset) {
-        int closeParen = findClosingParen(source, openParenOffset);
-        if (closeParen < 0) {
-            return false;
-        }
-        int nextToken = skipWhitespace(source, closeParen + 1);
-        if (nextToken >= source.length()) {
-            return false;
-        }
-        char next = source.charAt(nextToken);
-        if (next == '{' || next == ';') {
-            return true;
-        }
-        if (!source.startsWith("throws", nextToken)) { //$NON-NLS-1$
-            return false;
-        }
-        int terminatorStart = nextToken + "throws".length(); //$NON-NLS-1$
-        int brace = source.indexOf('{', terminatorStart);
-        int semicolon = source.indexOf(';', terminatorStart);
-        if (brace < 0) {
-            return semicolon >= 0;
-        }
-        if (semicolon < 0) {
-            return true;
-        }
-        return brace < semicolon || semicolon < brace;
+    private boolean isMethodDeclaration(String source, int typeOffset, int nameStart, int openParenOffset) {
+        return JavaSourceMemberParser.isMethodDeclaration(source, typeOffset, nameStart, openParenOffset);
     }
 
     private boolean isFieldDeclaration(String source, int typeOffset, int nameStart, int nameEnd) {
-        if (!isDirectTypeMember(source, typeOffset, nameStart)) {
+        if (!JavaSourceMemberParser.isDirectTypeMember(source, typeOffset, nameStart)) {
             return false;
         }
-        int nextToken = skipWhitespace(source, nameEnd);
+        int nextToken = JavaSourceMemberParser.skipWhitespace(source, nameEnd);
         if (nextToken >= source.length()) {
             return false;
         }
         char next = source.charAt(nextToken);
         return next == ';' || next == '=' || next == ',';
-    }
-
-    private boolean isDirectTypeMember(String source, int typeOffset, int offset) {
-        int openBrace = source.indexOf('{', typeOffset);
-        if (openBrace < 0 || offset <= openBrace) {
-            return false;
-        }
-        int depth = 1;
-        for (int i = openBrace + 1; i < offset; i++) {
-            char ch = source.charAt(i);
-            if (ch == '{') {
-                depth++;
-            } else if (ch == '}') {
-                depth--;
-                if (depth <= 0) {
-                    return false;
-                }
-            }
-        }
-        return depth == 1;
-    }
-
-    private int skipWhitespace(String source, int offset) {
-        int current = Math.max(0, offset);
-        while (current < source.length() && Character.isWhitespace(source.charAt(current))) {
-            current++;
-        }
-        return current;
-    }
-
-    private int findClosingParen(String source, int openParenOffset) {
-        int depth = 0;
-        for (int i = openParenOffset; i < source.length(); i++) {
-            char ch = source.charAt(i);
-            if (ch == '(') {
-                depth++;
-            } else if (ch == ')') {
-                depth--;
-                if (depth == 0) {
-                    return i;
-                }
-            }
-        }
-        return -1;
     }
 
     private int countParameters(String parameters) {
