@@ -11,6 +11,9 @@ package io.github.nbauma109.decompiler.search;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -118,12 +121,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element instanceof IType type) {
                 return new SearchMatcher(limitTo, Kind.TYPE,
                         new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null,
-                                ParameterPattern.NONE, true, null, null));
+                                ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IField field) {
                 return new SearchMatcher(limitTo, Kind.FIELD,
                         new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
-                                null, ParameterPattern.NONE, true, null, null));
+                                null, ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IMethod method) {
                 try {
@@ -131,7 +134,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
                                     method.getElementName(), normalizeDeclaringType(method), method.getSignature(),
-                                    ParameterPattern.NONE, true, null, null));
+                                    ParameterPattern.NONE, MatchPatterns.exact(true)));
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
@@ -140,55 +143,18 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element instanceof IPackageFragment pkg) {
                 return new SearchMatcher(limitTo, Kind.PACKAGE,
                         new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, ParameterPattern.NONE,
-                                true, null, null));
+                                MatchPatterns.exact(true)));
             }
             if (element instanceof IModuleDescription module) {
                 return new SearchMatcher(limitTo, Kind.MODULE,
                         new SearchPattern(module.getElementName(), module.getElementName(), null, null,
-                                ParameterPattern.NONE, true, null, null));
+                                ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             return null;
         }
 
-        private static class SearchPattern {
-
-            private final String name;
-            private final String qualifiedName;
-            private final String declaringTypeName;
-            private final String descriptor;
-            private final ParameterPattern parameterPattern;
-            private final boolean caseSensitive;
-            private final Pattern wildcardPattern;
-            private final Pattern declaringTypePattern;
-
-            private SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                    ParameterPattern parameterPattern, boolean caseSensitive, Pattern wildcardPattern,
-                    Pattern declaringTypePattern) {
-                this.name = name;
-                this.qualifiedName = qualifiedName;
-                this.declaringTypeName = declaringTypeName;
-                this.descriptor = descriptor;
-                this.parameterPattern = parameterPattern;
-                this.caseSensitive = caseSensitive;
-                this.wildcardPattern = wildcardPattern;
-                this.declaringTypePattern = declaringTypePattern;
-            }
-
-            private String name() {
-                return name;
-            }
-
-            private String qualifiedName() {
-                return qualifiedName;
-            }
-
-            private String declaringTypeName() {
-                return declaringTypeName;
-            }
-
-            private String descriptor() {
-                return descriptor;
-            }
+        private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
+                ParameterPattern parameterPattern, MatchPatterns matchPatterns) {
 
             private String[] parameterTypes() {
                 return parameterPattern.types();
@@ -196,6 +162,78 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
             private boolean matchParameterTypes() {
                 return parameterPattern.match();
+            }
+
+            private boolean caseSensitive() {
+                return matchPatterns.caseSensitive();
+            }
+
+            private Pattern wildcardPattern() {
+                return matchPatterns.wildcardPattern();
+            }
+
+            private Pattern declaringTypePattern() {
+                return matchPatterns.declaringTypePattern();
+            }
+
+            @Override
+            public boolean equals(Object other) {
+                if (this == other) {
+                    return true;
+                }
+                if (other == null || other.getClass() != getClass()) {
+                    return false;
+                }
+                SearchPattern that = (SearchPattern) other;
+                return new EqualsBuilder()
+                        .append(name, that.name)
+                        .append(qualifiedName, that.qualifiedName)
+                        .append(declaringTypeName, that.declaringTypeName)
+                        .append(descriptor, that.descriptor)
+                        .append(parameterPattern, that.parameterPattern)
+                        .append(matchPatterns, that.matchPatterns)
+                        .isEquals();
+            }
+
+            @Override
+            public int hashCode() {
+                return new HashCodeBuilder(17, 37)
+                        .append(name)
+                        .append(qualifiedName)
+                        .append(declaringTypeName)
+                        .append(descriptor)
+                        .append(parameterPattern)
+                        .append(matchPatterns)
+                        .toHashCode();
+            }
+
+            @Override
+            public String toString() {
+                return new ToStringBuilder(this)
+                        .append("name", name) //$NON-NLS-1$
+                        .append("qualifiedName", qualifiedName) //$NON-NLS-1$
+                        .append("declaringTypeName", declaringTypeName) //$NON-NLS-1$
+                        .append("descriptor", descriptor) //$NON-NLS-1$
+                        .append("parameterPattern", parameterPattern) //$NON-NLS-1$
+                        .append("matchPatterns", matchPatterns) //$NON-NLS-1$
+                        .toString();
+            }
+        }
+
+        private static class MatchPatterns {
+
+            private final boolean caseSensitive;
+            private final Pattern wildcardPattern;
+            private final Pattern declaringTypePattern;
+
+            private MatchPatterns(boolean caseSensitive, Pattern wildcardPattern, Pattern declaringTypePattern) {
+                this.caseSensitive = caseSensitive;
+                this.wildcardPattern = wildcardPattern;
+                this.declaringTypePattern = declaringTypePattern;
+            }
+
+            private static MatchPatterns exact(boolean caseSensitive) {
+                return new MatchPatterns(caseSensitive, null, null);
             }
 
             private boolean caseSensitive() {
@@ -395,9 +433,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
 
             String wildcardTarget = hasWildcard(qualifiedName) ? qualifiedName : name;
-            return new SearchPattern(name, qualifiedName, emptyToNull(declaringTypeName), null, parameterPattern,
-                    caseSensitive, wildcardPattern(wildcardTarget, caseSensitive),
+            MatchPatterns matchPatterns = new MatchPatterns(caseSensitive, wildcardPattern(wildcardTarget, caseSensitive),
                     wildcardPattern(declaringTypeName, caseSensitive));
+            return new SearchPattern(name, qualifiedName, emptyToNull(declaringTypeName), null, parameterPattern,
+                    matchPatterns);
         }
 
         private static boolean hasWildcard(String pattern) {

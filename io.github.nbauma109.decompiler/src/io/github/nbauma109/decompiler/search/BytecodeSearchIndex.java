@@ -20,6 +20,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.concurrent.ConcurrentException;
+import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
@@ -48,8 +53,13 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public final class BytecodeSearchIndex {
 
-    @SuppressWarnings("java:S6548")
-    private static final BytecodeSearchIndex INSTANCE = new BytecodeSearchIndex();
+    private static final LazyInitializer<BytecodeSearchIndex> INSTANCE =
+            new LazyInitializer<>() {
+                @Override
+                protected BytecodeSearchIndex initialize() {
+                    return new BytecodeSearchIndex();
+                }
+            };
     private static final long STARTUP_DELAY = 5000L;
     private static final long REFRESH_DELAY = 2000L;
     private static final int CLASSPATH_FLAGS = IJavaElementDelta.F_CLASSPATH_CHANGED
@@ -74,7 +84,11 @@ public final class BytecodeSearchIndex {
     }
 
     public static BytecodeSearchIndex getDefault() {
-        return INSTANCE;
+        try {
+            return INSTANCE.get();
+        } catch (ConcurrentException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public synchronized void start() {
@@ -219,8 +233,7 @@ public final class BytecodeSearchIndex {
                 plans.add(new JarPlan(rootEntry.getValue(), jar, path, existing, null, 1));
             } else {
                 BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
-                plans.add(new JarPlan(rootEntry.getValue(), jar, path, null, work,
-                        BytecodeJarIndexer.impactTicks(work.totalImpact())));
+                plans.add(new JarPlan(rootEntry.getValue(), jar, path, null, work, work.totalTicks()));
             }
         }
         return plans;
@@ -521,73 +534,88 @@ public final class BytecodeSearchIndex {
             private record EntryArrays(StringTables tables, EntryColumns columns) {
             }
 
-            private static class StringTables {
+            private record StringTables(String[] strings, String[] elementHandles,
+                    IJavaElement[] anonymousElementFallbacks) {
 
-                private final String[] strings;
-                private final String[] elementHandles;
-                private final IJavaElement[] anonymousElementFallbacks;
-
-                private StringTables(String[] strings, String[] elementHandles,
-                        IJavaElement[] anonymousElementFallbacks) {
-                    this.strings = strings;
-                    this.elementHandles = elementHandles;
-                    this.anonymousElementFallbacks = anonymousElementFallbacks;
+                @Override
+                public boolean equals(Object other) {
+                    if (this == other) {
+                        return true;
+                    }
+                    if (other == null || other.getClass() != getClass()) {
+                        return false;
+                    }
+                    StringTables that = (StringTables) other;
+                    return new EqualsBuilder()
+                            .append(strings, that.strings)
+                            .append(elementHandles, that.elementHandles)
+                            .append(anonymousElementFallbacks, that.anonymousElementFallbacks)
+                            .isEquals();
                 }
 
-                private String[] strings() {
-                    return strings;
+                @Override
+                public int hashCode() {
+                    return new HashCodeBuilder(17, 37)
+                            .append(strings)
+                            .append(elementHandles)
+                            .append(anonymousElementFallbacks)
+                            .toHashCode();
                 }
 
-                private String[] elementHandles() {
-                    return elementHandles;
-                }
-
-                private IJavaElement[] anonymousElementFallbacks() {
-                    return anonymousElementFallbacks;
+                @Override
+                public String toString() {
+                    return new ToStringBuilder(this)
+                            .append("strings", strings) //$NON-NLS-1$
+                            .append("elementHandles", elementHandles) //$NON-NLS-1$
+                            .append("anonymousElementFallbacks", anonymousElementFallbacks) //$NON-NLS-1$
+                            .toString();
                 }
             }
 
-            private static class EntryColumns {
+            private record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
+                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
 
-                private final byte[] kindAndFlags;
-                private final int[] elementHandleIds;
-                private final int[] nameIds;
-                private final int[] qualifiedNameIds;
-                private final int[] declaringTypeNameIds;
-                private final int[] descriptorIds;
-
-                private EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
-                        int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
-                    this.kindAndFlags = kindAndFlags;
-                    this.elementHandleIds = elementHandleIds;
-                    this.nameIds = nameIds;
-                    this.qualifiedNameIds = qualifiedNameIds;
-                    this.declaringTypeNameIds = declaringTypeNameIds;
-                    this.descriptorIds = descriptorIds;
+                @Override
+                public boolean equals(Object other) {
+                    if (this == other) {
+                        return true;
+                    }
+                    if (other == null || other.getClass() != getClass()) {
+                        return false;
+                    }
+                    EntryColumns that = (EntryColumns) other;
+                    return new EqualsBuilder()
+                            .append(kindAndFlags, that.kindAndFlags)
+                            .append(elementHandleIds, that.elementHandleIds)
+                            .append(nameIds, that.nameIds)
+                            .append(qualifiedNameIds, that.qualifiedNameIds)
+                            .append(declaringTypeNameIds, that.declaringTypeNameIds)
+                            .append(descriptorIds, that.descriptorIds)
+                            .isEquals();
                 }
 
-                private byte[] kindAndFlags() {
-                    return kindAndFlags;
+                @Override
+                public int hashCode() {
+                    return new HashCodeBuilder(17, 37)
+                            .append(kindAndFlags)
+                            .append(elementHandleIds)
+                            .append(nameIds)
+                            .append(qualifiedNameIds)
+                            .append(declaringTypeNameIds)
+                            .append(descriptorIds)
+                            .toHashCode();
                 }
 
-                private int[] elementHandleIds() {
-                    return elementHandleIds;
-                }
-
-                private int[] nameIds() {
-                    return nameIds;
-                }
-
-                private int[] qualifiedNameIds() {
-                    return qualifiedNameIds;
-                }
-
-                private int[] declaringTypeNameIds() {
-                    return declaringTypeNameIds;
-                }
-
-                private int[] descriptorIds() {
-                    return descriptorIds;
+                @Override
+                public String toString() {
+                    return new ToStringBuilder(this)
+                            .append("kindAndFlags", kindAndFlags) //$NON-NLS-1$
+                            .append("elementHandleIds", elementHandleIds) //$NON-NLS-1$
+                            .append("nameIds", nameIds) //$NON-NLS-1$
+                            .append("qualifiedNameIds", qualifiedNameIds) //$NON-NLS-1$
+                            .append("declaringTypeNameIds", declaringTypeNameIds) //$NON-NLS-1$
+                            .append("descriptorIds", descriptorIds) //$NON-NLS-1$
+                            .toString();
                 }
             }
 

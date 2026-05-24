@@ -527,8 +527,9 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SimpleName node) {
-            if ((entry.getKind() == Kind.TYPE || entry.getKind() == Kind.FIELD) && matches(node)
-                    && !isDeclarationName(node)) {
+            if (entry.getKind() == Kind.TYPE && matches(node) && !isDeclarationName(node)) {
+                add(node);
+            } else if (entry.getKind() == Kind.FIELD && matchesFieldAccess(node)) {
                 add(node);
             }
             return true;
@@ -619,6 +620,26 @@ final class BytecodeSourceRangeResolver {
             return sameName(node.getIdentifier(), entry.getName()) || sameName(node.getIdentifier(), simpleName());
         }
 
+        private boolean matchesFieldAccess(SimpleName node) {
+            if (!matches(node) || isDeclarationName(node)) {
+                return false;
+            }
+            ASTNode parent = node.getParent();
+            if (parent instanceof QualifiedName qualifiedName && qualifiedName.getName() == node) {
+                return matchesFieldOwner(qualifiedName.getQualifier().getFullyQualifiedName());
+            }
+            return matchesFieldOwner(enclosingTypeName(entry.getElement()));
+        }
+
+        private boolean matchesFieldOwner(String ownerName) {
+            String declaringTypeName = entry.getDeclaringTypeName();
+            if (declaringTypeName == null || ownerName == null) {
+                return true;
+            }
+            return sameName(declaringTypeName, ownerName)
+                    || sameName(simpleName(declaringTypeName), simpleName(ownerName));
+        }
+
         private boolean matches(SimpleName node, int argumentCount) {
             return matches(node) && matchesArgumentCount(argumentCount);
         }
@@ -697,7 +718,32 @@ final class BytecodeSourceRangeResolver {
 
         private boolean matchesLastName(ASTNode node) {
             LastName lastName = lastName(node);
-            return lastName != null && sameName(lastName.name(), entry.getName());
+            return lastName != null && sameName(lastName.name(), entry.getName()) && matchesConstructorType(node);
+        }
+
+        private boolean matchesConstructorType(ASTNode node) {
+            String declaringTypeName = entry.getDeclaringTypeName();
+            if (declaringTypeName == null) {
+                return true;
+            }
+            String sourceTypeName = sourceName(node);
+            if (sourceTypeName == null) {
+                return true;
+            }
+            String normalizedDeclaringType = declaringTypeName.replace('$', '.');
+            String normalizedSourceType = sourceTypeName.replace('$', '.');
+            return sameName(normalizedDeclaringType, normalizedSourceType)
+                    || sameName(simpleName(normalizedDeclaringType), simpleName(normalizedSourceType))
+                    || normalizedDeclaringType.endsWith("." + normalizedSourceType); //$NON-NLS-1$
+        }
+
+        private String sourceName(ASTNode node) {
+            int nodeOffset = node.getStartPosition();
+            int nodeLength = node.getLength();
+            if (nodeOffset < 0 || nodeLength <= 0 || nodeOffset + nodeLength > source.length()) {
+                return null;
+            }
+            return source.substring(nodeOffset, nodeOffset + nodeLength).replaceAll("\\s+", ""); //$NON-NLS-1$ //$NON-NLS-2$
         }
 
         private LastName lastName(ASTNode node) {

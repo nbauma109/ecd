@@ -66,20 +66,23 @@ final class BytecodeJarIndexer {
     static JarWork plan(File jar) {
         List<JarEntryWork> entries = new ArrayList<>();
         long totalImpact = 0L;
+        int totalTicks = 0;
         try (ZipFile zip = new ZipFile(jar)) {
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
                 if (!entry.isDirectory() && entry.getName().endsWith(CLASS_FILE_EXTENSION)) {
                     long impact = entryImpactBytes(entry);
+                    int ticks = impactTicks(impact);
                     totalImpact += impact;
-                    entries.add(new JarEntryWork(entry.getName(), impact));
+                    totalTicks += ticks;
+                    entries.add(new JarEntryWork(entry.getName(), impact, ticks));
                 }
             }
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
-        return new JarWork(entries, totalImpact);
+        return new JarWork(entries, totalImpact, totalTicks);
     }
 
     static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
@@ -90,7 +93,7 @@ final class BytecodeJarIndexer {
 
         try (ZipFile zip = new ZipFile(jar)) {
             IndexContext context = new IndexContext(root, jar, zip, entries, seen, strings);
-            SubMonitor subMonitor = SubMonitor.convert(monitor, impactTicks(work.totalImpact()));
+            SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
             for (JarEntryWork entryWork : work.entries()) {
                 if (!subMonitor.isCanceled()) {
                     indexEntry(context, entryWork, subMonitor);
@@ -110,7 +113,7 @@ final class BytecodeJarIndexer {
                 indexZipEntry(context, entry);
             }
         } finally {
-            subMonitor.worked(impactTicks(entryWork.impactBytes()));
+            subMonitor.worked(entryWork.ticks());
         }
     }
 
@@ -804,9 +807,9 @@ final class BytecodeJarIndexer {
             Set<EntryKey> seen, Map<String, String> strings) {
     }
 
-    record JarWork(List<JarEntryWork> entries, long totalImpact) {
+    record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
     }
 
-    record JarEntryWork(String name, long impactBytes) {
+    record JarEntryWork(String name, long impactBytes, int ticks) {
     }
 }
