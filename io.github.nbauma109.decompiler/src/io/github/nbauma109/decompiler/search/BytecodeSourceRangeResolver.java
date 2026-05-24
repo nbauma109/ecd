@@ -782,7 +782,7 @@ final class BytecodeSourceRangeResolver {
                 return;
             }
             int start = node.getStartPosition();
-            int end = Math.clamp(start + (long) node.getLength(), 0, source.length());
+            int end = (int) Math.clamp(start + (long) node.getLength(), 0, source.length());
             int offset = source.indexOf(keyword, start);
             if (offset >= start && offset < end) {
                 ranges.add(new SourceRange(offset, keyword.length()));

@@ -230,10 +230,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         }
         IJavaElement selection = resolveJavaElementSelectionTarget(element);
         if (selection instanceof ISourceReference sourceReference) {
-            this.selectedElement = sourceReference;
             setSelection(sourceReference, true);
-            revealNestedDeclaration(sourceReference);
-            this.selectedElement = sourceReference;
             return;
         }
         super.setSelection(selection);
