@@ -68,7 +68,7 @@ final class BytecodeJarIndexer {
     static JarWork plan(File jar) {
         List<JarEntryWork> entries = new ArrayList<>();
         long totalImpact = 0L;
-        int totalTicks = 0;
+        long totalTicks = 0L;
         try (ZipFile zip = new ZipFile(jar)) {
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
@@ -77,14 +77,14 @@ final class BytecodeJarIndexer {
                     long impact = entryImpactBytes(entry);
                     int ticks = impactTicks(impact);
                     totalImpact += impact;
-                    totalTicks += ticks;
+                    totalTicks = Math.clamp(totalTicks + ticks, 0L, Integer.MAX_VALUE);
                     entries.add(new JarEntryWork(entry.getName(), impact, ticks));
                 }
             }
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
-        return new JarWork(entries, totalImpact, totalTicks);
+        return new JarWork(entries, totalImpact, (int) totalTicks);
     }
 
     static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,

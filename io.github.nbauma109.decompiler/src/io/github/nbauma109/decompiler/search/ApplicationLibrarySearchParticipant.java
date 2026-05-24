@@ -411,14 +411,17 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 }
             }
 
+            if (kind == Kind.FIELD) {
+                memberPattern = stripFieldType(memberPattern);
+            }
+
             String name = memberPattern;
             String qualifiedName = memberPattern;
             String declaringTypeName = null;
             if (kind == Kind.METHOD || kind == Kind.FIELD) {
-                int separator = memberPattern.lastIndexOf('.');
-                if (separator >= 0) {
-                    declaringTypeName = memberPattern.substring(0, separator);
-                    name = memberPattern.substring(separator + 1);
+                if (Strings.CS.contains(memberPattern, ".")) { //$NON-NLS-1$
+                    declaringTypeName = StringUtils.substringBeforeLast(memberPattern, "."); //$NON-NLS-1$
+                    name = StringUtils.substringAfterLast(memberPattern, "."); //$NON-NLS-1$
                     qualifiedName = name;
                 }
             } else if (kind == Kind.CONSTRUCTOR) {
@@ -437,6 +440,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static boolean hasWildcard(String pattern) {
             return StringUtils.containsAny(pattern, '*', '?');
+        }
+
+        private static String stripFieldType(String pattern) {
+            return StringUtils.substringBefore(StringUtils.trimToEmpty(pattern), " "); //$NON-NLS-1$
         }
 
         private static String[] parseParameterTypes(String parameters) {
@@ -499,8 +506,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static String simpleName(String name) {
-            int separator = name.lastIndexOf('.');
-            return separator < 0 ? name : name.substring(separator + 1);
+            return Strings.CS.contains(name, ".") ? StringUtils.substringAfterLast(name, ".") : name; //$NON-NLS-1$ //$NON-NLS-2$
         }
 
         private static String emptyToNull(String value) {

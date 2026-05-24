@@ -684,6 +684,9 @@ final class BytecodeSourceRangeResolver {
         }
 
         private static String simpleName(String qualifiedName) {
+            if (!Strings.CS.contains(qualifiedName, ".")) { //$NON-NLS-1$
+                return qualifiedName;
+            }
             return StringUtils.substringAfterLast(qualifiedName, "."); //$NON-NLS-1$
         }
 
