@@ -65,7 +65,7 @@ public class UpdateCheckJob extends Job {
     }
 
     private String fetchLatestVersion() throws IOException {
-        EcfHttpClient client = new EcfHttpClient();
+        EcfHttpClient client = new EcfHttpClient(); // keep ECF, it handles system authenticated proxy transparently
         client.setConnectTimeout(CONNECT_TIMEOUT_MS);
         client.setReadTimeout(READ_TIMEOUT_MS);
         client.setRequestHeader("Accept", "application/vnd.github.v3+json"); //$NON-NLS-1$ //$NON-NLS-2$

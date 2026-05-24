@@ -73,14 +73,6 @@ public class EcfHttpClient {
 
     private static final String USER_AGENT = "ECD-SourceAttach/1.0 (Eclipse ECF)";
     private static final int DEFAULT_TIMEOUT_MS = 5000;
-    private static final DefaultRedirectStrategy SENSITIVE_HEADER_REDIRECT_STRATEGY =
-            new DefaultRedirectStrategy() {
-        @Override
-        public boolean isRedirectAllowed(HttpHost currentTarget, HttpHost newTarget,
-                HttpRequest redirect, HttpContext context) {
-            return true;
-        }
-    };
 
     private int connectTimeout = DEFAULT_TIMEOUT_MS;
     private int readTimeout = DEFAULT_TIMEOUT_MS;
@@ -249,7 +241,15 @@ public class EcfHttpClient {
     private CloseableHttpClient newHttpClient(IHttpClientFactory factory) {
         HttpClientBuilder clientBuilder = factory.newClient();
         if (allowSensitiveHeaderRedirects) {
-            clientBuilder.setRedirectStrategy(SENSITIVE_HEADER_REDIRECT_STRATEGY);
+            // Created inline so DefaultRedirectStrategy is not referenced at class-load time —
+            // the httpclient5 bundle is optional and may not be active.
+            clientBuilder.setRedirectStrategy(new DefaultRedirectStrategy() {
+                @Override
+                public boolean isRedirectAllowed(HttpHost currentTarget, HttpHost newTarget,
+                        HttpRequest redirect, HttpContext context) {
+                    return true;
+                }
+            });
         }
         HttpClientConnectionManager connectionManager = clientBuilder.getConnManager();
         if (connectionManager instanceof PoolingHttpClientConnectionManager poolingManager) {
