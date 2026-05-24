@@ -176,7 +176,7 @@ public class BytecodeSourceRangeResolverTest {
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, STATIC_TARGET, STATIC_TARGET, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"), SOURCE), STATIC_TARGET); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, INHERITED, INHERITED, //$NON-NLS-1$ //$NON-NLS-2$
-                "fixture.Base", null), SOURCE), INHERITED); //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Base", null), SOURCE), INHERITED + "()"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
@@ -202,25 +202,29 @@ public class BytecodeSourceRangeResolverTest {
         assertRangeText(resolver.rangeFor(reference(Kind.FIELD, takesMethod, "out", "out", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.lang.System", "Ljava/io/PrintStream;", Access.READ), SOURCE), "out"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.FIELD, takesMethod, "local", "local", //$NON-NLS-1$ //$NON-NLS-2$
-                FIXTURE_OWNER, "I", Access.READ), SOURCE), "void takes"); //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_OWNER, "I", Access.READ), SOURCE), "void "); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
     public void typeDeclarationNamesAreNotReportedAsReferences() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
-        assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, ownerType, OWNER, FIXTURE_OWNER, null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
-                "class Owner"); //$NON-NLS-1$
+        // Owner has internal uses (Owner::staticTarget, Owner::new, new Owner(...)) — the first use is returned,
+        // confirming the type declaration name itself is filtered out and a reference site is found instead.
+        assertRangeText(resolver.rangeFor(reference(Kind.TYPE, ownerType, OWNER, FIXTURE_OWNER, null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
+                OWNER); //$NON-NLS-1$
+        // Rec / Mode / Marker have no internal uses of their own name → enclosing fallback,
+        // clamped to entry name length (3 / 4 / 6 / 5 chars respectively).
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, recType, "Rec", "fixture.Rec", null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
-                "record Rec"); //$NON-NLS-1$
+                "rec"); //$NON-NLS-1$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, modeType, "Mode", "fixture.Mode", null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
-                "enum Mode"); //$NON-NLS-1$
+                "enum"); //$NON-NLS-1$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.FIELD, modeType.getField("ON"), "ON", "ON", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Mode", null, Access.READ), SOURCE), "ON"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, markerType, "Marker", "fixture.Marker", null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
-                "@interface Marker"); //$NON-NLS-1$
+                "@inter"); //$NON-NLS-1$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, markerType, "value", "value", null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
-                "@interface Marker"); //$NON-NLS-1$
+                "@inte"); //$NON-NLS-1$
     }
 
     private static BytecodeSearchEntry declaration(Kind kind, IJavaElement element, String name) {

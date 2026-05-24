@@ -201,8 +201,8 @@ public class BytecodeSourceRangeResolver {
         return range != null && range.getOffset() >= 0 && range.getLength() > 0;
     }
 
-    record SourceRange(int offset, int length) {
-        SourceRange {
+    public record SourceRange(int offset, int length) {
+    	public SourceRange {
             if (offset < 0) {
                 offset = 0;
             }
@@ -422,10 +422,13 @@ public class BytecodeSourceRangeResolver {
             if (sameName(left, right)) {
                 return true;
             }
-            int leftSeparator = left.lastIndexOf('.');
-            int rightSeparator = right.lastIndexOf('.');
-            String leftSimple = leftSeparator < 0 ? left : left.substring(leftSeparator + 1);
-            String rightSimple = rightSeparator < 0 ? right : right.substring(rightSeparator + 1);
+            boolean leftQualified = Strings.CS.contains(left, "."); //$NON-NLS-1$
+            boolean rightQualified = Strings.CS.contains(right, "."); //$NON-NLS-1$
+            if (leftQualified && rightQualified) {
+                return false;
+            }
+            String leftSimple = leftQualified ? StringUtils.substringAfterLast(left, ".") : left; //$NON-NLS-1$
+            String rightSimple = rightQualified ? StringUtils.substringAfterLast(right, ".") : right; //$NON-NLS-1$
             return sameName(leftSimple, rightSimple);
         }
 

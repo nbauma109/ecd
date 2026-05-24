@@ -52,6 +52,12 @@ public class JavaSourceMemberParserTest {
     }
 
     @Test
+    public void findMatchingCloseIgnoresBracesInsideLiteralsAndComments() {
+        assertEquals(66, JavaSourceMemberParser.findMatchingClose(
+                "{ String json = \"{\"; char close = '}'; /* { */ // }\n void m() { } }", 0, '{', '}')); //$NON-NLS-1$
+    }
+
+    @Test
     public void findMatchingCloseNestedBrackets() {
         assertEquals(6, JavaSourceMemberParser.findMatchingClose("a[b[0]]", 1, '[', ']'));
     }
@@ -109,6 +115,14 @@ public class JavaSourceMemberParserTest {
     @Test
     public void isDirectTypeMemberReturnsFalseWhenNoBrace() {
         assertFalse(JavaSourceMemberParser.isDirectTypeMember("no braces here", 0, 3));
+    }
+
+    @Test
+    public void isDirectTypeMemberIgnoresBracesInsideLiteralsAndComments() {
+        String source = "class Foo { String json = \"{\"; // }\n /* { */ void direct() { } }"; //$NON-NLS-1$
+        int offset = source.indexOf("direct"); //$NON-NLS-1$
+
+        assertTrue(JavaSourceMemberParser.isDirectTypeMember(source, 0, offset));
     }
 
     // -------------------------------------------------------------------------

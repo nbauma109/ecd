@@ -12,9 +12,9 @@ import org.apache.commons.lang3.Strings;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 
-final class BytecodeSearchEntry {
+public class BytecodeSearchEntry {
 
-    enum Kind {
+    public enum Kind {
         TYPE,
         METHOD,
         CONSTRUCTOR,
@@ -23,7 +23,7 @@ final class BytecodeSearchEntry {
         MODULE
     }
 
-    enum Access {
+    public enum Access {
         NONE,
         READ,
         WRITE
@@ -39,12 +39,12 @@ final class BytecodeSearchEntry {
     private final String descriptor;
     private final Access access;
 
-    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+    public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference) {
         this(kind, declaration, elementReference, symbolReference, Access.NONE);
     }
 
-    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+    public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference, Access access) {
         this.kind = kind;
         this.declaration = declaration;
@@ -57,17 +57,17 @@ final class BytecodeSearchEntry {
         this.access = access == null ? Access.NONE : access;
     }
 
-    BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
+    public BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
             String declaringTypeName, String descriptor) {
         this(kind, declaration, elementReference(element),
                 new SymbolReference(name, qualifiedName, declaringTypeName, descriptor));
     }
 
-    static ElementReference elementReference(String handle, IJavaElement anonymousFallback) {
+    public static ElementReference elementReference(String handle, IJavaElement anonymousFallback) {
         return new ElementReference(handle, anonymousFallback);
     }
 
-    static SymbolReference symbolReference(String name, String qualifiedName, String declaringTypeName,
+    public static SymbolReference symbolReference(String name, String qualifiedName, String declaringTypeName,
             String descriptor) {
         return new SymbolReference(name, qualifiedName, declaringTypeName, descriptor);
     }

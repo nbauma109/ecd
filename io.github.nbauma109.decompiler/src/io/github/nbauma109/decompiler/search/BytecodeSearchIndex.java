@@ -314,7 +314,7 @@ public final class BytecodeSearchIndex {
         }
 
         IPath path = archivePath(root);
-        if (path == null || !"jar".equalsIgnoreCase(path.getFileExtension()) || !path.toFile().isFile()) { //$NON-NLS-1$
+        if (path == null || !path.toFile().isFile()) {
             return;
         }
 

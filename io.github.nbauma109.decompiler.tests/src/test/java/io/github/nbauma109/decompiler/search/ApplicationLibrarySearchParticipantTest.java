@@ -29,6 +29,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchEngine;
@@ -198,6 +199,36 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertFalse("Qualified Java search patterns must match application-library bytecode references", //$NON-NLS-1$
                 matches.isEmpty());
+    }
+
+    @Test
+    public void applicationLibrarySearchIndexesNonJarArchiveRoots()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-zip-archive-test-project"); //$NON-NLS-1$
+        project = setup.project();
+        File zipArchive = new File(tempDir, "test-library.zip"); //$NON-NLS-1$
+        FileUtils.copyFile(setup.jarFile(), zipArchive);
+        IPackageFragmentRoot zipRoot = DecompilerTestSupport.addJarToClasspathAndGetRoot(setup.javaProject(), zipArchive);
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { zipRoot });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream.println(*)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library println references from zip archive"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Binary archive roots with non-jar extensions must be indexed", matches.isEmpty()); //$NON-NLS-1$
     }
 
     @Test

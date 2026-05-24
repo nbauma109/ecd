@@ -416,8 +416,11 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (sameName(expectedType, actualType)) {
                 return true;
             }
-            int separator = actualType.lastIndexOf('.');
-            return separator >= 0 && sameName(expectedType, actualType.substring(separator + 1));
+            if (Strings.CS.contains(expectedType, ".")) { //$NON-NLS-1$
+                return false;
+            }
+            return Strings.CS.contains(actualType, ".") //$NON-NLS-1$
+                    && sameName(expectedType, StringUtils.substringAfterLast(actualType, ".")); //$NON-NLS-1$
         }
 
         private static boolean supportsLimitTo(int limitTo) {

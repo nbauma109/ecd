@@ -53,7 +53,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 
-final class BytecodeJarIndexer {
+public class BytecodeJarIndexer {
 
     private static final String CLASS_FILE_EXTENSION = ".class"; //$NON-NLS-1$
     private static final String CLASS_INITIALIZER = "<clinit>"; //$NON-NLS-1$
@@ -65,7 +65,7 @@ final class BytecodeJarIndexer {
     private BytecodeJarIndexer() {
     }
 
-    static JarWork plan(File jar) {
+    public static JarWork plan(File jar) {
         List<JarEntryWork> entries = new ArrayList<>();
         long totalImpact = 0L;
         long totalTicks = 0L;
@@ -815,9 +815,9 @@ final class BytecodeJarIndexer {
             Set<EntryKey> seen, Map<String, String> strings) {
     }
 
-    record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
+    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
     }
 
-    record JarEntryWork(String name, long impactBytes, int ticks) {
+    public record JarEntryWork(String name, long impactBytes, int ticks) {
     }
 }

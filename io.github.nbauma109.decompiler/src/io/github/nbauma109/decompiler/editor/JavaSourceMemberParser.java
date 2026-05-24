@@ -34,7 +34,13 @@ public final class JavaSourceMemberParser {
      */
     public static int findMatchingClose(String source, int openOffset, char open, char close) {
         int depth = 0;
-        for (int i = openOffset; i < source.length(); i++) {
+        int i = openOffset;
+        while (i < source.length()) {
+            int next = skipLiteralOrComment(source, i);
+            if (next != i) {
+                i = next;
+                continue;
+            }
             char ch = source.charAt(i);
             if (ch == open) {
                 depth++;
@@ -44,6 +50,7 @@ public final class JavaSourceMemberParser {
                     return i;
                 }
             }
+            i++;
         }
         return -1;
     }
@@ -83,7 +90,7 @@ public final class JavaSourceMemberParser {
      * therefore not a direct type member.</p>
      */
     public static boolean isDirectTypeMember(String source, int typeOffset, int offset) {
-        int openBrace = source.indexOf('{', typeOffset);
+        int openBrace = findStructuralChar(source, '{', typeOffset, source.length());
         if (openBrace < 0 || offset <= openBrace) {
             return false;
         }
@@ -96,8 +103,8 @@ public final class JavaSourceMemberParser {
         // is nested (method body, lambda, anonymous class, etc.) — not a direct member.
         int pos = openBrace + 1;
         while (pos < offset) {
-            int nextOpen = source.indexOf('{', pos);
-            if (nextOpen < 0 || nextOpen >= offset) {
+            int nextOpen = findStructuralChar(source, '{', pos, offset);
+            if (nextOpen < 0) {
                 break;
             }
             int nextClose = findMatchingClose(source, nextOpen, '{', '}');
@@ -107,6 +114,65 @@ public final class JavaSourceMemberParser {
             pos = nextClose + 1;
         }
         return true;
+    }
+
+    private static int findStructuralChar(String source, char target, int fromIndex, int limit) {
+        int current = Math.max(0, fromIndex);
+        int boundedLimit = Math.min(source.length(), limit);
+        while (current < boundedLimit) {
+            int next = skipLiteralOrComment(source, current);
+            if (next != current) {
+                current = next;
+                continue;
+            }
+            if (source.charAt(current) == target) {
+                return current;
+            }
+            current++;
+        }
+        return -1;
+    }
+
+    private static int skipLiteralOrComment(String source, int offset) {
+        char ch = source.charAt(offset);
+        if (ch == '"' || ch == '\'') {
+            return skipQuotedLiteral(source, offset, ch);
+        }
+        if (ch == '/' && offset + 1 < source.length()) {
+            char next = source.charAt(offset + 1);
+            if (next == '/') {
+                return skipLineComment(source, offset + 2);
+            }
+            if (next == '*') {
+                return skipBlockComment(source, offset + 2);
+            }
+        }
+        return offset;
+    }
+
+    private static int skipQuotedLiteral(String source, int offset, char quote) {
+        int current = offset + 1;
+        while (current < source.length()) {
+            char ch = source.charAt(current);
+            if (ch == '\\') {
+                current += 2;
+            } else if (ch == quote) {
+                return current + 1;
+            } else {
+                current++;
+            }
+        }
+        return source.length();
+    }
+
+    private static int skipLineComment(String source, int offset) {
+        int lineEnd = source.indexOf('\n', offset);
+        return lineEnd < 0 ? source.length() : lineEnd + 1;
+    }
+
+    private static int skipBlockComment(String source, int offset) {
+        int commentEnd = source.indexOf("*/", offset); //$NON-NLS-1$
+        return commentEnd < 0 ? source.length() : commentEnd + 2;
     }
 
     /**
