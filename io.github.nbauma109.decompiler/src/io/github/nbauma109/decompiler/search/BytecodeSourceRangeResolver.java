@@ -59,7 +59,7 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.util.Logger;
 
-final class BytecodeSourceRangeResolver {
+public class BytecodeSourceRangeResolver {
 
     private static final int MAX_PARSED_CLASS_FILES = 8;
 
@@ -72,11 +72,11 @@ final class BytecodeSourceRangeResolver {
         }
     };
 
-    SourceRange rangeFor(BytecodeSearchEntry entry) {
+    public SourceRange rangeFor(BytecodeSearchEntry entry) {
         return rangeFor(entry, null);
     }
 
-    SourceRange rangeFor(BytecodeSearchEntry entry, String source) {
+    public SourceRange rangeFor(BytecodeSearchEntry entry, String source) {
         List<SourceRange> ranges = rangesFor(entry, source, null);
         return selectRange(entry, ranges);
     }
