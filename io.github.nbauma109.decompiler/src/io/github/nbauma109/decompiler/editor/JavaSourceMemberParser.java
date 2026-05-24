@@ -150,7 +150,7 @@ public final class JavaSourceMemberParser {
         if (next == ';') {
             return isDirectTypeMember(source, typeOffset, nameStart);
         }
-        // Annotation element with a default value: String value() default "x";
+        // Annotation element with a default value
         if (source.startsWith("default", nextToken)) { //$NON-NLS-1$
             return isDirectTypeMember(source, typeOffset, nameStart);
         }
