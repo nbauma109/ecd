@@ -81,7 +81,7 @@ public class JavaSourceMemberParserTest {
 
     @Test
     public void skipWhitespace_fromMiddle() {
-        assertEquals(5, JavaSourceMemberParser.skipWhitespace("ab  cd", 2));
+        assertEquals(4, JavaSourceMemberParser.skipWhitespace("ab  cd", 2));
     }
 
     @Test
