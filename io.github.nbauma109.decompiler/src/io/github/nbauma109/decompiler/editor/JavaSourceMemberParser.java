@@ -123,6 +123,9 @@ public final class JavaSourceMemberParser {
      *       declarations appear at brace-depth&nbsp;1 inside the type body, so
      *       {@link #isDirectTypeMember} is used to rule out call-sites inside method
      *       bodies.</li>
+     *   <li>{@code default} keyword — annotation element with a default value
+     *       (e.g. {@code String value() default "x";}); verified with
+     *       {@link #isDirectTypeMember} for the same reason as {@code ';'}.</li>
      *   <li>{@code throws} clause — the method declares checked exceptions; the clause
      *       must be terminated by either {@code '{'} (concrete body) or {@code ';'}
      *       (abstract/interface).</li>
@@ -145,6 +148,10 @@ public final class JavaSourceMemberParser {
         // Only declarations are at brace-depth 1 (direct type members); calls live inside
         // method bodies at higher depth, so isDirectTypeMember distinguishes them.
         if (next == ';') {
+            return isDirectTypeMember(source, typeOffset, nameStart);
+        }
+        // Annotation element with a default value: String value() default "x";
+        if (source.startsWith("default", nextToken)) { //$NON-NLS-1$
             return isDirectTypeMember(source, typeOffset, nameStart);
         }
         if (!source.startsWith("throws", nextToken)) { //$NON-NLS-1$

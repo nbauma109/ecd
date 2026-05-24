@@ -207,8 +207,10 @@ public class JavaSourceMemberParserTest {
                 new Case("concrete method with params","class Foo { int add(int a, int b) { return a + b; } }",         "add"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                 new Case("abstract method",            "abstract class Foo { abstract void baz(); }",                   "baz"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                 new Case("interface method",           "interface Foo { void run(); }",                                  "run"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("concrete with throws",       "class Foo { void bar() throws Exception { } }",                 "bar"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("abstract with throws",       "abstract class Foo { abstract void bar() throws Exception; }",  "bar")  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("concrete with throws",              "class Foo { void bar() throws Exception { } }",                    "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("abstract with throws",             "abstract class Foo { abstract void bar() throws Exception; }",     "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("annotation member without default","@interface Ann { String value(); }",                               "value"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                new Case("annotation member with default",   "@interface Ann { String value() default \"x\"; }",                "value")  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
             );
         }
 
