@@ -715,7 +715,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     private int findTypeDeclarationOffset(String source, String typeName, int fromIndex) {
-        Matcher matcher = Pattern.compile("\\b(?:class|interface|enum|record)\\s+" //$NON-NLS-1$
+        Matcher matcher = Pattern.compile("\\b(?:class|interface|enum|record|@interface)\\s+" //$NON-NLS-1$
                 + Pattern.quote(typeName) + "\\b").matcher(source); //$NON-NLS-1$
         return matcher.find(Math.max(0, fromIndex)) ? matcher.start() : -1;
     }
@@ -813,15 +813,23 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (nextToken >= source.length()) {
             return false;
         }
-        if (source.charAt(nextToken) == '{') {
+        char next = source.charAt(nextToken);
+        if (next == '{' || next == ';') {
             return true;
         }
         if (!source.startsWith("throws", nextToken)) { //$NON-NLS-1$
             return false;
         }
-        int brace = source.indexOf('{', nextToken + "throws".length()); //$NON-NLS-1$
-        int semicolon = source.indexOf(';', nextToken);
-        return brace >= 0 && (semicolon < 0 || brace < semicolon);
+        int terminatorStart = nextToken + "throws".length(); //$NON-NLS-1$
+        int brace = source.indexOf('{', terminatorStart);
+        int semicolon = source.indexOf(';', terminatorStart);
+        if (brace < 0) {
+            return semicolon >= 0;
+        }
+        if (semicolon < 0) {
+            return true;
+        }
+        return brace < semicolon || semicolon < brace;
     }
 
     private boolean isFieldDeclaration(String source, int typeOffset, int nameStart, int nameEnd) {
