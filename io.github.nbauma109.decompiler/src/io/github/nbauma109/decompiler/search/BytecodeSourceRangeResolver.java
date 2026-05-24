@@ -17,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -79,7 +81,7 @@ final class BytecodeSourceRangeResolver {
     }
 
     Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
-        ParsedClassFile parsed = source == null || source.isBlank() ? null : parse(source);
+        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source);
         Map<BytecodeSearchEntry, SourceRange> ranges = new IdentityHashMap<>(entries.size());
         Map<ReferenceKey, Integer> ordinals = new HashMap<>();
         for (BytecodeSearchEntry entry : entries) {
@@ -98,7 +100,7 @@ final class BytecodeSourceRangeResolver {
         if (ranges.isEmpty()) {
             return enclosingRange(entry);
         }
-        return ranges.get(Math.min(Math.max(0, ordinal), ranges.size() - 1));
+        return ranges.get(Math.clamp(ordinal, 0, ranges.size() - 1));
     }
 
     private List<SourceRange> rangesFor(BytecodeSearchEntry entry, String source, ParsedClassFile parsedSource) {
@@ -109,7 +111,7 @@ final class BytecodeSourceRangeResolver {
 
         ParsedClassFile parsed = parsedSource;
         if (parsed == null) {
-            parsed = source == null || source.isBlank() ? parsedClassFile(entry.getElement()) : parse(source);
+            parsed = StringUtils.isBlank(source) ? parsedClassFile(entry.getElement()) : parse(source);
         }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
@@ -148,7 +150,7 @@ final class BytecodeSourceRangeResolver {
     private ParsedClassFile parse(IClassFile classFile) {
         try {
             String source = classFile.getSource();
-            if (source == null || source.isBlank()) {
+            if (StringUtils.isBlank(source)) {
                 return null;
             }
             return parse(source);
@@ -177,7 +179,7 @@ final class BytecodeSourceRangeResolver {
     private static SourceRange enclosingRange(BytecodeSearchEntry entry) {
         ISourceRange range = sourceRange(entry.getElement(), false);
         if (isValid(range)) {
-            return new SourceRange(range.getOffset(), Math.max(1, Math.min(range.getLength(), entry.getName().length())));
+            return new SourceRange(range.getOffset(), Math.clamp(range.getLength(), 1, Math.max(1, entry.getName().length())));
         }
         return new SourceRange(0, Math.max(1, entry.getName().length()));
     }
@@ -431,7 +433,7 @@ final class BytecodeSourceRangeResolver {
         }
 
         private static boolean sameName(String left, String right) {
-            return left != null && right != null && left.equals(right);
+            return Strings.CS.equals(left, right);
         }
 
         private static SourceRange range(ASTNode node) {
@@ -455,7 +457,7 @@ final class BytecodeSourceRangeResolver {
             IClassFile classFile = classFile(element);
             if (classFile != null) {
                 String classFileName = classFile.getElementName();
-                if (classFileName.endsWith(".class")) { //$NON-NLS-1$
+                if (Strings.CS.endsWith(classFileName, ".class")) { //$NON-NLS-1$
                     classFileName = classFileName.substring(0, classFileName.length() - ".class".length()); //$NON-NLS-1$
                 }
                 List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
@@ -481,7 +483,7 @@ final class BytecodeSourceRangeResolver {
             }
             int offset = currentTypeStack.size() - names.size();
             for (int i = 0; i < names.size(); i++) {
-                if (!names.get(i).equals(currentTypeStack.get(offset + i))) {
+                if (!Strings.CS.equals(names.get(i), currentTypeStack.get(offset + i))) {
                     return false;
                 }
             }
@@ -527,12 +529,15 @@ final class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SimpleName node) {
-            if (entry.getKind() == Kind.TYPE && matches(node) && !isDeclarationName(node)) {
-                add(node);
-            } else if (entry.getKind() == Kind.FIELD && matchesFieldAccess(node)) {
+            if (matchesSimpleNameReference(node)) {
                 add(node);
             }
             return true;
+        }
+
+        private boolean matchesSimpleNameReference(SimpleName node) {
+            return entry.getKind() == Kind.TYPE && matches(node) && !isDeclarationName(node)
+                    || entry.getKind() == Kind.FIELD && matchesFieldAccess(node);
         }
 
         @Override
@@ -646,7 +651,7 @@ final class BytecodeSourceRangeResolver {
 
         private boolean matchesArgumentCount(int argumentCount) {
             String descriptor = entry.getDescriptor();
-            if (descriptor == null || descriptor.isBlank()) {
+            if (StringUtils.isBlank(descriptor)) {
                 return true;
             }
             try {
@@ -675,18 +680,15 @@ final class BytecodeSourceRangeResolver {
         }
 
         private String simpleName() {
-            String qualifiedName = entry.getQualifiedName();
-            int separator = qualifiedName == null ? -1 : qualifiedName.lastIndexOf('.');
-            return separator < 0 ? qualifiedName : qualifiedName.substring(separator + 1);
+            return simpleName(entry.getQualifiedName());
         }
 
         private static String simpleName(String qualifiedName) {
-            int separator = qualifiedName == null ? -1 : qualifiedName.lastIndexOf('.');
-            return separator < 0 ? qualifiedName : qualifiedName.substring(separator + 1);
+            return StringUtils.substringAfterLast(qualifiedName, "."); //$NON-NLS-1$
         }
 
         private boolean sameName(String left, String right) {
-            return left != null && right != null && left.equals(right);
+            return Strings.CS.equals(left, right);
         }
 
         private void add(ASTNode node) {
@@ -730,11 +732,11 @@ final class BytecodeSourceRangeResolver {
             if (sourceTypeName == null) {
                 return true;
             }
-            String normalizedDeclaringType = declaringTypeName.replace('$', '.');
-            String normalizedSourceType = sourceTypeName.replace('$', '.');
+            String normalizedDeclaringType = StringUtils.replaceChars(declaringTypeName, '$', '.');
+            String normalizedSourceType = StringUtils.replaceChars(sourceTypeName, '$', '.');
             return sameName(normalizedDeclaringType, normalizedSourceType)
                     || sameName(simpleName(normalizedDeclaringType), simpleName(normalizedSourceType))
-                    || normalizedDeclaringType.endsWith("." + normalizedSourceType); //$NON-NLS-1$
+                    || Strings.CS.endsWith(normalizedDeclaringType, "." + normalizedSourceType); //$NON-NLS-1$
         }
 
         private String sourceName(ASTNode node) {
@@ -776,7 +778,7 @@ final class BytecodeSourceRangeResolver {
                 return;
             }
             int start = node.getStartPosition();
-            int end = Math.min(source.length(), start + node.getLength());
+            int end = Math.clamp(start + (long) node.getLength(), 0, source.length());
             int offset = source.indexOf(keyword, start);
             if (offset >= start && offset < end) {
                 ranges.add(new SourceRange(offset, keyword.length()));

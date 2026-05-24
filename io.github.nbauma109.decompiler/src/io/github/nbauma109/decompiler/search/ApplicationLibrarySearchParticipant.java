@@ -11,6 +11,8 @@ package io.github.nbauma109.decompiler.search;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -63,7 +65,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
     @Override
     public int estimateTicks(QuerySpecification specification) {
         int entryCount = BytecodeSearchIndex.getDefault().entryCount();
-        return entryCount == 0 ? 50 : Math.min(1000, Math.max(100, entryCount / 200));
+        return entryCount == 0 ? 50 : Math.clamp(entryCount / 200, 100, 1000);
     }
 
     @Override
@@ -336,13 +338,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean sameName(String left, String right) {
-            if (left == null || right == null) {
-                return false;
-            }
-            if (caseSensitive) {
-                return left.equals(right);
-            }
-            return left.equalsIgnoreCase(right);
+            return caseSensitive ? Strings.CS.equals(left, right) : Strings.CI.equals(left, right);
         }
 
         private boolean sameDescriptor(String jdtSignature, String bytecodeDescriptor) {
@@ -401,13 +397,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static SearchPattern parsePattern(Kind kind, String pattern, boolean caseSensitive) {
-            String text = pattern == null ? "" : pattern.trim(); //$NON-NLS-1$
+            String text = StringUtils.trimToEmpty(pattern);
             String memberPattern = text;
             ParameterPattern parameterPattern = ParameterPattern.NONE;
             if ((kind == Kind.METHOD || kind == Kind.CONSTRUCTOR) && text.indexOf('(') >= 0) {
                 int openParen = text.indexOf('(');
                 int closeParen = text.lastIndexOf(')');
-                memberPattern = text.substring(0, openParen).trim();
+                memberPattern = StringUtils.trim(text.substring(0, openParen));
                 if (closeParen > openParen) {
                     String parameters = text.substring(openParen + 1, closeParen);
                     parameterPattern = new ParameterPattern(parseParameterTypes(parameters),
@@ -440,19 +436,19 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static boolean hasWildcard(String pattern) {
-            return pattern != null && (pattern.indexOf('*') >= 0 || pattern.indexOf('?') >= 0);
+            return StringUtils.containsAny(pattern, '*', '?');
         }
 
         private static String[] parseParameterTypes(String parameters) {
-            String trimmed = parameters.trim();
-            if (trimmed.isEmpty() || isAnyParameterPattern(trimmed)) {
+            String trimmed = StringUtils.trimToEmpty(parameters);
+            if (StringUtils.isEmpty(trimmed) || isAnyParameterPattern(trimmed)) {
                 return new String[0];
             }
             return splitParameterTypes(trimmed);
         }
 
         private static boolean isAnyParameterPattern(String parameters) {
-            return "*".equals(parameters.trim()); //$NON-NLS-1$
+            return Strings.CS.equals("*", StringUtils.trimToEmpty(parameters)); //$NON-NLS-1$
         }
 
         private static String[] splitParameterTypes(String parameters) {
@@ -475,7 +471,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static String normalizePatternType(String type) {
-            String normalized = type.trim().replace("...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
+            String normalized = Strings.CS.replace(StringUtils.trimToEmpty(type), "...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
             int genericStart = normalized.indexOf('<');
             if (genericStart >= 0) {
                 normalized = normalized.substring(0, genericStart);
@@ -508,7 +504,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static String emptyToNull(String value) {
-            return value == null || value.isBlank() ? null : value;
+            return StringUtils.isBlank(value) ? null : value;
         }
 
         private static Kind kindFor(int searchFor) {
@@ -527,7 +523,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static Pattern wildcardPattern(String pattern, boolean caseSensitive) {
-            if (pattern == null || pattern.indexOf('*') < 0 && pattern.indexOf('?') < 0) {
+            if (!StringUtils.containsAny(pattern, '*', '?')) {
                 return null;
             }
             StringBuilder regex = new StringBuilder(pattern.length() * 2);

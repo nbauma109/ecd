@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -244,7 +246,7 @@ public final class BytecodeSearchIndex {
         for (JarPlan plan : plans) {
             total += plan.ticks();
         }
-        return Math.max(1, (int) Math.min(Integer.MAX_VALUE, total));
+        return (int) Math.clamp(total, 1L, Integer.MAX_VALUE);
     }
 
     private void waitForInitialRefresh(IProgressMonitor monitor) {
@@ -388,7 +390,7 @@ public final class BytecodeSearchIndex {
         }
 
         private static int[] postings(Map<String, int[]> nameIndex, String name) {
-            if (name == null || name.isBlank()) {
+            if (StringUtils.isBlank(name)) {
                 return EMPTY_POSTINGS;
             }
             return nameIndex.getOrDefault(normalizeKey(name), EMPTY_POSTINGS);
@@ -439,7 +441,7 @@ public final class BytecodeSearchIndex {
                         key -> new HashMap<>());
                 addToNameIndex(nameIndex, entry.getName(), entryId);
                 if (indexesQualifiedName(entry.getKind())
-                        && !normalizeKey(entry.getName()).equals(normalizeKey(entry.getQualifiedName()))) {
+                        && !Strings.CS.equals(normalizeKey(entry.getName()), normalizeKey(entry.getQualifiedName()))) {
                     addToNameIndex(nameIndex, entry.getQualifiedName(), entryId);
                 }
             }
@@ -447,7 +449,7 @@ public final class BytecodeSearchIndex {
         }
 
         private static void addToNameIndex(Map<String, IntPostings> nameIndex, String name, int entryId) {
-            if (name == null || name.isBlank()) {
+            if (StringUtils.isBlank(name)) {
                 return;
             }
             nameIndex.computeIfAbsent(normalizeKey(name), key -> new IntPostings()).add(entryId);
@@ -466,14 +468,11 @@ public final class BytecodeSearchIndex {
         }
 
         private static String normalizeKey(String name) {
-            return name.toLowerCase(java.util.Locale.ROOT);
+            return StringUtils.lowerCase(name, java.util.Locale.ROOT);
         }
 
         private static boolean sameKey(String left, String right) {
-            if (left == null || right == null) {
-                return left == null && right == null;
-            }
-            return normalizeKey(left).equals(normalizeKey(right));
+            return Strings.CS.equals(normalizeKey(left), normalizeKey(right));
         }
 
         private static boolean indexesQualifiedName(Kind kind) {

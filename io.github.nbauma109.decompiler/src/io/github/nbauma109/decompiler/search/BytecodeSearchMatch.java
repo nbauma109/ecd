@@ -44,7 +44,7 @@ final class BytecodeSearchMatch extends Match {
         if (range == null || range.getLength() <= 0) {
             return Math.max(1, entry.getName().length());
         }
-        return Math.max(1, Math.min(range.getLength(), Math.max(1, entry.getName().length())));
+        return Math.clamp(range.getLength(), 1, Math.max(1, entry.getName().length()));
     }
 
     private static ISourceRange initialRange(BytecodeSearchEntry entry) {

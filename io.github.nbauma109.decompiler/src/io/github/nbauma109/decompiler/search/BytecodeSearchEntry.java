@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import org.apache.commons.lang3.Strings;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 
@@ -80,7 +81,7 @@ final class BytecodeSearchEntry {
     }
 
     private static IJavaElement anonymousElementFallback(String elementHandle, IJavaElement element) {
-        return elementHandle != null && elementHandle.contains("[~") ? element : null; //$NON-NLS-1$
+        return Strings.CS.contains(elementHandle, "[~") ? element : null; //$NON-NLS-1$
     }
 
     record ElementReference(String handle, IJavaElement anonymousFallback) {

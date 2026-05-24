@@ -23,6 +23,8 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IClassFile;
@@ -71,7 +73,7 @@ final class BytecodeJarIndexer {
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
-                if (!entry.isDirectory() && entry.getName().endsWith(CLASS_FILE_EXTENSION)) {
+                if (!entry.isDirectory() && Strings.CS.endsWith(entry.getName(), CLASS_FILE_EXTENSION)) {
                     long impact = entryImpactBytes(entry);
                     int ticks = impactTicks(impact);
                     totalImpact += impact;
@@ -127,7 +129,7 @@ final class BytecodeJarIndexer {
 
     static int impactTicks(long impactBytes) {
         long kibibytes = (impactBytes + 1023L) / 1024L;
-        return Math.max(1, (int) Math.min(Integer.MAX_VALUE, kibibytes));
+        return (int) Math.clamp(kibibytes, 1L, Integer.MAX_VALUE);
     }
 
     private static long entryImpactBytes(ZipEntry entry) {
@@ -252,7 +254,7 @@ final class BytecodeJarIndexer {
         }
 
         private void addTypeReference(String internalName) {
-            if (internalName == null || internalName.isBlank() || MODULE_INFO.equals(internalName)) {
+            if (StringUtils.isBlank(internalName) || MODULE_INFO.equals(internalName)) {
                 return;
             }
             if (internalName.charAt(0) == '[') {
@@ -267,7 +269,7 @@ final class BytecodeJarIndexer {
                 addTypeReference(internalName);
                 return;
             }
-            if (internalName == null || internalName.isBlank() || MODULE_INFO.equals(internalName)) {
+            if (StringUtils.isBlank(internalName) || MODULE_INFO.equals(internalName)) {
                 return;
             }
             if (internalName.charAt(0) == '[') {
@@ -293,7 +295,7 @@ final class BytecodeJarIndexer {
         }
 
         private void addDescriptorReferences(String descriptor, IJavaElement element) {
-            if (descriptor == null || descriptor.isBlank()) {
+            if (StringUtils.isBlank(descriptor)) {
                 return;
             }
             try {
@@ -429,7 +431,7 @@ final class BytecodeJarIndexer {
         }
 
         private void addPackageDeclaration(String packageName) {
-            if (packageName == null || packageName.isBlank()) {
+            if (StringUtils.isBlank(packageName)) {
                 return;
             }
             IPackageFragment pkg = root.getPackageFragment(packageName);
@@ -437,7 +439,7 @@ final class BytecodeJarIndexer {
         }
 
         private void addPackageReference(String packageName, IJavaElement element) {
-            if (packageName == null || packageName.isBlank()) {
+            if (StringUtils.isBlank(packageName)) {
                 return;
             }
             add(Kind.PACKAGE, false, element, pool(packageName), pool(packageName), null, null);
@@ -509,7 +511,7 @@ final class BytecodeJarIndexer {
         }
 
         private IJavaElement anonymousElementFallback(String elementHandle, IJavaElement element) {
-            if (elementHandle == null || !elementHandle.contains("[~")) { //$NON-NLS-1$
+            if (!Strings.CS.contains(elementHandle, "[~")) { //$NON-NLS-1$
                 return null;
             }
             return anonymousElementFallbacks.computeIfAbsent(elementHandle, ignored -> element);
@@ -531,7 +533,7 @@ final class BytecodeJarIndexer {
             }
 
             private void addDescriptor(String descriptor) {
-                if (descriptor != null && !descriptor.isBlank()) {
+                if (StringUtils.isNotBlank(descriptor)) {
                     descriptorSet.add(descriptor);
                 }
             }
