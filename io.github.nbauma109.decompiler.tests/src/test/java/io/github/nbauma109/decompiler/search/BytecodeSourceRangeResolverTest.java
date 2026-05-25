@@ -20,7 +20,6 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
@@ -43,7 +42,19 @@ import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 @SuppressWarnings("restriction")
 public class BytecodeSourceRangeResolverTest {
 
-    private static final String FIELD = "field";
+    private static final String JAVA_LANG_OBJECT = "java.lang.Object";
+
+	private static final String PRINTF = "printf";
+
+	private static final String LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V = "(Ljava/lang/String;[Ljava/lang/Object;)V";
+
+	private static final String FIXTURE_PRIMS = "fixture.Prims";
+
+	private static final String FIXTURE_BASE = "fixture.Base";
+
+	private static final String JAVA_IO_PRINT_STREAM = "java.io.PrintStream";
+
+	private static final String FIELD = "field";
 
 	private static final String FIXTURE_OWNER = "fixture.Owner";
 
@@ -134,7 +145,7 @@ public class BytecodeSourceRangeResolverTest {
     private IMethod targetMethod;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws CoreException {
         project = ResourcesPlugin.getWorkspace().getRoot().getProject("bytecode-source-range-resolver-test-project"); //$NON-NLS-1$
         if (project.exists()) {
             project.delete(true, true, new NullProgressMonitor());
@@ -191,15 +202,15 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
-                "java.io.PrintStream", "(I)V"), SOURCE), "println(names.length)"); //$NON-NLS-1$ //$NON-NLS-2$
+                JAVA_IO_PRINT_STREAM, "(I)V"), SOURCE), "println(names.length)"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.METHOD, takesMethod, INHERITED, INHERITED, //$NON-NLS-1$ //$NON-NLS-2$
-                "fixture.Base", "()Ljava/lang/String;"), SOURCE), "inherited()"); //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_BASE, "()Ljava/lang/String;"), SOURCE), "inherited()"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, TARGET, TARGET, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"), SOURCE), TARGET); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, STATIC_TARGET, STATIC_TARGET, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"), SOURCE), STATIC_TARGET); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, INHERITED, INHERITED, //$NON-NLS-1$ //$NON-NLS-2$
-                "fixture.Base", null), SOURCE), INHERITED + "()"); //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_BASE, null), SOURCE), INHERITED + "()"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
@@ -209,8 +220,8 @@ public class BytecodeSourceRangeResolverTest {
         // printf(String, Object...) has 2 descriptor params but the source call
         // System.out.printf("%d %s", count, names.length) has 3 AST arguments.
         // matchesArgumentCount must accept the varargs expansion and resolve the call site.
-        assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
-                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"), SOURCE), //$NON-NLS-1$
+        assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, PRINTF, PRINTF, //$NON-NLS-1$ //$NON-NLS-2$
+                JAVA_IO_PRINT_STREAM, LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V), SOURCE), //$NON-NLS-1$
                 "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
     }
 
@@ -221,10 +232,10 @@ public class BytecodeSourceRangeResolverTest {
         // Two printf call sites in takes(): expanded (3 args) at ordinal 0, zero-varargs (1 arg) at ordinal 1.
         // matchesArgumentCount must accept 1 arg for printf(String, Object...) whose descriptor has 2 formal
         // params, because argumentCount (1) >= argTypes.length - 1 (2-1=1).
-        BytecodeSearchEntry e1 = reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
-                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"); //$NON-NLS-1$
-        BytecodeSearchEntry e2 = reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
-                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"); //$NON-NLS-1$
+        BytecodeSearchEntry e1 = reference(Kind.METHOD, takesMethod, PRINTF, PRINTF, //$NON-NLS-1$ //$NON-NLS-2$
+                JAVA_IO_PRINT_STREAM, LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V); //$NON-NLS-1$
+        BytecodeSearchEntry e2 = reference(Kind.METHOD, takesMethod, PRINTF, PRINTF, //$NON-NLS-1$ //$NON-NLS-2$
+                JAVA_IO_PRINT_STREAM, LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V); //$NON-NLS-1$
         Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
                 resolver.rangesFor(List.of(e1, e2), SOURCE);
         assertRangeText(ranges.get(e1), "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
@@ -237,8 +248,8 @@ public class BytecodeSourceRangeResolverTest {
 
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, defaultConstructor, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "(I)V"), SOURCE), "this"); //$NON-NLS-1$ //$NON-NLS-2$
-        assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, intConstructor, "Object", "java.lang.Object", //$NON-NLS-1$ //$NON-NLS-2$
-                "java.lang.Object", "()V"), SOURCE), "super"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, intConstructor, "Object", JAVA_LANG_OBJECT, //$NON-NLS-1$ //$NON-NLS-2$
+                JAVA_LANG_OBJECT, "()V"), SOURCE), "super"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, takesMethod, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"), SOURCE), OWNER); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, takesMethod, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
@@ -289,7 +300,7 @@ public class BytecodeSourceRangeResolverTest {
         // targetMethod is void target() in Owner (0 parameters).
         // The bytecode entry says the field is declared on "fixture.Base".
         BytecodeSearchEntry entry = reference(Kind.FIELD, targetMethod,
-                "x", "x", "fixture.Base", "I", Access.WRITE); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                "x", "x", FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
@@ -330,7 +341,7 @@ public class BytecodeSourceRangeResolverTest {
 
         IField fieldEl = ownerType.getField(FIELD); // IField "field" from the test project — declaring type "Owner"
         BytecodeSearchEntry entry = reference(Kind.METHOD, fieldEl,
-                "hashCode", "hashCode", "java.lang.Object", "()I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                "hashCode", "hashCode", JAVA_LANG_OBJECT, "()I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
@@ -374,9 +385,10 @@ public class BytecodeSourceRangeResolverTest {
      * element lives inside a class file that has no source attachment (here a JRE
      * class), {@code classFile.getSource()} returns null, the blank-source guard fires,
      * and the resolver falls back to an enclosing range.
+     * @throws JavaModelException 
      */
     @Test
-    public void parseReturnsNullAndFallsBackForClassFileWithNoSourceAttachment() throws Exception {
+    public void parseReturnsNullAndFallsBackForClassFileWithNoSourceAttachment() throws JavaModelException {
         // The test project already has the default JRE on its classpath (set up in setUp()).
         // java.lang.String lives in a JRE JAR that has no source attachment in the test
         // environment, so classFile.getSource() returns null → isBlank(null) == true.
@@ -390,7 +402,7 @@ public class BytecodeSourceRangeResolverTest {
 
         // Verify the method lives inside a class file so the parse(IClassFile) path is taken
         assertNotNull("String method must have an IClassFile ancestor", //$NON-NLS-1$
-                (IClassFile) jreMethod.getAncestor(IJavaElement.CLASS_FILE));
+                jreMethod.getAncestor(IJavaElement.CLASS_FILE));
 
         BytecodeSearchEntry entry = new BytecodeSearchEntry(
                 Kind.METHOD, false,
@@ -419,7 +431,7 @@ public class BytecodeSourceRangeResolverTest {
     public void allPrimitivesAreNormalizedInParameterTypes() throws JavaModelException {
         IMethod allPrimsMethod = method(primsType, "allPrims", 7); //$NON-NLS-1$
         BytecodeSearchEntry entry = reference(Kind.METHOD, allPrimsMethod,
-                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+                TARGET, TARGET, FIXTURE_PRIMS, "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
@@ -449,9 +461,9 @@ public class BytecodeSourceRangeResolverTest {
         // strMethod(java.lang.String s) in SOURCE → JDT gives "Qjava.lang.String;" → left = "java.lang.string" (qualified)
         IMethod strMethodElement = method(primsType, "strMethod", 1); //$NON-NLS-1$
         BytecodeSearchEntry entry = reference(Kind.METHOD, strMethodElement,
-                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+                TARGET, TARGET, FIXTURE_PRIMS, "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        // Custom source: wrong overload has java.lang.Object (both qualified, different → false);
+        // Custom source: wrong overload has java.lang.Object (both qualified, different → false)
         // correct overload has String (unqualified) so the leftSimple branch resolves the match.
         String customSrc = """
                 package fixture;
@@ -487,7 +499,7 @@ public class BytecodeSourceRangeResolverTest {
         // intMethod(String s) in SOURCE → JDT gives "QString;" → left = "string" (unqualified)
         IMethod intMethodElement = method(primsType, "intMethod", 1); //$NON-NLS-1$
         BytecodeSearchEntry entry = reference(Kind.METHOD, intMethodElement,
-                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+                TARGET, TARGET, FIXTURE_PRIMS, "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
         // Custom source uses the fully-qualified java.lang.String so AST right is "java.lang.string" (qualified).
         String customSrc = """
