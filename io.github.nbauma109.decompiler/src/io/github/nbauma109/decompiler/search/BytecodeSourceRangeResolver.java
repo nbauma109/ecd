@@ -676,7 +676,8 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SuperConstructorInvocation node) {
-            if (entry.getKind() == Kind.CONSTRUCTOR && matchesArgumentCount(node.arguments().size())) {
+            if (entry.getKind() == Kind.CONSTRUCTOR && targetsDirectSuperclass()
+                    && matchesArgumentCount(node.arguments().size())) {
                 addKeyword(node, "super"); //$NON-NLS-1$
             }
             return true;
@@ -790,6 +791,27 @@ public class BytecodeSourceRangeResolver {
             String enclosingTypeName = enclosingTypeName(entry.getElement());
             return enclosingTypeName == null || sameName(declaringTypeName, enclosingTypeName)
                     || sameName(simpleName(declaringTypeName), simpleName(enclosingTypeName));
+        }
+
+        private boolean targetsDirectSuperclass() {
+            IJavaElement element = entry.getElement();
+            IJavaElement ancestor = element == null ? null : element.getAncestor(IJavaElement.TYPE);
+            if (!(ancestor instanceof IType type)) {
+                return true;
+            }
+            try {
+                String superclassName = type.getSuperclassName();
+                if (superclassName == null) {
+                    return true;
+                }
+                int typeArgumentsStart = superclassName.indexOf('<');
+                String rawSuperclassName = typeArgumentsStart < 0
+                        ? superclassName : superclassName.substring(0, typeArgumentsStart);
+                return matchesDeclaringOwner(rawSuperclassName);
+            } catch (JavaModelException e) {
+                Logger.debug(e);
+                return true;
+            }
         }
 
         private static String enclosingTypeName(IJavaElement element) {

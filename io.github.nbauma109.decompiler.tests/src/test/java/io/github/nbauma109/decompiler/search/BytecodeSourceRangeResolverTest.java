@@ -278,12 +278,44 @@ public class BytecodeSourceRangeResolverTest {
 
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, defaultConstructor, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "(I)V"), SOURCE), "this"); //$NON-NLS-1$ //$NON-NLS-2$
-        assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, intConstructor, "Object", JAVA_LANG_OBJECT, //$NON-NLS-1$ //$NON-NLS-2$
-                JAVA_LANG_OBJECT, "()V"), SOURCE), "super"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, intConstructor, "Base", FIXTURE_BASE, //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_BASE, "()V"), SOURCE), "super"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, takesMethod, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"), SOURCE), OWNER); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.CONSTRUCTOR, takesMethod, OWNER, FIXTURE_OWNER, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "(I)V"), SOURCE), OWNER); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
+    public void superConstructorInvocationMatchesOnlyTheDirectSuperclass() {
+        String src = """
+                package fixture;
+                class Base {
+                    Base(int value) {}
+                }
+                class Other {
+                    Other(int value) {}
+                }
+                class Owner extends Base {
+                    Owner(int value) {
+                        super(value);
+                        new Other(value);
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry base = reference(Kind.CONSTRUCTOR, intConstructor, "Base", FIXTURE_BASE, //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_BASE, "(I)V"); //$NON-NLS-1$
+        BytecodeSearchEntry other = reference(Kind.CONSTRUCTOR, intConstructor, "Other", "fixture.Other", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Other", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(base, other), src);
+
+        BytecodeSourceRangeResolver.SourceRange baseRange = ranges.get(base);
+        BytecodeSourceRangeResolver.SourceRange otherRange = ranges.get(other);
+        assertEquals("super", src.substring(baseRange.offset(), baseRange.offset() + baseRange.length())); //$NON-NLS-1$
+        assertEquals("Other", src.substring(otherRange.offset(), otherRange.offset() + otherRange.length())); //$NON-NLS-1$
     }
 
     @Test
