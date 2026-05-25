@@ -619,7 +619,8 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(SuperMethodInvocation node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName(), node.arguments().size())) {
+            if (entry.getKind() == Kind.METHOD && targetsDirectSuperclass()
+                    && matches(node.getName(), node.arguments().size())) {
                 addFromNameThroughNode(node.getName(), node);
             }
             return true;
