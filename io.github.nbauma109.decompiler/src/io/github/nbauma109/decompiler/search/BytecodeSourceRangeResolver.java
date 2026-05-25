@@ -44,6 +44,7 @@ import org.eclipse.jdt.core.dom.CreationReference;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ExpressionMethodReference;
+import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.QualifiedName;
@@ -51,8 +52,10 @@ import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
+import org.eclipse.jdt.core.dom.SuperFieldAccess;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodReference;
+import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -670,11 +673,39 @@ public class BytecodeSourceRangeResolver {
             if (parent instanceof QualifiedName qualifiedName && qualifiedName.getName() == node) {
                 return matchesFieldOwner(qualifiedName.getQualifier().getFullyQualifiedName());
             }
-            // Unqualified field access (bare name or assignment target): the field may be
-            // inherited from a supertype, so the enclosing type name cannot be used to
-            // verify ownership.  Accept any same-named reference; bytecode already provides
-            // the correct declaring type via entry.getDeclaringTypeName().
-            return matchesFieldOwner(null);
+            if (parent instanceof FieldAccess fieldAccess && fieldAccess.getName() == node) {
+                if (fieldAccess.getExpression() instanceof ThisExpression) {
+                    return matchesImplicitReceiverField();
+                }
+                // Resolving an arbitrary receiver expression requires bindings, which are not
+                // available for decompiled text. Do not assign it to an arbitrary same-named field.
+                return false;
+            }
+            if (parent instanceof SuperFieldAccess superFieldAccess && superFieldAccess.getName() == node) {
+                return matchesSuperReceiverField();
+            }
+            return matchesImplicitReceiverField();
+        }
+
+        private boolean matchesImplicitReceiverField() {
+            String enclosingTypeName = enclosingTypeName(entry.getElement());
+            if (declaresFieldInEnclosingType()) {
+                return matchesFieldOwner(enclosingTypeName);
+            }
+            // A bare or this-qualified field may be inherited when the enclosing type does not
+            // declare a same-named field, so its declaring owner cannot be narrowed further.
+            return true;
+        }
+
+        private boolean matchesSuperReceiverField() {
+            String enclosingTypeName = enclosingTypeName(entry.getElement());
+            return enclosingTypeName == null || !matchesFieldOwner(enclosingTypeName);
+        }
+
+        private boolean declaresFieldInEnclosingType() {
+            IJavaElement element = entry.getElement();
+            IJavaElement ancestor = element == null ? null : element.getAncestor(IJavaElement.TYPE);
+            return ancestor instanceof IType type && type.getField(entry.getName()).exists();
         }
 
         private boolean matchesFieldOwner(String ownerName) {

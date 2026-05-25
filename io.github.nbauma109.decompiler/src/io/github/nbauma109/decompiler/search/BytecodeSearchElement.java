@@ -11,11 +11,11 @@ package io.github.nbauma109.decompiler.search;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jdt.core.IJavaElement;
 
-final class BytecodeSearchElement implements IAdaptable {
+public final class BytecodeSearchElement implements IAdaptable {
 
     private final BytecodeSearchEntry entry;
 
-    BytecodeSearchElement(BytecodeSearchEntry entry) {
+    public BytecodeSearchElement(BytecodeSearchEntry entry) {
         this.entry = entry;
     }
 

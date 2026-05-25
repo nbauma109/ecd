@@ -313,6 +313,63 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals("x", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
+    @Test
+    public void explicitThisAndSuperFieldAccessesResolveToTheirDeclaringOwners() {
+        String src = """
+                package fixture;
+                class Base {
+                    int field;
+                }
+                class Owner extends Base {
+                    int field;
+                    void takes(int count, java.lang.String... names) {
+                        this.field = count;
+                        super.field = count;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry ownerField = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
+                FIXTURE_OWNER, "I", Access.WRITE); //$NON-NLS-1$
+        BytecodeSearchEntry baseField = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
+                FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(ownerField, baseField), src);
+
+        int thisFieldOffset = src.indexOf(FIELD, src.indexOf("this.")); //$NON-NLS-1$
+        int superFieldOffset = src.indexOf(FIELD, src.indexOf("super.")); //$NON-NLS-1$
+        assertEquals(thisFieldOffset, ranges.get(ownerField).offset());
+        assertEquals(superFieldOffset, ranges.get(baseField).offset());
+    }
+
+    @Test
+    public void expressionQualifiedFieldAccessIsNotAssignedWithoutReceiverBindings() {
+        String src = """
+                package fixture;
+                class Base {
+                    int field;
+                }
+                class Owner extends Base {
+                    int field;
+                    Owner receiver() { return this; }
+                    void takes(int count, java.lang.String... names) {
+                        receiver().field = count;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry wrongOwner = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
+                FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(wrongOwner), src).get(wrongOwner);
+        int explicitAccessOffset = src.indexOf(FIELD, src.indexOf("receiver().")); //$NON-NLS-1$
+        assertTrue("Expression-based access must not be assigned to an owner without receiver bindings", //$NON-NLS-1$
+                range.offset() != explicitAccessOffset || range.length() != FIELD.length());
+    }
+
     /**
      * Regression test for the {@code VariableDeclarationFragment} parent-type guard
      * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.

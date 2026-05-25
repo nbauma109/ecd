@@ -41,11 +41,18 @@ import org.eclipse.jdt.ui.search.ElementQuerySpecification;
 import org.eclipse.jdt.ui.search.IMatchPresentation;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.jface.viewers.ILabelProvider;
+import org.eclipse.jface.viewers.ILabelProviderListener;
+import org.eclipse.search.ui.ISearchQuery;
+import org.eclipse.search.ui.text.AbstractTextSearchResult;
+import org.eclipse.search.ui.text.IEditorMatchAdapter;
+import org.eclipse.search.ui.text.IFileMatchAdapter;
 import org.eclipse.search.ui.text.Match;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
@@ -60,6 +67,7 @@ import org.junit.Test;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 
@@ -619,6 +627,71 @@ public class ApplicationLibrarySearchParticipantTest {
                 isShownInSameTopLevelClass(topLevelClassFile, innerMethod));
     }
 
+    @Test
+    public void bytecodeMatchesInPageSelectsOnlyBytecodeMatchesForTheOpenTopLevelClass()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-page-matches-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        IPackageFragment pkg = setup.jarRoot().getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevelClassFile = pkg.getClassFile("Test.class"); //$NON-NLS-1$
+        IClassFile innerClassFile = pkg.getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IMethod innerMethod = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        IType stringType = setup.javaProject().findType("java.lang.String"); //$NON-NLS-1$
+        IMethod unrelatedMethod = stringType.getMethods()[0];
+
+        BytecodeSearchMatch included = new BytecodeSearchMatch(reference(Kind.METHOD, innerMethod, "method1")); //$NON-NLS-1$
+        TestSearchResult result = new TestSearchResult();
+        result.addMatch(included);
+        result.addMatch(new BytecodeSearchMatch(reference(Kind.METHOD, unrelatedMethod, unrelatedMethod.getElementName())));
+        result.addMatch(new Match(new BytecodeSearchElement(reference(Kind.METHOD, innerMethod, "method1")), 0, 1)); //$NON-NLS-1$
+        result.addMatch(new Match(innerMethod, 0, 1));
+
+        assertEquals(List.of(included),
+                ApplicationLibrarySearchMatchPresentation.bytecodeMatchesInPage(result, topLevelClassFile));
+        assertTrue(ApplicationLibrarySearchMatchPresentation.bytecodeMatchesInPage(null, topLevelClassFile).isEmpty());
+        assertTrue(ApplicationLibrarySearchMatchPresentation.bytecodeMatchesInPage(result, null).isEmpty());
+    }
+
+    @Test
+    public void matchPresentationUnwrapsBytecodeElementsForNavigationAndLabels()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-label-provider-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        IClassFile innerClassFile = setup.jarRoot().getPackageFragment(TEST_PACKAGE).getClassFile("Test$Inner1.class"); //$NON-NLS-1$
+        IMethod innerMethod = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        BytecodeSearchEntry entry = reference(Kind.METHOD, innerMethod, "method1"); //$NON-NLS-1$
+        BytecodeSearchElement element = new BytecodeSearchElement(entry);
+
+        assertEquals(innerMethod, ApplicationLibrarySearchMatchPresentation.javaElement(new BytecodeSearchMatch(entry)));
+        assertEquals(innerMethod, ApplicationLibrarySearchMatchPresentation.javaElement(new Match(element, 0, 1)));
+        assertEquals(innerMethod, ApplicationLibrarySearchMatchPresentation.javaElement(new Match(innerMethod, 0, 1)));
+        assertNull(ApplicationLibrarySearchMatchPresentation.javaElement(new Match("not-java", 0, 1))); //$NON-NLS-1$
+
+        runInUiThread(() -> {
+            ILabelProvider labels = new ApplicationLibrarySearchMatchPresentation().createLabelProvider();
+            ILabelProviderListener listener = event -> {
+                // No operation; adding and removing a listener exercises delegated lifecycle behavior.
+            };
+            try {
+                assertEquals(labels.getText(innerMethod), labels.getText(element));
+                assertEquals(labels.getImage(innerMethod), labels.getImage(element));
+                labels.addListener(listener);
+                assertEquals(labels.isLabelProperty(innerMethod, "text"), labels.isLabelProperty(element, "text")); //$NON-NLS-1$ //$NON-NLS-2$
+                labels.removeListener(listener);
+            } finally {
+                labels.dispose();
+            }
+        });
+    }
+
     // -----------------------------------------------------------------------
     // forElement(IPackageFragment / IModuleDescription), wildcardPattern '?',
     // collectWildcard(), entryCount()
@@ -772,6 +845,10 @@ public class ApplicationLibrarySearchParticipantTest {
             throw new AssertionError("Search failed", failure.get()); //$NON-NLS-1$
         }
         return matches;
+    }
+
+    private static BytecodeSearchEntry reference(Kind kind, IJavaElement element, String name) {
+        return new BytecodeSearchEntry(kind, false, element, name, name, null, null);
     }
 
     private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
@@ -956,6 +1033,39 @@ public class ApplicationLibrarySearchParticipantTest {
     private static final class SetupRunnableAccessor extends SetupRunnable {
         private void apply() {
             updateClassDefaultEditor();
+        }
+    }
+
+    private static final class TestSearchResult extends AbstractTextSearchResult {
+
+        @Override
+        public String getLabel() {
+            return "test"; //$NON-NLS-1$
+        }
+
+        @Override
+        public String getTooltip() {
+            return getLabel();
+        }
+
+        @Override
+        public ImageDescriptor getImageDescriptor() {
+            return null;
+        }
+
+        @Override
+        public ISearchQuery getQuery() {
+            return null;
+        }
+
+        @Override
+        public IEditorMatchAdapter getEditorMatchAdapter() {
+            return null;
+        }
+
+        @Override
+        public IFileMatchAdapter getFileMatchAdapter() {
+            return null;
         }
     }
 }

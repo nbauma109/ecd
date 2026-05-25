@@ -111,13 +111,27 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
             return List.of();
         }
         AbstractTextSearchResult result = textPage.getInput();
-        if (result == null) {
-            return List.of();
-        }
         IJavaElement editorElement = textEditor.getEditorInput().getAdapter(IJavaElement.class);
         IClassFile editorClassFile = classFile(editorElement);
         IClassFile editorTopLevelClassFile = ClassUtil.getTopLevelClassFile(editorClassFile);
-        if (editorTopLevelClassFile == null) {
+        return bytecodeMatchesInPage(result, editorTopLevelClassFile);
+    }
+
+    /**
+     * Collects all {@link BytecodeSearchMatch} instances from {@code result} whose element
+     * belongs to the same top-level class file as {@code editorTopLevelClassFile}.
+     *
+     * <p>Returns an empty list when either argument is {@code null} or when the result
+     * contains no matching elements.
+     *
+     * @param result               the active search result, or {@code null}
+     * @param editorTopLevelClassFile the top-level class file currently shown in the editor,
+     *                             or {@code null}
+     * @return a mutable list of matching {@link BytecodeSearchMatch} objects (never {@code null})
+     */
+    public static List<BytecodeSearchMatch> bytecodeMatchesInPage(AbstractTextSearchResult result,
+            IClassFile editorTopLevelClassFile) {
+        if (result == null || editorTopLevelClassFile == null) {
             return List.of();
         }
         List<BytecodeSearchMatch> matches = new ArrayList<>();
@@ -207,7 +221,7 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
         return classFile instanceof IClassFile cf ? cf : null;
     }
 
-    private static IJavaElement javaElement(Match match) {
+    public static IJavaElement javaElement(Match match) {
         if (match instanceof BytecodeSearchMatch bytecodeMatch) {
             return bytecodeMatch.getEntry().getElement();
         }

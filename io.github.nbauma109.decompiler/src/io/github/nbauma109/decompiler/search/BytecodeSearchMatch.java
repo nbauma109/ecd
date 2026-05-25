@@ -16,11 +16,11 @@ import org.eclipse.search.ui.text.Match;
 
 import io.github.nbauma109.decompiler.util.Logger;
 
-final class BytecodeSearchMatch extends Match {
+public final class BytecodeSearchMatch extends Match {
 
     private final BytecodeSearchEntry entry;
 
-    BytecodeSearchMatch(BytecodeSearchEntry entry) {
+    public BytecodeSearchMatch(BytecodeSearchEntry entry) {
         super(new BytecodeSearchElement(entry), initialOffset(entry), initialLength(entry));
         this.entry = entry;
     }
