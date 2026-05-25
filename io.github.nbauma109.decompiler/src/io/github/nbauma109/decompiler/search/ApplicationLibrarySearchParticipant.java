@@ -375,7 +375,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         return false;
                     }
                 }
-                return true;
+                // Also compare return types so that bridge methods and covariant-return
+                // overrides (which share the same parameter types but differ in return type)
+                // are not incorrectly reported as references to the searched method.
+                String jdtReturnType = normalizeJdtTypeSignature(Signature.getReturnType(jdtSignature));
+                String bytecodeReturnType = normalizeAsmType(org.objectweb.asm.Type.getReturnType(bytecodeDescriptor));
+                return sameType(jdtReturnType, bytecodeReturnType);
             } catch (IllegalArgumentException e) {
                 return false;
             }

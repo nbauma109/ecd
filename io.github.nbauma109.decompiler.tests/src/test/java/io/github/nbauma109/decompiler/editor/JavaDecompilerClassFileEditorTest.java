@@ -33,6 +33,7 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
@@ -82,6 +83,16 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_TOP_LEVEL_SOURCE_DECLARATION = "class Test"; //$NON-NLS-1$
 
     private static final String TEST_ANONYMOUS_CLASS = "Test$1.class"; //$NON-NLS-1$
+
+    // Constants for test-with-field.jar — a separate fixture jar that adds a user-declared
+    // field and a parametered method to its inner class so we can drive findFieldNameOffset,
+    // isFieldDeclaration, and countParameters without modifying the canonical test.jar.
+    private static final String TEST_WITH_FIELD_JAR_PATH = "src/test/resources/test-with-field.jar"; //$NON-NLS-1$
+    private static final String FIXTURE_PACKAGE = "fixture"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_CLASS = "Outer$Inner.class"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_TYPE = "Inner"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_FIELD = "name"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_METHOD3 = "method3"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -472,6 +483,77 @@ public class JavaDecompilerClassFileEditorTest {
         } finally {
             runInUiThread(customImage::dispose);
         }
+    }
+
+    @Test
+    public void testOpeningInnerFieldSelectsNestedField()
+            throws CoreException, IOException {
+        // Uses test-with-field.jar (separate from test.jar) which contains fixture.Outer$Inner
+        // with a user-declared String field called "name".  Opening the field element drives
+        // the code path: revealNestedDeclaration → findFieldNameOffset → isFieldDeclaration.
+        BundleJarProjectSetup fieldSetup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID, TEST_WITH_FIELD_JAR_PATH,
+                "java-decompiler-classfile-editor-field-test-project"); //$NON-NLS-1$
+        project = fieldSetup.project(); // picked up by tearDown()
+
+        IPackageFragment pkg = fieldSetup.jarRoot().getPackageFragment(FIXTURE_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(FIXTURE_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IType innerType = getType(innerClassFile);
+        IField field = innerType.getField(FIXTURE_INNER_FIELD);
+        assertTrue("Expected field '" + FIXTURE_INNER_FIELD + "' to exist in Outer$Inner", field.exists()); //$NON-NLS-1$ //$NON-NLS-2$
+
+        openedEditor = openDefault(field);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        // The field declaration must eventually be selected (or the editor falls back to the
+        // enclosing type). Either way, findFieldNameOffset and isFieldDeclaration are exercised.
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue("Decompiled source should contain the inner type name", //$NON-NLS-1$
+                contents.contains(FIXTURE_INNER_TYPE));
+    }
+
+    @Test
+    public void testOpeningInnerMethodWithParameterSelectsDeclaration()
+            throws CoreException, IOException {
+        // Uses test-with-field.jar.  Outer$Inner.method3(String) has one parameter; opening it
+        // drives countParameters() via hasParameterCount → findMethodNameOffset.
+        BundleJarProjectSetup fieldSetup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID, TEST_WITH_FIELD_JAR_PATH,
+                "java-decompiler-classfile-editor-param-method-test-project"); //$NON-NLS-1$
+        project = fieldSetup.project(); // picked up by tearDown()
+
+        IPackageFragment pkg = fieldSetup.jarRoot().getPackageFragment(FIXTURE_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(FIXTURE_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IType innerType = getType(innerClassFile);
+        IMethod method = null;
+        for (IMethod m : innerType.getMethods()) {
+            if (FIXTURE_INNER_METHOD3.equals(m.getElementName()) && m.getNumberOfParameters() == 1) {
+                method = m;
+                break;
+            }
+        }
+        assertNotNull("Expected method '" + FIXTURE_INNER_METHOD3 + "(String)' to exist in Outer$Inner", method); //$NON-NLS-1$ //$NON-NLS-2$
+
+        openedEditor = openDefault(method);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue("Decompiled source should contain the inner type name", //$NON-NLS-1$
+                contents.contains(FIXTURE_INNER_TYPE));
     }
 
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws CoreException {
