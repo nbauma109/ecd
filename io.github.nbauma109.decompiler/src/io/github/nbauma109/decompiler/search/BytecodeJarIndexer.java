@@ -93,7 +93,7 @@ public class BytecodeJarIndexer {
                 && !Strings.CS.startsWith(entry.getName(), "META-INF/versions/"); //$NON-NLS-1$
     }
 
-    static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
+    public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
             IProgressMonitor monitor) {
         List<BytecodeSearchEntry> entries = new ArrayList<>();
         Set<EntryKey> seen = new HashSet<>();

@@ -23,6 +23,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
@@ -239,6 +240,48 @@ public class BytecodeSourceRangeResolverTest {
                 "java.lang.System", "Ljava/io/PrintStream;", Access.READ), SOURCE), "out"); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.FIELD, takesMethod, "local", "local", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "I", Access.READ), SOURCE), "void "); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    /**
+     * Regression test for the {@code VariableDeclarationFragment} parent-type guard
+     * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.
+     * <p>
+     * When {@code AstDeclarationWindow} looks for the declaration of {@code IField "field"},
+     * it must skip {@code VariableDeclarationFragment} nodes whose parent is <em>not</em> a
+     * {@code FieldDeclaration} (e.g. local-variable statements).  Without the guard the local
+     * {@code int field = 0;} inside {@code before()} — which appears first in the class — would
+     * be mistaken for the field declaration, confining the search window to the body of
+     * {@code before()} and making the {@code hashCode()} call in the actual field initializer
+     * invisible to the reference resolver.
+     */
+    @Test
+    public void fieldDeclarationWindowIsNotConfusedByLocalVariableWithSameName() {
+        // Source: method "before" comes before the field "field" and declares a local
+        // variable also named "field".  The field initializer calls hashCode().
+        String src = """
+                package fixture;
+                class Owner {
+                    void before() {
+                        int field = 0;
+                    }
+                    int field = hashCode();
+                }
+                """;
+
+        IField fieldEl = ownerType.getField(FIELD); // IField "field" from the test project — declaring type "Owner"
+        BytecodeSearchEntry entry = reference(Kind.METHOD, fieldEl,
+                "hashCode", "hashCode", "java.lang.Object", "()I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(entry), src);
+
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        assertNotNull("range must not be null", range); //$NON-NLS-1$
+        // AstDeclarationWindow must use "int field = hashCode();" (the FieldDeclaration)
+        // as the search window — not "int field = 0;" (the local-variable statement in
+        // before()) — so that the hashCode() call site in the field initializer is found.
+        assertEquals("hashCode()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
     @Test

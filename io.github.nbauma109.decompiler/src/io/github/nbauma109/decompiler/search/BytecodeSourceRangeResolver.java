@@ -53,6 +53,7 @@ import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodReference;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.TypeMethodReference;
@@ -83,7 +84,7 @@ public class BytecodeSourceRangeResolver {
         return selectRange(entry, ranges);
     }
 
-    Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
+    public Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
         ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source);
         Map<BytecodeSearchEntry, SourceRange> ranges = new IdentityHashMap<>(entries.size());
         Map<ReferenceKey, Integer> ordinals = new HashMap<>();
@@ -359,7 +360,8 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(VariableDeclarationFragment node) {
-            if (element instanceof IField field && matchesCurrentType() && sameName(field.getElementName(), node.getName())) {
+            if (element instanceof IField field && matchesCurrentType() && node.getParent() instanceof FieldDeclaration
+                    && sameName(field.getElementName(), node.getName())) {
                 ASTNode parent = node.getParent();
                 range = parent == null ? range(node) : range(parent);
                 return false;
