@@ -243,6 +243,51 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     /**
+     * Regression test for the inherited-field fix in {@code matchesFieldAccess}.
+     * <p>
+     * Before the fix, an unqualified field reference in a subclass method was tested
+     * with {@code matchesFieldOwner(enclosingTypeName(element))}, where
+     * {@code enclosingTypeName} returns the subclass name.  When the field is declared
+     * on a superclass, the names differ and the reference is rejected — causing the
+     * resolver to fall back to a broad enclosing-method range instead of the precise
+     * identifier site.
+     * <p>
+     * After the fix, {@code matchesFieldOwner(null)} is used for unqualified accesses,
+     * which short-circuits to {@code true} because ownership cannot be inferred from
+     * source syntax alone.
+     */
+    @Test
+    public void inheritedFieldReferenceIsResolvedInSubclassMethod() {
+        // Custom source: Base declares "x"; Owner (subclass) reads it unqualified.
+        String src = """
+                package fixture;
+                class Base {
+                    int x;
+                }
+                class Owner extends Base {
+                    void target() {
+                        x = 1;
+                    }
+                }
+                """;
+
+        // targetMethod is void target() in Owner (0 parameters).
+        // The bytecode entry says the field is declared on "fixture.Base".
+        BytecodeSearchEntry entry = reference(Kind.FIELD, targetMethod,
+                "x", "x", "fixture.Base", "I", Access.WRITE); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(entry), src);
+
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        assertNotNull("range must not be null", range); //$NON-NLS-1$
+        // The resolver must find the "x" identifier inside target(), not fall back to
+        // a broad enclosing-method range.
+        assertEquals("x", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    /**
      * Regression test for the {@code VariableDeclarationFragment} parent-type guard
      * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.
      * <p>

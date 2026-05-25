@@ -670,7 +670,11 @@ public class BytecodeSourceRangeResolver {
             if (parent instanceof QualifiedName qualifiedName && qualifiedName.getName() == node) {
                 return matchesFieldOwner(qualifiedName.getQualifier().getFullyQualifiedName());
             }
-            return matchesFieldOwner(enclosingTypeName(entry.getElement()));
+            // Unqualified field access (bare name or assignment target): the field may be
+            // inherited from a supertype, so the enclosing type name cannot be used to
+            // verify ownership.  Accept any same-named reference; bytecode already provides
+            // the correct declaring type via entry.getDeclaringTypeName().
+            return matchesFieldOwner(null);
         }
 
         private boolean matchesFieldOwner(String ownerName) {
