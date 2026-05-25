@@ -28,6 +28,13 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.jdt.junit4.runtime,
  org.eclipse.jdt.junit.core,
  org.eclipse.jdt.junit.runtime,
+ org.eclipse.ecf.filetransfer;resolution:=optional,
+ org.eclipse.ecf;resolution:=optional,
+ org.eclipse.ecf.identity;resolution:=optional,
+ org.eclipse.ecf.provider.filetransfer;resolution:=optional,
+ org.eclipse.ecf.provider.filetransfer.httpclient5;resolution:=optional,
+ org.apache.httpcomponents.client5.httpclient5;resolution:=optional,
+ org.apache.httpcomponents.core5.httpcore5;resolution:=optional,
  io.github.nbauma109.decompiler
 Bundle-Vendor: ECD Project Team
 Bundle-Version: 2026.3.10
