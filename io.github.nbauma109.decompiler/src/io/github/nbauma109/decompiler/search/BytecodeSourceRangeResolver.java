@@ -47,6 +47,7 @@ import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -590,7 +591,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(MethodInvocation node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName(), node.arguments().size())) {
+            if (entry.getKind() == Kind.METHOD && matchesMethodInvocation(node)) {
                 addFromNameThroughNode(node.getName(), node);
             }
             return true;
@@ -671,7 +672,7 @@ public class BytecodeSourceRangeResolver {
             }
             ASTNode parent = node.getParent();
             if (parent instanceof QualifiedName qualifiedName && qualifiedName.getName() == node) {
-                return matchesFieldOwner(qualifiedName.getQualifier().getFullyQualifiedName());
+                return matchesDeclaringOwner(qualifiedName.getQualifier().getFullyQualifiedName());
             }
             if (parent instanceof FieldAccess fieldAccess && fieldAccess.getName() == node) {
                 if (fieldAccess.getExpression() instanceof ThisExpression) {
@@ -690,7 +691,7 @@ public class BytecodeSourceRangeResolver {
         private boolean matchesImplicitReceiverField() {
             String enclosingTypeName = enclosingTypeName(entry.getElement());
             if (declaresFieldInEnclosingType()) {
-                return matchesFieldOwner(enclosingTypeName);
+                return matchesDeclaringOwner(enclosingTypeName);
             }
             // A bare or this-qualified field may be inherited when the enclosing type does not
             // declare a same-named field, so its declaring owner cannot be narrowed further.
@@ -699,7 +700,7 @@ public class BytecodeSourceRangeResolver {
 
         private boolean matchesSuperReceiverField() {
             String enclosingTypeName = enclosingTypeName(entry.getElement());
-            return enclosingTypeName == null || !matchesFieldOwner(enclosingTypeName);
+            return enclosingTypeName == null || !matchesDeclaringOwner(enclosingTypeName);
         }
 
         private boolean declaresFieldInEnclosingType() {
@@ -708,7 +709,24 @@ public class BytecodeSourceRangeResolver {
             return ancestor instanceof IType type && type.getField(entry.getName()).exists();
         }
 
-        private boolean matchesFieldOwner(String ownerName) {
+        private boolean matchesMethodInvocation(MethodInvocation node) {
+            if (!matches(node.getName(), node.arguments().size())) {
+                return false;
+            }
+            if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
+                return matchesDeclaringOwner(receiver.getFullyQualifiedName());
+            }
+            // Receiver expression types are unavailable because decompiled text is parsed
+            // without bindings; do not guess an owner for field or computed receivers.
+            return true;
+        }
+
+        private static boolean isTypeLikeQualifier(Name receiver) {
+            String receiverName = simpleName(receiver.getFullyQualifiedName());
+            return !receiverName.isEmpty() && Character.isUpperCase(receiverName.charAt(0));
+        }
+
+        private boolean matchesDeclaringOwner(String ownerName) {
             String declaringTypeName = entry.getDeclaringTypeName();
             if (declaringTypeName == null || ownerName == null) {
                 return true;

@@ -214,6 +214,36 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void typeQualifiedMethodInvocationsResolveToTheirDeclaringOwners() {
+        String src = """
+                package fixture;
+                class A {
+                    static void reset(int count) {}
+                }
+                class B {
+                    static void reset(int count) {}
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        A.reset(count);
+                        B.reset(count);
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry fromA = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.A", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry fromB = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.B", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(fromA, fromB), src);
+
+        assertEquals(src.indexOf("reset", src.indexOf("A.")), ranges.get(fromA).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("B.")), ranges.get(fromB).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void varargMethodReferencesAreMatchedDespiteExpandedArgumentCount() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
