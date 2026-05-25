@@ -443,6 +443,32 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void recordMemberReferencesUseTheRecordDeclarationWindow() throws JavaModelException {
+        String src = """
+                package fixture;
+                class Padding {
+                    int one;
+                    int two;
+                    int three;
+                }
+                record Rec(int value) {
+                    int doubled() { return value * 2; }
+                }
+                """;
+
+        IMethod doubledMethod = method(recType, "doubled", 0); //$NON-NLS-1$
+        BytecodeSearchEntry entry = reference(Kind.FIELD, doubledMethod,
+                "value", "value", "fixture.Rec", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int referenceOffset = src.indexOf("value", src.indexOf("return ")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(referenceOffset, range.offset());
+        assertEquals("value", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
     public void typeDeclarationNamesAreNotReportedAsReferences() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 

@@ -302,6 +302,25 @@ public class BytecodeSourceRangeResolver {
         }
 
         @Override
+        public boolean visit(RecordDeclaration node) {
+            anonymousCounterStack.push(anonymousTypeCounter);
+            anonymousTypeCounter = 0;
+            typeStack.add(node.getName().getIdentifier());
+            if (element instanceof IType type && sameName(type.getElementName(), node.getName())
+                    && matchesCurrentType()) {
+                range = range(node);
+                return false;
+            }
+            return range == null;
+        }
+
+        @Override
+        public void endVisit(RecordDeclaration node) {
+            anonymousTypeCounter = anonymousCounterStack.pop();
+            popType();
+        }
+
+        @Override
         public boolean visit(EnumDeclaration node) {
             anonymousCounterStack.push(anonymousTypeCounter);
             anonymousTypeCounter = 0;
