@@ -128,7 +128,7 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    int entryCount() {
+    public int entryCount() {
         int count = 0;
         for (JarIndex index : indexes.get().values()) {
             count += index.entryCount();
