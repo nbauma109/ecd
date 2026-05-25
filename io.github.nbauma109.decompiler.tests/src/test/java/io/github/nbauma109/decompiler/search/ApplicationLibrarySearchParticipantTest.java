@@ -419,6 +419,34 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void typedFieldPatternRejectsMismatchedSystemOutType()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-mismatched-typed-field-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.System.out java.lang.String", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.READ_ACCESSES,
+                scope,
+                "Application library incorrectly typed System.out reads"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertTrue("Typed Java field search patterns must reject bytecode references with another field type", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
     public void unqualifiedConstructorPatternFindsOwnerReferencesFromTestJar()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
