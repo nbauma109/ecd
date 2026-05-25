@@ -88,6 +88,7 @@ public class BytecodeSourceRangeResolverTest {
                     field = count;
                     int local = field;
                     System.out.println(names.length);
+                    System.out.printf("%d %s", count, names.length);
                     super.inherited();
                     Runnable first = this::target;
                     Runnable second = Owner::staticTarget;
@@ -177,6 +178,18 @@ public class BytecodeSourceRangeResolverTest {
                 FIXTURE_OWNER, "()V"), SOURCE), STATIC_TARGET); //$NON-NLS-1$ //$NON-NLS-2$
         assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, INHERITED, INHERITED, //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Base", null), SOURCE), INHERITED + "()"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
+    public void varargMethodReferencesAreMatchedDespiteExpandedArgumentCount() {
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+
+        // printf(String, Object...) has 2 descriptor params but the source call
+        // System.out.printf("%d %s", count, names.length) has 3 AST arguments.
+        // matchesArgumentCount must accept the varargs expansion and resolve the call site.
+        assertRangeText(resolver.rangeFor(reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"), SOURCE), //$NON-NLS-1$
+                "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
     }
 
     @Test

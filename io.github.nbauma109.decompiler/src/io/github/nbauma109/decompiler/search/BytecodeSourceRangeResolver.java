@@ -690,7 +690,16 @@ public class BytecodeSourceRangeResolver {
                 return true;
             }
             try {
-                return org.objectweb.asm.Type.getArgumentTypes(descriptor).length == argumentCount;
+                org.objectweb.asm.Type[] argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+                if (argumentCount == argTypes.length) {
+                    return true;
+                }
+                // Varargs: the last formal parameter is an array in bytecode, so source call
+                // sites may supply zero or more individual arguments instead of one array.
+                // Accept any argument count >= (formal params - 1).
+                return argTypes.length > 0
+                        && argTypes[argTypes.length - 1].getSort() == org.objectweb.asm.Type.ARRAY
+                        && argumentCount >= argTypes.length - 1;
             } catch (IllegalArgumentException e) {
                 return true;
             }
