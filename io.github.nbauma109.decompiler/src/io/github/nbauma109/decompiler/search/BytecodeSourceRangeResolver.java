@@ -48,6 +48,7 @@ import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.ParameterizedType;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -832,18 +833,27 @@ public class BytecodeSourceRangeResolver {
         }
 
         private void addLastName(ASTNode node) {
-            if (!window.contains(node)) {
+            ASTNode rawType = rawConstructorType(node);
+            if (!window.contains(rawType)) {
                 return;
             }
-            LastName lastName = lastName(node);
+            LastName lastName = lastName(rawType);
             if (lastName != null) {
                 ranges.add(new SourceRange(lastName.offset(), lastName.length()));
             }
         }
 
         private boolean matchesLastName(ASTNode node) {
-            LastName lastName = lastName(node);
-            return lastName != null && sameName(lastName.name(), entry.getName()) && matchesConstructorType(node);
+            ASTNode rawType = rawConstructorType(node);
+            LastName lastName = lastName(rawType);
+            return lastName != null && sameName(lastName.name(), entry.getName()) && matchesConstructorType(rawType);
+        }
+
+        private static ASTNode rawConstructorType(ASTNode node) {
+            while (node instanceof ParameterizedType parameterizedType) {
+                node = parameterizedType.getType();
+            }
+            return node;
         }
 
         private boolean matchesConstructorType(ASTNode node) {

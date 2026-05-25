@@ -287,6 +287,33 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void parameterizedConstructorTypesResolveTheirRawTypeNames() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        new java.util.ArrayList<String>();
+                        java.util.function.Supplier<java.util.ArrayList<String>> created =
+                                java.util.ArrayList<String>::new;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry invocation = reference(Kind.CONSTRUCTOR, takesMethod, "ArrayList", "java.util.ArrayList", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.util.ArrayList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry methodReference = reference(Kind.CONSTRUCTOR, takesMethod, "ArrayList", "java.util.ArrayList", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.util.ArrayList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(invocation, methodReference), src);
+
+        int invocationOffset = src.indexOf("ArrayList", src.indexOf("new java.util.")); //$NON-NLS-1$ //$NON-NLS-2$
+        int referenceOffset = src.indexOf("ArrayList", src.indexOf("java.util.ArrayList<String>::new")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(invocationOffset, ranges.get(invocation).offset());
+        assertEquals(referenceOffset, ranges.get(methodReference).offset());
+    }
+
+    @Test
     public void fieldReferencesResolveByOwnerAndSkipDeclarations() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
