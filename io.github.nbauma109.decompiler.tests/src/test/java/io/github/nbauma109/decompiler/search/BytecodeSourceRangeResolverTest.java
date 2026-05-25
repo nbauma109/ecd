@@ -107,6 +107,19 @@ public class BytecodeSourceRangeResolverTest {
                 void target() {}
                 static void staticTarget() {}
             }
+
+            class Prims {
+                void allPrims(boolean z, byte b, char c, double d, float f, long j, short s) {
+                    target();
+                }
+                void strMethod(java.lang.String s) {
+                    target();
+                }
+                void intMethod(String s) {
+                    target();
+                }
+                void target() {}
+            }
             """;
 
     private IProject project;
@@ -114,6 +127,7 @@ public class BytecodeSourceRangeResolverTest {
     private IType modeType;
     private IType recType;
     private IType ownerType;
+    private IType primsType;
     private IMethod takesMethod;
     private IMethod defaultConstructor;
     private IMethod intConstructor;
@@ -149,6 +163,7 @@ public class BytecodeSourceRangeResolverTest {
         modeType = unit.getType("Mode"); //$NON-NLS-1$
         recType = unit.getType("Rec"); //$NON-NLS-1$
         ownerType = unit.getType(OWNER); //$NON-NLS-1$
+        primsType = unit.getType("Prims"); //$NON-NLS-1$
         takesMethod = method(ownerType, "takes", 2); //$NON-NLS-1$
         defaultConstructor = constructor(ownerType, 0);
         intConstructor = constructor(ownerType, 1);
@@ -389,6 +404,108 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         BytecodeSourceRangeResolver.SourceRange range = resolver.rangeFor(entry);
         assertNotNull("resolver must return a non-null fallback range when classFile has no source", range); //$NON-NLS-1$
+    }
+
+    /**
+     * Exercises the {@code primitiveName} switch for every primitive descriptor except {@code I}
+     * ({@code Z} boolean, {@code B} byte, {@code C} char, {@code D} double, {@code F} float,
+     * {@code J} long, {@code S} short).
+     * <p>
+     * {@code allPrims} declares all seven remaining primitive parameters; matching its
+     * {@code IMethod} against the fixture source forces {@code normalizeJdtType} to call
+     * {@code primitiveName} for each descriptor letter.
+     */
+    @Test
+    public void allPrimitivesAreNormalizedInParameterTypes() throws JavaModelException {
+        IMethod allPrimsMethod = method(primsType, "allPrims", 7); //$NON-NLS-1$
+        BytecodeSearchEntry entry = reference(Kind.METHOD, allPrimsMethod,
+                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(entry), SOURCE);
+
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        assertNotNull("range must not be null", range); //$NON-NLS-1$
+        assertRangeStartsWith(range, TARGET);
+    }
+
+    /**
+     * Exercises two uncovered branches of {@code sameType} in a single run:
+     * <ol>
+     *   <li>{@code leftQualified && rightQualified → return false}: {@code strMethod} in the
+     *       fixture source declares {@code java.lang.Object o} (right = {@code "java.lang.object"},
+     *       qualified) but the JDT element has {@code java.lang.String s} (left =
+     *       {@code "java.lang.string"}, qualified) — both qualified and different, so
+     *       {@code sameType} immediately returns {@code false}.</li>
+     *   <li>{@code leftSimple} branch: the second overload {@code strMethod(String s)} produces
+     *       right = {@code "string"} (unqualified); left is still {@code "java.lang.string"}
+     *       (qualified), so {@code leftSimple = substringAfterLast(left, ".") = "string"} is
+     *       computed and matched successfully.</li>
+     * </ol>
+     */
+    @Test
+    public void sameTypeQualificationBranchesAreCoveredByOverloadedMethods() throws JavaModelException {
+        // strMethod(java.lang.String s) in SOURCE → JDT gives "Qjava.lang.String;" → left = "java.lang.string" (qualified)
+        IMethod strMethodElement = method(primsType, "strMethod", 1); //$NON-NLS-1$
+        BytecodeSearchEntry entry = reference(Kind.METHOD, strMethodElement,
+                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        // Custom source: wrong overload has java.lang.Object (both qualified, different → false);
+        // correct overload has String (unqualified) so the leftSimple branch resolves the match.
+        String customSrc = """
+                package fixture;
+                class Prims {
+                    void strMethod(java.lang.Object o) {}
+                    void strMethod(String s) { target(); }
+                    void target() {}
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(entry), customSrc);
+
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        assertNotNull("range must not be null", range); //$NON-NLS-1$
+        assertTrue("range text must start with 'target'", //$NON-NLS-1$
+                customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
+    }
+
+    /**
+     * Exercises the {@code rightSimple} branch of {@code sameType}.
+     * <p>
+     * {@code intMethod(String s)} in SOURCE gives JDT parameter type {@code "QString;"} which
+     * normalizes to {@code "string"} (unqualified, left).  The custom fixture source declares
+     * {@code intMethod(java.lang.String s)}, so the AST normalizes to {@code "java.lang.string"}
+     * (qualified, right).  {@code sameType("string", "java.lang.string")} reaches the branch
+     * where {@code rightQualified = true} and computes
+     * {@code rightSimple = substringAfterLast(right, ".") = "string"} — which matches left.
+     */
+    @Test
+    public void sameTypeRightSimpleBranchIsCoveredByQualifiedAstVsSimpleJdtType() throws JavaModelException {
+        // intMethod(String s) in SOURCE → JDT gives "QString;" → left = "string" (unqualified)
+        IMethod intMethodElement = method(primsType, "intMethod", 1); //$NON-NLS-1$
+        BytecodeSearchEntry entry = reference(Kind.METHOD, intMethodElement,
+                TARGET, TARGET, "fixture.Prims", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        // Custom source uses the fully-qualified java.lang.String so AST right is "java.lang.string" (qualified).
+        String customSrc = """
+                package fixture;
+                class Prims {
+                    void intMethod(java.lang.String s) { target(); }
+                    void target() {}
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(entry), customSrc);
+
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        assertNotNull("range must not be null", range); //$NON-NLS-1$
+        assertTrue("range text must start with 'target'", //$NON-NLS-1$
+                customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
     }
 
     private static BytecodeSearchEntry declaration(Kind kind, IJavaElement element, String name) {

@@ -519,6 +519,29 @@ public class JavaDecompilerClassFileEditorTest {
                 contents.contains(FIXTURE_INNER_TYPE));
     }
 
+    /**
+     * Exercises the {@code suffix.isEmpty() → return null} branch inside
+     * {@link JavaDecompilerClassFileEditor#getNestedClassFileName}.
+     * <p>
+     * When {@code type} is the same object as the editor's top-level type (i.e.
+     * {@code editorType.equals(type)} is true from the very first iteration), the
+     * {@code while} loop body never executes and {@code suffix} stays empty.
+     * The method therefore returns {@code null} instead of a class-file name, which
+     * is the correct signal that no separate nested class file needs to be opened.
+     */
+    @Test
+    public void getNestedClassFileNameReturnsNullWhenTypeIsEditorType() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevelClassFile = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevelClassFile.exists());
+        IType topLevelType = getType(topLevelClassFile);
+
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        // Passing the top-level type and its own class file means editorType == type,
+        // so the while-loop never executes, suffix stays empty → returns null.
+        assertNull(editor.getNestedClassFileName(topLevelType, topLevelClassFile));
+    }
+
     @Test
     public void testOpeningInnerMethodWithParameterSelectsDeclaration()
             throws CoreException, IOException {

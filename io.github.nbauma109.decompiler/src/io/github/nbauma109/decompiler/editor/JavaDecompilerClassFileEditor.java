@@ -957,7 +957,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return null;
     }
 
-    private String getNestedClassFileName(IType type, IClassFile editorClassFile) {
+    public String getNestedClassFileName(IType type, IClassFile editorClassFile) {
         String topLevelName = stripClassExtension(editorClassFile.getElementName());
         StringBuilder suffix = new StringBuilder();
         IType editorType = getType(editorClassFile);
