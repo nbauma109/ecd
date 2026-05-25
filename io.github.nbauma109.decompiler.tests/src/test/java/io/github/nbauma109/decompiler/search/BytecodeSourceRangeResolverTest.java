@@ -8,7 +8,11 @@
 package io.github.nbauma109.decompiler.search;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -16,6 +20,7 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -89,6 +94,7 @@ public class BytecodeSourceRangeResolverTest {
                     int local = field;
                     System.out.println(names.length);
                     System.out.printf("%d %s", count, names.length);
+                    System.out.printf("%d");
                     super.inherited();
                     Runnable first = this::target;
                     Runnable second = Owner::staticTarget;
@@ -193,6 +199,23 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void zeroArgVarargCallIsAlsoMatched() {
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+
+        // Two printf call sites in takes(): expanded (3 args) at ordinal 0, zero-varargs (1 arg) at ordinal 1.
+        // matchesArgumentCount must accept 1 arg for printf(String, Object...) whose descriptor has 2 formal
+        // params, because argumentCount (1) >= argTypes.length - 1 (2-1=1).
+        BytecodeSearchEntry e1 = reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"); //$NON-NLS-1$
+        BytecodeSearchEntry e2 = reference(Kind.METHOD, takesMethod, "printf", "printf", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintStream", "(Ljava/lang/String;[Ljava/lang/Object;)V"); //$NON-NLS-1$
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(e1, e2), SOURCE);
+        assertRangeText(ranges.get(e1), "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
+        assertRangeText(ranges.get(e2), "printf(\"%d\")"); //$NON-NLS-1$
+    }
+
+    @Test
     public void constructorReferencesResolveKeywordsAndTypeNames() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
@@ -238,6 +261,46 @@ public class BytecodeSourceRangeResolverTest {
                 "@inter"); //$NON-NLS-1$
         assertRangeStartsWith(resolver.rangeFor(reference(Kind.TYPE, markerType, "value", "value", null, null), SOURCE), //$NON-NLS-1$ //$NON-NLS-2$
                 "@inte"); //$NON-NLS-1$
+    }
+
+    /**
+     * Exercises the {@code StringUtils.isBlank(source) → return null} branch inside
+     * {@code BytecodeSourceRangeResolver.parse(IClassFile)}.
+     * <p>
+     * When {@code rangeFor(entry)} is called without a source string and the entry's
+     * element lives inside a class file that has no source attachment (here a JRE
+     * class), {@code classFile.getSource()} returns null, the blank-source guard fires,
+     * and the resolver falls back to an enclosing range.
+     */
+    @Test
+    public void parseReturnsNullAndFallsBackForClassFileWithNoSourceAttachment() throws Exception {
+        // The test project already has the default JRE on its classpath (set up in setUp()).
+        // java.lang.String lives in a JRE JAR that has no source attachment in the test
+        // environment, so classFile.getSource() returns null → isBlank(null) == true.
+        IJavaProject javaProject = JavaCore.create(project);
+        IType stringType = javaProject.findType("java.lang.String"); //$NON-NLS-1$
+        assertNotNull("java.lang.String must be resolvable via JRE container", stringType); //$NON-NLS-1$
+
+        IMethod[] methods = stringType.getMethods();
+        assertTrue("java.lang.String must expose at least one method", methods.length > 0); //$NON-NLS-1$
+        IMethod jreMethod = methods[0];
+
+        // Verify the method lives inside a class file so the parse(IClassFile) path is taken
+        assertNotNull("String method must have an IClassFile ancestor", //$NON-NLS-1$
+                (IClassFile) jreMethod.getAncestor(IJavaElement.CLASS_FILE));
+
+        BytecodeSearchEntry entry = new BytecodeSearchEntry(
+                Kind.METHOD, false,
+                BytecodeSearchEntry.elementReference(jreMethod.getHandleIdentifier(), null),
+                BytecodeSearchEntry.symbolReference(jreMethod.getElementName(),
+                        jreMethod.getElementName(), "java.lang.String", null)); //$NON-NLS-1$
+
+        // rangeFor(entry) → rangeFor(entry, null) → parsedClassFile(element)
+        //   → parse(classFile) → isBlank(null) → return null  (covered branch)
+        //   → fallback enclosing range is returned instead of null
+        BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
+        BytecodeSourceRangeResolver.SourceRange range = resolver.rangeFor(entry);
+        assertNotNull("resolver must return a non-null fallback range when classFile has no source", range); //$NON-NLS-1$
     }
 
     private static BytecodeSearchEntry declaration(Kind kind, IJavaElement element, String name) {

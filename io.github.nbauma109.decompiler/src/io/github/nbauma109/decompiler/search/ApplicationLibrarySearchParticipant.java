@@ -159,130 +159,6 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return null;
         }
 
-        private record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
-                String returnType, ParameterPattern parameterPattern, MatchPatterns matchPatterns) {
-
-            private String[] parameterTypes() {
-                return parameterPattern.types();
-            }
-
-            private boolean matchParameterTypes() {
-                return parameterPattern.match();
-            }
-
-            private boolean matchReturnType(int limitTo) {
-                return returnType != null && (limitTo & IJavaSearchConstants.IGNORE_RETURN_TYPE) == 0;
-            }
-
-            private boolean caseSensitive() {
-                return matchPatterns.caseSensitive();
-            }
-
-            private Pattern wildcardPattern() {
-                return matchPatterns.wildcardPattern();
-            }
-
-            private Pattern declaringTypePattern() {
-                return matchPatterns.declaringTypePattern();
-            }
-
-            @Override
-            public boolean equals(Object other) {
-                if (this == other) {
-                    return true;
-                }
-                if (other == null || other.getClass() != getClass()) {
-                    return false;
-                }
-                SearchPattern that = (SearchPattern) other;
-                return new EqualsBuilder()
-                        .append(name, that.name)
-                        .append(qualifiedName, that.qualifiedName)
-                        .append(declaringTypeName, that.declaringTypeName)
-                        .append(descriptor, that.descriptor)
-                        .append(returnType, that.returnType)
-                        .append(parameterPattern, that.parameterPattern)
-                        .append(matchPatterns, that.matchPatterns)
-                        .isEquals();
-            }
-
-            @Override
-            public int hashCode() {
-                return new HashCodeBuilder(17, 37)
-                        .append(name)
-                        .append(qualifiedName)
-                        .append(declaringTypeName)
-                        .append(descriptor)
-                        .append(returnType)
-                        .append(parameterPattern)
-                        .append(matchPatterns)
-                        .toHashCode();
-            }
-
-            @Override
-            public String toString() {
-                return new ToStringBuilder(this)
-                        .append("name", name) //$NON-NLS-1$
-                        .append("qualifiedName", qualifiedName) //$NON-NLS-1$
-                        .append("declaringTypeName", declaringTypeName) //$NON-NLS-1$
-                        .append("descriptor", descriptor) //$NON-NLS-1$
-                        .append("returnType", returnType) //$NON-NLS-1$
-                        .append("parameterPattern", parameterPattern) //$NON-NLS-1$
-                        .append("matchPatterns", matchPatterns) //$NON-NLS-1$
-                        .toString();
-            }
-        }
-
-        private static class MatchPatterns {
-
-            private final boolean caseSensitive;
-            private final Pattern wildcardPattern;
-            private final Pattern declaringTypePattern;
-
-            private MatchPatterns(boolean caseSensitive, Pattern wildcardPattern, Pattern declaringTypePattern) {
-                this.caseSensitive = caseSensitive;
-                this.wildcardPattern = wildcardPattern;
-                this.declaringTypePattern = declaringTypePattern;
-            }
-
-            private static MatchPatterns exact(boolean caseSensitive) {
-                return new MatchPatterns(caseSensitive, null, null);
-            }
-
-            private boolean caseSensitive() {
-                return caseSensitive;
-            }
-
-            private Pattern wildcardPattern() {
-                return wildcardPattern;
-            }
-
-            private Pattern declaringTypePattern() {
-                return declaringTypePattern;
-            }
-        }
-
-        private static class ParameterPattern {
-
-            private static final ParameterPattern NONE = new ParameterPattern(new String[0], false);
-
-            private final String[] types;
-            private final boolean match;
-
-            private ParameterPattern(String[] types, boolean match) {
-                this.types = types;
-                this.match = match;
-            }
-
-            private String[] types() {
-                return types;
-            }
-
-            private boolean match() {
-                return match;
-            }
-        }
-
         boolean matches(BytecodeSearchEntry entry) {
             if (kind != entry.getKind() || !matchesLimit(entry)) {
                 return false;
@@ -725,6 +601,130 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return type.getClassName().replace('$', '.').toLowerCase(Locale.ROOT);
             }
             return type.getDescriptor().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    public record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,
+            String returnType, ParameterPattern parameterPattern, MatchPatterns matchPatterns) {
+
+        private String[] parameterTypes() {
+            return parameterPattern.types();
+        }
+
+        private boolean matchParameterTypes() {
+            return parameterPattern.match();
+        }
+
+        private boolean matchReturnType(int limitTo) {
+            return returnType != null && (limitTo & IJavaSearchConstants.IGNORE_RETURN_TYPE) == 0;
+        }
+
+        private boolean caseSensitive() {
+            return matchPatterns.caseSensitive();
+        }
+
+        private Pattern wildcardPattern() {
+            return matchPatterns.wildcardPattern();
+        }
+
+        private Pattern declaringTypePattern() {
+            return matchPatterns.declaringTypePattern();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (other == null || other.getClass() != getClass()) {
+                return false;
+            }
+            SearchPattern that = (SearchPattern) other;
+            return new EqualsBuilder()
+                    .append(name, that.name)
+                    .append(qualifiedName, that.qualifiedName)
+                    .append(declaringTypeName, that.declaringTypeName)
+                    .append(descriptor, that.descriptor)
+                    .append(returnType, that.returnType)
+                    .append(parameterPattern, that.parameterPattern)
+                    .append(matchPatterns, that.matchPatterns)
+                    .isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37)
+                    .append(name)
+                    .append(qualifiedName)
+                    .append(declaringTypeName)
+                    .append(descriptor)
+                    .append(returnType)
+                    .append(parameterPattern)
+                    .append(matchPatterns)
+                    .toHashCode();
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringBuilder(this)
+                    .append("name", name) //$NON-NLS-1$
+                    .append("qualifiedName", qualifiedName) //$NON-NLS-1$
+                    .append("declaringTypeName", declaringTypeName) //$NON-NLS-1$
+                    .append("descriptor", descriptor) //$NON-NLS-1$
+                    .append("returnType", returnType) //$NON-NLS-1$
+                    .append("parameterPattern", parameterPattern) //$NON-NLS-1$
+                    .append("matchPatterns", matchPatterns) //$NON-NLS-1$
+                    .toString();
+        }
+    }
+
+    public static class MatchPatterns {
+
+        private final boolean caseSensitive;
+        private final Pattern wildcardPattern;
+        private final Pattern declaringTypePattern;
+
+        public MatchPatterns(boolean caseSensitive, Pattern wildcardPattern, Pattern declaringTypePattern) {
+            this.caseSensitive = caseSensitive;
+            this.wildcardPattern = wildcardPattern;
+            this.declaringTypePattern = declaringTypePattern;
+        }
+
+        public static MatchPatterns exact(boolean caseSensitive) {
+            return new MatchPatterns(caseSensitive, null, null);
+        }
+
+        private boolean caseSensitive() {
+            return caseSensitive;
+        }
+
+        private Pattern wildcardPattern() {
+            return wildcardPattern;
+        }
+
+        private Pattern declaringTypePattern() {
+            return declaringTypePattern;
+        }
+    }
+
+    public static class ParameterPattern {
+
+        public static final ParameterPattern NONE = new ParameterPattern(new String[0], false);
+
+        private final String[] types;
+        private final boolean match;
+
+        public ParameterPattern(String[] types, boolean match) {
+            this.types = types;
+            this.match = match;
+        }
+
+        private String[] types() {
+            return types;
+        }
+
+        private boolean match() {
+            return match;
         }
     }
 }

@@ -694,15 +694,14 @@ public class BytecodeSourceRangeResolver {
                 if (argumentCount == argTypes.length) {
                     return true;
                 }
-                // Varargs: the last formal parameter is an array type in bytecode, so expanded
-                // source call sites supply *more* individual arguments than the descriptor has
-                // formal parameters (e.g. printf(String, Object...) has 2 params but source
-                // can pass 3 or more args).  We only accept strictly-expanded calls
-                // (argumentCount > argTypes.length) to avoid false matches against a same-named
-                // non-varargs overload with one fewer parameter.
+                // Varargs: the last formal parameter is an array type in bytecode.  Source call
+                // sites can supply either *fewer* arguments (zero-varargs, e.g. printf("x") for
+                // printf(String, Object...)) or *more* arguments (expanded varargs, e.g.
+                // printf("%d %s", n, m) for the same method).  Both cases satisfy
+                // argumentCount >= argTypes.length - 1, which is the correct acceptance window.
                 return argTypes.length > 0
                         && argTypes[argTypes.length - 1].getSort() == org.objectweb.asm.Type.ARRAY
-                        && argumentCount > argTypes.length;
+                        && argumentCount >= argTypes.length - 1;
             } catch (IllegalArgumentException e) {
                 return true;
             }

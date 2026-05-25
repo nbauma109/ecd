@@ -348,7 +348,7 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    static final class JarIndex {
+    public static final class JarIndex {
 
         private static final int[] EMPTY_POSTINGS = new int[0];
 
@@ -479,7 +479,7 @@ public final class BytecodeSearchIndex {
             return kind == Kind.TYPE || kind == Kind.PACKAGE || kind == Kind.MODULE;
         }
 
-        private static final class CompactEntries {
+        public static final class CompactEntries {
 
             private static final int NULL_ID = -1;
 
@@ -533,7 +533,7 @@ public final class BytecodeSearchIndex {
             private record EntryArrays(StringTables tables, EntryColumns columns) {
             }
 
-            private record StringTables(String[] strings, String[] elementHandles,
+            public record StringTables(String[] strings, String[] elementHandles,
                     IJavaElement[] anonymousElementFallbacks) {
 
                 @Override
@@ -571,7 +571,7 @@ public final class BytecodeSearchIndex {
                 }
             }
 
-            private record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
+            public record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
                     int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
 
                 @Override
