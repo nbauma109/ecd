@@ -821,13 +821,18 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private int countParameters(String parameters) {
         int count = 1;
         int genericDepth = 0;
+        int parenDepth = 0;
         for (int i = 0; i < parameters.length(); i++) {
             char ch = parameters.charAt(i);
             if (ch == '<') {
                 genericDepth++;
             } else if (ch == '>' && genericDepth > 0) {
                 genericDepth--;
-            } else if (ch == ',' && genericDepth == 0) {
+            } else if (ch == '(') {
+                parenDepth++;
+            } else if (ch == ')' && parenDepth > 0) {
+                parenDepth--;
+            } else if (ch == ',' && genericDepth == 0 && parenDepth == 0) {
                 count++;
             }
         }

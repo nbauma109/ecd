@@ -28,6 +28,7 @@ import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IModuleDescription;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -53,6 +54,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -615,6 +617,138 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertTrue("Inner-class bytecode matches must remain highlighted in the top-level decompiled editor", //$NON-NLS-1$
                 isShownInSameTopLevelClass(topLevelClassFile, innerMethod));
+    }
+
+    // -----------------------------------------------------------------------
+    // forElement(IPackageFragment / IModuleDescription), wildcardPattern '?',
+    // collectWildcard(), entryCount()
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void elementQueryForPackageFragmentCreatesPackageMatcher()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-package-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // forElement(IPackageFragment) → Kind.PACKAGE
+        IPackageFragment testPkg = setup.jarRoot().getPackageFragment(TEST_PACKAGE);
+        assertTrue(testPkg.exists());
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(testPkg,
+                IJavaSearchConstants.REFERENCES, scope, "element-package-refs"); //$NON-NLS-1$
+
+        // The search exercises forElement(IPackageFragment) without error.
+        // test.jar bytecode rarely contains explicit package references, so the list may be empty.
+        assertNotNull(runSearchInBackground(participant, spec));
+    }
+
+    @Test
+    public void elementQueryForModuleDescriptionCreatesModuleMatcher()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-element-module-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        // Find any module description available in the project classpath (Java 9+).
+        IModuleDescription module = null;
+        for (IPackageFragmentRoot root : setup.javaProject().getAllPackageFragmentRoots()) {
+            IModuleDescription mod;
+            try {
+                mod = root.getModuleDescription();
+            } catch (Exception e) {
+                continue;
+            }
+            if (mod != null && mod.exists()) {
+                module = mod;
+                break;
+            }
+        }
+        Assume.assumeTrue("No module description found; test skipped on Java 8 runtime", module != null); //$NON-NLS-1$
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ElementQuerySpecification spec = new ElementQuerySpecification(module,
+                IJavaSearchConstants.REFERENCES, scope, "element-module-refs"); //$NON-NLS-1$
+
+        // The search exercises forElement(IModuleDescription) without error.
+        assertNotNull(runSearchInBackground(participant, spec));
+    }
+
+    @Test
+    public void wildcardPatternWithQuestionMarkMatchesSingleChar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-question-mark-wildcard-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        // "printl?" exercises the '?' → single-char-'.' branch in wildcardPattern().
+        // It matches "println" (7 chars) because '?' replaces exactly one character.
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "printl?", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library single-char wildcard coverage"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+        assertFalse("Single-char wildcard ? must match println references in test.jar", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void wildcardStarPatternExercisesCollectWildcardAndEntryCount()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-star-wildcard-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "*", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library wildcard-star coverage"); //$NON-NLS-1$
+
+        // runSearchInBackground drives waitForInitialRefresh(), then routes through
+        // JarIndex.collect() → collectWildcard() → CompactEntries.size() for each indexed jar.
+        List<Match> matches = runSearchInBackground(participant, specification);
+        assertFalse("Wildcard * must match all method references in the indexed test jar", matches.isEmpty()); //$NON-NLS-1$
+
+        // After search completes the index is fully populated; entryCount() must be positive.
+        int entryCount = BytecodeSearchIndex.getDefault().entryCount();
+        assertTrue("Index must contain at least some entries from test.jar", entryCount > 0); //$NON-NLS-1$
+
+        // estimateTicks() calls entryCount() internally and returns a value ≥ 50.
+        int ticks = participant.estimateTicks(specification);
+        assertTrue("estimateTicks must return a positive value based on entryCount", ticks >= 50); //$NON-NLS-1$
     }
 
     private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
