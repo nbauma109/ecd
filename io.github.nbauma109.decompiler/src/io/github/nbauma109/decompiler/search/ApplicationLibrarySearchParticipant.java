@@ -73,6 +73,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         return new ApplicationLibrarySearchMatchPresentation();
     }
 
+    private static final int LIMIT_TO_KIND_MASK = 0x0F;
+
     private static final class SearchMatcher {
 
         private final int limitTo;
@@ -220,21 +222,20 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean matchesLimit(BytecodeSearchEntry entry) {
-            int maskedLimit = limitTo & ~(IJavaSearchConstants.IGNORE_DECLARING_TYPE
-                    | IJavaSearchConstants.IGNORE_RETURN_TYPE);
-            if (maskedLimit == IJavaSearchConstants.ALL_OCCURRENCES) {
+            int baseLimit = baseLimitTo(limitTo);
+            if (baseLimit == IJavaSearchConstants.ALL_OCCURRENCES) {
                 return !entry.isDeclaration();
             }
-            if (maskedLimit == IJavaSearchConstants.DECLARATIONS) {
+            if (baseLimit == IJavaSearchConstants.DECLARATIONS) {
                 return false;
             }
-            if (maskedLimit == IJavaSearchConstants.REFERENCES) {
+            if (baseLimit == IJavaSearchConstants.REFERENCES) {
                 return !entry.isDeclaration();
             }
-            if (maskedLimit == IJavaSearchConstants.READ_ACCESSES) {
+            if (baseLimit == IJavaSearchConstants.READ_ACCESSES) {
                 return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.READ;
             }
-            if (maskedLimit == IJavaSearchConstants.WRITE_ACCESSES) {
+            if (baseLimit == IJavaSearchConstants.WRITE_ACCESSES) {
                 return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.WRITE;
             }
             return false;
@@ -321,12 +322,15 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static boolean supportsLimitTo(int limitTo) {
-            int maskedLimit = limitTo & ~(IJavaSearchConstants.IGNORE_DECLARING_TYPE
-                    | IJavaSearchConstants.IGNORE_RETURN_TYPE);
-            return maskedLimit == IJavaSearchConstants.ALL_OCCURRENCES
-                    || maskedLimit == IJavaSearchConstants.REFERENCES
-                    || maskedLimit == IJavaSearchConstants.READ_ACCESSES
-                    || maskedLimit == IJavaSearchConstants.WRITE_ACCESSES;
+            int baseLimit = baseLimitTo(limitTo);
+            return baseLimit == IJavaSearchConstants.ALL_OCCURRENCES
+                    || baseLimit == IJavaSearchConstants.REFERENCES
+                    || baseLimit == IJavaSearchConstants.READ_ACCESSES
+                    || baseLimit == IJavaSearchConstants.WRITE_ACCESSES;
+        }
+
+        private static int baseLimitTo(int limitTo) {
+            return limitTo & LIMIT_TO_KIND_MASK;
         }
 
         private static SearchPattern parsePattern(Kind kind, String pattern, boolean caseSensitive) {

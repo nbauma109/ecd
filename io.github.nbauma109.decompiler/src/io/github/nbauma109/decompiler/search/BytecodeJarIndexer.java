@@ -464,7 +464,7 @@ public class BytecodeJarIndexer {
             for (Map.Entry<IJavaElement, List<MemberReference>> entry : references.entrySet()) {
                 for (MemberReference member : entry.getValue()) {
                     String qualifiedName = member.name();
-                    if (kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
+                    if (kind == Kind.CONSTRUCTOR || kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
                         qualifiedName = member.owner();
                     }
                     addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),

@@ -358,6 +358,26 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testNullSourceSelectionClearsCachedSelectedElement()
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        openedEditor = openDefault(getType(innerClassFile));
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        assertTrue(waitForSelectedElement(editor, TEST_INNER_TYPE));
+
+        runInUiThread(() -> editor.setSelection(null, false));
+
+        assertNull(editor.getSelectedElement());
+    }
+
+    @Test
     public void testOpeningInnerMethodDeclarationsSelectsEachNestedMethod()
             throws CoreException {
         assertInnerMethodDeclarationSelection(TEST_INNER_CLASS, "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$

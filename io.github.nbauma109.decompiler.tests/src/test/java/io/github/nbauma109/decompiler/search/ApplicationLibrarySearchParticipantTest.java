@@ -474,6 +474,62 @@ public class ApplicationLibrarySearchParticipantTest {
                 matches.isEmpty());
     }
 
+    @Test
+    public void qualifiedWildcardConstructorPatternFindsOwnerReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-qualified-constructor-pattern-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.*()", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library qualified wildcard constructor references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Qualified wildcard constructor patterns must match indexed constructor qualified names", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
+    public void qualifiedReferenceLimitFlagFindsMethodReferencesFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-qualified-reference-limit-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream.println(java.lang.String)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES | IJavaSearchConstants.QUALIFIED_REFERENCE,
+                scope,
+                "Application library qualified-reference println references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Fine-grained reference limit flags must not disable bytecode reference matches", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
     // -----------------------------------------------------------------------
     // ElementQuerySpecification tests — cover forElement, normalizeTypeName,
     // normalizeDeclaringType, declaringSimpleName, sameDescriptor,

@@ -207,11 +207,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     @Override
-    protected void setSelection(ISourceReference reference, boolean moveCursor) {
+    public void setSelection(ISourceReference reference, boolean moveCursor) {
         if (isExternalTextSelectionProtected(reference)) {
             return;
         }
         if (reference == null) {
+            selectedElement = null;
             super.setSelection(reference, moveCursor);
             return;
         }
