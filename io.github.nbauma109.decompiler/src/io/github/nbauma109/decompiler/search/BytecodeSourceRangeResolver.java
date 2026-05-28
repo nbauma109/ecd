@@ -767,8 +767,15 @@ public class BytecodeSourceRangeResolver {
             if (declaringTypeName == null || ownerName == null) {
                 return true;
             }
-            return sameName(declaringTypeName, ownerName)
-                    || sameName(simpleName(declaringTypeName), simpleName(ownerName));
+            String normalizedDeclaringType = StringUtils.replaceChars(declaringTypeName, '$', '.');
+            String normalizedOwner = StringUtils.replaceChars(ownerName, '$', '.');
+            if (sameName(normalizedDeclaringType, normalizedOwner)) {
+                return true;
+            }
+            if (Strings.CS.contains(normalizedOwner, ".")) { //$NON-NLS-1$
+                return false;
+            }
+            return sameName(simpleName(normalizedDeclaringType), simpleName(normalizedOwner));
         }
 
         private boolean matches(SimpleName node, int argumentCount) {

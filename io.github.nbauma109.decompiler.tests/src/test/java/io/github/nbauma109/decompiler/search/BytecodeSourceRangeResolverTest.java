@@ -244,6 +244,47 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void packageQualifiedReceiversRequireExactDeclaringOwner() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        pkg1.Util.reset(count);
+                        pkg2.Util.reset(count);
+                        int left = pkg1.Util.field;
+                        int right = pkg2.Util.field;
+                        Runnable first = pkg1.Util::run;
+                        Runnable second = pkg2.Util::run;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry method1 = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "pkg1.Util", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry method2 = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "pkg2.Util", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry field1 = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
+                "pkg1.Util", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry field2 = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
+                "pkg2.Util", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry reference1 = reference(Kind.METHOD, takesMethod, "run", "run", //$NON-NLS-1$ //$NON-NLS-2$
+                "pkg1.Util", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry reference2 = reference(Kind.METHOD, takesMethod, "run", "run", //$NON-NLS-1$ //$NON-NLS-2$
+                "pkg2.Util", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(
+                        List.of(method1, method2, field1, field2, reference1, reference2), src);
+
+        assertEquals(src.indexOf("reset", src.indexOf("pkg1.Util.reset")), ranges.get(method1).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("pkg2.Util.reset")), ranges.get(method2).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf(FIELD, src.indexOf("pkg1.Util.field")), ranges.get(field1).offset()); //$NON-NLS-1$
+        assertEquals(src.indexOf(FIELD, src.indexOf("pkg2.Util.field")), ranges.get(field2).offset()); //$NON-NLS-1$
+        assertEquals(src.indexOf("run", src.indexOf("pkg1.Util::")), ranges.get(reference1).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("run", src.indexOf("pkg2.Util::")), ranges.get(reference2).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void typeMethodReferencesResolveToTheirDeclaringOwners() {
         String src = """
                 package fixture;

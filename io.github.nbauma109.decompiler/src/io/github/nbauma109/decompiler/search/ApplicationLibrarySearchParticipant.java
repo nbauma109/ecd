@@ -224,7 +224,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private boolean matchesLimit(BytecodeSearchEntry entry) {
             int baseLimit = baseLimitTo(limitTo);
             if (baseLimit == IJavaSearchConstants.ALL_OCCURRENCES) {
-                return !entry.isDeclaration();
+                return true;
             }
             if (baseLimit == IJavaSearchConstants.DECLARATIONS) {
                 return false;

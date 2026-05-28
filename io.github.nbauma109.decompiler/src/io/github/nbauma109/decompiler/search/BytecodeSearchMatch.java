@@ -25,7 +25,7 @@ public final class BytecodeSearchMatch extends Match {
         this.entry = entry;
     }
 
-    BytecodeSearchEntry getEntry() {
+    public BytecodeSearchEntry getEntry() {
         return entry;
     }
 

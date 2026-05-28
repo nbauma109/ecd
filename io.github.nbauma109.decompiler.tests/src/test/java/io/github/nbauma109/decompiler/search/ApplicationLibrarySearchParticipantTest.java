@@ -188,6 +188,35 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void allOccurrencesIncludesIndexedMethodDeclarationsFromTestJar()
+            throws Exception {
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-all-occurrences-declaration-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "method1", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.ALL_OCCURRENCES,
+                scope,
+                "Application library method1 all occurrences"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertTrue("All-occurrences searches must include indexed bytecode declarations", //$NON-NLS-1$
+                matches.stream()
+                        .anyMatch(ApplicationLibrarySearchParticipantTest::isDeclarationMatch));
+    }
+
+    @Test
     public void qualifiedMethodPatternFindsPrintlnReferencesFromTestJar()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
@@ -956,6 +985,13 @@ public class ApplicationLibrarySearchParticipantTest {
             throw new AssertionError("Search failed", failure.get()); //$NON-NLS-1$
         }
         return matches;
+    }
+
+    private static boolean isDeclarationMatch(Match match) {
+        if (!(match instanceof BytecodeSearchMatch bytecodeMatch)) {
+            return false;
+        }
+        return bytecodeMatch.getEntry().isDeclaration();
     }
 
     private static String selectedText(Match match) throws Exception {

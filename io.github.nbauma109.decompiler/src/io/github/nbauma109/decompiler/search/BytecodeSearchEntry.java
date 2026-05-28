@@ -94,7 +94,7 @@ public class BytecodeSearchEntry {
         return kind;
     }
 
-    boolean isDeclaration() {
+    public boolean isDeclaration() {
         return declaration;
     }
 
