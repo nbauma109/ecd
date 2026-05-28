@@ -244,6 +244,48 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void typeMethodReferencesResolveToTheirDeclaringOwners() {
+        String src = """
+                package fixture;
+                class A {
+                    static void reset(int count) {}
+                }
+                class B {
+                    static void reset(int count) {}
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        java.util.function.IntConsumer first = A::reset;
+                        java.util.function.IntConsumer second = B::reset;
+                        java.util.function.Consumer<java.util.ArrayList<String>> third =
+                                java.util.ArrayList<String>::clear;
+                        java.util.function.Consumer<java.util.LinkedList<String>> fourth =
+                                java.util.LinkedList<String>::clear;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry fromA = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.A", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry fromB = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.B", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry fromArrayList = reference(Kind.METHOD, takesMethod, "clear", "clear", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.util.ArrayList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry fromLinkedList = reference(Kind.METHOD, takesMethod, "clear", "clear", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.util.LinkedList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(fromA, fromB, fromArrayList, fromLinkedList), src);
+
+        assertEquals(src.indexOf("reset", src.indexOf("A::")), ranges.get(fromA).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("B::")), ranges.get(fromB).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("clear", src.indexOf("ArrayList<String>::")), //$NON-NLS-1$ //$NON-NLS-2$
+                ranges.get(fromArrayList).offset());
+        assertEquals(src.indexOf("clear", src.indexOf("LinkedList<String>::")), //$NON-NLS-1$ //$NON-NLS-2$
+                ranges.get(fromLinkedList).offset());
+    }
+
+    @Test
     public void superMethodInvocationMatchesOnlyTheDirectSuperclass() {
         String src = """
                 package fixture;

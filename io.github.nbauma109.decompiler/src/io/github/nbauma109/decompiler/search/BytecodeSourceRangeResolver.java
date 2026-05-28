@@ -628,7 +628,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(ExpressionMethodReference node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName())) {
+            if (entry.getKind() == Kind.METHOD && matchesExpressionMethodReference(node)) {
                 add(node.getName());
             }
             return true;
@@ -636,7 +636,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(TypeMethodReference node) {
-            if (entry.getKind() == Kind.METHOD && matches(node.getName())) {
+            if (entry.getKind() == Kind.METHOD && matchesTypeMethodReference(node)) {
                 add(node.getName());
             }
             return true;
@@ -741,6 +741,20 @@ public class BytecodeSourceRangeResolver {
             // Receiver expression types are unavailable because decompiled text is parsed
             // without bindings; do not guess an owner for field or computed receivers.
             return true;
+        }
+
+        private boolean matchesExpressionMethodReference(ExpressionMethodReference node) {
+            if (!matches(node.getName())) {
+                return false;
+            }
+            if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
+                return matchesDeclaringOwner(receiver.getFullyQualifiedName());
+            }
+            return true;
+        }
+
+        private boolean matchesTypeMethodReference(TypeMethodReference node) {
+            return matches(node.getName()) && matchesDeclaringOwner(sourceName(rawConstructorType(node.getType())));
         }
 
         private static boolean isTypeLikeQualifier(Name receiver) {
