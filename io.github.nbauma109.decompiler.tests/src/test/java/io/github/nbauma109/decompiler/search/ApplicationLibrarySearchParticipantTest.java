@@ -19,8 +19,10 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
@@ -67,8 +69,11 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
@@ -334,6 +339,60 @@ public class ApplicationLibrarySearchParticipantTest {
                 sameTypeSpecification(IJavaSearchConstants.ENUM, scope))));
         assertEquals(List.of("annotations.Same"), typeDeclarationNames(runSearchInBackground(participant, //$NON-NLS-1$
                 sameTypeSpecification(IJavaSearchConstants.ANNOTATION_TYPE, scope))));
+    }
+
+    @Test
+    public void multiReleaseJarSearchesUseEffectiveVersionedClassBytes()
+            throws Exception {
+        File jar = new File(tempDir, "effective-multi-release.jar"); //$NON-NLS-1$
+        createMultiReleaseReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-effective-multi-release-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.String", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library effective multi-release String references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Effective versioned class bytes must contribute bytecode type references", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void annotationMethodDefaultsContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "annotation-defaults.jar"); //$NON-NLS-1$
+        createAnnotationDefaultJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-annotation-default-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.String", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library annotation default String references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Annotation method default values must contribute bytecode type references", matches.isEmpty()); //$NON-NLS-1$
     }
 
     @Test
@@ -1071,13 +1130,70 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createMultiReleaseReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar), multiReleaseManifest())) {
+            addClass(output, "pkg/Versioned.class", classBytes("pkg/Versioned")); //$NON-NLS-1$ //$NON-NLS-2$
+            addClass(output, "META-INF/versions/" + Runtime.version().feature() + "/pkg/Versioned.class", //$NON-NLS-1$ //$NON-NLS-2$
+                    classBytesWithStringField("pkg/Versioned")); //$NON-NLS-1$
+        }
+    }
+
+    private static void createAnnotationDefaultJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/Defaults.class", annotationWithStringDefaultBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void addType(JarOutputStream output, String internalName, int access, String superName,
             String... interfaces) throws Exception {
         ClassWriter writer = new ClassWriter(0);
         writer.visit(Opcodes.V17, access, internalName, null, superName, interfaces);
         writer.visitEnd();
-        output.putNextEntry(new JarEntry(internalName + ".class")); //$NON-NLS-1$
-        output.write(writer.toByteArray());
+        addClass(output, internalName + ".class", writer.toByteArray()); //$NON-NLS-1$
+    }
+
+    private static byte[] classBytes(String internalName) {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, internalName, null, "java/lang/Object", //$NON-NLS-1$
+                null);
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] classBytesWithStringField(String internalName) {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, internalName, null, "java/lang/Object", //$NON-NLS-1$
+                null);
+        writer.visitField(Opcodes.ACC_PUBLIC, "value", "Ljava/lang/String;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] annotationWithStringDefaultBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT
+                | Opcodes.ACC_ANNOTATION, "pkg/Defaults", null, "java/lang/Object", //$NON-NLS-1$ //$NON-NLS-2$
+                new String[] { "java/lang/annotation/Annotation" }); //$NON-NLS-1$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, "value", //$NON-NLS-1$
+                "()Ljava/lang/Class;", "()Ljava/lang/Class<*>;", null); //$NON-NLS-1$ //$NON-NLS-2$
+        AnnotationVisitor defaultValue = method.visitAnnotationDefault();
+        defaultValue.visit(null, Type.getType("Ljava/lang/String;")); //$NON-NLS-1$
+        defaultValue.visitEnd();
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static Manifest multiReleaseManifest() {
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0"); //$NON-NLS-1$
+        manifest.getMainAttributes().put(new Attributes.Name("Multi-Release"), "true"); //$NON-NLS-1$ //$NON-NLS-2$
+        return manifest;
+    }
+
+    private static void addClass(JarOutputStream output, String name, byte[] bytes) throws Exception {
+        output.putNextEntry(new JarEntry(name));
+        output.write(bytes);
         output.closeEntry();
     }
 

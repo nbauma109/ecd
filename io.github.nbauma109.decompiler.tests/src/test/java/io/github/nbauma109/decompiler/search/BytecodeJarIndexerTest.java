@@ -13,8 +13,10 @@ import static org.junit.Assert.assertNotNull;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -47,6 +49,24 @@ public class BytecodeJarIndexerTest {
 
             assertEquals(1, work.entries().size());
             assertEquals("pkg/Base.class", work.entries().get(0).name()); //$NON-NLS-1$
+        } finally {
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void planSelectsEffectiveMultiReleaseClassEntries()
+            throws IOException {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-effective-mr"); //$NON-NLS-1$
+        File jar = new File(tempDir, "multi-release.jar"); //$NON-NLS-1$
+        try {
+            createEffectiveMultiReleaseJar(jar);
+
+            BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
+
+            assertEquals(1, work.entries().size());
+            assertEquals("META-INF/versions/" + Runtime.version().feature() + "/pkg/Base.class", //$NON-NLS-1$ //$NON-NLS-2$
+                    work.entries().get(0).name());
         } finally {
             org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
         }
@@ -255,6 +275,23 @@ public class BytecodeJarIndexerTest {
             addEntry(output, "META-INF/versions/11/pkg/Base.class"); //$NON-NLS-1$
             addEntry(output, "META-INF/versions/21/pkg/Other.class"); //$NON-NLS-1$
         }
+    }
+
+    private static void createEffectiveMultiReleaseJar(File jar)
+            throws IOException {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar), multiReleaseManifest())) {
+            addEntry(output, "pkg/Base.class"); //$NON-NLS-1$
+            addEntry(output, "META-INF/versions/9/pkg/Base.class"); //$NON-NLS-1$
+            addEntry(output, "META-INF/versions/" + Runtime.version().feature() + "/pkg/Base.class"); //$NON-NLS-1$ //$NON-NLS-2$
+            addEntry(output, "META-INF/versions/" + (Runtime.version().feature() + 1) + "/pkg/Base.class"); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+    }
+
+    private static Manifest multiReleaseManifest() {
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0"); //$NON-NLS-1$
+        manifest.getMainAttributes().put(new Attributes.Name("Multi-Release"), "true"); //$NON-NLS-1$ //$NON-NLS-2$
+        return manifest;
     }
 
     private static void addEntry(JarOutputStream output, String name)

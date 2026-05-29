@@ -17,9 +17,12 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -59,7 +62,10 @@ public class BytecodeJarIndexer {
     private static final String CLASS_FILE_EXTENSION = ".class"; //$NON-NLS-1$
     private static final String CLASS_INITIALIZER = "<clinit>"; //$NON-NLS-1$
     private static final String CONSTRUCTOR = "<init>"; //$NON-NLS-1$
+    private static final String META_INF_VERSIONS = "META-INF/versions/"; //$NON-NLS-1$
     private static final String MODULE_INFO = "module-info"; //$NON-NLS-1$
+    private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
+    private static final Attributes.Name MULTI_RELEASE = new Attributes.Name("Multi-Release"); //$NON-NLS-1$
     private static final int ZIP_LOCAL_FILE_HEADER_SIZE = 30;
     private static final int ZIP_CENTRAL_DIRECTORY_FILE_HEADER_SIZE = 46;
 
@@ -67,31 +73,88 @@ public class BytecodeJarIndexer {
     }
 
     public static JarWork plan(File jar) {
-        List<JarEntryWork> entries = new ArrayList<>();
-        long totalImpact = 0L;
-        long totalTicks = 0L;
         try (ZipFile zip = new ZipFile(jar)) {
+            Map<String, EffectiveClassEntry> effectiveEntries = new LinkedHashMap<>();
+            boolean multiRelease = isMultiReleaseJar(zip);
+            int runtimeFeatureVersion = Runtime.version().feature();
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
-                if (isIndexableClassEntry(entry)) {
-                    long impact = entryImpactBytes(entry);
-                    int ticks = impactTicks(impact);
-                    totalImpact += impact;
-                    totalTicks = Math.clamp(totalTicks + ticks, 0L, Integer.MAX_VALUE);
-                    entries.add(new JarEntryWork(entry.getName(), impact, ticks));
+                EffectiveClassEntry candidate = effectiveClassEntry(entry, multiRelease, runtimeFeatureVersion);
+                if (candidate != null) {
+                    effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
+            return jarWork(effectiveEntries.values());
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            return new JarWork(List.of(), 0L, 0);
+        }
+    }
+
+    private static JarWork jarWork(Iterable<EffectiveClassEntry> effectiveEntries) {
+        List<JarEntryWork> entries = new ArrayList<>();
+        long totalImpact = 0L;
+        long totalTicks = 0L;
+        for (EffectiveClassEntry entry : effectiveEntries) {
+            totalImpact += entry.impactBytes();
+            totalTicks = Math.clamp(totalTicks + entry.ticks(), 0L, Integer.MAX_VALUE);
+            entries.add(new JarEntryWork(entry.entryName(), entry.impactBytes(), entry.ticks()));
         }
         return new JarWork(entries, totalImpact, (int) totalTicks);
     }
 
-    private static boolean isIndexableClassEntry(ZipEntry entry) {
-        return !entry.isDirectory()
-                && Strings.CS.endsWith(entry.getName(), CLASS_FILE_EXTENSION)
-                && !Strings.CS.startsWith(entry.getName(), "META-INF/versions/"); //$NON-NLS-1$
+    private static boolean isMultiReleaseJar(ZipFile zip) throws IOException {
+        ZipEntry manifestEntry = zip.getEntry(MANIFEST_NAME);
+        if (manifestEntry == null) {
+            return false;
+        }
+        try (InputStream input = zip.getInputStream(manifestEntry)) {
+            Manifest manifest = new Manifest(input);
+            String multiRelease = manifest.getMainAttributes().getValue(MULTI_RELEASE);
+            return Boolean.parseBoolean(multiRelease);
+        }
+    }
+
+    private static EffectiveClassEntry effectiveClassEntry(ZipEntry entry, boolean multiRelease,
+            int runtimeFeatureVersion) {
+        if (entry.isDirectory() || !Strings.CS.endsWith(entry.getName(), CLASS_FILE_EXTENSION)) {
+            return null;
+        }
+        if (!Strings.CS.startsWith(entry.getName(), META_INF_VERSIONS)) {
+            return newEffectiveClassEntry(entry.getName(), entry.getName(), 0, entry);
+        }
+        VersionedClassName versionedName = versionedClassName(entry.getName());
+        if (versionedName == null || !multiRelease || versionedName.version() > runtimeFeatureVersion) {
+            return null;
+        }
+        return newEffectiveClassEntry(versionedName.logicalName(), entry.getName(), versionedName.version(), entry);
+    }
+
+    private static EffectiveClassEntry newEffectiveClassEntry(String logicalName, String entryName, int version,
+            ZipEntry entry) {
+        long impact = entryImpactBytes(entry);
+        return new EffectiveClassEntry(logicalName, entryName, version, impact, impactTicks(impact));
+    }
+
+    private static VersionedClassName versionedClassName(String entryName) {
+        if (!Strings.CS.startsWith(entryName, META_INF_VERSIONS)) {
+            return null;
+        }
+        String versionedPath = entryName.substring(META_INF_VERSIONS.length());
+        int separator = versionedPath.indexOf('/');
+        if (separator <= 0 || separator == versionedPath.length() - 1) {
+            return null;
+        }
+        try {
+            int version = Integer.parseInt(versionedPath.substring(0, separator));
+            if (version < 9) {
+                return null;
+            }
+            return new VersionedClassName(versionedPath.substring(separator + 1), version);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
@@ -746,6 +809,11 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public AnnotationVisitor visitAnnotationDefault() {
+                return annotationVisitor(method);
+            }
+
+            @Override
             public void visitTypeInsn(int opcode, String type) {
                 addTypeReference(type, method);
             }
@@ -861,6 +929,16 @@ public class BytecodeJarIndexer {
 
     private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,
             Set<EntryKey> seen, Map<String, String> strings) {
+    }
+
+    private record VersionedClassName(String logicalName, int version) {
+    }
+
+    private record EffectiveClassEntry(String logicalName, String entryName, int version, long impactBytes, int ticks) {
+
+        private static EffectiveClassEntry newer(EffectiveClassEntry left, EffectiveClassEntry right) {
+            return left.version() >= right.version() ? left : right;
+        }
     }
 
     public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
