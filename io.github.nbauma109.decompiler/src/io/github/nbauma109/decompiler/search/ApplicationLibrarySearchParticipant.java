@@ -168,27 +168,42 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         boolean matches(BytecodeSearchEntry entry) {
-            if (kind != entry.getKind() || !matchesLimit(entry)) {
-                return false;
-            }
-            if (kind == Kind.TYPE && !typeFilter.matches(entry.getTypeCategory())) {
-                return false;
-            }
-            if (matchesDeclaringType() && !matchesDeclaringType(entry.getDeclaringTypeName())) {
-                return false;
-            }
-            if (descriptor != null && entry.getDescriptor() != null && !sameDescriptor(descriptor, entry.getDescriptor())) {
-                return false;
-            }
-            if (matchParameterTypes && !sameParameterTypes(parameterTypes, entry.getDescriptor())) {
-                return false;
-            }
-            if (matchReturnType && !sameReturnType(returnType, entry.getDescriptor())) {
-                return false;
-            }
-            if (fieldType != null && !sameFieldType(fieldType, entry.getDescriptor())) {
-                return false;
-            }
+            return kind == entry.getKind()
+                    && matchesLimit(entry)
+                    && matchesTypeCategory(entry)
+                    && matchesEntryDeclaringType(entry)
+                    && matchesEntryDescriptor(entry)
+                    && matchesEntryParameterTypes(entry)
+                    && matchesEntryReturnType(entry)
+                    && matchesEntryFieldType(entry)
+                    && matchesEntryName(entry);
+        }
+
+        private boolean matchesTypeCategory(BytecodeSearchEntry entry) {
+            return kind != Kind.TYPE || typeFilter.matches(entry.getTypeCategory());
+        }
+
+        private boolean matchesEntryDeclaringType(BytecodeSearchEntry entry) {
+            return !matchesDeclaringType() || matchesDeclaringType(entry.getDeclaringTypeName());
+        }
+
+        private boolean matchesEntryDescriptor(BytecodeSearchEntry entry) {
+            return descriptor == null || entry.getDescriptor() == null || sameDescriptor(descriptor, entry.getDescriptor());
+        }
+
+        private boolean matchesEntryParameterTypes(BytecodeSearchEntry entry) {
+            return !matchParameterTypes || sameParameterTypes(parameterTypes, entry.getDescriptor());
+        }
+
+        private boolean matchesEntryReturnType(BytecodeSearchEntry entry) {
+            return !matchReturnType || sameReturnType(returnType, entry.getDescriptor());
+        }
+
+        private boolean matchesEntryFieldType(BytecodeSearchEntry entry) {
+            return fieldType == null || sameFieldType(fieldType, entry.getDescriptor());
+        }
+
+        private boolean matchesEntryName(BytecodeSearchEntry entry) {
             if (wildcardPattern != null) {
                 return wildcardPattern.matcher(entry.getName()).matches()
                         || wildcardPattern.matcher(entry.getQualifiedName()).matches();

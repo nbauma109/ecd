@@ -219,8 +219,8 @@ public class BytecodeJarIndexer {
                 return;
             }
 
-            add(Kind.TYPE, true, type, pool(simpleTypeName(className)), pool(qualifiedTypeName(className)), null, null,
-                    typeCategory);
+            add(new EntrySpec(Kind.TYPE, true, pool(simpleTypeName(className)), pool(qualifiedTypeName(className)),
+                    null, null, Access.NONE, typeCategory), type, false);
             addPackageDeclaration(packageName(className));
             for (String internalName : typeReferences) {
                 addTypeReferenceEntry(internalName, type);
@@ -425,18 +425,18 @@ public class BytecodeJarIndexer {
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
-            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, access, TypeCategory.UNKNOWN);
+            addReferenceEntry(new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
+                    pool(descriptor), access, TypeCategory.UNKNOWN), element);
         }
 
-        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access, TypeCategory category) {
-            add(newEntry(element, new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor), access, category)), true);
+        private void addReferenceEntry(EntrySpec spec, IJavaElement element) {
+            add(newEntry(element, spec), true);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
-            addReferenceEntry(Kind.TYPE, simpleTypeName(internalName), qualifiedTypeName(internalName), null, null,
-                    element, Access.NONE, typeCategory(internalName));
+            addReferenceEntry(new EntrySpec(Kind.TYPE, false, pool(simpleTypeName(internalName)),
+                    pool(qualifiedTypeName(internalName)), null, null, Access.NONE, typeCategory(internalName)),
+                    element);
         }
 
         private void addPackageDeclaration(String packageName) {
@@ -478,13 +478,12 @@ public class BytecodeJarIndexer {
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
                 String declaringTypeName, String descriptor) {
-            add(kind, declaration, element, name, qualifiedName, declaringTypeName, descriptor, TypeCategory.UNKNOWN);
+            add(new EntrySpec(kind, declaration, name, qualifiedName, declaringTypeName, descriptor, Access.NONE,
+                    TypeCategory.UNKNOWN), element, false);
         }
 
-        private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
-                String declaringTypeName, String descriptor, TypeCategory category) {
-            add(newEntry(element, new EntrySpec(kind, declaration, name, qualifiedName, declaringTypeName, descriptor,
-                    Access.NONE, category)), false);
+        private void add(EntrySpec spec, IJavaElement element, boolean preserveDuplicate) {
+            add(newEntry(element, spec), preserveDuplicate);
         }
 
         private BytecodeSearchEntry newEntry(IJavaElement element, EntrySpec spec) {
