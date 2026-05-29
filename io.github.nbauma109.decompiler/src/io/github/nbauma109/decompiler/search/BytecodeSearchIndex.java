@@ -51,6 +51,7 @@ import org.eclipse.swt.widgets.Display;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public final class BytecodeSearchIndex {
@@ -75,7 +76,7 @@ public final class BytecodeSearchIndex {
 
     private final IElementChangedListener classpathListener = this::classpathChanged;
 
-    private final AtomicReference<Map<IPath, JarIndex>> indexes =
+    private final AtomicReference<Map<RootKey, JarIndex>> indexes =
             new AtomicReference<>(Collections.emptyMap());
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean refreshCompleted = new AtomicBoolean();
@@ -184,11 +185,11 @@ public final class BytecodeSearchIndex {
     private void refresh(IProgressMonitor monitor) {
         boolean scheduleAgain;
         try {
-            Map<IPath, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
+            Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
             List<JarPlan> plans = plan(roots);
             SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                     totalTicks(plans));
-            Map<IPath, JarIndex> rebuilt = new LinkedHashMap<>();
+            Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
             for (JarPlan plan : plans) {
                 if (subMonitor.isCanceled()) {
                     return;
@@ -196,10 +197,10 @@ public final class BytecodeSearchIndex {
                 File jar = plan.jar();
                 subMonitor.subTask(jar.getName());
                 if (plan.existing() != null) {
-                    rebuilt.put(plan.path(), plan.existing());
+                    rebuilt.put(plan.key(), plan.existing());
                     subMonitor.worked(1);
                 } else {
-                    rebuilt.put(plan.path(), BytecodeJarIndexer.index(plan.root(), jar, plan.work(),
+                    rebuilt.put(plan.key(), BytecodeJarIndexer.index(plan.root(), jar, plan.work(),
                             subMonitor.split(plan.ticks())));
                 }
             }
@@ -225,17 +226,18 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private List<JarPlan> plan(Map<IPath, IPackageFragmentRoot> roots) {
+    private List<JarPlan> plan(Map<RootKey, IPackageFragmentRoot> roots) {
         List<JarPlan> plans = new ArrayList<>(roots.size());
-        for (Map.Entry<IPath, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
-            IPath path = rootEntry.getKey();
+        for (Map.Entry<RootKey, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
+            RootKey key = rootEntry.getKey();
+            IPath path = key.path();
             File jar = path.toFile();
-            JarIndex existing = indexes.get().get(path);
+            JarIndex existing = indexes.get().get(key);
             if (existing != null && existing.matches(jar)) {
-                plans.add(new JarPlan(rootEntry.getValue(), jar, path, existing, null, 1));
+                plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, 1));
             } else {
                 BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
-                plans.add(new JarPlan(rootEntry.getValue(), jar, path, null, work, work.totalTicks()));
+                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, work.totalTicks()));
             }
         }
         return plans;
@@ -290,10 +292,10 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private static Map<IPath, IPackageFragmentRoot> collectApplicationLibraryRootsWithoutSource()
+    private static Map<RootKey, IPackageFragmentRoot> collectApplicationLibraryRootsWithoutSource()
             throws JavaModelException {
         IJavaModel javaModel = JavaCore.create(ResourcesPlugin.getWorkspace().getRoot());
-        Map<IPath, IPackageFragmentRoot> candidates = new LinkedHashMap<>();
+        Map<RootKey, IPackageFragmentRoot> candidates = new LinkedHashMap<>();
 
         for (IJavaProject project : javaModel.getJavaProjects()) {
             if (!project.exists() || !project.getProject().isOpen()) {
@@ -307,7 +309,7 @@ public final class BytecodeSearchIndex {
         return candidates;
     }
 
-    private static void collectRoot(IPackageFragmentRoot root, Map<IPath, IPackageFragmentRoot> candidates)
+    private static void collectRoot(IPackageFragmentRoot root, Map<RootKey, IPackageFragmentRoot> candidates)
             throws JavaModelException {
         if (root.getKind() != IPackageFragmentRoot.K_BINARY || !root.isArchive() || isJreRoot(root)) {
             return;
@@ -320,7 +322,7 @@ public final class BytecodeSearchIndex {
 
         boolean hasSource = root.getSourceAttachmentPath() != null;
         if (!hasSource) {
-            candidates.putIfAbsent(path, root);
+            candidates.putIfAbsent(new RootKey(root.getHandleIdentifier(), path), root);
         }
     }
 
@@ -492,6 +494,7 @@ public final class BytecodeSearchIndex {
             private final int[] qualifiedNameIds;
             private final int[] declaringTypeNameIds;
             private final int[] descriptorIds;
+            private final byte[] typeCategoryIds;
 
             private CompactEntries(EntryArrays arrays) {
                 this.strings = arrays.tables().strings();
@@ -503,6 +506,7 @@ public final class BytecodeSearchIndex {
                 this.qualifiedNameIds = arrays.columns().qualifiedNameIds();
                 this.declaringTypeNameIds = arrays.columns().declaringTypeNameIds();
                 this.descriptorIds = arrays.columns().descriptorIds();
+                this.typeCategoryIds = arrays.columns().typeCategoryIds();
             }
 
             private static CompactEntries from(List<BytecodeSearchEntry> entries) {
@@ -515,6 +519,7 @@ public final class BytecodeSearchIndex {
                 int[] qualifiedNameIds = new int[size];
                 int[] declaringTypeNameIds = new int[size];
                 int[] descriptorIds = new int[size];
+                byte[] typeCategoryIds = new byte[size];
                 for (int i = 0; i < size; i++) {
                     BytecodeSearchEntry entry = entries.get(i);
                     kindAndFlags[i] = kindAndFlags(entry);
@@ -523,10 +528,11 @@ public final class BytecodeSearchIndex {
                     qualifiedNameIds[i] = strings.id(entry.getQualifiedName());
                     declaringTypeNameIds[i] = strings.id(entry.getDeclaringTypeName());
                     descriptorIds[i] = strings.id(entry.getDescriptor());
+                    typeCategoryIds[i] = (byte) entry.getTypeCategory().ordinal();
                 }
                 StringTables tables = new StringTables(strings.values(), elements.handles(), elements.fallbacks());
                 EntryColumns columns = new EntryColumns(kindAndFlags, elementHandleIds, nameIds, qualifiedNameIds,
-                        declaringTypeNameIds, descriptorIds);
+                        declaringTypeNameIds, descriptorIds, typeCategoryIds);
                 return new CompactEntries(new EntryArrays(tables, columns));
             }
 
@@ -572,7 +578,7 @@ public final class BytecodeSearchIndex {
             }
 
             public record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
-                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds) {
+                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds, byte[] typeCategoryIds) {
 
                 @Override
                 public boolean equals(Object other) {
@@ -590,6 +596,7 @@ public final class BytecodeSearchIndex {
                             .append(qualifiedNameIds, that.qualifiedNameIds)
                             .append(declaringTypeNameIds, that.declaringTypeNameIds)
                             .append(descriptorIds, that.descriptorIds)
+                            .append(typeCategoryIds, that.typeCategoryIds)
                             .isEquals();
                 }
 
@@ -602,6 +609,7 @@ public final class BytecodeSearchIndex {
                             .append(qualifiedNameIds)
                             .append(declaringTypeNameIds)
                             .append(descriptorIds)
+                            .append(typeCategoryIds)
                             .toHashCode();
                 }
 
@@ -614,6 +622,7 @@ public final class BytecodeSearchIndex {
                             .append("qualifiedNameIds", qualifiedNameIds) //$NON-NLS-1$
                             .append("declaringTypeNameIds", declaringTypeNameIds) //$NON-NLS-1$
                             .append("descriptorIds", descriptorIds) //$NON-NLS-1$
+                            .append("typeCategoryIds", typeCategoryIds) //$NON-NLS-1$
                             .toString();
                 }
             }
@@ -630,7 +639,7 @@ public final class BytecodeSearchIndex {
                         BytecodeSearchEntry.symbolReference(string(nameIds[entryId]),
                                 string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
                                 string(descriptorIds[entryId])),
-                        access(entryId));
+                        access(entryId), typeCategory(entryId));
             }
 
             private Kind kind(int entryId) {
@@ -643,6 +652,10 @@ public final class BytecodeSearchIndex {
 
             private Access access(int entryId) {
                 return Access.values()[(kindAndFlags[entryId] >>> 5) & 0x03];
+            }
+
+            private TypeCategory typeCategory(int entryId) {
+                return TypeCategory.values()[typeCategoryIds[entryId]];
             }
 
             private String string(int id) {
@@ -740,7 +753,10 @@ public final class BytecodeSearchIndex {
         void accept(BytecodeSearchEntry entry) throws CoreException;
     }
 
-    private record JarPlan(IPackageFragmentRoot root, File jar, IPath path, JarIndex existing,
+    private record RootKey(String rootHandle, IPath path) {
+    }
+
+    private record JarPlan(RootKey key, IPackageFragmentRoot root, File jar, JarIndex existing,
             BytecodeJarIndexer.JarWork work, int ticks) {
     }
 }

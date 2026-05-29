@@ -70,7 +70,11 @@ public final class DecompilerTestSupport {
     public static BundleJarProjectSetup createJavaProjectWithBundleJar(String bundleId, String entryPath,
             String projectName) throws IOException, CoreException {
         File jarFile = resolveBundleEntryAsFile(bundleId, entryPath);
+        return createJavaProjectWithJar(jarFile, projectName);
+    }
 
+    public static BundleJarProjectSetup createJavaProjectWithJar(File jarFile, String projectName)
+            throws CoreException {
         IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
         IProject project = root.getProject(projectName);
 

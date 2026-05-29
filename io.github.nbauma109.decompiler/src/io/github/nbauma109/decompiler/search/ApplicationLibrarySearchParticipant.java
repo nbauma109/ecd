@@ -37,6 +37,7 @@ import org.eclipse.jdt.ui.search.QuerySpecification;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
@@ -79,6 +80,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private final int limitTo;
         private final Kind kind;
+        private final TypeFilter typeFilter;
         private final String name;
         private final String qualifiedName;
         private final String declaringTypeName;
@@ -92,9 +94,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final Pattern wildcardPattern;
         private final Pattern declaringTypePattern;
 
-        private SearchMatcher(int limitTo, Kind kind, SearchPattern searchPattern) {
+        private SearchMatcher(int limitTo, Kind kind, TypeFilter typeFilter, SearchPattern searchPattern) {
             this.limitTo = limitTo;
             this.kind = kind;
+            this.typeFilter = typeFilter;
             this.name = searchPattern.name();
             this.qualifiedName = searchPattern.qualifiedName();
             this.declaringTypeName = searchPattern.declaringTypeName();
@@ -119,7 +122,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                     return null;
                 }
                 return new SearchMatcher(specification.getLimitTo(), kind,
-                        parsePattern(kind, patternSpecification.getPattern(), patternSpecification.isCaseSensitive()));
+                        typeFilterFor(patternSpecification.getSearchFor()), parsePattern(kind,
+                                patternSpecification.getPattern(), patternSpecification.isCaseSensitive()));
             }
             if (specification instanceof ElementQuerySpecification elementSpecification) {
                 return forElement(specification.getLimitTo(), elementSpecification.getElement());
@@ -129,19 +133,19 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static SearchMatcher forElement(int limitTo, IJavaElement element) {
             if (element instanceof IType type) {
-                return new SearchMatcher(limitTo, Kind.TYPE,
+                return new SearchMatcher(limitTo, Kind.TYPE, TypeFilter.ALL,
                         new SearchPattern(type.getElementName(), normalizeTypeName(type), null, null, null, null,
                                 ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IField field) {
-                return new SearchMatcher(limitTo, Kind.FIELD,
+                return new SearchMatcher(limitTo, Kind.FIELD, TypeFilter.ALL,
                         new SearchPattern(field.getElementName(), field.getElementName(), normalizeDeclaringType(field),
                                 null, null, null, ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IMethod method) {
                 try {
                     boolean constructor = method.isConstructor();
-                    return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD,
+                    return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD, TypeFilter.ALL,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
                                     method.getElementName(), normalizeDeclaringType(method), method.getSignature(),
                                     null, null, ParameterPattern.NONE, MatchPatterns.exact(true)));
@@ -151,12 +155,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 }
             }
             if (element instanceof IPackageFragment pkg) {
-                return new SearchMatcher(limitTo, Kind.PACKAGE,
+                return new SearchMatcher(limitTo, Kind.PACKAGE, TypeFilter.ALL,
                         new SearchPattern(pkg.getElementName(), pkg.getElementName(), null, null, null, null,
                                 ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
             if (element instanceof IModuleDescription module) {
-                return new SearchMatcher(limitTo, Kind.MODULE,
+                return new SearchMatcher(limitTo, Kind.MODULE, TypeFilter.ALL,
                         new SearchPattern(module.getElementName(), module.getElementName(), null, null, null, null,
                                 ParameterPattern.NONE, MatchPatterns.exact(true)));
             }
@@ -165,6 +169,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         boolean matches(BytecodeSearchEntry entry) {
             if (kind != entry.getKind() || !matchesLimit(entry)) {
+                return false;
+            }
+            if (kind == Kind.TYPE && !typeFilter.matches(entry.getTypeCategory())) {
                 return false;
             }
             if (matchesDeclaringType() && !matchesDeclaringType(entry.getDeclaringTypeName())) {
@@ -533,6 +540,19 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             };
         }
 
+        private static TypeFilter typeFilterFor(int searchFor) {
+            return switch (searchFor) {
+            case IJavaSearchConstants.CLASS -> TypeFilter.CLASS;
+            case IJavaSearchConstants.INTERFACE -> TypeFilter.INTERFACE;
+            case IJavaSearchConstants.ENUM -> TypeFilter.ENUM;
+            case IJavaSearchConstants.ANNOTATION_TYPE -> TypeFilter.ANNOTATION;
+            case IJavaSearchConstants.CLASS_AND_ENUM -> TypeFilter.CLASS_AND_ENUM;
+            case IJavaSearchConstants.CLASS_AND_INTERFACE -> TypeFilter.CLASS_AND_INTERFACE;
+            case IJavaSearchConstants.INTERFACE_AND_ANNOTATION -> TypeFilter.INTERFACE_AND_ANNOTATION;
+            default -> TypeFilter.ALL;
+            };
+        }
+
         private static Pattern wildcardPattern(String pattern, boolean caseSensitive) {
             if (!StringUtils.containsAny(pattern, '*', '?')) {
                 return null;
@@ -629,6 +649,59 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             return type.getDescriptor().toLowerCase(Locale.ROOT);
         }
+    }
+
+    private enum TypeFilter {
+        ALL {
+            @Override
+            boolean matches(TypeCategory category) {
+                return true;
+            }
+        },
+        CLASS {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.CLASS;
+            }
+        },
+        INTERFACE {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.INTERFACE;
+            }
+        },
+        ENUM {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.ENUM;
+            }
+        },
+        ANNOTATION {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.ANNOTATION;
+            }
+        },
+        CLASS_AND_ENUM {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.CLASS || category == TypeCategory.ENUM;
+            }
+        },
+        CLASS_AND_INTERFACE {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.CLASS || category == TypeCategory.INTERFACE;
+            }
+        },
+        INTERFACE_AND_ANNOTATION {
+            @Override
+            boolean matches(TypeCategory category) {
+                return category == TypeCategory.INTERFACE || category == TypeCategory.ANNOTATION;
+            }
+        };
+
+        abstract boolean matches(TypeCategory category);
     }
 
     public record SearchPattern(String name, String qualifiedName, String declaringTypeName, String descriptor,

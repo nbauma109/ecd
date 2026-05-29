@@ -52,6 +52,7 @@ import org.objectweb.asm.signature.SignatureVisitor;
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
 
 public class BytecodeJarIndexer {
 
@@ -185,6 +186,7 @@ public class BytecodeJarIndexer {
 
         private String className;
         private IType type;
+        private TypeCategory typeCategory = TypeCategory.UNKNOWN;
         private IJavaElement moduleElement;
 
         private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, Set<EntryKey> seen,
@@ -217,7 +219,8 @@ public class BytecodeJarIndexer {
                 return;
             }
 
-            add(Kind.TYPE, true, type, pool(simpleTypeName(className)), pool(qualifiedTypeName(className)), null, null);
+            add(Kind.TYPE, true, type, pool(simpleTypeName(className)), pool(qualifiedTypeName(className)), null, null,
+                    typeCategory);
             addPackageDeclaration(packageName(className));
             for (String internalName : typeReferences) {
                 addTypeReferenceEntry(internalName, type);
@@ -421,19 +424,19 @@ public class BytecodeJarIndexer {
         }
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element) {
-            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, Access.NONE);
+                IJavaElement element, Access access) {
+            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, access, TypeCategory.UNKNOWN);
         }
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access) {
+                IJavaElement element, Access access, TypeCategory category) {
             add(newEntry(element, new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor), access)), true);
+                    pool(descriptor), access, category)), true);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
             addReferenceEntry(Kind.TYPE, simpleTypeName(internalName), qualifiedTypeName(internalName), null, null,
-                    element);
+                    element, Access.NONE, typeCategory(internalName));
         }
 
         private void addPackageDeclaration(String packageName) {
@@ -475,8 +478,13 @@ public class BytecodeJarIndexer {
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
                 String declaringTypeName, String descriptor) {
+            add(kind, declaration, element, name, qualifiedName, declaringTypeName, descriptor, TypeCategory.UNKNOWN);
+        }
+
+        private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
+                String declaringTypeName, String descriptor, TypeCategory category) {
             add(newEntry(element, new EntrySpec(kind, declaration, name, qualifiedName, declaringTypeName, descriptor,
-                    Access.NONE)), false);
+                    Access.NONE, category)), false);
         }
 
         private BytecodeSearchEntry newEntry(IJavaElement element, EntrySpec spec) {
@@ -485,7 +493,7 @@ public class BytecodeJarIndexer {
             return new BytecodeSearchEntry(spec.kind(), spec.declaration(),
                     BytecodeSearchEntry.elementReference(elementHandle, fallback),
                     BytecodeSearchEntry.symbolReference(spec.name(), spec.qualifiedName(), spec.declaringTypeName(),
-                            spec.descriptor()), spec.access());
+                            spec.descriptor()), spec.access(), spec.typeCategory());
         }
 
         private void add(BytecodeSearchEntry entry, boolean preserveDuplicate) {
@@ -494,7 +502,7 @@ public class BytecodeJarIndexer {
             }
             EntryKey key = new EntryKey(entry.getKind(), entry.isDeclaration(), entry.getElementHandle(),
                     entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor(),
-                    entry.getAccess());
+                    entry.getAccess(), entry.getTypeCategory());
             if (preserveDuplicate || seen.add(key)) {
                 entries.add(entry);
             }
@@ -548,6 +556,7 @@ public class BytecodeJarIndexer {
             public void visit(int version, int access, String name, String signature, String superName,
                     String[] interfaces) {
                 className = name;
+                typeCategory = typeCategory(access);
                 if (!MODULE_INFO.equals(name)) {
                     type = typeForInternalName(root, name);
                 }
@@ -615,6 +624,46 @@ public class BytecodeJarIndexer {
             IPackageFragment pkg = root.getPackageFragment(packageName(internalName));
             IClassFile classFile = pkg.getClassFile(classFileName(internalName));
             return classFile instanceof IOrdinaryClassFile ordinaryClassFile ? ordinaryClassFile.getType() : null;
+        }
+
+        private TypeCategory typeCategory(String internalName) {
+            return typeCategory(typeForInternalName(root, internalName));
+        }
+
+        private static TypeCategory typeCategory(IType type) {
+            if (type == null || !type.exists()) {
+                return TypeCategory.UNKNOWN;
+            }
+            try {
+                if (type.isAnnotation()) {
+                    return TypeCategory.ANNOTATION;
+                }
+                if (type.isEnum()) {
+                    return TypeCategory.ENUM;
+                }
+                if (type.isInterface()) {
+                    return TypeCategory.INTERFACE;
+                }
+                if (type.isClass()) {
+                    return TypeCategory.CLASS;
+                }
+            } catch (org.eclipse.jdt.core.JavaModelException e) {
+                JavaDecompilerPlugin.logError(e, "Failed to inspect indexed type category"); //$NON-NLS-1$
+            }
+            return TypeCategory.UNKNOWN;
+        }
+
+        private static TypeCategory typeCategory(int access) {
+            if ((access & Opcodes.ACC_ANNOTATION) != 0) {
+                return TypeCategory.ANNOTATION;
+            }
+            if ((access & Opcodes.ACC_ENUM) != 0) {
+                return TypeCategory.ENUM;
+            }
+            if ((access & Opcodes.ACC_INTERFACE) != 0) {
+                return TypeCategory.INTERFACE;
+            }
+            return TypeCategory.CLASS;
         }
 
         private static String[] jdtParameterTypes(String descriptor) {
@@ -804,11 +853,11 @@ public class BytecodeJarIndexer {
     }
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,
-            String declaringTypeName, String descriptor, Access access) {
+            String declaringTypeName, String descriptor, Access access, TypeCategory typeCategory) {
     }
 
     private record EntrySpec(Kind kind, boolean declaration, String name, String qualifiedName,
-            String declaringTypeName, String descriptor, Access access) {
+            String declaringTypeName, String descriptor, Access access, TypeCategory typeCategory) {
     }
 
     private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,

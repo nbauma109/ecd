@@ -29,6 +29,14 @@ public class BytecodeSearchEntry {
         WRITE
     }
 
+    public enum TypeCategory {
+        UNKNOWN,
+        CLASS,
+        INTERFACE,
+        ENUM,
+        ANNOTATION
+    }
+
     private final Kind kind;
     private final boolean declaration;
     private final String elementHandle;
@@ -38,6 +46,7 @@ public class BytecodeSearchEntry {
     private final String declaringTypeName;
     private final String descriptor;
     private final Access access;
+    private final TypeCategory typeCategory;
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference) {
@@ -46,6 +55,11 @@ public class BytecodeSearchEntry {
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference, Access access) {
+        this(kind, declaration, elementReference, symbolReference, access, TypeCategory.UNKNOWN);
+    }
+
+    public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+            SymbolReference symbolReference, Access access, TypeCategory typeCategory) {
         this.kind = kind;
         this.declaration = declaration;
         this.elementHandle = elementReference.handle();
@@ -55,6 +69,7 @@ public class BytecodeSearchEntry {
         this.declaringTypeName = symbolReference.declaringTypeName();
         this.descriptor = symbolReference.descriptor();
         this.access = access == null ? Access.NONE : access;
+        this.typeCategory = typeCategory == null ? TypeCategory.UNKNOWN : typeCategory;
     }
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
@@ -129,6 +144,10 @@ public class BytecodeSearchEntry {
 
     Access getAccess() {
         return access;
+    }
+
+    TypeCategory getTypeCategory() {
+        return typeCategory;
     }
 
 }

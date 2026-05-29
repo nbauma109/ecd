@@ -76,7 +76,8 @@ public class BytecodeSearchIndexInternalTest {
     // ------------------------------------------------------------------
     // EntryColumns(byte[] kindAndFlags, int[] elementHandleIds,
     //              int[] nameIds, int[] qualifiedNameIds,
-    //              int[] declaringTypeNameIds, int[] descriptorIds)
+    //              int[] declaringTypeNameIds, int[] descriptorIds,
+    //              byte[] typeCategoryIds)
     // ------------------------------------------------------------------
 
     @Test
@@ -87,10 +88,13 @@ public class BytecodeSearchIndexInternalTest {
         int[] qi = {5};
         int[] di = {6};
         int[] ds = {7};
+        byte[] tc = {8};
 
-        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds);
-        EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone());
-        EntryColumns c = new EntryColumns(new byte[]{9}, eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone());
+        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc);
+        EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
+                tc.clone());
+        EntryColumns c = new EntryColumns(new byte[]{9}, eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
+                tc.clone());
 
         assertEquals("reflexive", a, a); //$NON-NLS-1$
         assertNotEquals("null check", a, null); //$NON-NLS-1$
@@ -107,9 +111,11 @@ public class BytecodeSearchIndexInternalTest {
         int[] qi = {4};
         int[] di = {5};
         int[] ds = {6};
+        byte[] tc = {7};
 
-        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds);
-        EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone());
+        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc);
+        EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
+                tc.clone());
 
         assertEquals("equal objects must share hashCode", a.hashCode(), b.hashCode()); //$NON-NLS-1$
     }
@@ -117,7 +123,7 @@ public class BytecodeSearchIndexInternalTest {
     @Test
     public void entryColumnToStringContainsAllFieldNames() {
         EntryColumns e = new EntryColumns(new byte[]{1}, new int[]{2}, new int[]{3},
-                new int[]{4}, new int[]{5}, new int[]{6});
+                new int[]{4}, new int[]{5}, new int[]{6}, new byte[]{7});
         String s = e.toString();
 
         assertTrue("toString must include 'kindAndFlags'", s.contains("kindAndFlags")); //$NON-NLS-1$ //$NON-NLS-2$
@@ -126,5 +132,6 @@ public class BytecodeSearchIndexInternalTest {
         assertTrue("toString must include 'qualifiedNameIds'", s.contains("qualifiedNameIds")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("toString must include 'declaringTypeNameIds'", s.contains("declaringTypeNameIds")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("toString must include 'descriptorIds'", s.contains("descriptorIds")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue("toString must include 'typeCategoryIds'", s.contains("typeCategoryIds")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 }

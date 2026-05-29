@@ -15,9 +15,12 @@ import static org.junit.Assert.assertTrue;
 import static io.github.nbauma109.decompiler.search.ApplicationLibrarySearchMatchPresentation.isShownInSameTopLevelClass;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
@@ -64,6 +67,8 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
@@ -82,6 +87,7 @@ public class ApplicationLibrarySearchParticipantTest {
     private static final String SEARCH_ANNOTATION_TYPE = "org.eclipse.search.results"; //$NON-NLS-1$
 
     private IProject project;
+    private final List<IProject> extraProjects = new ArrayList<>();
     private File tempDir;
 
     @Before
@@ -98,6 +104,12 @@ public class ApplicationLibrarySearchParticipantTest {
         if (project != null && project.exists()) {
             project.delete(true, true, new NullProgressMonitor());
         }
+        for (IProject extraProject : extraProjects) {
+            if (extraProject != null && extraProject.exists()) {
+                extraProject.delete(true, true, new NullProgressMonitor());
+            }
+        }
+        extraProjects.clear();
         if (tempDir != null) {
             FileUtils.deleteQuietly(tempDir);
         }
@@ -272,6 +284,56 @@ public class ApplicationLibrarySearchParticipantTest {
         List<Match> matches = runSearchInBackground(participant, specification);
 
         assertFalse("Binary archive roots with non-jar extensions must be indexed", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void sameJarReferencedByMultipleProjectsIsIndexedForEachProjectRoot()
+            throws Exception {
+        BundleJarProjectSetup first = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-shared-jar-first-project"); //$NON-NLS-1$
+        BundleJarProjectSetup second = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID,
+                TEST_JAR_PATH,
+                "application-library-search-shared-jar-second-project"); //$NON-NLS-1$
+        project = first.project();
+        extraProjects.add(second.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+
+        assertFalse("The first project scope must find bytecode matches from the shared jar", //$NON-NLS-1$
+                printlnReferenceMatches(participant, first.jarRoot()).isEmpty());
+        assertFalse("The second project scope must find bytecode matches from the same shared jar", //$NON-NLS-1$
+                printlnReferenceMatches(participant, second.jarRoot()).isEmpty());
+    }
+
+    @Test
+    public void fineGrainedTypeSearchesRespectIndexedTypeCategories()
+            throws Exception {
+        File jar = new File(tempDir, "type-categories.jar"); //$NON-NLS-1$
+        createTypeCategoryJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-type-category-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(List.of("classes.Same"), typeDeclarationNames(runSearchInBackground(participant, //$NON-NLS-1$
+                sameTypeSpecification(IJavaSearchConstants.CLASS, scope))));
+        assertEquals(List.of("interfaces.Same"), typeDeclarationNames(runSearchInBackground(participant, //$NON-NLS-1$
+                sameTypeSpecification(IJavaSearchConstants.INTERFACE, scope))));
+        assertEquals(List.of("enums.Same"), typeDeclarationNames(runSearchInBackground(participant, //$NON-NLS-1$
+                sameTypeSpecification(IJavaSearchConstants.ENUM, scope))));
+        assertEquals(List.of("annotations.Same"), typeDeclarationNames(runSearchInBackground(participant, //$NON-NLS-1$
+                sameTypeSpecification(IJavaSearchConstants.ANNOTATION_TYPE, scope))));
     }
 
     @Test
@@ -958,6 +1020,65 @@ public class ApplicationLibrarySearchParticipantTest {
             throw new AssertionError("Search failed", failure.get()); //$NON-NLS-1$
         }
         return matches;
+    }
+
+    private static List<Match> printlnReferenceMatches(ApplicationLibrarySearchParticipant participant,
+            IPackageFragmentRoot root) throws Exception {
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { root });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.io.PrintStream.println(*)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library shared jar println references"); //$NON-NLS-1$
+        return runSearchInBackground(participant, specification);
+    }
+
+    private static PatternQuerySpecification sameTypeSpecification(int searchFor, IJavaSearchScope scope) {
+        return new PatternQuerySpecification(
+                "Same", //$NON-NLS-1$
+                searchFor,
+                true,
+                IJavaSearchConstants.ALL_OCCURRENCES,
+                scope,
+                "Application library same type category search"); //$NON-NLS-1$
+    }
+
+    private static List<String> typeDeclarationNames(List<Match> matches) {
+        List<String> names = new ArrayList<>();
+        for (Match match : matches) {
+            if (match instanceof BytecodeSearchMatch
+                    && match.getElement() instanceof IAdaptable adaptable
+                    && adaptable.getAdapter(IJavaElement.class) instanceof IType type) {
+                names.add(type.getFullyQualifiedName('.'));
+            }
+        }
+        return names;
+    }
+
+    private static void createTypeCategoryJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addType(output, "classes/Same", Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, //$NON-NLS-1$
+                    "java/lang/Object"); //$NON-NLS-1$
+            addType(output, "interfaces/Same", Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT, //$NON-NLS-1$
+                    "java/lang/Object"); //$NON-NLS-1$
+            addType(output, "enums/Same", Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER | Opcodes.ACC_ENUM, //$NON-NLS-1$
+                    "java/lang/Enum"); //$NON-NLS-1$
+            addType(output, "annotations/Same", //$NON-NLS-1$
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT | Opcodes.ACC_ANNOTATION,
+                    "java/lang/Object", "java/lang/annotation/Annotation"); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+    }
+
+    private static void addType(JarOutputStream output, String internalName, int access, String superName,
+            String... interfaces) throws Exception {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, access, internalName, null, superName, interfaces);
+        writer.visitEnd();
+        output.putNextEntry(new JarEntry(internalName + ".class")); //$NON-NLS-1$
+        output.write(writer.toByteArray());
+        output.closeEntry();
     }
 
     private static BytecodeSearchEntry reference(Kind kind, IJavaElement element, String name) {
