@@ -285,9 +285,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(TypeDeclaration node) {
-            anonymousCounterStack.push(anonymousTypeCounter);
-            anonymousTypeCounter = 0;
-            typeStack.add(node.getName().getIdentifier());
+            pushNamedType(node, node.getName().getIdentifier());
             if (element instanceof IType type && sameName(type.getElementName(), node.getName())
                     && matchesCurrentType()) {
                 range = range(node);
@@ -304,9 +302,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(RecordDeclaration node) {
-            anonymousCounterStack.push(anonymousTypeCounter);
-            anonymousTypeCounter = 0;
-            typeStack.add(node.getName().getIdentifier());
+            pushNamedType(node, node.getName().getIdentifier());
             if (element instanceof IType type && sameName(type.getElementName(), node.getName())
                     && matchesCurrentType()) {
                 range = range(node);
@@ -323,9 +319,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(EnumDeclaration node) {
-            anonymousCounterStack.push(anonymousTypeCounter);
-            anonymousTypeCounter = 0;
-            typeStack.add(node.getName().getIdentifier());
+            pushNamedType(node, node.getName().getIdentifier());
             if (element instanceof IType type && sameName(type.getElementName(), node.getName())
                     && matchesCurrentType()) {
                 range = range(node);
@@ -342,9 +336,7 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(AnnotationTypeDeclaration node) {
-            anonymousCounterStack.push(anonymousTypeCounter);
-            anonymousTypeCounter = 0;
-            typeStack.add(node.getName().getIdentifier());
+            pushNamedType(node, node.getName().getIdentifier());
             if (element instanceof IType type && sameName(type.getElementName(), node.getName())
                     && matchesCurrentType()) {
                 range = range(node);
@@ -489,6 +481,18 @@ public class BytecodeSourceRangeResolver {
             return typePath == null || typePath.matches(typeStack);
         }
 
+        private void pushNamedType(ASTNode node, String name) {
+            String typeName = isLocalTypeDeclaration(node) ? Integer.toString(++anonymousTypeCounter) + name : name;
+            anonymousCounterStack.push(anonymousTypeCounter);
+            anonymousTypeCounter = 0;
+            typeStack.add(typeName);
+        }
+
+        private static boolean isLocalTypeDeclaration(ASTNode node) {
+            ASTNode parent = node.getParent();
+            return parent != null && parent.getNodeType() == ASTNode.TYPE_DECLARATION_STATEMENT;
+        }
+
         private void popType() {
             if (!typeStack.isEmpty()) {
                 typeStack.remove(typeStack.size() - 1);
@@ -505,9 +509,7 @@ public class BytecodeSourceRangeResolver {
                 if (Strings.CS.endsWith(classFileName, ".class")) { //$NON-NLS-1$
                     classFileName = classFileName.substring(0, classFileName.length() - ".class".length()); //$NON-NLS-1$
                 }
-                List<String> names = Arrays.stream(classFileName.split("\\$")) //$NON-NLS-1$
-                        .map(TypePath::stripLocalClassPrefix)
-                        .toList();
+                List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
                 return new TypePath(names);
             }
             IType type = null;
@@ -522,20 +524,6 @@ public class BytecodeSourceRangeResolver {
             String typeName = type.getTypeQualifiedName('.');
             List<String> names = Arrays.asList(typeName.split("\\.")); //$NON-NLS-1$
             return new TypePath(names);
-        }
-
-        /**
-         * Strips the leading numeric prefix that the compiler adds to local-class segments in
-         * class file names (e.g. {@code "1Local"} → {@code "Local"}).  Pure-numeric segments
-         * (anonymous-class markers such as {@code "1"}, {@code "2"}) are left unchanged so
-         * they still match the integer strings pushed by {@link AstDeclarationWindow}.
-         */
-        private static String stripLocalClassPrefix(String segment) {
-            int i = 0;
-            while (i < segment.length() && Character.isDigit(segment.charAt(i))) {
-                i++;
-            }
-            return (i > 0 && i < segment.length()) ? segment.substring(i) : segment;
         }
 
         private boolean matches(List<String> currentTypeStack) {

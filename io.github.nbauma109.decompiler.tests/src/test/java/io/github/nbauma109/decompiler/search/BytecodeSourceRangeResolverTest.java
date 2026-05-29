@@ -11,6 +11,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +23,7 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -643,6 +646,42 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void localClassOrdinalsSelectTheMatchingDeclarationWindow() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void first() {
+                        class Local {
+                            int marker = hit();
+                        }
+                    }
+
+                    void second() {
+                        class Local {
+                            int marker = hit();
+                        }
+                    }
+
+                    int hit() { return 0; }
+                }
+                """;
+
+        IField marker = binaryLocalClassField("Owner$2Local.class", "marker"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry entry = new BytecodeSearchEntry(
+                Kind.METHOD,
+                false,
+                BytecodeSearchEntry.elementReference(null, marker),
+                BytecodeSearchEntry.symbolReference("hit", "hit", FIXTURE_OWNER, "()I")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int secondLocalHit = src.indexOf("hit()", src.indexOf("void second")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(secondLocalHit, range.offset());
+        assertEquals("hit()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
     public void typeDeclarationNamesAreNotReportedAsReferences() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 
@@ -805,6 +844,69 @@ public class BytecodeSourceRangeResolverTest {
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         assertTrue("range text must start with 'target'", //$NON-NLS-1$
                 customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
+    }
+
+    private static IField binaryLocalClassField(String classFileName, String fieldName) {
+        IClassFile classFile = proxy(IClassFile.class, (proxy, method, args) -> {
+            if ("getElementName".equals(method.getName())) { //$NON-NLS-1$
+                return classFileName;
+            }
+            return defaultValue(method.getReturnType());
+        });
+        return proxy(IField.class, (proxy, method, args) -> {
+            if ("getElementName".equals(method.getName())) { //$NON-NLS-1$
+                return fieldName;
+            }
+            if ("getAncestor".equals(method.getName()) && args != null && args.length == 1 //$NON-NLS-1$
+                    && Integer.valueOf(IJavaElement.CLASS_FILE).equals(args[0])) {
+                return classFile;
+            }
+            return defaultValue(method.getReturnType());
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T proxy(Class<T> type, InvocationHandler handler) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type }, (proxy, method, args) -> {
+            if ("toString".equals(method.getName())) { //$NON-NLS-1$
+                return type.getSimpleName();
+            }
+            if ("hashCode".equals(method.getName())) { //$NON-NLS-1$
+                return Integer.valueOf(System.identityHashCode(proxy));
+            }
+            if ("equals".equals(method.getName())) { //$NON-NLS-1$
+                return Boolean.valueOf(proxy == args[0]);
+            }
+            return handler.invoke(proxy, method, args);
+        });
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return null;
+        }
+        if (type == Boolean.TYPE) {
+            return Boolean.FALSE;
+        }
+        if (type == Character.TYPE) {
+            return Character.valueOf('\0');
+        }
+        if (type == Long.TYPE) {
+            return Long.valueOf(0L);
+        }
+        if (type == Float.TYPE) {
+            return Float.valueOf(0.0f);
+        }
+        if (type == Double.TYPE) {
+            return Double.valueOf(0.0d);
+        }
+        if (type == Byte.TYPE) {
+            return Byte.valueOf((byte) 0);
+        }
+        if (type == Short.TYPE) {
+            return Short.valueOf((short) 0);
+        }
+        return Integer.valueOf(0);
     }
 
     private static BytecodeSearchEntry declaration(Kind kind, IJavaElement element, String name) {
