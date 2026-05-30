@@ -864,6 +864,7 @@ public class BytecodeJarIndexer {
         private final class MethodIndexer extends MethodVisitor {
 
             private final IJavaElement method;
+            private final Set<String> pendingNewTypes = new HashSet<>();
 
             private MethodIndexer(IJavaElement method) {
                 super(Opcodes.ASM9);
@@ -913,6 +914,9 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitTypeInsn(int opcode, String type) {
+                if (opcode == Opcodes.NEW) {
+                    pendingNewTypes.add(type);
+                }
                 addTypeReference(type, method);
             }
 
@@ -926,7 +930,9 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                addTypeReference(owner, method);
+                if (!CONSTRUCTOR.equals(name) || !pendingNewTypes.remove(owner)) {
+                    addTypeReference(owner, method);
+                }
                 addDescriptorReferences(descriptor, method);
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),

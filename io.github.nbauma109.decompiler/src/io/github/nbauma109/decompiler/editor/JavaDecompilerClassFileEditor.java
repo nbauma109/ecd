@@ -17,6 +17,8 @@ package io.github.nbauma109.decompiler.editor;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +40,7 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
 import org.eclipse.jdt.internal.core.PackageFragment;
@@ -743,14 +746,21 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         String methodName = sourceMethodName(method, nestedClassFile);
         Matcher matcher = Pattern.compile("\\b" + Pattern.quote(methodName) + "\\s*\\(").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
         matcher.region(typeOffset, boundedEnd(source, typeEnd));
+        String[] parameterTypes = method.getParameterTypes();
+        int fallback = -1;
         while (matcher.find()) {
             int openParenOffset = matcher.end() - 1;
             if (hasParameterCount(source, openParenOffset, method.getNumberOfParameters())
                     && isMethodDeclaration(source, typeOffset, matcher.start(), openParenOffset)) {
-                return matcher.start();
+                if (matchesParameterTypes(source, openParenOffset, parameterTypes)) {
+                    return matcher.start();
+                }
+                if (fallback < 0) {
+                    fallback = matcher.start();
+                }
             }
         }
-        return -1;
+        return fallback;
     }
 
     private int findFieldNameOffset(String source, IField field, int typeOffset, int typeEnd) {
@@ -801,6 +811,126 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             return expectedParameterCount == 0;
         }
         return countParameters(parameters) == expectedParameterCount;
+    }
+
+    private boolean matchesParameterTypes(String source, int openParenOffset, String[] parameterTypes) {
+        if (parameterTypes.length == 0) {
+            return true;
+        }
+        int closeParen = JavaSourceMemberParser.findMatchingClose(source, openParenOffset, '(', ')');
+        if (closeParen < 0) {
+            return true;
+        }
+        String paramsStr = source.substring(openParenOffset + 1, closeParen).trim();
+        if (paramsStr.isEmpty()) {
+            return true;
+        }
+        List<String> sourceTypes = extractSourceParamTypes(paramsStr);
+        if (sourceTypes.size() != parameterTypes.length) {
+            return true;
+        }
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (!jdtSignatureToSimpleName(parameterTypes[i]).equals(sourceTypes.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String jdtSignatureToSimpleName(String sig) {
+        int arrayCount = 0;
+        int pos = 0;
+        while (pos < sig.length() && sig.charAt(pos) == '[') {
+            arrayCount++;
+            pos++;
+        }
+        String elementSig = sig.substring(pos);
+        String baseName;
+        if (elementSig.length() > 1 && elementSig.charAt(0) == 'L' && elementSig.endsWith(";")) { //$NON-NLS-1$
+            String qualified = elementSig.substring(1, elementSig.length() - 1);
+            int dot = qualified.lastIndexOf('.');
+            baseName = dot < 0 ? qualified : qualified.substring(dot + 1);
+        } else {
+            baseName = Signature.getSignatureSimpleName(elementSig);
+        }
+        if (arrayCount == 0) {
+            return baseName;
+        }
+        StringBuilder sb = new StringBuilder(baseName);
+        for (int i = 0; i < arrayCount; i++) {
+            sb.append("[]"); //$NON-NLS-1$
+        }
+        return sb.toString();
+    }
+
+    private List<String> extractSourceParamTypes(String paramsStr) {
+        List<String> types = new ArrayList<>();
+        for (String part : splitByTopLevelComma(paramsStr)) {
+            types.add(extractParamType(part.trim()));
+        }
+        return types;
+    }
+
+    private List<String> splitByTopLevelComma(String str) {
+        List<String> parts = new ArrayList<>();
+        int start = 0;
+        int depth = 0;
+        for (int i = 0; i < str.length(); i++) {
+            char ch = str.charAt(i);
+            if (ch == '<' || ch == '(') {
+                depth++;
+            } else if ((ch == '>' || ch == ')') && depth > 0) {
+                depth--;
+            } else if (ch == ',' && depth == 0) {
+                parts.add(str.substring(start, i).trim());
+                start = i + 1;
+            }
+        }
+        parts.add(str.substring(start).trim());
+        return parts;
+    }
+
+    private String extractParamType(String param) {
+        param = param.trim();
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            if (param.startsWith("final ")) { //$NON-NLS-1$
+                param = param.substring(6).trim();
+                changed = true;
+            }
+            if (param.startsWith("@")) { //$NON-NLS-1$
+                int spaceIdx = param.indexOf(' ');
+                if (spaceIdx < 0) {
+                    return param;
+                }
+                param = param.substring(spaceIdx).trim();
+                changed = true;
+            }
+        }
+        int lastSpace = -1;
+        int depth = 0;
+        for (int i = 0; i < param.length(); i++) {
+            char ch = param.charAt(i);
+            if (ch == '<') {
+                depth++;
+            } else if (ch == '>' && depth > 0) {
+                depth--;
+            } else if (ch == ' ' && depth == 0) {
+                lastSpace = i;
+            }
+        }
+        if (lastSpace < 0) {
+            return param;
+        }
+        String typePart = param.substring(0, lastSpace).trim();
+        int angleIdx = typePart.indexOf('<');
+        if (angleIdx >= 0) {
+            int lastAngle = typePart.lastIndexOf('>');
+            String suffix = lastAngle >= 0 ? typePart.substring(lastAngle + 1) : ""; //$NON-NLS-1$
+            typePart = typePart.substring(0, angleIdx) + suffix;
+        }
+        return typePart.replace("...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     private boolean isMethodDeclaration(String source, int typeOffset, int nameStart, int openParenOffset) {
