@@ -443,6 +443,11 @@ public class BytecodeJarIndexer {
                 @Override
                 public void visitEnum(String name, String descriptor, String value) {
                     addDescriptorReferences(descriptor, element);
+                    if (descriptor.startsWith("L") && descriptor.endsWith(";")) { //$NON-NLS-1$ //$NON-NLS-2$
+                        String owner = descriptor.substring(1, descriptor.length() - 1);
+                        addReference(Kind.FIELD, value, value, qualifiedTypeName(owner), descriptor, element,
+                                Access.READ);
+                    }
                 }
 
                 @Override
@@ -933,14 +938,19 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+                addTypeReference(owner, method);
+                addDescriptorReferences(descriptor, method);
                 addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method,
                         fieldAccess(opcode));
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
+                    addTypeReference(owner, method);
+                }
+                addDescriptorReferences(descriptor, method);
                 if (CONSTRUCTOR.equals(name)) {
-                    consumePendingNew(owner);
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
                             qualifiedTypeName(owner), descriptor, method);
                 } else {

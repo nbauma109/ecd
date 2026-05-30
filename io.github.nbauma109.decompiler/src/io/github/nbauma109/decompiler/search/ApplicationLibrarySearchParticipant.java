@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -26,9 +27,10 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IModuleDescription;
 import org.eclipse.jdt.core.IPackageFragment;
-import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.ITypeParameter;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.ui.search.ElementQuerySpecification;
 import org.eclipse.jdt.ui.search.IMatchPresentation;
@@ -96,8 +98,14 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final Pattern wildcardPattern;
         private final Pattern declaringTypePattern;
         private final Map<String, Boolean> syntheticConstructorParametersByOwner = new HashMap<>();
+        private final Map<String, String> enclosingTypeErasures;
 
         private SearchMatcher(int limitTo, Kind kind, TypeFilter typeFilter, SearchPattern searchPattern) {
+            this(limitTo, kind, typeFilter, searchPattern, Collections.emptyMap());
+        }
+
+        private SearchMatcher(int limitTo, Kind kind, TypeFilter typeFilter, SearchPattern searchPattern,
+                Map<String, String> enclosingTypeErasures) {
             this.limitTo = limitTo;
             this.kind = kind;
             this.typeFilter = typeFilter;
@@ -113,6 +121,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             this.caseSensitive = searchPattern.caseSensitive();
             this.wildcardPattern = searchPattern.wildcardPattern();
             this.declaringTypePattern = searchPattern.declaringTypePattern();
+            this.enclosingTypeErasures = enclosingTypeErasures;
         }
 
         static SearchMatcher create(QuerySpecification specification) {
@@ -148,10 +157,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             if (element instanceof IMethod method) {
                 try {
                     boolean constructor = method.isConstructor();
+                    Map<String, String> enclosingErasures = typeVariableErasures(method.getDeclaringType());
                     return new SearchMatcher(limitTo, constructor ? Kind.CONSTRUCTOR : Kind.METHOD, TypeFilter.ALL,
                             new SearchPattern(constructor ? declaringSimpleName(method) : method.getElementName(),
                                     method.getElementName(), normalizeDeclaringType(method), method.getSignature(),
-                                    null, null, ParameterPattern.NONE, MatchPatterns.exact(true)));
+                                    null, null, ParameterPattern.NONE, MatchPatterns.exact(true)),
+                            enclosingErasures);
                 } catch (JavaModelException e) {
                     Logger.debug(e);
                     return null;
@@ -276,7 +287,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private boolean sameDescriptor(String jdtSignature, String bytecodeDescriptor) {
             try {
-                String[] jdtTypes = normalizeJdtMethodParameterTypes(jdtSignature);
+                Map<String, String> erasures = new HashMap<>(enclosingTypeErasures);
+                erasures.putAll(typeVariableErasures(jdtSignature));
+                String[] jdtTypes = normalizeJdtMethodParameterTypes(jdtSignature, erasures);
                 String[] bytecodeTypes = normalizeBytecodeMethodParameterTypes(bytecodeDescriptor);
                 if (jdtTypes.length != bytecodeTypes.length) {
                     return false;
@@ -289,7 +302,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 // Also compare return types so that bridge methods and covariant-return
                 // overrides (which share the same parameter types but differ in return type)
                 // are not incorrectly reported as references to the searched method.
-                String jdtReturnType = normalizeJdtMethodReturnType(jdtSignature);
+                String jdtReturnType = normalizeJdtMethodReturnType(jdtSignature, erasures);
                 String bytecodeReturnType = normalizeAsmType(org.objectweb.asm.Type.getReturnType(bytecodeDescriptor));
                 return sameType(jdtReturnType, bytecodeReturnType);
             } catch (IllegalArgumentException e) {
@@ -676,12 +689,11 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return method.getElementName();
         }
 
-        private static String[] normalizeJdtMethodParameterTypes(String signature) {
+        private static String[] normalizeJdtMethodParameterTypes(String signature, Map<String, String> typeVariableErasures) {
             if (signature == null) {
                 return new String[0];
             }
             String[] parameterTypes = Signature.getParameterTypes(signature);
-            Map<String, String> typeVariableErasures = typeVariableErasures(signature);
             String[] normalized = new String[parameterTypes.length];
             for (int i = 0; i < parameterTypes.length; i++) {
                 normalized[i] = normalizeJdtTypeSignature(parameterTypes[i], typeVariableErasures);
@@ -689,8 +701,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return normalized;
         }
 
-        private static String normalizeJdtMethodReturnType(String signature) {
-            return normalizeJdtTypeSignature(Signature.getReturnType(signature), typeVariableErasures(signature));
+        private static String normalizeJdtMethodReturnType(String signature, Map<String, String> typeVariableErasures) {
+            return normalizeJdtTypeSignature(Signature.getReturnType(signature), typeVariableErasures);
         }
 
         private static Map<String, String> typeVariableErasures(String signature) {
@@ -699,6 +711,18 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 String[] bounds = Signature.getTypeParameterBounds(typeParameter);
                 erasures.put(Signature.getTypeVariable(typeParameter),
                         bounds.length == 0 ? "Ljava/lang/Object;" : bounds[0]); //$NON-NLS-1$
+            }
+            return erasures;
+        }
+
+        private static Map<String, String> typeVariableErasures(IType declaringType) throws JavaModelException {
+            if (declaringType == null) {
+                return Collections.emptyMap();
+            }
+            Map<String, String> erasures = new HashMap<>();
+            for (ITypeParameter tp : declaringType.getTypeParameters()) {
+                String[] bounds = tp.getBoundsSignatures();
+                erasures.put(tp.getElementName(), bounds.length == 0 ? "Ljava/lang/Object;" : bounds[0]); //$NON-NLS-1$
             }
             return erasures;
         }

@@ -413,6 +413,35 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals(expectedOffset, range.offset());
     }
 
+    /**
+     * Verifies fix: {@code isTypePositionName} now accepts a {@link SimpleName} that is the
+     * qualifier of a {@link org.eclipse.jdt.core.dom.QualifiedName} and looks like a type name
+     * (first character upper-case). Before the fix, {@code System} in {@code System.out} was
+     * rejected because the code only handled {@code MethodInvocation} and
+     * {@code ExpressionMethodReference} parents.
+     */
+    @Test
+    public void staticFieldTypeQualifierIsFoundAsTypeReference() {
+        // Source must contain the "takes" method so AstDeclarationWindow can locate the enclosing
+        // window for takesMethod within this custom source (same name and parameter signature).
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        Object x = System.out;
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        assertNotNull("Type qualifier in static field access must be resolved as a type reference", range); //$NON-NLS-1$
+        assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
     @Test
     public void typeReferencesIgnoreSameNamedValueExpressions() {
         String src = """

@@ -75,6 +75,7 @@ import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.ModuleVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.RecordComponentVisitor;
 import org.objectweb.asm.Type;
@@ -1396,6 +1397,461 @@ public class ApplicationLibrarySearchParticipantTest {
         // estimateTicks() calls entryCount() internally and returns a value ≥ 50.
         int ticks = participant.estimateTicks(specification);
         assertTrue("estimateTicks must return a positive value based on entryCount", ticks >= 50); //$NON-NLS-1$
+    }
+
+    /**
+     * Verifies fix: the synthetic-constructor-parameter offset loop is capped at 1.
+     * <p>
+     * Before the fix the loop allowed offsets up to
+     * {@code argumentTypes.length - expectedTypes.length}, so a search for
+     * {@code Inner(int)} could match an {@code Inner(String, int)} constructor because the
+     * {@code int} at offset 2 of descriptor {@code (LOuter;Ljava/lang/String;I)V} happened to
+     * equal the searched-for parameter.  After the fix the maximum offset is
+     * {@code Math.min(1, …)} which restricts skipping to at most the single known-synthetic
+     * outer-instance parameter.
+     */
+    @Test
+    public void syntheticConstructorOffsetCapPreventsFalsePositiveMatch() throws Exception {
+        File jar = new File(tempDir, "inner-ctor.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Outer.class", buildOuterClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Outer$Inner.class", buildInnerClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Caller.class", buildInnerCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "synthetic-ctor-offset-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        // Inner(int) must NOT match Inner(String, int) — offset 2 would hit the int, but is now capped
+        List<Match> falseMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Outer.Inner(int)", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "inner-ctor-int-search")); //$NON-NLS-1$
+        assertTrue("Inner(int) must not match Inner(String,int) — synthetic offset cap must prevent offset-2 match", //$NON-NLS-1$
+                falseMatches.isEmpty());
+
+        // Inner(String, int) must still find the call site
+        List<Match> correctMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Outer.Inner(java.lang.String, int)", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "inner-ctor-string-int-search")); //$NON-NLS-1$
+        assertFalse("Inner(String,int) must match the actual call site after skipping 1 synthetic parameter", //$NON-NLS-1$
+                correctMatches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: type references from a static initializer ({@code <clinit>}) now use the
+     * list-based {@code typeReferencesByElement} path instead of the deduplicating
+     * {@code typeReferences} HashSet.
+     * <p>
+     * Before the fix, {@code method} was {@code null} for {@code <clinit>}, so both
+     * {@code new Foo()} occurrences in {@code static { new Foo(); new Foo(); }} were collapsed
+     * into a single entry by the HashSet.  After the fix {@code methodOrType} falls back to the
+     * enclosing {@code type}, routing references through the list path and preserving duplicates.
+     */
+    @Test
+    public void staticInitializerRepeatedTypeReferencesArePreserved() throws Exception {
+        File jar = new File(tempDir, "clinit-refs.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Foo.class", buildEmptyClass("pkg/Foo")); //$NON-NLS-1$ //$NON-NLS-2$
+            addClass(jos, "pkg/HasClinit.class", buildClassWithRepeatedStaticInit()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "clinit-refs-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Foo", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "clinit-foo-type-search")); //$NON-NLS-1$
+
+        // Two new Foo() in static {} must produce two separate reference matches
+        assertTrue("static initializer with two new Foo() must produce at least 2 type reference matches", //$NON-NLS-1$
+                matches.size() >= 2);
+    }
+
+    /**
+     * Verifies fix: the {@code visitLabel} override in {@code MethodIndexer} maps the LVT-start
+     * label (the instruction immediately after the {@code astore}) to the same exception types as
+     * the handler label, so {@code isCatchVariable} returns {@code true} for both labels and the
+     * catch variable is not double-counted as a type reference.
+     * <p>
+     * Before the fix, only the exact handler label was in {@code catchHandlerTypes}; the LVT start
+     * label (a different object) was unknown, causing {@code visitLocalVariable} to add a second
+     * type reference.
+     */
+    @Test
+    public void catchVariableIsNotDoubleCountedAsTypeReference() throws Exception {
+        File jar = new File(tempDir, "catch-var.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/MyException.class", buildEmptyExceptionClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HasCatch.class", buildClassWithCatch()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "catch-var-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.MyException", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "catch-myexception-type-search")); //$NON-NLS-1$
+
+        assertEquals("catch variable whose LVT start follows handler must produce exactly 1 type reference, not 2", //$NON-NLS-1$
+                1, matches.size());
+    }
+
+    /**
+     * Verifies fix: {@code ModuleIndexer.visitExport} now calls
+     * {@code addPackageReference(packaze.replace('/', '.'), moduleElement)} so that packages
+     * named in {@code exports} directives of a {@code module-info.class} are indexed and
+     * discoverable via package-reference searches.
+     */
+    @Test
+    public void moduleExportedPackageIsIndexedAsPackageReference() throws Exception {
+        File jar = new File(tempDir, "module-export.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "module-info.class", buildModuleWithExport()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "module-export-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.myapi", //$NON-NLS-1$
+                IJavaSearchConstants.PACKAGE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "module-exported-package-search")); //$NON-NLS-1$
+
+        assertFalse("exported package pkg.myapi must appear in package-reference search results", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: when searching for a method whose parameter is a bounded class-level type
+     * variable, the {@code SearchMatcher} now includes the declaring type's type-parameter bounds
+     * in its erasure map so that the JDT signature {@code (TT;)V} is correctly erased to
+     * {@code (Ljava/lang/Number;)V} rather than the wrong {@code (Ljava/lang/Object;)V}.
+     * <p>
+     * The jar contains {@code Box<T extends Number>} with {@code void put(T value)}, and a
+     * {@code Caller} class that invokes {@code box.put(n)}.  The element search for the
+     * {@code put} method must find that invocation.
+     */
+    @Test
+    public void enclosingTypeBoundedTypeVariableMatchesBytecodeErasure() throws Exception {
+        File jar = new File(tempDir, "bounded-tv.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Box.class", buildGenericBoxClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Caller.class", buildBoxCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "bounded-tv-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        IType boxType = setup.javaProject().findType("pkg.Box"); //$NON-NLS-1$
+        assertNotNull("pkg.Box must be resolvable from the test project", boxType); //$NON-NLS-1$
+        IMethod putMethod = methodNamed(boxType, "put"); //$NON-NLS-1$
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        List<Match> matches = runSearchInBackground(participant,
+                new ElementQuerySpecification(putMethod, IJavaSearchConstants.REFERENCES, scope, "put-method-refs")); //$NON-NLS-1$
+
+        assertFalse("put(T) on Box<T extends Number> must match the bytecode invocation (Ljava/lang/Number;)V", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: {@code annotationVisitor.visitEnum} now calls
+     * {@code addReference(Kind.FIELD, value, value, qualifiedTypeName(owner), descriptor, element, Access.READ)}
+     * so that enum constants used as annotation values are indexed as field-read references.
+     * <p>
+     * Before the fix only the descriptor type ({@code RetentionPolicy}) was indexed; the constant
+     * name ({@code RUNTIME}) was discarded.
+     */
+    @Test
+    public void annotationEnumConstantIsIndexedAsFieldReference() throws Exception {
+        File jar = new File(tempDir, "enum-annotation.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Annotated.class", buildClassAnnotatedWithRetention()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "enum-annotation-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "java.lang.annotation.RetentionPolicy.RUNTIME", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "retention-runtime-field-search")); //$NON-NLS-1$
+
+        assertFalse("enum constant RetentionPolicy.RUNTIME used in @Retention must appear as a field-reference match", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    // ------------------------------------------------------------------
+    // ASM bytecode builders for the new tests
+    // ------------------------------------------------------------------
+
+    private static byte[] buildOuterClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Outer", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildInnerClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_SUPER, "pkg/Outer$Inner", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitField(Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, "this$0", "Lpkg/Outer;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        // Constructor: (Lpkg/Outer;Ljava/lang/String;I)V — outer ref + String + int
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", //$NON-NLS-1$
+                "(Lpkg/Outer;Ljava/lang/String;I)V", null, null); //$NON-NLS-1$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 4);
+        ctor.visitEnd();
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildInnerCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Caller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "call", //$NON-NLS-1$
+                "(Lpkg/Outer;Ljava/lang/String;I)V", null, null); //$NON-NLS-1$
+        mv.visitCode();
+        mv.visitTypeInsn(Opcodes.NEW, "pkg/Outer$Inner"); //$NON-NLS-1$
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Outer$Inner", "<init>", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Lpkg/Outer;Ljava/lang/String;I)V", false); //$NON-NLS-1$
+        mv.visitInsn(Opcodes.POP);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(5, 4);
+        mv.visitEnd();
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildEmptyClass(String internalName) {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, internalName, null, "java/lang/Object", null); //$NON-NLS-1$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildClassWithRepeatedStaticInit() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HasClinit", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        // static { new Foo(); new Foo(); }
+        MethodVisitor sv = cw.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        sv.visitCode();
+        sv.visitTypeInsn(Opcodes.NEW, "pkg/Foo"); //$NON-NLS-1$
+        sv.visitInsn(Opcodes.DUP);
+        sv.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Foo", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        sv.visitInsn(Opcodes.POP);
+        sv.visitTypeInsn(Opcodes.NEW, "pkg/Foo"); //$NON-NLS-1$
+        sv.visitInsn(Opcodes.DUP);
+        sv.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Foo", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        sv.visitInsn(Opcodes.POP);
+        sv.visitInsn(Opcodes.RETURN);
+        sv.visitMaxs(2, 0);
+        sv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildEmptyExceptionClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                "pkg/MyException", null, "java/lang/Exception", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Exception", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Produces a class whose {@code test()} method has a catch block where the handler label and
+     * the LVT start label are intentionally distinct objects, mimicking javac's output where the
+     * {@code astore} lives at the handler offset and the LVT range begins at the next instruction.
+     */
+    private static byte[] buildClassWithCatch() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HasCatch", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "test", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+
+        Label tryStart = new Label();
+        Label tryEnd = new Label();
+        Label handler = new Label();  // handler label = the astore position
+        Label lvtStart = new Label(); // LVT start label = after the astore (different object)
+        Label end = new Label();
+
+        mv.visitLabel(tryStart);
+        mv.visitInsn(Opcodes.NOP);
+        mv.visitLabel(tryEnd);
+        mv.visitJumpInsn(Opcodes.GOTO, end);
+
+        mv.visitLabel(handler);                          // handler target
+        mv.visitVarInsn(Opcodes.ASTORE, 1);             // astore — occupies its own bytecode range
+        mv.visitLabel(lvtStart);                         // LVT start is a new label AFTER astore
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitInsn(Opcodes.POP);
+
+        mv.visitLabel(end);
+        mv.visitInsn(Opcodes.RETURN);
+
+        mv.visitTryCatchBlock(tryStart, tryEnd, handler, "pkg/MyException"); //$NON-NLS-1$
+        // LVT start uses lvtStart, not handler — this is the key mismatch the fix addresses
+        mv.visitLocalVariable("e", "Lpkg/MyException;", null, lvtStart, end, 1); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitLocalVariable("this", "Lpkg/HasCatch;", null, tryStart, end, 0); //$NON-NLS-1$ //$NON-NLS-2$
+
+        mv.visitMaxs(1, 2);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildModuleWithExport() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V9, Opcodes.ACC_MODULE, "module-info", null, null, null); //$NON-NLS-1$
+        ModuleVisitor mv = cw.visitModule("test.exportmodule", 0, "1.0"); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitExport("pkg/myapi", 0, "consumer.module"); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /** Box&lt;T extends Number&gt; with {@code void put(T value)} — bytecode erases T to Number. */
+    private static byte[] buildGenericBoxClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                "pkg/Box", "<T:Ljava/lang/Number;>Ljava/lang/Object;", "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        // put(T value) — erased descriptor is (Ljava/lang/Number;)V, generic sig (TT;)V
+        MethodVisitor put = cw.visitMethod(Opcodes.ACC_PUBLIC, "put", //$NON-NLS-1$
+                "(Ljava/lang/Number;)V", "(TT;)V", null); //$NON-NLS-1$ //$NON-NLS-2$
+        put.visitCode();
+        put.visitInsn(Opcodes.RETURN);
+        put.visitMaxs(0, 2);
+        put.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildBoxCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Caller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "use", //$NON-NLS-1$
+                "(Lpkg/Box;Ljava/lang/Number;)V", null, null); //$NON-NLS-1$
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "pkg/Box", "put", "(Ljava/lang/Number;)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 3);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildClassAnnotatedWithRetention() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Annotated", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        AnnotationVisitor av = cw.visitAnnotation("Ljava/lang/annotation/Retention;", true); //$NON-NLS-1$
+        av.visitEnum("value", "Ljava/lang/annotation/RetentionPolicy;", "RUNTIME"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        av.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
     }
 
     private static List<Match> runSearchInBackground(ApplicationLibrarySearchParticipant participant,
