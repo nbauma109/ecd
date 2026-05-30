@@ -180,7 +180,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean matchesTypeCategory(BytecodeSearchEntry entry) {
-            return kind != Kind.TYPE || typeFilter.matches(entry.getTypeCategory());
+            return kind != Kind.TYPE || !entry.isDeclaration() && entry.getTypeCategory() == TypeCategory.UNKNOWN
+                    || typeFilter.matches(entry.getTypeCategory());
         }
 
         private boolean matchesEntryDeclaringType(BytecodeSearchEntry entry) {

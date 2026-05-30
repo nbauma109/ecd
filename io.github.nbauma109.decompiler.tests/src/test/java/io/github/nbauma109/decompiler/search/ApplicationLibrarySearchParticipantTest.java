@@ -342,6 +342,34 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void narrowedClassSearchKeepsUnknownExternalTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "external-type-reference.jar"); //$NON-NLS-1$
+        createStringReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-external-type-reference-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "java.lang.String", //$NON-NLS-1$
+                IJavaSearchConstants.CLASS,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library narrowed external String references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertFalse("Unknown external type categories must remain eligible for narrowed reference searches", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    @Test
     public void multiReleaseJarSearchesUseEffectiveVersionedClassBytes()
             throws Exception {
         File jar = new File(tempDir, "effective-multi-release.jar"); //$NON-NLS-1$
@@ -1127,6 +1155,12 @@ public class ApplicationLibrarySearchParticipantTest {
             addType(output, "annotations/Same", //$NON-NLS-1$
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT | Opcodes.ACC_ANNOTATION,
                     "java/lang/Object", "java/lang/annotation/Annotation"); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+    }
+
+    private static void createStringReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/ExternalReference.class", classBytesWithStringField("pkg/ExternalReference")); //$NON-NLS-1$ //$NON-NLS-2$
         }
     }
 
