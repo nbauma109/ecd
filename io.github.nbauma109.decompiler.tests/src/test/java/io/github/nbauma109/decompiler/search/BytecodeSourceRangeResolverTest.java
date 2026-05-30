@@ -132,6 +132,7 @@ public class BytecodeSourceRangeResolverTest {
                 void intMethod(String s) {
                     target();
                 }
+                static void arrayOnly(Object[] values) {}
                 void target() {}
             }
             """;
@@ -388,6 +389,49 @@ public class BytecodeSourceRangeResolverTest {
                 resolver.rangesFor(List.of(e1, e2), SOURCE);
         assertRangeText(ranges.get(e1), "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
         assertRangeText(ranges.get(e2), "printf(\"%d\")"); //$NON-NLS-1$
+    }
+
+    @Test
+    public void ordinaryArrayParametersRequireExactArgumentCount() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        Prims.arrayOnly();
+                        Prims.arrayOnly(new Object[0]);
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "arrayOnly", "arrayOnly", //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_PRIMS, "([Ljava/lang/Object;)V"); //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int expectedOffset = src.indexOf("arrayOnly", src.indexOf("arrayOnly") + 1); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(expectedOffset, range.offset());
+    }
+
+    @Test
+    public void typeReferencesIgnoreSameNamedValueExpressions() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        Object Foo = null;
+                        consume(Foo);
+                        new Foo();
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "Foo", "fixture.Foo", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        assertEquals(src.indexOf("Foo", src.indexOf("new Foo")), range.offset()); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test

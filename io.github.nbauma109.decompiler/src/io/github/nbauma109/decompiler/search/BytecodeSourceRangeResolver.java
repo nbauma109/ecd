@@ -21,9 +21,11 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
@@ -34,6 +36,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
@@ -585,8 +588,16 @@ public class BytecodeSourceRangeResolver {
         }
 
         private boolean matchesSimpleNameReference(SimpleName node) {
-            return entry.getKind() == Kind.TYPE && matches(node) && !isDeclarationName(node)
+            return entry.getKind() == Kind.TYPE && matches(node) && isTypePositionName(node)
                     || entry.getKind() == Kind.FIELD && matchesFieldAccess(node);
+        }
+
+        private static boolean isTypePositionName(SimpleName node) {
+            ASTNode parent = node.getParent();
+            while (parent instanceof Name) {
+                parent = parent.getParent();
+            }
+            return parent instanceof Type || parent instanceof Annotation;
         }
 
         @Override
@@ -780,17 +791,63 @@ public class BytecodeSourceRangeResolver {
                 if (argumentCount == argTypes.length) {
                     return true;
                 }
-                // Varargs: the last formal parameter is an array type in bytecode.  Source call
-                // sites can supply either *fewer* arguments (zero-varargs, e.g. printf("x") for
-                // printf(String, Object...)) or *more* arguments (expanded varargs, e.g.
-                // printf("%d %s", n, m) for the same method).  Both cases satisfy
-                // argumentCount >= argTypes.length - 1, which is the correct acceptance window.
-                return argTypes.length > 0
-                        && argTypes[argTypes.length - 1].getSort() == org.objectweb.asm.Type.ARRAY
+                return isVarargsTarget(argTypes)
                         && argumentCount >= argTypes.length - 1;
             } catch (IllegalArgumentException e) {
                 return true;
             }
+        }
+
+        private boolean isVarargsTarget(org.objectweb.asm.Type[] argumentTypes) {
+            if (argumentTypes.length == 0
+                    || argumentTypes[argumentTypes.length - 1].getSort() != org.objectweb.asm.Type.ARRAY) {
+                return false;
+            }
+            IJavaElement element = entry.getElement();
+            IJavaProject project = element == null ? null : element.getJavaProject();
+            String declaringTypeName = entry.getDeclaringTypeName();
+            if (project == null || StringUtils.isBlank(declaringTypeName)) {
+                return false;
+            }
+            try {
+                IType declaringType = project.findType(declaringTypeName);
+                if (declaringType == null) {
+                    return false;
+                }
+                for (IMethod method : declaringType.getMethods()) {
+                    if (matchesTargetMethod(method, argumentTypes) && Flags.isVarargs(method.getFlags())) {
+                        return true;
+                    }
+                }
+            } catch (JavaModelException e) {
+                Logger.debug(e);
+            }
+            return false;
+        }
+
+        private boolean matchesTargetMethod(IMethod method, org.objectweb.asm.Type[] argumentTypes)
+                throws JavaModelException {
+            if (method.isConstructor() != (entry.getKind() == Kind.CONSTRUCTOR)
+                    || !method.isConstructor() && !sameName(method.getElementName(), entry.getName())) {
+                return false;
+            }
+            String[] parameterTypes = method.getParameterTypes();
+            if (parameterTypes.length != argumentTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < parameterTypes.length; i++) {
+                if (!AstDeclarationWindow.sameType(AstDeclarationWindow.normalizeJdtType(parameterTypes[i]),
+                        normalizeAsmType(argumentTypes[i]))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static String normalizeAsmType(org.objectweb.asm.Type type) {
+            int arrayDepth = type.getDimensions();
+            org.objectweb.asm.Type elementType = type.getElementType();
+            return elementType.getClassName().toLowerCase(java.util.Locale.ROOT) + "[]".repeat(arrayDepth); //$NON-NLS-1$
         }
 
         private boolean targetsEnclosingType() {

@@ -359,6 +359,8 @@ public class BytecodeJarIndexer {
                 addTypeReference(asmType.getElementType(), element);
             } else if (asmType.getSort() == Type.OBJECT) {
                 addTypeReference(asmType.getInternalName(), element);
+            } else if (asmType.getSort() == Type.METHOD) {
+                addDescriptorReferences(asmType.getDescriptor(), element);
             }
         }
 
