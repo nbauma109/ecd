@@ -46,6 +46,7 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.ModuleVisitor;
 import org.objectweb.asm.Opcodes;
@@ -716,10 +717,11 @@ public class BytecodeJarIndexer {
                     add(Kind.METHOD, true, method, pool(name), pool(name), pool(qualifiedTypeName(className)),
                             pool(descriptor));
                 }
-                addDescriptorReferences(signature == null ? descriptor : signature, method);
+                IJavaElement methodOrType = method != null ? method : type;
+                addDescriptorReferences(signature == null ? descriptor : signature, methodOrType);
                 if (exceptions != null) {
                     for (String exception : exceptions) {
-                        addTypeReference(exception, method);
+                        addTypeReference(exception, methodOrType);
                     }
                 }
                 int paramSlots = 0;
@@ -727,7 +729,7 @@ public class BytecodeJarIndexer {
                     paramSlots += argType.getSize();
                 }
                 boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
-                return new MethodIndexer(method, paramSlots + (isStatic ? 0 : 1));
+                return new MethodIndexer(methodOrType, paramSlots + (isStatic ? 0 : 1));
             }
         }
 
@@ -870,8 +872,9 @@ public class BytecodeJarIndexer {
 
             private final IJavaElement method;
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
-            private final Map<org.objectweb.asm.Label, Set<String>> catchHandlerTypes = new HashMap<>();
+            private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final int firstLocalSlot;
+            private Label prevHandlerLabel = null;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
                 super(Opcodes.ASM9);
@@ -905,7 +908,7 @@ public class BytecodeJarIndexer {
 
             @Override
             public AnnotationVisitor visitLocalVariableAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
-                    org.objectweb.asm.Label[] start, org.objectweb.asm.Label[] end, int[] index, String descriptor,
+                    Label[] start, Label[] end, int[] index, String descriptor,
                     boolean visible) {
                 return visitTryCatchAnnotation(typeRef, typePath, descriptor, visible);
             }
@@ -986,14 +989,28 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public void visitLabel(Label label) {
+                if (prevHandlerLabel != null) {
+                    Set<String> types = catchHandlerTypes.get(prevHandlerLabel);
+                    if (types != null) {
+                        catchHandlerTypes.computeIfAbsent(label, k -> new HashSet<>()).addAll(types);
+                    }
+                    prevHandlerLabel = null;
+                }
+                if (catchHandlerTypes.containsKey(label)) {
+                    prevHandlerLabel = label;
+                }
+            }
+
+            @Override
             public void visitLocalVariable(String name, String descriptor, String signature,
-                    org.objectweb.asm.Label start, org.objectweb.asm.Label end, int index) {
+                    Label start, Label end, int index) {
                 if (index >= firstLocalSlot && !isCatchVariable(start, descriptor)) {
                     addDescriptorReferences(signature != null ? signature : descriptor, method);
                 }
             }
 
-            private boolean isCatchVariable(org.objectweb.asm.Label start, String descriptor) {
+            private boolean isCatchVariable(Label start, String descriptor) {
                 Set<String> handlerTypes = catchHandlerTypes.get(start);
                 if (handlerTypes == null || !descriptor.startsWith("L") || !descriptor.endsWith(";")) { //$NON-NLS-1$ //$NON-NLS-2$
                     return false;
@@ -1002,8 +1019,8 @@ public class BytecodeJarIndexer {
             }
 
             @Override
-            public void visitTryCatchBlock(org.objectweb.asm.Label start, org.objectweb.asm.Label end,
-                    org.objectweb.asm.Label handler, String type) {
+            public void visitTryCatchBlock(Label start, Label end,
+                    Label handler, String type) {
                 if (type != null) {
                     catchHandlerTypes.computeIfAbsent(handler, k -> new HashSet<>()).add(type);
                 }
@@ -1034,12 +1051,13 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitExport(String packaze, int access, String... modules) {
+                addPackageReference(packaze.replace('/', '.'), moduleElement);
                 addModuleReferences(modules);
             }
 
             @Override
             public void visitOpen(String packaze, int access, String... modules) {
-                addModuleReferences(modules);
+                visitExport(packaze, access, modules);
             }
 
             @Override

@@ -608,6 +608,10 @@ public class BytecodeSourceRangeResolver {
         }
 
         private static boolean isTypePositionName(SimpleName node) {
+            // Accept type name used as qualifier in a static field access: e.g. Foo in Foo.CONST
+            if (node.getParent() instanceof QualifiedName qn && qn.getQualifier() == node && isTypeLikeQualifier(node)) {
+                return true;
+            }
             ASTNode current = node;
             ASTNode parent = node.getParent();
             while (parent instanceof Name outerName) {

@@ -305,7 +305,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             try {
                 org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(bytecodeDescriptor);
                 if (kind == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameters(entry)) {
-                    for (int offset = 0; offset <= argumentTypes.length - expectedTypes.length; offset++) {
+                    for (int offset = 0; offset <= Math.min(1, argumentTypes.length - expectedTypes.length); offset++) {
                         if (sameParameterTypes(expectedTypes, argumentTypes, offset)) {
                             return true;
                         }
