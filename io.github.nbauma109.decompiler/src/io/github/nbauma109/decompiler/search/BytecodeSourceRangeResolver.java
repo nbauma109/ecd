@@ -608,11 +608,25 @@ public class BytecodeSourceRangeResolver {
         }
 
         private static boolean isTypePositionName(SimpleName node) {
+            ASTNode current = node;
             ASTNode parent = node.getParent();
-            while (parent instanceof Name) {
-                parent = parent.getParent();
+            while (parent instanceof Name outerName) {
+                current = outerName;
+                parent = outerName.getParent();
             }
-            return parent instanceof Type || parent instanceof Annotation;
+            if (parent instanceof Type || parent instanceof Annotation) {
+                return true;
+            }
+            // Also accept type-like names used as static-member qualifiers
+            if (current instanceof Name name && isTypeLikeQualifier(name)) {
+                if (parent instanceof MethodInvocation mi && mi.getExpression() == name) {
+                    return true;
+                }
+                if (parent instanceof ExpressionMethodReference emr && emr.getExpression() == name) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override

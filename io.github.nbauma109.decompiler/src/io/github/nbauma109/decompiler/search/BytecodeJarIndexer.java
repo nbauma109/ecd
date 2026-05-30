@@ -870,6 +870,7 @@ public class BytecodeJarIndexer {
 
             private final IJavaElement method;
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
+            private final Map<org.objectweb.asm.Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final int firstLocalSlot;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -987,14 +988,25 @@ public class BytecodeJarIndexer {
             @Override
             public void visitLocalVariable(String name, String descriptor, String signature,
                     org.objectweb.asm.Label start, org.objectweb.asm.Label end, int index) {
-                if (index >= firstLocalSlot) {
+                if (index >= firstLocalSlot && !isCatchVariable(start, descriptor)) {
                     addDescriptorReferences(signature != null ? signature : descriptor, method);
                 }
+            }
+
+            private boolean isCatchVariable(org.objectweb.asm.Label start, String descriptor) {
+                Set<String> handlerTypes = catchHandlerTypes.get(start);
+                if (handlerTypes == null || !descriptor.startsWith("L") || !descriptor.endsWith(";")) { //$NON-NLS-1$ //$NON-NLS-2$
+                    return false;
+                }
+                return handlerTypes.contains(descriptor.substring(1, descriptor.length() - 1));
             }
 
             @Override
             public void visitTryCatchBlock(org.objectweb.asm.Label start, org.objectweb.asm.Label end,
                     org.objectweb.asm.Label handler, String type) {
+                if (type != null) {
+                    catchHandlerTypes.computeIfAbsent(handler, k -> new HashSet<>()).add(type);
+                }
                 addTypeReference(type, method);
             }
         }
