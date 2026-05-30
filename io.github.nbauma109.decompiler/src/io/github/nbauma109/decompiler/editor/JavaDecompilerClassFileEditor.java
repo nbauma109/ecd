@@ -890,8 +890,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return parts;
     }
 
-    private String extractParamType(String param) {
-        param = param.trim();
+    private String stripLeadingModifiers(String param) {
         boolean changed = true;
         while (changed) {
             changed = false;
@@ -908,6 +907,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
                 changed = true;
             }
         }
+        return param;
+    }
+
+    private String extractParamType(String param) {
+        param = stripLeadingModifiers(param.trim());
         int lastSpace = -1;
         int depth = 0;
         for (int i = 0; i < param.length(); i++) {
