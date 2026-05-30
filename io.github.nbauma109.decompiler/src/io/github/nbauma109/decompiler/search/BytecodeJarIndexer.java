@@ -933,19 +933,14 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-                addTypeReference(owner, method);
-                addDescriptorReferences(descriptor, method);
                 addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method,
                         fieldAccess(opcode));
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
-                    addTypeReference(owner, method);
-                }
-                addDescriptorReferences(descriptor, method);
                 if (CONSTRUCTOR.equals(name)) {
+                    consumePendingNew(owner);
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
                             qualifiedTypeName(owner), descriptor, method);
                 } else {
