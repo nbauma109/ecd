@@ -206,7 +206,33 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean matchesEntryDescriptor(BytecodeSearchEntry entry) {
-            return descriptor == null || entry.getDescriptor() == null || sameDescriptor(descriptor, entry.getDescriptor());
+            if (descriptor == null || entry.getDescriptor() == null) {
+                return true;
+            }
+            if (sameDescriptor(descriptor, entry.getDescriptor())) {
+                return true;
+            }
+            if (kind == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameters(entry)) {
+                return sameDescriptor(descriptor, stripFirstBytecodeParameter(entry.getDescriptor()));
+            }
+            return false;
+        }
+
+        private static String stripFirstBytecodeParameter(String descriptor) {
+            try {
+                org.objectweb.asm.Type[] argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+                if (argTypes.length == 0) {
+                    return descriptor;
+                }
+                StringBuilder sb = new StringBuilder("("); //$NON-NLS-1$
+                for (int i = 1; i < argTypes.length; i++) {
+                    sb.append(argTypes[i].getDescriptor());
+                }
+                sb.append(")").append(org.objectweb.asm.Type.getReturnType(descriptor).getDescriptor()); //$NON-NLS-1$
+                return sb.toString();
+            } catch (IllegalArgumentException e) {
+                return descriptor;
+            }
         }
 
         private boolean matchesEntryParameterTypes(BytecodeSearchEntry entry) {
@@ -579,15 +605,28 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static String normalizePatternType(String type) {
             String normalized = Strings.CS.replace(StringUtils.trimToEmpty(type), "...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
-            int genericStart = normalized.indexOf('<');
-            if (genericStart >= 0) {
-                int genericEnd = normalized.lastIndexOf('>');
-                String suffix = genericEnd >= 0 ? normalized.substring(genericEnd + 1) : ""; //$NON-NLS-1$
-                normalized = normalized.substring(0, genericStart) + suffix;
-            }
+            normalized = stripGenericArguments(normalized);
             normalized = normalized.replace("[]", " array ").replaceAll("\\s+", "") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                     .replace("array", "[]").toLowerCase(Locale.ROOT); //$NON-NLS-1$ //$NON-NLS-2$
             return primitiveDescriptor(normalized);
+        }
+
+        private static String stripGenericArguments(String s) {
+            StringBuilder sb = new StringBuilder(s.length());
+            int depth = 0;
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                if (c == '<') {
+                    depth++;
+                } else if (c == '>') {
+                    if (depth > 0) {
+                        depth--;
+                    }
+                } else if (depth == 0) {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
         }
 
         private static String primitiveDescriptor(String type) {
@@ -675,7 +714,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private static String normalizeTypeName(IType type) {
-            return type.getFullyQualifiedName('.').replace('$', '.');
+            return type.getFullyQualifiedName('.');
         }
 
         private static String normalizeDeclaringType(IJavaElement element) {

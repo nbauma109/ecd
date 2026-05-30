@@ -872,6 +872,11 @@ public class BytecodeSourceRangeResolver {
                 if (argumentCount == argTypes.length) {
                     return true;
                 }
+                // Non-static member class constructors carry one synthetic outer-instance parameter
+                // that has no counterpart in source; discount it for argument-count matching.
+                if (entry.getKind() == Kind.CONSTRUCTOR && argumentCount == argTypes.length - 1) {
+                    return true;
+                }
                 return isVarargsTarget(argTypes)
                         && argumentCount >= argTypes.length - 1;
             } catch (IllegalArgumentException e) {
