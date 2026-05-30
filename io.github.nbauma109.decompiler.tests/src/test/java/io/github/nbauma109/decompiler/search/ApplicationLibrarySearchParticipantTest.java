@@ -71,6 +71,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -367,6 +368,60 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertFalse("Unknown external type categories must remain eligible for narrowed reference searches", //$NON-NLS-1$
                 matches.isEmpty());
+    }
+
+    @Test
+    public void repeatedElementScopedTypeReferencesArePreserved()
+            throws Exception {
+        File jar = new File(tempDir, "repeated-type-references.jar"); //$NON-NLS-1$
+        createRepeatedTypeReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-repeated-type-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.Foo", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library repeated Foo references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals(2, matches.size());
+    }
+
+    @Test
+    public void methodHandleDescriptorsContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "handle-descriptor-references.jar"); //$NON-NLS-1$
+        createHandleDescriptorReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-handle-descriptor-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.OnlyInHandleDescriptor", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library method handle descriptor references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals(1, matches.size());
     }
 
     @Test
@@ -1164,6 +1219,18 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createRepeatedTypeReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/Repeated.class", repeatedTypeReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createHandleDescriptorReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/HandleUses.class", handleDescriptorReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void createMultiReleaseReferenceJar(File jar) throws Exception {
         try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar), multiReleaseManifest())) {
             addClass(output, "pkg/Versioned.class", classBytes("pkg/Versioned")); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1199,6 +1266,42 @@ public class ApplicationLibrarySearchParticipantTest {
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, internalName, null, "java/lang/Object", //$NON-NLS-1$
                 null);
         writer.visitField(Opcodes.ACC_PUBLIC, "value", "Ljava/lang/String;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] repeatedTypeReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Repeated", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", //$NON-NLS-1$
+                "(Ljava/lang/Object;)V", null, null); //$NON-NLS-1$
+        method.visitCode();
+        method.visitVarInsn(Opcodes.ALOAD, 0);
+        method.visitTypeInsn(Opcodes.CHECKCAST, "pkg/Foo"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitVarInsn(Opcodes.ALOAD, 0);
+        method.visitTypeInsn(Opcodes.CHECKCAST, "pkg/Foo"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(1, 1);
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] handleDescriptorReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/HandleUses", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        method.visitCode();
+        Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "pkg/Bootstrap", "bootstrap", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        Handle target = new Handle(Opcodes.H_INVOKESTATIC, "pkg/Targets", "accept", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Lpkg/OnlyInHandleDescriptor;)V", false); //$NON-NLS-1$
+        method.visitInvokeDynamicInsn("run", "()Ljava/lang/Runnable;", bootstrap, target); //$NON-NLS-1$ //$NON-NLS-2$
+        method.visitInsn(Opcodes.POP);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(1, 0);
+        method.visitEnd();
         writer.visitEnd();
         return writer.toByteArray();
     }

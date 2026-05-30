@@ -239,7 +239,7 @@ public class BytecodeJarIndexer {
         private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
         private final Set<String> typeReferences = new HashSet<>();
         private final Set<String> descriptorSet = new HashSet<>();
-        private final Map<IJavaElement, Set<String>> typeReferencesByElement = new HashMap<>();
+        private final Map<IJavaElement, List<String>> typeReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> methodReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> constructorReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> fieldReferencesByElement = new HashMap<>();
@@ -347,7 +347,7 @@ public class BytecodeJarIndexer {
             if (internalName.charAt(0) == '[') {
                 addDescriptorReferences(internalName, element);
             } else {
-                typeReferencesByElement.computeIfAbsent(element, key -> new HashSet<>()).add(internalName);
+                typeReferencesByElement.computeIfAbsent(element, key -> new ArrayList<>()).add(internalName);
             }
         }
 
@@ -456,6 +456,7 @@ public class BytecodeJarIndexer {
                 return;
             }
             addTypeReference(handle.getOwner(), element);
+            addDescriptorReferences(handle.getDesc(), element);
             if (handle.getTag() == Opcodes.H_GETFIELD || handle.getTag() == Opcodes.H_GETSTATIC
                     || handle.getTag() == Opcodes.H_PUTFIELD || handle.getTag() == Opcodes.H_PUTSTATIC) {
                 addReference(Kind.FIELD, handle.getName(), handle.getName(), qualifiedTypeName(handle.getOwner()),
@@ -518,7 +519,7 @@ public class BytecodeJarIndexer {
         }
 
         private void flushTypeReferencesByElement() {
-            for (Map.Entry<IJavaElement, Set<String>> entry : typeReferencesByElement.entrySet()) {
+            for (Map.Entry<IJavaElement, List<String>> entry : typeReferencesByElement.entrySet()) {
                 for (String internalName : entry.getValue()) {
                     addTypeReferenceEntry(internalName, entry.getKey());
                     addPackageReference(packageName(internalName), entry.getKey());
