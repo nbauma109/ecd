@@ -442,6 +442,34 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
+    /**
+     * Verifies fix: when a static field reference is package-qualified ({@code pkg.Foo.CONST}),
+     * the {@code Foo} node is the {@code name} part of the inner {@code pkg.Foo} QualifiedName,
+     * not the direct qualifier of {@code Foo.CONST}. After the loop climbs to
+     * {@code QualifiedName("pkg.Foo")}, the parent is {@code QualifiedName("pkg.Foo.CONST")}
+     * whose qualifier is {@code QualifiedName("pkg.Foo")} — the new {@code instanceof QualifiedName}
+     * check in the existing {@code isTypeLikeQualifier} block now accepts this case.
+     */
+    @Test
+    public void packageQualifiedStaticFieldTypeQualifierIsFoundAsTypeReference() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        Object x = java.lang.System.out;
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        assertNotNull("package-qualified static field type qualifier must be resolved as a type reference", range); //$NON-NLS-1$
+        assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
     @Test
     public void typeReferencesIgnoreSameNamedValueExpressions() {
         String src = """

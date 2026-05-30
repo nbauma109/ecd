@@ -24,6 +24,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IModuleDescription;
 import org.eclipse.jdt.core.IPackageFragment;
@@ -79,6 +80,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
     }
 
     private static final int LIMIT_TO_KIND_MASK = 0x0F;
+
+    private static final String OBJECT_SIGNATURE = "Ljava/lang/Object;"; //$NON-NLS-1$
 
     private static final class SearchMatcher {
 
@@ -344,11 +347,15 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             try {
                 IType type = findType(element, owner);
-                return type != null && (type.getDeclaringType() != null || type.isLocal() || type.isAnonymous());
+                return type != null && (isNonStaticMemberType(type) || type.isLocal() || type.isAnonymous());
             } catch (JavaModelException e) {
                 Logger.debug(e);
                 return false;
             }
+        }
+
+        private static boolean isNonStaticMemberType(IType type) throws JavaModelException {
+            return type.getDeclaringType() != null && !Flags.isStatic(type.getFlags());
         }
 
         private static IType findType(IJavaElement element, String owner) throws JavaModelException {
@@ -710,7 +717,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             for (String typeParameter : Signature.getTypeParameters(signature)) {
                 String[] bounds = Signature.getTypeParameterBounds(typeParameter);
                 erasures.put(Signature.getTypeVariable(typeParameter),
-                        bounds.length == 0 ? "Ljava/lang/Object;" : bounds[0]); //$NON-NLS-1$
+                        bounds.length == 0 ? OBJECT_SIGNATURE : bounds[0]);
             }
             return erasures;
         }
@@ -722,7 +729,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             Map<String, String> erasures = new HashMap<>();
             for (ITypeParameter tp : declaringType.getTypeParameters()) {
                 String[] bounds = tp.getBoundsSignatures();
-                erasures.put(tp.getElementName(), bounds.length == 0 ? "Ljava/lang/Object;" : bounds[0]); //$NON-NLS-1$
+                erasures.put(tp.getElementName(), bounds.length == 0 ? OBJECT_SIGNATURE : bounds[0]);
             }
             return erasures;
         }
@@ -754,7 +761,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             String erased = Signature.getTypeErasure(signature);
             for (int i = 0; i <= typeVariableErasures.size()
                     && Signature.getTypeSignatureKind(erased) == Signature.TYPE_VARIABLE_SIGNATURE; i++) {
-                erased = typeVariableErasures.getOrDefault(Signature.getTypeVariable(erased), "Ljava/lang/Object;"); //$NON-NLS-1$
+                erased = typeVariableErasures.getOrDefault(Signature.getTypeVariable(erased), OBJECT_SIGNATURE);
             }
             return Signature.getTypeErasure(erased);
         }

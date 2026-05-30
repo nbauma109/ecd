@@ -1452,6 +1452,44 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     /**
+     * Verifies fix: a <em>static</em> nested class has no synthetic outer-instance parameter
+     * even though {@code getDeclaringType() != null}.  Before the fix, {@code isNestedType}
+     * returned {@code true} for static member classes, so the offset-1 skip was applied and
+     * {@code Inner(int)} incorrectly matched {@code Inner(String,int)} at offset 1.
+     * After the fix, only non-static member classes (and local/anonymous classes) trigger the
+     * skip; static member classes are treated like top-level classes.
+     */
+    @Test
+    public void staticNestedConstructorIsNotMistakenForSyntheticOffset() throws Exception {
+        File jar = new File(tempDir, "static-nested-ctor.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Outer.class", buildOuterWithStaticInner()); //$NON-NLS-1$
+            addClass(jos, "pkg/Outer$StaticInner.class", buildStaticInnerClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/StaticInnerCaller.class", buildStaticInnerCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "static-nested-ctor-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        // StaticInner(int) must NOT match StaticInner(String,int) — no synthetic outer-ref to skip
+        List<Match> falseMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Outer.StaticInner(int)", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "static-nested-ctor-int-search")); //$NON-NLS-1$
+        assertTrue("static nested Inner(int) must not match Inner(String,int) — no synthetic parameter to skip", //$NON-NLS-1$
+                falseMatches.isEmpty());
+    }
+
+    /**
      * Verifies fix: type references from a static initializer ({@code <clinit>}) now use the
      * list-based {@code typeReferencesByElement} path instead of the deduplicating
      * {@code typeReferences} HashSet.
@@ -1713,7 +1751,6 @@ public class ApplicationLibrarySearchParticipantTest {
     private static byte[] buildClassWithRepeatedStaticInit() {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HasClinit", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
-        // static { new Foo(); new Foo(); }
         MethodVisitor sv = cw.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
         sv.visitCode();
         sv.visitTypeInsn(Opcodes.NEW, "pkg/Foo"); //$NON-NLS-1$
@@ -1850,6 +1887,58 @@ public class ApplicationLibrarySearchParticipantTest {
         AnnotationVisitor av = cw.visitAnnotation("Ljava/lang/annotation/Retention;", true); //$NON-NLS-1$
         av.visitEnum("value", "Ljava/lang/annotation/RetentionPolicy;", "RUNTIME"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         av.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildOuterWithStaticInner() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Outer", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitInnerClass("pkg/Outer$StaticInner", "pkg/Outer", "StaticInner", Opcodes.ACC_STATIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildStaticInnerClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_SUPER, "pkg/Outer$StaticInner", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        // No synthetic outer-ref field — this is static
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", //$NON-NLS-1$
+                "(Ljava/lang/String;I)V", null, null); //$NON-NLS-1$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 3);
+        ctor.visitEnd();
+        cw.visitInnerClass("pkg/Outer$StaticInner", "pkg/Outer", "StaticInner", Opcodes.ACC_STATIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildStaticInnerCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/StaticInnerCaller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "call", "(Ljava/lang/String;I)V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitTypeInsn(Opcodes.NEW, "pkg/Outer$StaticInner"); //$NON-NLS-1$
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Outer$StaticInner", "<init>", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Ljava/lang/String;I)V", false); //$NON-NLS-1$
+        mv.visitInsn(Opcodes.POP);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(4, 3);
+        mv.visitEnd();
+        cw.visitInnerClass("pkg/Outer$StaticInner", "pkg/Outer", "StaticInner", Opcodes.ACC_STATIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         cw.visitEnd();
         return cw.toByteArray();
     }
