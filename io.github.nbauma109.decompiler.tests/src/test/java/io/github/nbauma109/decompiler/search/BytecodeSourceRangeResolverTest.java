@@ -508,6 +508,30 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void packageQualifiedConstructorTypesRequireExactOwners() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        new p1.Widget();
+                        new p2.Widget();
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry first = reference(Kind.CONSTRUCTOR, takesMethod, "Widget", "p1.Widget", //$NON-NLS-1$ //$NON-NLS-2$
+                "p1.Widget", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchEntry second = reference(Kind.CONSTRUCTOR, takesMethod, "Widget", "p2.Widget", //$NON-NLS-1$ //$NON-NLS-2$
+                "p2.Widget", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(first, second), src);
+
+        assertEquals(src.indexOf("Widget"), ranges.get(first).offset()); //$NON-NLS-1$
+        assertEquals(src.lastIndexOf("Widget"), ranges.get(second).offset()); //$NON-NLS-1$
+    }
+
+    @Test
     public void fieldReferencesResolveByOwnerAndSkipDeclarations() {
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
 

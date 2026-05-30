@@ -43,6 +43,7 @@ import org.eclipse.jdt.core.Signature;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
@@ -244,6 +245,7 @@ public class BytecodeJarIndexer {
         private final Map<IJavaElement, List<MemberReference>> methodReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> constructorReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> fieldReferencesByElement = new HashMap<>();
+        private final Map<String, NestedTypeName> nestedTypeNames = new HashMap<>();
         private final Set<String> moduleReferences = new HashSet<>();
         private final SignatureIndexer signatureIndexer = new SignatureIndexer();
         private final ClassVisitor visitor = new LightweightClassVisitor();
@@ -317,13 +319,22 @@ public class BytecodeJarIndexer {
             return className + CLASS_FILE_EXTENSION;
         }
 
-        private static String simpleTypeName(String internalName) {
-            int separator = Math.max(internalName.lastIndexOf('/'), internalName.lastIndexOf('$'));
+        private String simpleTypeName(String internalName) {
+            NestedTypeName nestedType = nestedTypeNames.get(internalName);
+            if (nestedType != null) {
+                return nestedType.innerName();
+            }
+            int separator = internalName.lastIndexOf('/');
             return separator < 0 ? internalName : internalName.substring(separator + 1);
         }
 
-        private static String qualifiedTypeName(String internalName) {
-            return internalName == null ? null : internalName.replace('/', '.').replace('$', '.');
+        private String qualifiedTypeName(String internalName) {
+            if (internalName == null) {
+                return null;
+            }
+            NestedTypeName nestedType = nestedTypeNames.get(internalName);
+            return nestedType == null ? internalName.replace('/', '.')
+                    : qualifiedTypeName(nestedType.outerName()) + "." + nestedType.innerName(); //$NON-NLS-1$
         }
 
         private void addTypeReference(String internalName) {
@@ -456,6 +467,12 @@ public class BytecodeJarIndexer {
                 addTypeReference(asmType, element);
             } else if (argument instanceof Handle handle) {
                 addHandleReference(handle, element);
+            } else if (argument instanceof ConstantDynamic constant) {
+                addDescriptorReferences(constant.getDescriptor(), element);
+                addHandleReference(constant.getBootstrapMethod(), element);
+                for (int i = 0; i < constant.getBootstrapMethodArgumentCount(); i++) {
+                    addBootstrapArgumentReference(constant.getBootstrapMethodArgument(i), element);
+                }
             }
         }
 
@@ -652,6 +669,13 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public void visitInnerClass(String name, String outerName, String innerName, int access) {
+                if (outerName != null && innerName != null) {
+                    nestedTypeNames.put(name, new NestedTypeName(outerName, innerName));
+                }
+            }
+
+            @Override
             public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
                 addDescriptor(descriptor);
                 return annotationVisitor(type);
@@ -760,6 +784,7 @@ public class BytecodeJarIndexer {
         private final class SignatureIndexer extends SignatureVisitor {
 
             private final IJavaElement element;
+            private String className;
 
             private SignatureIndexer() {
                 super(Opcodes.ASM9);
@@ -773,7 +798,24 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitClassType(String name) {
+                className = name;
                 addTypeReference(name, element);
+            }
+
+            @Override
+            public void visitInnerClassType(String name) {
+                className = className == null ? name : className + "$" + name; //$NON-NLS-1$
+                addTypeReference(className, element);
+            }
+
+            @Override
+            public SignatureVisitor visitTypeArgument(char wildcard) {
+                return new SignatureIndexer(element);
+            }
+
+            @Override
+            public void visitEnd() {
+                className = null;
             }
         }
 
@@ -908,9 +950,7 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitLdcInsn(Object value) {
-                if (value instanceof Type asmType) {
-                    addTypeReference(asmType, method);
-                }
+                addBootstrapArgumentReference(value, method);
             }
 
             @Override
@@ -973,6 +1013,9 @@ public class BytecodeJarIndexer {
     }
 
     private record MemberReference(String name, String owner, String descriptor, Access access) {
+    }
+
+    private record NestedTypeName(String outerName, String innerName) {
     }
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,

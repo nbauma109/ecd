@@ -71,6 +71,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -479,6 +480,73 @@ public class ApplicationLibrarySearchParticipantTest {
         List<Match> matches = runSearchInBackground(participant, specification);
 
         assertEquals(1, matches.size());
+    }
+
+    @Test
+    public void genericInnerTypeSignaturesContributeInnerTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "generic-inner-type-references.jar"); //$NON-NLS-1$
+        createGenericInnerTypeReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-generic-inner-type-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.Outer.Inner", scope)).size()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void topLevelDollarNamesAreNotTreatedAsNestedTypes()
+            throws Exception {
+        File jar = new File(tempDir, "dollar-named-type.jar"); //$NON-NLS-1$
+        createDollarNamedTypeJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-dollar-named-type-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(1, runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Price$Tag", IJavaSearchConstants.TYPE, true, IJavaSearchConstants.ALL_OCCURRENCES, scope, //$NON-NLS-1$
+                "Application library dollar-named type declarations")).size()); //$NON-NLS-1$
+        assertEquals(1, runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Price$Tag.value", IJavaSearchConstants.FIELD, true, IJavaSearchConstants.ALL_OCCURRENCES, scope, //$NON-NLS-1$
+                "Application library dollar-named field declarations")).size()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void ldcHandlesAndConstantDynamicsContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "ldc-bootstrap-references.jar"); //$NON-NLS-1$
+        createLdcBootstrapReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-ldc-bootstrap-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.OnlyInLdcHandle", scope)).size()); //$NON-NLS-1$
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.OnlyInCondyDescriptor", scope)).size()); //$NON-NLS-1$
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.OnlyInNestedCondyDescriptor", scope)).size()); //$NON-NLS-1$
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.OnlyInNestedCondyHandle", scope)).size()); //$NON-NLS-1$
     }
 
     @Test
@@ -1406,6 +1474,24 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createGenericInnerTypeReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/GenericInnerUses.class", genericInnerTypeReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createDollarNamedTypeJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/Price$Tag.class", dollarNamedTypeBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createLdcBootstrapReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/LdcBootstrapUses.class", ldcBootstrapReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void createMultiReleaseReferenceJar(File jar) throws Exception {
         try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar), multiReleaseManifest())) {
             addClass(output, "pkg/Versioned.class", classBytes("pkg/Versioned")); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1521,6 +1607,48 @@ public class ApplicationLibrarySearchParticipantTest {
         MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
         method.visitCode();
         method.visitLdcInsn(Type.getMethodType("(Lpkg/OnlyInMethodType;)V")); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(1, 0);
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] genericInnerTypeReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/GenericInnerUses", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", Opcodes.ACC_PUBLIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        writer.visitField(Opcodes.ACC_PUBLIC, "value", "Lpkg/Outer$Inner;", //$NON-NLS-1$ //$NON-NLS-2$
+                "Lpkg/Outer<Ljava/lang/String;>.Inner<Ljava/lang/Integer;>;", null).visitEnd(); //$NON-NLS-1$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] dollarNamedTypeBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Price$Tag", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitField(Opcodes.ACC_PUBLIC, "value", "I", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] ldcBootstrapReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/LdcBootstrapUses", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        Handle ldcHandle = new Handle(Opcodes.H_INVOKESTATIC, "pkg/LdcHandleOwner", "accept", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Lpkg/OnlyInLdcHandle;)V", false); //$NON-NLS-1$
+        Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "pkg/CondyBootstrap", "bootstrap", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        Handle nestedHandle = new Handle(Opcodes.H_INVOKESTATIC, "pkg/NestedCondyHandleOwner", "accept", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Lpkg/OnlyInNestedCondyHandle;)V", false); //$NON-NLS-1$
+        ConstantDynamic nested = new ConstantDynamic("nested", "Lpkg/OnlyInNestedCondyDescriptor;", bootstrap); //$NON-NLS-1$ //$NON-NLS-2$
+        ConstantDynamic constant = new ConstantDynamic("constant", "Lpkg/OnlyInCondyDescriptor;", bootstrap, //$NON-NLS-1$ //$NON-NLS-2$
+                nestedHandle, nested);
+        method.visitCode();
+        method.visitLdcInsn(ldcHandle);
+        method.visitInsn(Opcodes.POP);
+        method.visitLdcInsn(constant);
         method.visitInsn(Opcodes.POP);
         method.visitInsn(Opcodes.RETURN);
         method.visitMaxs(1, 0);

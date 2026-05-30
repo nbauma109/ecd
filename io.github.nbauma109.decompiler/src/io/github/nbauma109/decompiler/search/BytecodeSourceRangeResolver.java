@@ -956,9 +956,12 @@ public class BytecodeSourceRangeResolver {
             }
             String normalizedDeclaringType = StringUtils.replaceChars(declaringTypeName, '$', '.');
             String normalizedSourceType = StringUtils.replaceChars(sourceTypeName, '$', '.');
-            return sameName(normalizedDeclaringType, normalizedSourceType)
-                    || sameName(simpleName(normalizedDeclaringType), simpleName(normalizedSourceType))
-                    || Strings.CS.endsWith(normalizedDeclaringType, "." + normalizedSourceType); //$NON-NLS-1$
+            if (sameName(normalizedDeclaringType, normalizedSourceType)
+                    || Strings.CS.endsWith(normalizedDeclaringType, "." + normalizedSourceType)) { //$NON-NLS-1$
+                return true;
+            }
+            return !Strings.CS.contains(normalizedSourceType, ".") //$NON-NLS-1$
+                    && sameName(simpleName(normalizedDeclaringType), normalizedSourceType);
         }
 
         private String sourceName(ASTNode node) {
