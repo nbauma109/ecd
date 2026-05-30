@@ -211,6 +211,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return wildcardPattern.matcher(entry.getName()).matches()
                         || wildcardPattern.matcher(entry.getQualifiedName()).matches();
             }
+            if (kind == Kind.TYPE && Strings.CS.contains(qualifiedName, ".")) { //$NON-NLS-1$
+                return sameName(qualifiedName, entry.getQualifiedName());
+            }
             return sameName(name, entry.getName()) || sameName(qualifiedName, entry.getQualifiedName());
         }
 

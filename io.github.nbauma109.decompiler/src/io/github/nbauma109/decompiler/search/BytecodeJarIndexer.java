@@ -48,6 +48,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.ModuleVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.RecordComponentVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
@@ -445,6 +446,11 @@ public class BytecodeJarIndexer {
             };
         }
 
+        private AnnotationVisitor indexedAnnotation(String descriptor, IJavaElement element) {
+            addDescriptorReferences(descriptor, element);
+            return annotationVisitor(element);
+        }
+
         private void addBootstrapArgumentReference(Object argument, IJavaElement element) {
             if (argument instanceof Type asmType) {
                 addTypeReference(asmType, element);
@@ -659,6 +665,12 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
+                addDescriptorReferences(signature == null ? descriptor : signature, type);
+                return new RecordComponentIndexer(type);
+            }
+
+            @Override
             public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
                 IField field = type == null ? null : type.getField(name);
                 add(Kind.FIELD, true, field, pool(name), pool(name), pool(qualifiedTypeName(className)),
@@ -776,15 +788,34 @@ public class BytecodeJarIndexer {
 
             @Override
             public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, field);
-                return annotationVisitor(field);
+                return indexedAnnotation(descriptor, field);
             }
 
             @Override
             public AnnotationVisitor visitTypeAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, field);
-                return annotationVisitor(field);
+                return visitAnnotation(descriptor, visible);
+            }
+        }
+
+        private final class RecordComponentIndexer extends RecordComponentVisitor {
+
+            private final IJavaElement element;
+
+            private RecordComponentIndexer(IJavaElement element) {
+                super(Opcodes.ASM9);
+                this.element = element;
+            }
+
+            @Override
+            public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+                return indexedAnnotation(descriptor, element);
+            }
+
+            @Override
+            public AnnotationVisitor visitTypeAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
+                    String descriptor, boolean visible) {
+                return visitAnnotation(descriptor, visible);
             }
         }
 
@@ -806,36 +837,31 @@ public class BytecodeJarIndexer {
             @Override
             public AnnotationVisitor visitTypeAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, method);
-                return annotationVisitor(method);
+                return visitAnnotation(descriptor, visible);
             }
 
             @Override
             public AnnotationVisitor visitInsnAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, method);
-                return annotationVisitor(method);
+                return visitTypeAnnotation(typeRef, typePath, descriptor, visible);
             }
 
             @Override
             public AnnotationVisitor visitTryCatchAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, method);
-                return annotationVisitor(method);
+                return visitInsnAnnotation(typeRef, typePath, descriptor, visible);
             }
 
             @Override
             public AnnotationVisitor visitLocalVariableAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     org.objectweb.asm.Label[] start, org.objectweb.asm.Label[] end, int[] index, String descriptor,
                     boolean visible) {
-                addDescriptorReferences(descriptor, method);
-                return annotationVisitor(method);
+                return visitTryCatchAnnotation(typeRef, typePath, descriptor, visible);
             }
 
             @Override
             public AnnotationVisitor visitParameterAnnotation(int parameter, String descriptor, boolean visible) {
-                addDescriptorReferences(descriptor, method);
-                return annotationVisitor(method);
+                return indexedAnnotation(descriptor, method);
             }
 
             @Override

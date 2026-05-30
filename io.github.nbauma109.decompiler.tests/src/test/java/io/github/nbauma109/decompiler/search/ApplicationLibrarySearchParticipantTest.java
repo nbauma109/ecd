@@ -75,6 +75,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.RecordComponentVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.TypeReference;
 
@@ -373,6 +374,33 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void qualifiedTypePatternsDoNotMatchOtherPackagesWithTheSameSimpleName()
+            throws Exception {
+        File jar = new File(tempDir, "same-simple-type-references.jar"); //$NON-NLS-1$
+        createSameSimpleTypeReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-same-simple-type-reference-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg1.Foo", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library qualified Foo references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals(1, matches.size());
+    }
+
+    @Test
     public void repeatedElementScopedTypeReferencesArePreserved()
             throws Exception {
         File jar = new File(tempDir, "repeated-type-references.jar"); //$NON-NLS-1$
@@ -585,6 +613,27 @@ public class ApplicationLibrarySearchParticipantTest {
         List<Match> matches = runSearchInBackground(participant, specification);
 
         assertEquals(3, matches.size());
+    }
+
+    @Test
+    public void recordComponentAnnotationsContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "record-component-annotation-references.jar"); //$NON-NLS-1$
+        createRecordComponentAnnotationReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-record-component-annotation-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.RecordComponentTag", scope)).size()); //$NON-NLS-1$
+        assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.RecordComponentTypeTag", scope)).size()); //$NON-NLS-1$
     }
 
     @Test
@@ -1296,6 +1345,11 @@ public class ApplicationLibrarySearchParticipantTest {
                 "Application library same type category search"); //$NON-NLS-1$
     }
 
+    private static PatternQuerySpecification typeReferenceSpecification(String pattern, IJavaSearchScope scope) {
+        return new PatternQuerySpecification(pattern, IJavaSearchConstants.TYPE, true, IJavaSearchConstants.REFERENCES,
+                scope, "Application library type references"); //$NON-NLS-1$
+    }
+
     private static List<String> typeDeclarationNames(List<Match> matches) {
         List<String> names = new ArrayList<>();
         for (Match match : matches) {
@@ -1331,6 +1385,12 @@ public class ApplicationLibrarySearchParticipantTest {
     private static void createRepeatedTypeReferenceJar(File jar) throws Exception {
         try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
             addClass(output, "pkg/Repeated.class", repeatedTypeReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createSameSimpleTypeReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/UsesSameSimpleTypes.class", sameSimpleTypeReferenceBytes()); //$NON-NLS-1$
         }
     }
 
@@ -1379,6 +1439,12 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createRecordComponentAnnotationReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/AnnotatedRecord.class", recordComponentAnnotationReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void addType(JarOutputStream output, String internalName, int access, String superName,
             String... interfaces) throws Exception {
         ClassWriter writer = new ClassWriter(0);
@@ -1419,6 +1485,15 @@ public class ApplicationLibrarySearchParticipantTest {
         method.visitInsn(Opcodes.RETURN);
         method.visitMaxs(1, 1);
         method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] sameSimpleTypeReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/UsesSameSimpleTypes", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitField(Opcodes.ACC_PUBLIC, "first", "Lpkg1/Foo;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitField(Opcodes.ACC_PUBLIC, "second", "Lpkg2/Foo;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
         writer.visitEnd();
         return writer.toByteArray();
     }
@@ -1541,6 +1616,19 @@ public class ApplicationLibrarySearchParticipantTest {
                 true).visitEnd();
         method.visitMaxs(1, 1);
         method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] recordComponentAnnotationReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_RECORD, "pkg/AnnotatedRecord", //$NON-NLS-1$
+                null, "java/lang/Record", null); //$NON-NLS-1$
+        RecordComponentVisitor component = writer.visitRecordComponent("value", "Ljava/lang/String;", null); //$NON-NLS-1$ //$NON-NLS-2$
+        component.visitAnnotation("Lpkg/RecordComponentTag;", true).visitEnd(); //$NON-NLS-1$
+        component.visitTypeAnnotation(TypeReference.newTypeReference(TypeReference.FIELD).getValue(), null,
+                "Lpkg/RecordComponentTypeTag;", true).visitEnd(); //$NON-NLS-1$
+        component.visitEnd();
         writer.visitEnd();
         return writer.toByteArray();
     }
