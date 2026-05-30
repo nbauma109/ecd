@@ -513,7 +513,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             String normalized = Strings.CS.replace(StringUtils.trimToEmpty(type), "...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
             int genericStart = normalized.indexOf('<');
             if (genericStart >= 0) {
-                normalized = normalized.substring(0, genericStart);
+                int genericEnd = normalized.lastIndexOf('>');
+                String suffix = genericEnd >= 0 ? normalized.substring(genericEnd + 1) : ""; //$NON-NLS-1$
+                normalized = normalized.substring(0, genericStart) + suffix;
             }
             normalized = normalized.replace("[]", " array ").replaceAll("\\s+", "") //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                     .replace("array", "[]").toLowerCase(Locale.ROOT); //$NON-NLS-1$ //$NON-NLS-2$

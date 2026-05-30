@@ -699,22 +699,39 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             return -1;
         }
 
-        int offset = 0;
-        int typeOffset = -1;
         String suffix = nestedName.substring(topLevelName.length() + 1);
-        for (String segment : suffix.split("\\$")) { //$NON-NLS-1$
-            String sourceSegment = sourceTypeSegment(segment);
-            if (sourceSegment.isEmpty()) {
-                return -1;
+        return resolveNestedSourceOffset(source, suffix, 0);
+    }
+
+    private int resolveNestedSourceOffset(String source, String suffix, int fromOffset) {
+        if (suffix.isEmpty()) {
+            return fromOffset;
+        }
+        String[] parts = suffix.split("\\$", -1); //$NON-NLS-1$
+        StringBuilder candidate = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                candidate.append(NESTED_CLASS_SEPARATOR);
             }
-            typeOffset = findTypeDeclarationOffset(source, sourceSegment, offset);
+            candidate.append(parts[i]);
+            String sourceSegment = sourceTypeSegment(candidate.toString());
+            int typeOffset = sourceSegment.isEmpty() ? -1 : findTypeDeclarationOffset(source, sourceSegment, fromOffset);
             if (typeOffset < 0) {
-                return -1;
+                continue;
+            }
+            String remaining = suffix.substring(candidate.length());
+            if (remaining.isEmpty()) {
+                return typeOffset;
             }
             int openBrace = source.indexOf('{', typeOffset);
-            offset = openBrace < 0 ? typeOffset + segment.length() : openBrace + 1;
+            int innerFrom = openBrace < 0 ? typeOffset + sourceSegment.length() : openBrace + 1;
+            int deeper = resolveNestedSourceOffset(source, remaining.substring(1), innerFrom);
+            if (deeper >= 0) {
+                return deeper;
+            }
+            // child matched but deeper resolution failed — try a longer candidate at this level
         }
-        return typeOffset;
+        return -1;
     }
 
     public String sourceTypeSegment(String classFileSegment) {

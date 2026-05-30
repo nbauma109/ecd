@@ -221,7 +221,7 @@ public class BytecodeJarIndexer {
             Set<EntryKey> seen, Map<String, String> strings) throws IOException {
         ClassReader reader = new ClassReader(input);
         ClassIndex classIndex = new ClassIndex(root, entries, seen, strings);
-        reader.accept(classIndex.visitor, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+        reader.accept(classIndex.visitor, ClassReader.SKIP_FRAMES);
 
         if (classIndex.type == null && classIndex.moduleElement == null) {
             return;
@@ -864,7 +864,7 @@ public class BytecodeJarIndexer {
         private final class MethodIndexer extends MethodVisitor {
 
             private final IJavaElement method;
-            private final Set<String> pendingNewTypes = new HashSet<>();
+            private final Map<String, Integer> pendingNewTypes = new HashMap<>();
 
             private MethodIndexer(IJavaElement method) {
                 super(Opcodes.ASM9);
@@ -915,7 +915,7 @@ public class BytecodeJarIndexer {
             @Override
             public void visitTypeInsn(int opcode, String type) {
                 if (opcode == Opcodes.NEW) {
-                    pendingNewTypes.add(type);
+                    pendingNewTypes.merge(type, 1, Integer::sum);
                 }
                 addTypeReference(type, method);
             }
@@ -930,7 +930,7 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                if (!CONSTRUCTOR.equals(name) || !pendingNewTypes.remove(owner)) {
+                if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
                     addTypeReference(owner, method);
                 }
                 addDescriptorReferences(descriptor, method);
@@ -962,6 +962,25 @@ public class BytecodeJarIndexer {
             @Override
             public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
                 addDescriptorReferences(descriptor, method);
+            }
+
+            private boolean consumePendingNew(String owner) {
+                int count = pendingNewTypes.getOrDefault(owner, 0);
+                if (count == 0) {
+                    return false;
+                }
+                if (count == 1) {
+                    pendingNewTypes.remove(owner);
+                } else {
+                    pendingNewTypes.put(owner, count - 1);
+                }
+                return true;
+            }
+
+            @Override
+            public void visitLocalVariable(String name, String descriptor, String signature,
+                    org.objectweb.asm.Label start, org.objectweb.asm.Label end, int index) {
+                addDescriptorReferences(signature != null ? signature : descriptor, method);
             }
 
             @Override
