@@ -8,7 +8,9 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -283,7 +285,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 // Also compare return types so that bridge methods and covariant-return
                 // overrides (which share the same parameter types but differ in return type)
                 // are not incorrectly reported as references to the searched method.
-                String jdtReturnType = normalizeJdtTypeSignature(Signature.getReturnType(jdtSignature));
+                String jdtReturnType = normalizeJdtMethodReturnType(jdtSignature);
                 String bytecodeReturnType = normalizeAsmType(org.objectweb.asm.Type.getReturnType(bytecodeDescriptor));
                 return sameType(jdtReturnType, bytecodeReturnType);
             } catch (IllegalArgumentException e) {
@@ -626,11 +628,26 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return new String[0];
             }
             String[] parameterTypes = Signature.getParameterTypes(signature);
+            Map<String, String> typeVariableErasures = typeVariableErasures(signature);
             String[] normalized = new String[parameterTypes.length];
             for (int i = 0; i < parameterTypes.length; i++) {
-                normalized[i] = normalizeJdtTypeSignature(parameterTypes[i]);
+                normalized[i] = normalizeJdtTypeSignature(parameterTypes[i], typeVariableErasures);
             }
             return normalized;
+        }
+
+        private static String normalizeJdtMethodReturnType(String signature) {
+            return normalizeJdtTypeSignature(Signature.getReturnType(signature), typeVariableErasures(signature));
+        }
+
+        private static Map<String, String> typeVariableErasures(String signature) {
+            Map<String, String> erasures = new HashMap<>();
+            for (String typeParameter : Signature.getTypeParameters(signature)) {
+                String[] bounds = Signature.getTypeParameterBounds(typeParameter);
+                erasures.put(Signature.getTypeVariable(typeParameter),
+                        bounds.length == 0 ? "Ljava/lang/Object;" : bounds[0]); //$NON-NLS-1$
+            }
+            return erasures;
         }
 
         private static String[] normalizeBytecodeMethodParameterTypes(String descriptor) {
@@ -645,15 +662,24 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             return normalized;
         }
 
-        private static String normalizeJdtTypeSignature(String signature) {
+        private static String normalizeJdtTypeSignature(String signature, Map<String, String> typeVariableErasures) {
             int arrayDepth = Signature.getArrayCount(signature);
-            String elementType = Signature.getElementType(signature);
+            String elementType = eraseJdtType(Signature.getElementType(signature), typeVariableErasures);
             String normalized = switch (Signature.getTypeSignatureKind(elementType)) {
             case Signature.BASE_TYPE_SIGNATURE -> elementType;
-            case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('$', '.');
+            case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('/', '.').replace('$', '.');
             default -> Signature.getSignatureSimpleName(elementType);
             };
             return normalized.toLowerCase(Locale.ROOT) + "[]".repeat(arrayDepth); //$NON-NLS-1$
+        }
+
+        private static String eraseJdtType(String signature, Map<String, String> typeVariableErasures) {
+            String erased = Signature.getTypeErasure(signature);
+            for (int i = 0; i <= typeVariableErasures.size()
+                    && Signature.getTypeSignatureKind(erased) == Signature.TYPE_VARIABLE_SIGNATURE; i++) {
+                erased = typeVariableErasures.getOrDefault(Signature.getTypeVariable(erased), "Ljava/lang/Object;"); //$NON-NLS-1$
+            }
+            return Signature.getTypeErasure(erased);
         }
 
         private static String normalizeAsmType(org.objectweb.asm.Type type) {

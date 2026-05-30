@@ -72,9 +72,11 @@ import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.TypeReference;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.SetupRunnable;
@@ -503,6 +505,86 @@ public class ApplicationLibrarySearchParticipantTest {
         List<Match> matches = runSearchInBackground(participant, specification);
 
         assertFalse("Annotation method default values must contribute bytecode type references", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void elementQueriesEraseGenericMethodSignaturesBeforeDescriptorMatching()
+            throws Exception {
+        File jar = new File(tempDir, "generic-method-references.jar"); //$NON-NLS-1$
+        createGenericMethodReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-generic-method-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        IType target = setup.javaProject().findType("pkg.GenericTarget"); //$NON-NLS-1$
+        assertNotNull(target);
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+
+        List<Match> consumeMatches = runSearchInBackground(participant, new ElementQuerySpecification(
+                methodNamed(target, "consume"), IJavaSearchConstants.REFERENCES, scope, "generic-list-method")); //$NON-NLS-1$ //$NON-NLS-2$
+        List<Match> idMatches = runSearchInBackground(participant, new ElementQuerySpecification(
+                methodNamed(target, "id"), IJavaSearchConstants.REFERENCES, scope, "generic-type-variable-method")); //$NON-NLS-1$ //$NON-NLS-2$
+
+        assertEquals(1, consumeMatches.size());
+        assertEquals(1, idMatches.size());
+    }
+
+    @Test
+    public void permittedSubclassesContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "permitted-subclass-references.jar"); //$NON-NLS-1$
+        createPermittedSubclassReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-permitted-subclass-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.Permitted", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library permitted subclass references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals(1, matches.size());
+    }
+
+    @Test
+    public void methodBodyTypeAnnotationsContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "method-body-type-annotation-references.jar"); //$NON-NLS-1$
+        createMethodBodyTypeAnnotationReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-method-body-type-annotation-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.MethodBodyTA", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library method body type annotation references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals(3, matches.size());
     }
 
     @Test
@@ -1278,6 +1360,25 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createGenericMethodReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/GenericTarget.class", genericTargetBytes()); //$NON-NLS-1$
+            addClass(output, "pkg/GenericCaller.class", genericCallerBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createPermittedSubclassReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/Sealed.class", permittedSubclassReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
+    private static void createMethodBodyTypeAnnotationReferenceJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/AnnotatedBody.class", methodBodyTypeAnnotationReferenceBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void addType(JarOutputStream output, String internalName, int access, String superName,
             String... interfaces) throws Exception {
         ClassWriter writer = new ClassWriter(0);
@@ -1368,6 +1469,82 @@ public class ApplicationLibrarySearchParticipantTest {
         return writer.toByteArray();
     }
 
+    private static byte[] genericTargetBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/GenericTarget", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor consume = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "consume", //$NON-NLS-1$
+                "(Ljava/util/List;)V", "(Ljava/util/List<Ljava/lang/String;>;)V", null); //$NON-NLS-1$ //$NON-NLS-2$
+        consume.visitCode();
+        consume.visitInsn(Opcodes.RETURN);
+        consume.visitMaxs(0, 1);
+        consume.visitEnd();
+        MethodVisitor id = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "id", //$NON-NLS-1$
+                "(Ljava/lang/Object;)Ljava/lang/Object;", "<T:Ljava/lang/Object;>(TT;)TT;", null); //$NON-NLS-1$ //$NON-NLS-2$
+        id.visitCode();
+        id.visitVarInsn(Opcodes.ALOAD, 0);
+        id.visitInsn(Opcodes.ARETURN);
+        id.visitMaxs(1, 1);
+        id.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] genericCallerBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/GenericCaller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", //$NON-NLS-1$
+                "(Ljava/util/List;Ljava/lang/Object;)V", null, null); //$NON-NLS-1$
+        method.visitCode();
+        method.visitVarInsn(Opcodes.ALOAD, 0);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, "pkg/GenericTarget", "consume", "(Ljava/util/List;)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        method.visitVarInsn(Opcodes.ALOAD, 1);
+        method.visitMethodInsn(Opcodes.INVOKESTATIC, "pkg/GenericTarget", "id", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Ljava/lang/Object;)Ljava/lang/Object;", false); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(1, 2);
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] permittedSubclassReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Sealed", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitPermittedSubclass("pkg/Permitted"); //$NON-NLS-1$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] methodBodyTypeAnnotationReferenceBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/AnnotatedBody", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        Label start = new Label();
+        Label end = new Label();
+        Label handler = new Label();
+        method.visitCode();
+        method.visitTryCatchBlock(start, end, handler, "java/lang/Exception"); //$NON-NLS-1$
+        method.visitLabel(start);
+        method.visitTypeInsn(Opcodes.NEW, "java/lang/Object"); //$NON-NLS-1$
+        method.visitInsnAnnotation(TypeReference.newTypeReference(TypeReference.NEW).getValue(), null,
+                "Lpkg/MethodBodyTA;", true).visitEnd(); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitLabel(end);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitLabel(handler);
+        method.visitInsn(Opcodes.ATHROW);
+        method.visitTryCatchAnnotation(TypeReference.newTryCatchReference(0).getValue(), null,
+                "Lpkg/MethodBodyTA;", true).visitEnd(); //$NON-NLS-1$
+        method.visitLocalVariableAnnotation(TypeReference.newTypeReference(TypeReference.LOCAL_VARIABLE).getValue(),
+                null, new Label[] { start }, new Label[] { end }, new int[] { 0 }, "Lpkg/MethodBodyTA;", //$NON-NLS-1$
+                true).visitEnd();
+        method.visitMaxs(1, 1);
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
     private static Manifest multiReleaseManifest() {
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0"); //$NON-NLS-1$
@@ -1379,6 +1556,15 @@ public class ApplicationLibrarySearchParticipantTest {
         output.putNextEntry(new JarEntry(name));
         output.write(bytes);
         output.closeEntry();
+    }
+
+    private static IMethod methodNamed(IType type, String name) throws Exception {
+        for (IMethod method : type.getMethods()) {
+            if (name.equals(method.getElementName())) {
+                return method;
+            }
+        }
+        throw new AssertionError("Missing method " + name); //$NON-NLS-1$
     }
 
     private static BytecodeSearchEntry reference(Kind kind, IJavaElement element, String name) {

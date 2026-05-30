@@ -641,6 +641,11 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public void visitPermittedSubclass(String permittedSubclass) {
+                addTypeReference(permittedSubclass);
+            }
+
+            @Override
             public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
                 addDescriptor(descriptor);
                 return annotationVisitor(type);
@@ -801,6 +806,28 @@ public class BytecodeJarIndexer {
             @Override
             public AnnotationVisitor visitTypeAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
                     String descriptor, boolean visible) {
+                addDescriptorReferences(descriptor, method);
+                return annotationVisitor(method);
+            }
+
+            @Override
+            public AnnotationVisitor visitInsnAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
+                    String descriptor, boolean visible) {
+                addDescriptorReferences(descriptor, method);
+                return annotationVisitor(method);
+            }
+
+            @Override
+            public AnnotationVisitor visitTryCatchAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
+                    String descriptor, boolean visible) {
+                addDescriptorReferences(descriptor, method);
+                return annotationVisitor(method);
+            }
+
+            @Override
+            public AnnotationVisitor visitLocalVariableAnnotation(int typeRef, org.objectweb.asm.TypePath typePath,
+                    org.objectweb.asm.Label[] start, org.objectweb.asm.Label[] end, int[] index, String descriptor,
+                    boolean visible) {
                 addDescriptorReferences(descriptor, method);
                 return annotationVisitor(method);
             }
