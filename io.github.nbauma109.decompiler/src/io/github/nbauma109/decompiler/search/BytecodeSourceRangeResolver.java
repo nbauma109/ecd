@@ -40,6 +40,8 @@ import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.BooleanLiteral;
+import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ConstructorInvocation;
@@ -51,6 +53,8 @@ import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.NumberLiteral;
+import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.ParameterizedType;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
@@ -588,8 +592,19 @@ public class BytecodeSourceRangeResolver {
         }
 
         private boolean matchesSimpleNameReference(SimpleName node) {
-            return entry.getKind() == Kind.TYPE && matches(node) && isTypePositionName(node)
+            return entry.getKind() == Kind.TYPE && matches(node) && isTypePositionName(node) && matchesQualifiedContext(node)
                     || entry.getKind() == Kind.FIELD && matchesFieldAccess(node);
+        }
+
+        private boolean matchesQualifiedContext(SimpleName node) {
+            if (!(node.getParent() instanceof QualifiedName qualifiedName) || qualifiedName.getName() != node) {
+                return true;
+            }
+            String qualifiedTypeName = entry.getQualifiedName();
+            if (StringUtils.isBlank(qualifiedTypeName)) {
+                return true;
+            }
+            return sameName(qualifiedName.getFullyQualifiedName(), qualifiedTypeName);
         }
 
         private static boolean isTypePositionName(SimpleName node) {
@@ -737,8 +752,55 @@ public class BytecodeSourceRangeResolver {
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
                 return matchesDeclaringOwner(receiver.getFullyQualifiedName());
             }
+            if (node.getExpression() instanceof CastExpression cast) {
+                return matchesDeclaringOwner(sourceName(rawConstructorType(cast.getType())));
+            }
             // Receiver expression types are unavailable because decompiled text is parsed
-            // without bindings; do not guess an owner for field or computed receivers.
+            // without bindings; use literal argument types as a conservative discriminator.
+            return matchesArgumentTypeSyntax(node.arguments());
+        }
+
+        private boolean matchesArgumentTypeSyntax(List<?> arguments) {
+            String descriptor = entry.getDescriptor();
+            if (StringUtils.isBlank(descriptor)) {
+                return true;
+            }
+            try {
+                org.objectweb.asm.Type[] argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+                if (argTypes.length != arguments.size()) {
+                    return true;
+                }
+                for (int i = 0; i < argTypes.length; i++) {
+                    if (!compatibleArgumentSyntax(arguments.get(i), argTypes[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (IllegalArgumentException e) {
+                return true;
+            }
+        }
+
+        private static boolean compatibleArgumentSyntax(Object arg, org.objectweb.asm.Type expectedType) {
+            if (arg instanceof StringLiteral) {
+                return expectedType.getSort() == org.objectweb.asm.Type.OBJECT
+                        && "java/lang/String".equals(expectedType.getInternalName()); //$NON-NLS-1$
+            }
+            if (arg instanceof BooleanLiteral) {
+                return expectedType.getSort() == org.objectweb.asm.Type.BOOLEAN;
+            }
+            if (arg instanceof NumberLiteral nl) {
+                String token = nl.getToken();
+                if (token.endsWith("L") || token.endsWith("l")) { //$NON-NLS-1$ //$NON-NLS-2$
+                    return expectedType.getSort() == org.objectweb.asm.Type.LONG;
+                }
+                if (token.endsWith("F") || token.endsWith("f")) { //$NON-NLS-1$ //$NON-NLS-2$
+                    return expectedType.getSort() == org.objectweb.asm.Type.FLOAT;
+                }
+                if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
+                    return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
+                }
+            }
             return true;
         }
 

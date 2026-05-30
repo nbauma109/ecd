@@ -722,7 +722,12 @@ public class BytecodeJarIndexer {
                         addTypeReference(exception, method);
                     }
                 }
-                return new MethodIndexer(method);
+                int paramSlots = 0;
+                for (org.objectweb.asm.Type argType : org.objectweb.asm.Type.getArgumentTypes(descriptor)) {
+                    paramSlots += argType.getSize();
+                }
+                boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
+                return new MethodIndexer(method, paramSlots + (isStatic ? 0 : 1));
             }
         }
 
@@ -865,10 +870,12 @@ public class BytecodeJarIndexer {
 
             private final IJavaElement method;
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
+            private final int firstLocalSlot;
 
-            private MethodIndexer(IJavaElement method) {
+            private MethodIndexer(IJavaElement method, int firstLocalSlot) {
                 super(Opcodes.ASM9);
                 this.method = method;
+                this.firstLocalSlot = firstLocalSlot;
             }
 
             @Override
@@ -980,7 +987,9 @@ public class BytecodeJarIndexer {
             @Override
             public void visitLocalVariable(String name, String descriptor, String signature,
                     org.objectweb.asm.Label start, org.objectweb.asm.Label end, int index) {
-                addDescriptorReferences(signature != null ? signature : descriptor, method);
+                if (index >= firstLocalSlot) {
+                    addDescriptorReferences(signature != null ? signature : descriptor, method);
+                }
             }
 
             @Override
