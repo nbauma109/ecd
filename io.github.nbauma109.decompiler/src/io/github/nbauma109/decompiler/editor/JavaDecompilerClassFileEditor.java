@@ -807,7 +807,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private String simpleClassName(IClassFile classFile) {
         String className = stripClassExtension(classFile.getElementName());
         int nestedSeparator = className.lastIndexOf(NESTED_CLASS_SEPARATOR);
-        return nestedSeparator < 0 ? className : className.substring(nestedSeparator + 1);
+        return sourceTypeSegment(nestedSeparator < 0 ? className : className.substring(nestedSeparator + 1));
     }
 
     private int findDeclarationBlockEnd(String source, int declarationOffset) {

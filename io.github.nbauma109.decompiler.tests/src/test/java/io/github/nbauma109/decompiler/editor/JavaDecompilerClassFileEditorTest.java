@@ -228,6 +228,18 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testSimpleClassNameDropsLocalClassOrdinalPrefix()
+            throws Exception {
+        IClassFile localClassFile = jarRoot.getPackageFragment(TEST_PACKAGE).getClassFile("Outer$1Local.class"); //$NON-NLS-1$
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        java.lang.reflect.Method simpleClassName = JavaDecompilerClassFileEditor.class
+                .getDeclaredMethod("simpleClassName", IClassFile.class); //$NON-NLS-1$
+        simpleClassName.setAccessible(true);
+
+        assertEquals("Local", simpleClassName.invoke(editor, localClassFile)); //$NON-NLS-1$
+    }
+
+    @Test
     public void testOpenClassFileWithDecompilerEditorIdShowsSource()
             throws IOException, CoreException {
         String editorId = resolveDecompilerEditorIdFromRegistry();

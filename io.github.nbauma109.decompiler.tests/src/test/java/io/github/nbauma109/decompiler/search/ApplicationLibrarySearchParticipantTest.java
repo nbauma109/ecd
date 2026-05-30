@@ -962,6 +962,37 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void constructorPatternsIgnoreSyntheticJvmParameters()
+            throws Exception {
+        File jar = new File(tempDir, "synthetic-constructor-parameters.jar"); //$NON-NLS-1$
+        createSyntheticConstructorParameterJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-synthetic-constructor-parameter-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertEquals(1, runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Outer.Inner(java.lang.String)", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library member constructor references")).size()); //$NON-NLS-1$
+        assertEquals(0, runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Captured(java.lang.String)", //$NON-NLS-1$
+                IJavaSearchConstants.CONSTRUCTOR,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library overloaded constructor references")).size()); //$NON-NLS-1$
+    }
+
+    @Test
     public void qualifiedReferenceLimitFlagFindsMethodReferencesFromTestJar()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
@@ -1531,6 +1562,15 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
+    private static void createSyntheticConstructorParameterJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(output, "pkg/ConstructorUses.class", syntheticConstructorParameterBytes()); //$NON-NLS-1$
+            addClass(output, "pkg/Outer.class", classBytes("pkg/Outer")); //$NON-NLS-1$ //$NON-NLS-2$
+            addClass(output, "pkg/Outer$Inner.class", syntheticMemberConstructorBytes()); //$NON-NLS-1$
+            addClass(output, "pkg/Captured.class", overloadedConstructorBytes()); //$NON-NLS-1$
+        }
+    }
+
     private static void addType(JarOutputStream output, String internalName, int access, String superName,
             String... interfaces) throws Exception {
         ClassWriter writer = new ClassWriter(0);
@@ -1759,6 +1799,61 @@ public class ApplicationLibrarySearchParticipantTest {
         component.visitEnd();
         writer.visitEnd();
         return writer.toByteArray();
+    }
+
+    private static byte[] syntheticConstructorParameterBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/ConstructorUses", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", Opcodes.ACC_PUBLIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor method = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "uses", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        method.visitCode();
+        method.visitTypeInsn(Opcodes.NEW, "pkg/Outer$Inner"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.DUP);
+        method.visitInsn(Opcodes.ACONST_NULL);
+        method.visitLdcInsn("value"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.ICONST_0);
+        method.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Outer$Inner", "<init>", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Lpkg/Outer;Ljava/lang/String;I)V", false); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitTypeInsn(Opcodes.NEW, "pkg/Captured"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.DUP);
+        method.visitLdcInsn("value"); //$NON-NLS-1$
+        method.visitInsn(Opcodes.ICONST_0);
+        method.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Captured", "<init>", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Ljava/lang/String;I)V", false); //$NON-NLS-1$
+        method.visitInsn(Opcodes.POP);
+        method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(5, 0);
+        method.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] syntheticMemberConstructorBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Outer$Inner", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        writer.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", Opcodes.ACC_PUBLIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        addConstructor(writer, "(Lpkg/Outer;Ljava/lang/String;I)V"); //$NON-NLS-1$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static byte[] overloadedConstructorBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Captured", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        addConstructor(writer, "(Ljava/lang/Integer;Ljava/lang/String;)V"); //$NON-NLS-1$
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static void addConstructor(ClassWriter writer, String descriptor) {
+        MethodVisitor constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", descriptor, null, null); //$NON-NLS-1$
+        constructor.visitCode();
+        constructor.visitVarInsn(Opcodes.ALOAD, 0);
+        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        constructor.visitInsn(Opcodes.RETURN);
+        constructor.visitMaxs(1, 4);
+        constructor.visitEnd();
     }
 
     private static Manifest multiReleaseManifest() {

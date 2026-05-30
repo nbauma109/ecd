@@ -95,6 +95,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         private final boolean caseSensitive;
         private final Pattern wildcardPattern;
         private final Pattern declaringTypePattern;
+        private final Map<String, Boolean> syntheticConstructorParametersByOwner = new HashMap<>();
 
         private SearchMatcher(int limitTo, Kind kind, TypeFilter typeFilter, SearchPattern searchPattern) {
             this.limitTo = limitTo;
@@ -195,7 +196,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
 
         private boolean matchesEntryParameterTypes(BytecodeSearchEntry entry) {
-            return !matchParameterTypes || sameParameterTypes(parameterTypes, entry.getDescriptor());
+            return !matchParameterTypes || sameParameterTypes(parameterTypes, entry);
         }
 
         private boolean matchesEntryReturnType(BytecodeSearchEntry entry) {
@@ -296,24 +297,71 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
         }
 
-        private boolean sameParameterTypes(String[] expectedTypes, String bytecodeDescriptor) {
+        private boolean sameParameterTypes(String[] expectedTypes, BytecodeSearchEntry entry) {
+            String bytecodeDescriptor = entry.getDescriptor();
             if (bytecodeDescriptor == null) {
                 return false;
             }
             try {
                 org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(bytecodeDescriptor);
-                if (argumentTypes.length != expectedTypes.length) {
+                if (kind == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameters(entry)) {
+                    for (int offset = 0; offset <= argumentTypes.length - expectedTypes.length; offset++) {
+                        if (sameParameterTypes(expectedTypes, argumentTypes, offset)) {
+                            return true;
+                        }
+                    }
                     return false;
                 }
-                for (int i = 0; i < argumentTypes.length; i++) {
-                    if (!sameType(expectedTypes[i], normalizeAsmType(argumentTypes[i]))) {
-                        return false;
-                    }
-                }
-                return true;
+                return argumentTypes.length == expectedTypes.length
+                        && sameParameterTypes(expectedTypes, argumentTypes, 0);
             } catch (IllegalArgumentException e) {
                 return false;
             }
+        }
+
+        private boolean mayHaveSyntheticConstructorParameters(BytecodeSearchEntry entry) {
+            String owner = entry.getDeclaringTypeName();
+            return owner != null && syntheticConstructorParametersByOwner.computeIfAbsent(owner,
+                    ignored -> isNestedType(entry.getElement(), owner));
+        }
+
+        private static boolean isNestedType(IJavaElement element, String owner) {
+            if (element == null || element.getJavaProject() == null) {
+                return false;
+            }
+            try {
+                IType type = findType(element, owner);
+                return type != null && (type.getDeclaringType() != null || type.isLocal() || type.isAnonymous());
+            } catch (JavaModelException e) {
+                Logger.debug(e);
+                return false;
+            }
+        }
+
+        private static IType findType(IJavaElement element, String owner) throws JavaModelException {
+            IType type = element.getJavaProject().findType(owner);
+            if (type != null) {
+                return type;
+            }
+            StringBuilder binaryName = new StringBuilder(owner);
+            for (int separator = binaryName.lastIndexOf("."); separator >= 0; //$NON-NLS-1$
+                    separator = binaryName.lastIndexOf(".", separator - 1)) { //$NON-NLS-1$
+                binaryName.setCharAt(separator, '$');
+                type = element.getJavaProject().findType(binaryName.toString());
+                if (type != null) {
+                    return type;
+                }
+            }
+            return null;
+        }
+
+        private boolean sameParameterTypes(String[] expectedTypes, org.objectweb.asm.Type[] argumentTypes, int offset) {
+            for (int i = 0; i < expectedTypes.length; i++) {
+                if (!sameType(expectedTypes[i], normalizeAsmType(argumentTypes[offset + i]))) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private boolean sameReturnType(String expectedType, String bytecodeDescriptor) {
