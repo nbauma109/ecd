@@ -26,7 +26,8 @@ public class BytecodeSearchEntry {
     public enum Access {
         NONE,
         READ,
-        WRITE
+        WRITE,
+        READ_WRITE
     }
 
     public enum TypeCategory {

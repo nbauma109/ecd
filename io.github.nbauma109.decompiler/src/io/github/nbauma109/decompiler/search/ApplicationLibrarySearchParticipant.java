@@ -302,10 +302,12 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return !entry.isDeclaration();
             }
             if (baseLimit == IJavaSearchConstants.READ_ACCESSES) {
-                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.READ;
+                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD
+                        && (entry.getAccess() == Access.READ || entry.getAccess() == Access.READ_WRITE);
             }
             if (baseLimit == IJavaSearchConstants.WRITE_ACCESSES) {
-                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD && entry.getAccess() == Access.WRITE;
+                return !entry.isDeclaration() && entry.getKind() == Kind.FIELD
+                        && (entry.getAccess() == Access.WRITE || entry.getAccess() == Access.READ_WRITE);
             }
             return false;
         }
@@ -766,9 +768,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                 return Collections.emptyMap();
             }
             Map<String, String> erasures = new HashMap<>();
-            for (ITypeParameter tp : declaringType.getTypeParameters()) {
-                String[] bounds = tp.getBoundsSignatures();
-                erasures.put(tp.getElementName(), bounds.length == 0 ? OBJECT_SIGNATURE : bounds[0]);
+            // Walk the full enclosing-type chain so that type variables declared by outer classes
+            // (e.g. T in Outer<T extends Number> used by Outer.Inner.put(T)) are also covered.
+            for (IType t = declaringType; t != null; t = t.getDeclaringType()) {
+                for (ITypeParameter tp : t.getTypeParameters()) {
+                    String[] bounds = tp.getBoundsSignatures();
+                    erasures.putIfAbsent(tp.getElementName(), bounds.length == 0 ? OBJECT_SIGNATURE : bounds[0]);
+                }
             }
             return erasures;
         }

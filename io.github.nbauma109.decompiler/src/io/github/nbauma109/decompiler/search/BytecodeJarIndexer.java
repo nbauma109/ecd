@@ -508,8 +508,13 @@ public class BytecodeJarIndexer {
 
         private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
+            addReference(kind, name, qualifiedName, owner, descriptor, element, access, false);
+        }
+
+        private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, Access access, boolean compoundCandidate) {
             IJavaElement enclosingElement = element == null ? type : element;
-            MemberReference member = new MemberReference(name, owner, descriptor, access);
+            MemberReference member = new MemberReference(name, owner, descriptor, access, compoundCandidate);
             switch (kind) {
               case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
@@ -560,7 +565,9 @@ public class BytecodeJarIndexer {
 
         private void flushMemberReferences(Map<IJavaElement, List<MemberReference>> references, Kind kind) {
             for (Map.Entry<IJavaElement, List<MemberReference>> entry : references.entrySet()) {
-                for (MemberReference member : entry.getValue()) {
+                List<MemberReference> members = kind == Kind.FIELD
+                        ? collapseCompoundFieldAccesses(entry.getValue()) : entry.getValue();
+                for (MemberReference member : members) {
                     String qualifiedName = member.name();
                     if (kind == Kind.CONSTRUCTOR || kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
                         qualifiedName = member.owner();
@@ -569,6 +576,37 @@ public class BytecodeJarIndexer {
                             entry.getKey(), member.access());
                 }
             }
+        }
+
+        /**
+         * Collapses consecutive GETFIELD/PUTFIELD pairs on the same field into one READ_WRITE entry.
+         * Such pairs are emitted by javac for compound assignments ({@code holder.count++},
+         * {@code holder.count += 1}) and produce two bytecode instructions that map to a single
+         * source-level field occurrence.  Keeping both would cause REFERENCES and ALL_OCCURRENCES
+         * searches to report the same occurrence twice.  The combined access keeps the occurrence
+         * visible to both READ_ACCESSES and WRITE_ACCESSES searches.  A read is eligible only when
+         * bytecode duplicated the receiver immediately before GETFIELD, which avoids merging
+         * unrelated read and write expressions on the same field.
+         */
+        private static List<MemberReference> collapseCompoundFieldAccesses(List<MemberReference> members) {
+            List<MemberReference> result = new ArrayList<>(members.size());
+            for (int i = 0; i < members.size(); i++) {
+                MemberReference current = members.get(i);
+                if (current.compoundCandidate() && current.access() == Access.READ && i + 1 < members.size()) {
+                    MemberReference next = members.get(i + 1);
+                    if (next.access() == Access.WRITE
+                            && next.name().equals(current.name())
+                            && next.owner().equals(current.owner())
+                            && next.descriptor().equals(current.descriptor())) {
+                        result.add(new MemberReference(current.name(), current.owner(), current.descriptor(),
+                                Access.READ_WRITE, false));
+                        i++;
+                        continue;
+                    }
+                }
+                result.add(current);
+            }
+            return result;
         }
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
@@ -880,6 +918,7 @@ public class BytecodeJarIndexer {
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
+            private int previousOpcode = -1;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
                 super(Opcodes.ASM9);
@@ -934,6 +973,7 @@ public class BytecodeJarIndexer {
                     pendingNewTypes.merge(type, 1, Integer::sum);
                 }
                 addTypeReference(type, method);
+                previousOpcode = opcode;
             }
 
             @Override
@@ -941,7 +981,8 @@ public class BytecodeJarIndexer {
                 addTypeReference(owner, method);
                 addDescriptorReferences(descriptor, method);
                 addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method,
-                        fieldAccess(opcode));
+                        fieldAccess(opcode), opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP);
+                previousOpcode = opcode;
             }
 
             @Override
@@ -956,6 +997,7 @@ public class BytecodeJarIndexer {
                 } else {
                     addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method);
                 }
+                previousOpcode = opcode;
             }
 
             @Override
@@ -968,16 +1010,54 @@ public class BytecodeJarIndexer {
                         addBootstrapArgumentReference(argument, method);
                     }
                 }
+                previousOpcode = Opcodes.INVOKEDYNAMIC;
             }
 
             @Override
             public void visitLdcInsn(Object value) {
                 addBootstrapArgumentReference(value, method);
+                previousOpcode = Opcodes.LDC;
             }
 
             @Override
             public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
                 addDescriptorReferences(descriptor, method);
+                previousOpcode = Opcodes.MULTIANEWARRAY;
+            }
+
+            @Override
+            public void visitInsn(int opcode) {
+                previousOpcode = opcode;
+            }
+
+            @Override
+            public void visitIntInsn(int opcode, int operand) {
+                previousOpcode = opcode;
+            }
+
+            @Override
+            public void visitVarInsn(int opcode, int varIndex) {
+                previousOpcode = opcode;
+            }
+
+            @Override
+            public void visitJumpInsn(int opcode, Label label) {
+                previousOpcode = opcode;
+            }
+
+            @Override
+            public void visitIincInsn(int varIndex, int increment) {
+                previousOpcode = Opcodes.IINC;
+            }
+
+            @Override
+            public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
+                previousOpcode = Opcodes.TABLESWITCH;
+            }
+
+            @Override
+            public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
+                previousOpcode = Opcodes.LOOKUPSWITCH;
             }
 
             private boolean consumePendingNew(String owner) {
@@ -1081,7 +1161,8 @@ public class BytecodeJarIndexer {
         }
     }
 
-    private record MemberReference(String name, String owner, String descriptor, Access access) {
+    private record MemberReference(String name, String owner, String descriptor, Access access,
+            boolean compoundCandidate) {
     }
 
     private record NestedTypeName(String outerName, String innerName) {

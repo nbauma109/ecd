@@ -470,6 +470,44 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
+    /**
+     * Verifies fix: for a CONSTRUCTOR entry whose bytecode descriptor has one extra
+     * synthetic outer-instance parameter, {@code matchesArgumentCount} now accepts
+     * {@code argumentCount == argTypes.length - 1} so that source-level construction
+     * expressions with the correct visible argument count are resolved rather than
+     * falling back to the enclosing method range.
+     * <p>
+     * The entry is attached to {@code takesMethod} (so the SourceWindow covers the
+     * {@code takes} body), uses a 2-parameter descriptor {@code (Lfixture/Owner;I)V}
+     * (synthetic outer-ref + visible int), and the source expression {@code new Owner(count)}
+     * supplies only one argument.  Before the fix the argument-count check rejects the
+     * call site; after the fix it resolves to the constructor type name {@code Owner}.
+     */
+    @Test
+    public void constructorWithSyntheticParameterMatchesSourceArgCount() throws JavaModelException {
+        // Entry element = takesMethod so the SourceWindow covers the takes() body
+        BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod,
+                OWNER, FIXTURE_OWNER, FIXTURE_OWNER, "(Lfixture/Owner;I)V"); //$NON-NLS-1$
+
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        new Owner(count);
+                    }
+                    Owner(int value) {}
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        // addLastName resolves to the type name ("Owner") within the new-expression, not the full expression
+        assertNotNull("constructor with synthetic outer-ref must be resolved to the source call site", range); //$NON-NLS-1$
+        assertEquals("resolved range must cover the constructor type name", //$NON-NLS-1$
+                OWNER, src.substring(range.offset(), range.offset() + range.length()));
+    }
+
     @Test
     public void typeReferencesIgnoreSameNamedValueExpressions() {
         String src = """

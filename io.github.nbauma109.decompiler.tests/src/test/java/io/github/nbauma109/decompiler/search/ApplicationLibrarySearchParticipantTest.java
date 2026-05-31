@@ -1400,6 +1400,122 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     /**
+     * Verifies fix: {@code normalizeTypeName} no longer calls {@code replace('$', '.')} on the
+     * result of {@code getFullyQualifiedName('.')}.  Before the fix, a top-level class whose
+     * internal name contains {@code $} (e.g. {@code pkg/Price$Tag}) was indexed with qualified
+     * name {@code pkg.Price$Tag} but element-query normalization rewrote it to {@code pkg.Price.Tag},
+     * preventing any match.
+     * <p>
+     * JDT infers nesting from the {@code $} character even without {@code InnerClasses} metadata,
+     * so element queries via {@code findType} are inherently unreliable for such names. The test
+     * therefore verifies the indexed name via a pattern search, which directly exercises the
+     * {@code $}-preserving indexer path without going through {@code normalizeTypeName}.
+     */
+    @Test
+    public void dollarSignInTypeNameIsPreservedInIndex() throws Exception {
+        File jar = new File(tempDir, "dollar-type.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Price$Tag.class", buildTopLevelDollarClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/DollarCaller.class", buildDollarCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "dollar-type-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        // Pattern search with the $-preserved qualified name confirms the indexer stores pkg.Price$Tag
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Price$Tag", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "dollar-type-pattern-refs")); //$NON-NLS-1$
+        assertFalse("type with $ in name must be found by pattern search using the preserved $ name", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: when an element search targets a non-static member-class constructor,
+     * the JDT signature lacks the synthetic outer-instance parameter that the indexed bytecode
+     * descriptor contains. {@code matchesEntryDescriptor} now retries with the synthetic first
+     * parameter stripped via {@code stripFirstBytecodeParameter} so that valid callers are found.
+     */
+    @Test
+    public void elementQueryForInnerConstructorFindsReferenceWithSyntheticDescriptor() throws Exception {
+        File jar = new File(tempDir, "inner-ctor-element.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Outer.class", buildOuterClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Outer$Inner.class", buildInnerClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Caller.class", buildInnerCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "inner-ctor-element-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        IType innerType = setup.javaProject().findType("pkg.Outer.Inner"); //$NON-NLS-1$
+        assertNotNull("pkg.Outer.Inner must be resolvable", innerType); //$NON-NLS-1$
+        // getMethods()[0] is the constructor — for binary inner classes JDT strips the synthetic
+        // outer-ref, so the signature is (Ljava/lang/String;I)V (source-visible params only).
+        IMethod innerCtor = innerType.getMethods()[0];
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        List<Match> matches = runSearchInBackground(participant,
+                new ElementQuerySpecification(innerCtor, IJavaSearchConstants.REFERENCES, scope, "inner-ctor-element")); //$NON-NLS-1$
+
+        assertFalse("element query for inner-class constructor must find callers despite synthetic outer-ref in descriptor", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: {@code normalizePatternType} now uses {@code stripGenericArguments} which
+     * removes each balanced {@code <…>} segment independently.  Before the fix, erasing from the
+     * first {@code <} to the last {@code >} in {@code pkg.Outer<String>.Inner<Integer>} removed
+     * the {@code .Inner} segment between the two angle-bracket groups, collapsing the parameter
+     * type to {@code pkg.outer} instead of the correct {@code pkg.outer.inner}.
+     */
+    @Test
+    public void parameterizedNestedTypePatternStripsAllGenericSegments() throws Exception {
+        File jar = new File(tempDir, "nested-generic.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Outer.class", buildOuterWithStaticInner()); //$NON-NLS-1$
+            addClass(jos, "pkg/Outer$StaticInner.class", buildStaticInnerClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/GenericCaller.class", buildGenericNestedCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "nested-generic-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        // Pattern with two independent generic segments — the fix ensures both <...> groups are erased
+        // and .StaticInner is preserved: "pkg.outer<string>.staticinner<integer>" → "pkg.outer.staticinner"
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "call(pkg.Outer<String>.StaticInner<Integer>)", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "nested-generic-param-search")); //$NON-NLS-1$
+
+        assertFalse("method pattern with parameterized nested type must match after stripping all generic segments", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
      * Verifies fix: the synthetic-constructor-parameter offset loop is capped at 1.
      * <p>
      * Before the fix the loop allowed offsets up to
@@ -1637,6 +1753,126 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertFalse("put(T) on Box<T extends Number> must match the bytecode invocation (Ljava/lang/Number;)V", //$NON-NLS-1$
                 matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: {@code typeVariableErasures(IType)} now walks the full enclosing-type chain.
+     * <p>
+     * Before the fix, only {@code Inner}'s own type parameters were collected, so a method
+     * {@code Inner.put(T value)} where {@code T} is declared on the outer class
+     * {@code Outer<T extends Number>} still erased to {@code Object}.  After the fix the outer
+     * chain is traversed and {@code T} correctly erases to {@code Number}, so the element search
+     * for {@code put} matches the bytecode descriptor {@code (Ljava/lang/Number;)V}.
+     */
+    @Test
+    public void outerTypeBoundedTypeVariableInInnerClassMatchesBytecodeErasure() throws Exception {
+        File jar = new File(tempDir, "outer-inner-tv.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Outer.class", buildOuterGenericClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/Outer$Inner.class", buildOuterGenericInnerClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/OuterInnerCaller.class", buildOuterInnerCaller()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "outer-inner-tv-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        IType innerType = setup.javaProject().findType("pkg.Outer.Inner"); //$NON-NLS-1$
+        assertNotNull("pkg.Outer.Inner must be resolvable", innerType); //$NON-NLS-1$
+        IMethod putMethod = methodNamed(innerType, "put"); //$NON-NLS-1$
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        List<Match> matches = runSearchInBackground(participant,
+                new ElementQuerySpecification(putMethod, IJavaSearchConstants.REFERENCES, scope, "inner-put-refs")); //$NON-NLS-1$
+
+        assertFalse("Inner.put(T) where T is declared on Outer<T extends Number> must match (Ljava/lang/Number;)V bytecode", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
+    /**
+     * Verifies fix: a compound field access such as {@code holder.count++} emits a GETFIELD
+     * followed by a PUTFIELD for the same field.  Before the fix, both were indexed as separate
+     * entries and a REFERENCES search returned two matches pointing to the same source range.
+     * After the fix, {@code collapseCompoundFieldAccesses} in {@code flushMemberReferences}
+     * combines the pair so that REFERENCES returns exactly one match, while READ_ACCESSES and
+     * WRITE_ACCESSES still find the compound occurrence.
+     */
+    @Test
+    public void compoundFieldAccessReportsOnlyOneReferenceMatch() throws Exception {
+        File jar = new File(tempDir, "compound-field.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Holder.class", buildHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HolderUser.class", buildHolderUserWithCompoundAccess()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "compound-field-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> refMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "compound-field-refs")); //$NON-NLS-1$
+        assertEquals("compound field access (count++) must produce exactly 1 REFERENCES match, not 2", //$NON-NLS-1$
+                1, refMatches.size());
+
+        List<Match> readMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.READ_ACCESSES,
+                scope,
+                "compound-field-reads")); //$NON-NLS-1$
+        assertFalse("compound field access (count++) must still appear in READ_ACCESSES", //$NON-NLS-1$
+                readMatches.isEmpty());
+
+        List<Match> writeMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.WRITE_ACCESSES,
+                scope,
+                "compound-field-writes")); //$NON-NLS-1$
+        assertFalse("compound field access (count++) must still appear in WRITE_ACCESSES", //$NON-NLS-1$
+                writeMatches.isEmpty());
+    }
+
+    @Test
+    public void separateFieldReadAndWriteRemainDistinctReferenceMatches() throws Exception {
+        File jar = new File(tempDir, "separate-field-accesses.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Holder.class", buildHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HolderUser.class", buildHolderUserWithSeparateAccesses()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "separate-field-accesses-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "separate-field-access-refs")); //$NON-NLS-1$
+        assertEquals("separate field read and write expressions must remain separate references", 2, matches.size()); //$NON-NLS-1$
     }
 
     /**
@@ -1881,12 +2117,169 @@ public class ApplicationLibrarySearchParticipantTest {
         return cw.toByteArray();
     }
 
+    private static byte[] buildOuterGenericClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                "pkg/Outer", "<T:Ljava/lang/Number;>Ljava/lang/Object;", "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildOuterGenericInnerClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_SUPER, "pkg/Outer$Inner", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor put = cw.visitMethod(Opcodes.ACC_PUBLIC, "put", //$NON-NLS-1$
+                "(Ljava/lang/Number;)V", "(TT;)V", null); //$NON-NLS-1$ //$NON-NLS-2$
+        put.visitCode();
+        put.visitInsn(Opcodes.RETURN);
+        put.visitMaxs(0, 2);
+        put.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildOuterInnerCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                "pkg/OuterInnerCaller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", 0); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "use", //$NON-NLS-1$
+                "(Lpkg/Outer$Inner;Ljava/lang/Number;)V", null, null); //$NON-NLS-1$
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "pkg/Outer$Inner", "put", "(Ljava/lang/Number;)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 2);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Holder", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderUserWithCompoundAccess() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "increment", "(Lpkg/Holder;)V", //$NON-NLS-1$ //$NON-NLS-2$
+                null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitFieldInsn(Opcodes.GETFIELD, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitFieldInsn(Opcodes.PUTFIELD, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(3, 1);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderUserWithSeparateAccesses() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "replace", "(Lpkg/Holder;)V", //$NON-NLS-1$ //$NON-NLS-2$
+                null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(Opcodes.GETFIELD, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitVarInsn(Opcodes.ISTORE, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitVarInsn(Opcodes.ILOAD, 1);
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitFieldInsn(Opcodes.PUTFIELD, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(3, 2);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     private static byte[] buildClassAnnotatedWithRetention() {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Annotated", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
         AnnotationVisitor av = cw.visitAnnotation("Ljava/lang/annotation/Retention;", true); //$NON-NLS-1$
         av.visitEnum("value", "Ljava/lang/annotation/RetentionPolicy;", "RUNTIME"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         av.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildTopLevelDollarClass() {
+        ClassWriter cw = new ClassWriter(0);
+        // No InnerClasses attribute — this is a genuine top-level class whose binary name contains $
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Price$Tag", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildDollarCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/DollarCaller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "use", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitTypeInsn(Opcodes.NEW, "pkg/Price$Tag"); //$NON-NLS-1$
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Price$Tag", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.POP);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 1);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /** Caller whose {@code call} method takes a {@code pkg/Outer$StaticInner} parameter. */
+    private static byte[] buildGenericNestedCaller() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/GenericCaller", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        // void call(Outer$StaticInner x) — bytecode descriptor uses $
+        MethodVisitor call = cw.visitMethod(Opcodes.ACC_PUBLIC, "call", "(Lpkg/Outer$StaticInner;)V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        call.visitCode();
+        call.visitInsn(Opcodes.RETURN);
+        call.visitMaxs(0, 2);
+        call.visitEnd();
+        // Caller site: another method that invokes call(...)
+        MethodVisitor invoke = cw.visitMethod(Opcodes.ACC_PUBLIC, "test", "(Lpkg/Outer$StaticInner;)V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        invoke.visitCode();
+        invoke.visitVarInsn(Opcodes.ALOAD, 0);
+        invoke.visitVarInsn(Opcodes.ALOAD, 1);
+        invoke.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "pkg/GenericCaller", "call", "(Lpkg/Outer$StaticInner;)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        invoke.visitInsn(Opcodes.RETURN);
+        invoke.visitMaxs(2, 2);
+        invoke.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
     }
