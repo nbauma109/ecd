@@ -260,6 +260,7 @@ public class BytecodeJarIndexer {
         private IType type;
         private TypeCategory typeCategory = TypeCategory.UNKNOWN;
         private IJavaElement moduleElement;
+        private String enclosingClassName;
 
         private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, Set<EntryKey> seen,
                 Map<String, String> strings) {
@@ -707,6 +708,11 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public void visitOuterClass(String owner, String name, String descriptor) {
+                enclosingClassName = owner;
+            }
+
+            @Override
             public ModuleVisitor visitModule(String name, int access, String version) {
                 IModuleDescription module = root.getModuleDescription();
                 moduleElement = module == null ? root : module;
@@ -722,7 +728,7 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInnerClass(String name, String outerName, String innerName, int access) {
                 if (outerName != null && innerName != null) {
-                    nestedTypeNames.put(name, new NestedTypeName(outerName, innerName));
+                    nestedTypeNames.put(name, new NestedTypeName(outerName, innerName, access));
                 }
             }
 
@@ -768,7 +774,7 @@ public class BytecodeJarIndexer {
                             pool(descriptor));
                 }
                 IJavaElement methodOrType = method != null ? method : type;
-                addDescriptorReferences(signature == null ? descriptor : signature, methodOrType);
+                addDescriptorReferences(declarationDescriptor(name, descriptor, signature), methodOrType);
                 if (exceptions != null) {
                     for (String exception : exceptions) {
                         addTypeReference(exception, methodOrType);
@@ -780,6 +786,38 @@ public class BytecodeJarIndexer {
                 }
                 boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
                 return new MethodIndexer(methodOrType, paramSlots + (isStatic ? 0 : 1));
+            }
+
+            private String declarationDescriptor(String name, String descriptor, String signature) {
+                if (!CONSTRUCTOR.equals(name) || signature != null) {
+                    return signature == null ? descriptor : signature;
+                }
+                String syntheticOwner = syntheticOuterConstructorOwner();
+                if (syntheticOwner == null) {
+                    return descriptor;
+                }
+                try {
+                    Type[] arguments = Type.getArgumentTypes(descriptor);
+                    if (arguments.length == 0 || arguments[0].getSort() != Type.OBJECT
+                            || !syntheticOwner.equals(arguments[0].getInternalName())) {
+                        return descriptor;
+                    }
+                    StringBuilder sourceDescriptor = new StringBuilder("("); //$NON-NLS-1$
+                    for (int i = 1; i < arguments.length; i++) {
+                        sourceDescriptor.append(arguments[i].getDescriptor());
+                    }
+                    return sourceDescriptor.append(')').append(Type.getReturnType(descriptor).getDescriptor()).toString();
+                } catch (IllegalArgumentException e) {
+                    return descriptor;
+                }
+            }
+
+            private String syntheticOuterConstructorOwner() {
+                NestedTypeName nestedType = nestedTypeNames.get(className);
+                if (nestedType != null && (nestedType.access() & Opcodes.ACC_STATIC) == 0) {
+                    return nestedType.outerName();
+                }
+                return enclosingClassName;
             }
         }
 
@@ -1175,7 +1213,7 @@ public class BytecodeJarIndexer {
             Access access, boolean compoundCandidate) {
     }
 
-    private record NestedTypeName(String outerName, String innerName) {
+    private record NestedTypeName(String outerName, String innerName, int access) {
     }
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,

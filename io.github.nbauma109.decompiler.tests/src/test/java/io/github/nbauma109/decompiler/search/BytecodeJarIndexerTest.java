@@ -14,6 +14,10 @@ import static org.junit.Assert.assertNull;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -30,6 +34,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.ModuleVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -105,6 +110,44 @@ public class BytecodeJarIndexerTest {
             };
 
             assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), monitor));
+        } finally {
+            if (project.exists()) {
+                project.delete(true, true, new NullProgressMonitor());
+            }
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void constructorDeclarationReferencesSkipSyntheticOuterParameter() throws Exception {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-synthetic-ctor-refs"); //$NON-NLS-1$
+        File jar = new File(tempDir, "synthetic-constructor-declaration.jar"); //$NON-NLS-1$
+        IProject project = ResourcesPlugin.getWorkspace().getRoot()
+                .getProject("bytecode-jar-indexer-synthetic-ctor-ref-test-project"); //$NON-NLS-1$
+        try {
+            try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+                addClass(output, "pkg/Outer.class", emptyClassBytes("pkg/Outer")); //$NON-NLS-1$ //$NON-NLS-2$
+                addClass(output, "pkg/Visible.class", emptyClassBytes("pkg/Visible")); //$NON-NLS-1$ //$NON-NLS-2$
+                addClass(output, "pkg/Outer$Inner.class", innerClassWithSyntheticOuterConstructorBytes()); //$NON-NLS-1$
+            }
+            if (project.exists()) {
+                project.delete(true, true, new NullProgressMonitor());
+            }
+            project.create(new NullProgressMonitor());
+            project.open(new NullProgressMonitor());
+            IProjectDescription desc = project.getDescription();
+            desc.setNatureIds(new String[]{JavaCore.NATURE_ID});
+            project.setDescription(desc, new NullProgressMonitor());
+            IJavaProject javaProject = JavaCore.create(project);
+            DecompilerTestSupport.configureClasspathWithJre(javaProject);
+            IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
+
+            BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
+                    new NullProgressMonitor());
+
+            assertNotNull(index);
+            assertEquals(0, nonDeclarationTypeEntries(index, "Outer", "pkg.Outer").size()); //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals(1, nonDeclarationTypeEntries(index, "Visible", "pkg.Visible").size()); //$NON-NLS-1$ //$NON-NLS-2$
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -280,6 +323,51 @@ public class BytecodeJarIndexerTest {
         cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, "java/lang/Object", null); //$NON-NLS-1$
         cw.visitEnd();
         return cw.toByteArray();
+    }
+
+    private static byte[] innerClassWithSyntheticOuterConstructorBytes() {
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Outer$Inner", null, //$NON-NLS-1$
+                "java/lang/Object", null); //$NON-NLS-1$
+        writer.visitInnerClass("pkg/Outer$Inner", "pkg/Outer", "Inner", Opcodes.ACC_PUBLIC); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        MethodVisitor constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", //$NON-NLS-1$
+                "(Lpkg/Outer;Lpkg/Visible;)V", null, null); //$NON-NLS-1$
+        constructor.visitCode();
+        constructor.visitVarInsn(Opcodes.ALOAD, 0);
+        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        constructor.visitInsn(Opcodes.RETURN);
+        constructor.visitMaxs(1, 3);
+        constructor.visitEnd();
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    private static List<BytecodeSearchEntry> nonDeclarationTypeEntries(BytecodeSearchIndex.JarIndex index,
+            String name, String qualifiedName) throws Exception {
+        List<BytecodeSearchEntry> entries = new ArrayList<>();
+        Field entriesField = BytecodeSearchIndex.JarIndex.class.getDeclaredField("entries"); //$NON-NLS-1$
+        entriesField.setAccessible(true);
+        Object compactEntries = entriesField.get(index);
+        Method size = compactEntries.getClass().getDeclaredMethod("size"); //$NON-NLS-1$
+        Method entryAt = compactEntries.getClass().getDeclaredMethod("entry", int.class); //$NON-NLS-1$
+        Method kind = BytecodeSearchEntry.class.getDeclaredMethod("getKind"); //$NON-NLS-1$
+        Method entryName = BytecodeSearchEntry.class.getDeclaredMethod("getName"); //$NON-NLS-1$
+        Method entryQualifiedName = BytecodeSearchEntry.class.getDeclaredMethod("getQualifiedName"); //$NON-NLS-1$
+        size.setAccessible(true);
+        entryAt.setAccessible(true);
+        kind.setAccessible(true);
+        entryName.setAccessible(true);
+        entryQualifiedName.setAccessible(true);
+        int count = (int) size.invoke(compactEntries);
+        for (int i = 0; i < count; i++) {
+            BytecodeSearchEntry entry = (BytecodeSearchEntry) entryAt.invoke(compactEntries, Integer.valueOf(i));
+            if (!entry.isDeclaration()
+                    && "TYPE".equals(kind.invoke(entry).toString()) //$NON-NLS-1$
+                    && (name.equals(entryName.invoke(entry)) || qualifiedName.equals(entryQualifiedName.invoke(entry)))) {
+                entries.add(entry);
+            }
+        }
+        return entries;
     }
 
     /**
