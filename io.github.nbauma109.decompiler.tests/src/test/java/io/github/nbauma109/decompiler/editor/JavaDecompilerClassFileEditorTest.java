@@ -242,6 +242,20 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void findTypeDeclarationOffsetMatchesNestedAnnotationTypes()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        java.lang.reflect.Method findTypeDeclarationOffset = JavaDecompilerClassFileEditor.class
+                .getDeclaredMethod("findTypeDeclarationOffset", String.class, String.class, int.class); //$NON-NLS-1$
+        findTypeDeclarationOffset.setAccessible(true);
+        String source = "class Outer { @interface Ann { String value(); } }"; //$NON-NLS-1$
+
+        int offset = (int) findTypeDeclarationOffset.invoke(editor, source, "Ann", 0); //$NON-NLS-1$
+
+        assertEquals(source.indexOf("@interface Ann"), offset); //$NON-NLS-1$
+    }
+
+    @Test
     public void testOpenClassFileWithDecompilerEditorIdShowsSource()
             throws IOException, CoreException {
         String editorId = resolveDecompilerEditorIdFromRegistry();

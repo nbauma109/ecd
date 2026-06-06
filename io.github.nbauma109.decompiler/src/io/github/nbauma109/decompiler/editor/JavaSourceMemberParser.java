@@ -208,7 +208,7 @@ public final class JavaSourceMemberParser {
         }
         char next = source.charAt(nextToken);
         if (next == '{') {
-            return true;
+            return isDirectTypeMember(source, typeOffset, nameStart);
         }
         // A ';' after ')' appears in both abstract/interface declarations and call-statements.
         // Only declarations are at brace-depth 1 (direct type members); calls live inside
@@ -226,9 +226,9 @@ public final class JavaSourceMemberParser {
         int terminatorStart = nextToken + "throws".length(); //$NON-NLS-1$
         int brace = source.indexOf('{', terminatorStart);
         int semicolon = source.indexOf(';', terminatorStart);
-        if (brace < 0) {
-            return semicolon >= 0;
+        if (semicolon >= 0 && (brace < 0 || semicolon < brace)) {
+            return isDirectTypeMember(source, typeOffset, nameStart);
         }
-        return true; // brace found — concrete or throws-declared method is a declaration regardless of ';'
+        return brace >= 0 && isDirectTypeMember(source, typeOffset, nameStart);
     }
 }

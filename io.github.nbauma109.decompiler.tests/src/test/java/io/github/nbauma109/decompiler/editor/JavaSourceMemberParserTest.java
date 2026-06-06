@@ -165,6 +165,24 @@ public class JavaSourceMemberParserTest {
         assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, callNameStart, s.indexOf('(', callNameStart)));
     }
 
+    @Test
+    public void isMethodDeclarationReturnsFalseForAnonymousClassBodyMethod() {
+        String s = "class Foo { Runnable r = new Runnable() { public void run() {} }; public void run() {} }"; //$NON-NLS-1$
+        int anonymousRunNameStart = s.indexOf("run"); //$NON-NLS-1$
+
+        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, anonymousRunNameStart,
+                s.indexOf('(', anonymousRunNameStart)));
+    }
+
+    @Test
+    public void isMethodDeclarationReturnsFalseForLocalClassBodyMethod() {
+        String s = "class Foo { void setup() { class Local { void run() {} } } public void run() {} }"; //$NON-NLS-1$
+        int localRunNameStart = s.indexOf("run"); //$NON-NLS-1$
+
+        assertFalse(JavaSourceMemberParser.isMethodDeclaration(s, 0, localRunNameStart,
+                s.indexOf('(', localRunNameStart)));
+    }
+
     // -------------------------------------------------------------------------
     // isDirectTypeMember — parameterized: all follow (source, searchToken, expected)
     // -------------------------------------------------------------------------

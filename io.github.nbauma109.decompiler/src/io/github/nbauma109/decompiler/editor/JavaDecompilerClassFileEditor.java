@@ -749,7 +749,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     private int findTypeDeclarationOffset(String source, String typeName, int fromIndex) {
-        Matcher matcher = Pattern.compile("\\b(?:class|interface|enum|record|@interface)\\s+" //$NON-NLS-1$
+        Matcher matcher = Pattern.compile("(?:\\b(?:class|interface|enum|record)|@interface)\\s+" //$NON-NLS-1$
                 + Pattern.quote(typeName) + "\\b").matcher(source); //$NON-NLS-1$
         return matcher.find(Math.max(0, fromIndex)) ? matcher.start() : -1;
     }
