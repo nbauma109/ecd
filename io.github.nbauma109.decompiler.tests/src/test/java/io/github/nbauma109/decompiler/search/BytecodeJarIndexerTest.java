@@ -9,10 +9,12 @@ package io.github.nbauma109.decompiler.search;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -68,6 +70,45 @@ public class BytecodeJarIndexerTest {
             assertEquals("META-INF/versions/" + Runtime.version().feature() + "/pkg/Base.class", //$NON-NLS-1$ //$NON-NLS-2$
                     work.entries().get(0).name());
         } finally {
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void canceledIndexDoesNotReturnPartialJar() throws Exception {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-canceled"); //$NON-NLS-1$
+        File jar = new File(tempDir, "canceled.jar"); //$NON-NLS-1$
+        IProject project = ResourcesPlugin.getWorkspace().getRoot()
+                .getProject("bytecode-jar-indexer-canceled-test-project"); //$NON-NLS-1$
+        try {
+            try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+                addClass(output, "pkg/First.class", emptyClassBytes("pkg/First")); //$NON-NLS-1$ //$NON-NLS-2$
+                addClass(output, "pkg/Second.class", emptyClassBytes("pkg/Second")); //$NON-NLS-1$ //$NON-NLS-2$
+            }
+            if (project.exists()) {
+                project.delete(true, true, new NullProgressMonitor());
+            }
+            project.create(new NullProgressMonitor());
+            project.open(new NullProgressMonitor());
+            IProjectDescription desc = project.getDescription();
+            desc.setNatureIds(new String[]{JavaCore.NATURE_ID});
+            project.setDescription(desc, new NullProgressMonitor());
+            IJavaProject javaProject = JavaCore.create(project);
+            DecompilerTestSupport.configureClasspathWithJre(javaProject);
+            IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
+            AtomicInteger cancellationChecks = new AtomicInteger();
+            NullProgressMonitor monitor = new NullProgressMonitor() {
+                @Override
+                public boolean isCanceled() {
+                    return cancellationChecks.incrementAndGet() > 1;
+                }
+            };
+
+            assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), monitor));
+        } finally {
+            if (project.exists()) {
+                project.delete(true, true, new NullProgressMonitor());
+            }
             org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
         }
     }
@@ -234,6 +275,13 @@ public class BytecodeJarIndexerTest {
         return cw.toByteArray();
     }
 
+    private static byte[] emptyClassBytes(String internalName) {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, "java/lang/Object", null); //$NON-NLS-1$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     /**
      * Produces a valid {@code module-info.class} for the module {@code test.mymodule}
      * with one directive of every kind so that all ModuleIndexer callbacks fire:
@@ -298,6 +346,13 @@ public class BytecodeJarIndexerTest {
             throws IOException {
         output.putNextEntry(new JarEntry(name));
         output.write(new byte[] { 0, 0, 0, 0 });
+        output.closeEntry();
+    }
+
+    private static void addClass(JarOutputStream output, String name, byte[] bytes)
+            throws IOException {
+        output.putNextEntry(new JarEntry(name));
+        output.write(bytes);
         output.closeEntry();
     }
 }

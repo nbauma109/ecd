@@ -95,6 +95,10 @@ public class BytecodeSourceRangeResolverTest {
             class Owner extends Base {
                 int field;
 
+                class Inner {
+                    Inner(int value) {}
+                }
+
                 Owner() {
                     this(1);
                 }
@@ -102,6 +106,10 @@ public class BytecodeSourceRangeResolverTest {
                 Owner(int value) {
                     super();
                     this.field = value;
+                }
+
+                Owner(int value, String name) {
+                    this(value);
                 }
 
                 void takes(int count, java.lang.String... names) {
@@ -116,6 +124,7 @@ public class BytecodeSourceRangeResolverTest {
                     java.util.function.Supplier<Owner> third = Owner::new;
                     java.util.function.Supplier<String> fourth = super::inherited;
                     new Owner(count);
+                    new Owner(count, names[0]);
                 }
 
                 void target() {}
@@ -479,33 +488,46 @@ public class BytecodeSourceRangeResolverTest {
      * <p>
      * The entry is attached to {@code takesMethod} (so the SourceWindow covers the
      * {@code takes} body), uses a 2-parameter descriptor {@code (Lfixture/Owner;I)V}
-     * (synthetic outer-ref + visible int), and the source expression {@code new Owner(count)}
+     * (synthetic outer-ref + visible int), and the source expression {@code new Inner(count)}
      * supplies only one argument.  Before the fix the argument-count check rejects the
-     * call site; after the fix it resolves to the constructor type name {@code Owner}.
+     * call site; after the fix it resolves to the constructor type name {@code Inner}.
      */
     @Test
-    public void constructorWithSyntheticParameterMatchesSourceArgCount() throws JavaModelException {
+    public void constructorWithSyntheticParameterMatchesSourceArgCount() {
         // Entry element = takesMethod so the SourceWindow covers the takes() body
         BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod,
-                OWNER, FIXTURE_OWNER, FIXTURE_OWNER, "(Lfixture/Owner;I)V"); //$NON-NLS-1$
+                "Inner", "fixture.Owner.Inner", "fixture.Owner.Inner", "(Lfixture/Owner;I)V"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
         String src = """
                 package fixture;
                 class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        new Owner(count);
+                    class Inner {
+                        Inner(int value) {}
                     }
-                    Owner(int value) {}
+                    void takes(int count, java.lang.String... names) {
+                        new Inner(count);
+                    }
                 }
                 """; //$NON-NLS-1$
 
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
                 .rangesFor(List.of(entry), src).get(entry);
 
-        // addLastName resolves to the type name ("Owner") within the new-expression, not the full expression
+        // addLastName resolves to the type name ("Inner") within the new-expression, not the full expression
         assertNotNull("constructor with synthetic outer-ref must be resolved to the source call site", range); //$NON-NLS-1$
         assertEquals("resolved range must cover the constructor type name", //$NON-NLS-1$
-                OWNER, src.substring(range.offset(), range.offset() + range.length()));
+                "Inner", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
+    public void topLevelConstructorsRequireExactArgumentCount() {
+        BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod,
+                OWNER, FIXTURE_OWNER, FIXTURE_OWNER, "(ILjava/lang/String;)V"); //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), SOURCE).get(entry);
+
+        assertEquals(SOURCE.indexOf(OWNER, SOURCE.indexOf("new Owner(count, names[0])")), range.offset()); //$NON-NLS-1$
     }
 
     @Test

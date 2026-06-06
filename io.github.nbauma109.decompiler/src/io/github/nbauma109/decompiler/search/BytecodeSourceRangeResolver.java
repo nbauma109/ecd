@@ -872,9 +872,10 @@ public class BytecodeSourceRangeResolver {
                 if (argumentCount == argTypes.length) {
                     return true;
                 }
-                // Non-static member class constructors carry one synthetic outer-instance parameter
-                // that has no counterpart in source; discount it for argument-count matching.
-                if (entry.getKind() == Kind.CONSTRUCTOR && argumentCount == argTypes.length - 1) {
+                // Non-static member, local, and anonymous class constructors may carry one
+                // synthetic parameter that has no counterpart in source.
+                if (entry.getKind() == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameter()
+                        && argumentCount == argTypes.length - 1) {
                     return true;
                 }
                 return isVarargsTarget(argTypes)
@@ -882,6 +883,40 @@ public class BytecodeSourceRangeResolver {
             } catch (IllegalArgumentException e) {
                 return true;
             }
+        }
+
+        private boolean mayHaveSyntheticConstructorParameter() {
+            IJavaElement element = entry.getElement();
+            String declaringTypeName = entry.getDeclaringTypeName();
+            if (element == null || element.getJavaProject() == null || StringUtils.isBlank(declaringTypeName)) {
+                return false;
+            }
+            try {
+                IType type = findType(element, declaringTypeName);
+                return type != null
+                        && (type.getDeclaringType() != null && !Flags.isStatic(type.getFlags())
+                                || type.isLocal() || type.isAnonymous());
+            } catch (JavaModelException e) {
+                Logger.debug(e);
+                return false;
+            }
+        }
+
+        private static IType findType(IJavaElement element, String owner) throws JavaModelException {
+            IType type = element.getJavaProject().findType(owner);
+            if (type != null) {
+                return type;
+            }
+            StringBuilder binaryName = new StringBuilder(owner);
+            for (int separator = binaryName.lastIndexOf("."); separator >= 0; //$NON-NLS-1$
+                    separator = binaryName.lastIndexOf(".", separator - 1)) { //$NON-NLS-1$
+                binaryName.setCharAt(separator, '$');
+                type = element.getJavaProject().findType(binaryName.toString());
+                if (type != null) {
+                    return type;
+                }
+            }
+            return null;
         }
 
         private boolean isVarargsTarget(org.objectweb.asm.Type[] argumentTypes) {

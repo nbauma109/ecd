@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
@@ -170,9 +171,13 @@ public class BytecodeJarIndexer {
             IndexContext context = new IndexContext(root, jar, zip, entries, seen, strings);
             SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
             for (JarEntryWork entryWork : work.entries()) {
-                if (!subMonitor.isCanceled()) {
-                    indexEntry(context, entryWork, subMonitor);
+                if (subMonitor.isCanceled()) {
+                    return null;
                 }
+                indexEntry(context, entryWork, subMonitor);
+            }
+            if (subMonitor.isCanceled()) {
+                return null;
             }
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
@@ -503,23 +508,24 @@ public class BytecodeJarIndexer {
 
         private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
-            addReference(kind, name, qualifiedName, owner, descriptor, element, Access.NONE);
+            addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, Access.NONE, false), element);
         }
 
         private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
-            addReference(kind, name, qualifiedName, owner, descriptor, element, access, false);
+            addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, access, false), element);
         }
 
-        private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access, boolean compoundCandidate) {
+        private void addReference(ReferenceSpec reference, IJavaElement element) {
             IJavaElement enclosingElement = element == null ? type : element;
-            MemberReference member = new MemberReference(name, owner, descriptor, access, compoundCandidate);
-            switch (kind) {
+            MemberReference member = new MemberReference(reference.name(), reference.owner(), reference.descriptor(),
+                    reference.access(), reference.compoundCandidate());
+            switch (reference.kind()) {
               case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               case CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              default -> add(kind, false, enclosingElement, pool(name), pool(qualifiedName), pool(owner), null);
+              default -> add(reference.kind(), false, enclosingElement, pool(reference.name()),
+                      pool(reference.qualifiedName()), pool(reference.owner()), null);
             }
         }
 
@@ -590,19 +596,20 @@ public class BytecodeJarIndexer {
          */
         private static List<MemberReference> collapseCompoundFieldAccesses(List<MemberReference> members) {
             List<MemberReference> result = new ArrayList<>(members.size());
-            for (int i = 0; i < members.size(); i++) {
-                MemberReference current = members.get(i);
-                if (current.compoundCandidate() && current.access() == Access.READ && i + 1 < members.size()) {
-                    MemberReference next = members.get(i + 1);
+            ListIterator<MemberReference> iterator = members.listIterator();
+            while (iterator.hasNext()) {
+                MemberReference current = iterator.next();
+                if (current.compoundCandidate() && current.access() == Access.READ && iterator.hasNext()) {
+                    MemberReference next = iterator.next();
                     if (next.access() == Access.WRITE
                             && next.name().equals(current.name())
                             && next.owner().equals(current.owner())
                             && next.descriptor().equals(current.descriptor())) {
                         result.add(new MemberReference(current.name(), current.owner(), current.descriptor(),
                                 Access.READ_WRITE, false));
-                        i++;
                         continue;
                     }
+                    iterator.previous();
                 }
                 result.add(current);
             }
@@ -980,8 +987,8 @@ public class BytecodeJarIndexer {
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                 addTypeReference(owner, method);
                 addDescriptorReferences(descriptor, method);
-                addReference(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor, method,
-                        fieldAccess(opcode), opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP);
+                addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor,
+                        fieldAccess(opcode), opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP), method);
                 previousOpcode = opcode;
             }
 
@@ -1004,7 +1011,6 @@ public class BytecodeJarIndexer {
             public void visitInvokeDynamicInsn(String name, String descriptor, org.objectweb.asm.Handle bootstrapMethodHandle,
                     Object... bootstrapMethodArguments) {
                 addDescriptorReferences(descriptor, method);
-                addHandleReference(bootstrapMethodHandle, method);
                 if (bootstrapMethodArguments != null) {
                     for (Object argument : bootstrapMethodArguments) {
                         addBootstrapArgumentReference(argument, method);
@@ -1163,6 +1169,10 @@ public class BytecodeJarIndexer {
 
     private record MemberReference(String name, String owner, String descriptor, Access access,
             boolean compoundCandidate) {
+    }
+
+    private record ReferenceSpec(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+            Access access, boolean compoundCandidate) {
     }
 
     private record NestedTypeName(String outerName, String innerName) {

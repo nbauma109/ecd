@@ -457,6 +457,31 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void invokeDynamicBootstrapHandlesDoNotContributeMethodReferences()
+            throws Exception {
+        File jar = new File(tempDir, "invokedynamic-bootstrap-references.jar"); //$NON-NLS-1$
+        createHandleDescriptorReferenceJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-invokedynamic-bootstrap-references-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.Bootstrap.bootstrap()", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "Application library invokedynamic bootstrap method references"); //$NON-NLS-1$
+
+        assertEquals(0, runSearchInBackground(participant, specification).size());
+    }
+
+    @Test
     public void methodTypeConstantsContributeTypeReferences()
             throws Exception {
         File jar = new File(tempDir, "method-type-references.jar"); //$NON-NLS-1$

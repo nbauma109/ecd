@@ -200,8 +200,12 @@ public final class BytecodeSearchIndex {
                     rebuilt.put(plan.key(), plan.existing());
                     subMonitor.worked(1);
                 } else {
-                    rebuilt.put(plan.key(), BytecodeJarIndexer.index(plan.root(), jar, plan.work(),
-                            subMonitor.split(plan.ticks())));
+                    JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(),
+                            subMonitor.split(plan.ticks()));
+                    if (index == null || subMonitor.isCanceled()) {
+                        return;
+                    }
+                    rebuilt.put(plan.key(), index);
                 }
             }
             synchronized (this) {
