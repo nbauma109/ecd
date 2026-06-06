@@ -17,6 +17,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -611,6 +613,40 @@ public class JavaDecompilerClassFileEditorTest {
                 contents.contains(FIXTURE_INNER_TYPE));
     }
 
+    @Test
+    public void findMethodNameOffsetDiscountsSyntheticConstructorParameter()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IType outerType = proxy(IType.class, (proxy, method, args) -> null);
+        IType innerType = proxy(IType.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getDeclaringType" -> outerType; //$NON-NLS-1$
+          case "getFlags" -> Integer.valueOf(0); //$NON-NLS-1$
+          case "isLocal", "isAnonymous" -> Boolean.FALSE; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        IMethod constructor = proxy(IMethod.class, (proxy, method, args) -> switch (method.getName()) {
+          case "isConstructor" -> Boolean.TRUE; //$NON-NLS-1$
+          case "getElementName" -> FIXTURE_INNER_TYPE; //$NON-NLS-1$
+          case "getNumberOfParameters" -> Integer.valueOf(2); //$NON-NLS-1$
+          case "getParameterTypes" -> new String[] { "Lfixture.Outer;", "QString;" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+          case "getDeclaringType" -> innerType; //$NON-NLS-1$
+          default -> defaultValue(method.getReturnType());
+        });
+        IClassFile classFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+          default -> defaultValue(method.getReturnType());
+        });
+        String source = "class Outer { class Inner { Inner(String name) {} } }"; //$NON-NLS-1$
+        int innerOffset = source.indexOf("class Inner"); //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findMethodNameOffset", String.class, IMethod.class, IClassFile.class, int.class, int.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, constructor, classFile, innerOffset, source.length());
+
+        assertEquals(source.indexOf("Inner(String"), offset); //$NON-NLS-1$
+    }
+
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws CoreException {
         return runInUiThreadWithResult(() -> {
             IWorkbenchWindow window = resolveWorkbenchWindow();
@@ -830,6 +866,47 @@ public class JavaDecompilerClassFileEditorTest {
             return javaElement.getElementName() + " (" + javaElement.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$
         }
         return selected == null ? "<null>" : selected.toString() + " (" + selected.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T proxy(Class<T> type, InvocationHandler handler) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type }, (proxy, method, args) -> {
+            if ("hashCode".equals(method.getName())) { //$NON-NLS-1$
+                return Integer.valueOf(System.identityHashCode(proxy));
+            }
+            if ("equals".equals(method.getName())) { //$NON-NLS-1$
+                return Boolean.valueOf(proxy == args[0]);
+            }
+            return handler.invoke(proxy, method, args);
+        });
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return null;
+        }
+        if (type == Boolean.TYPE) {
+            return Boolean.FALSE;
+        }
+        if (type == Character.TYPE) {
+            return Character.valueOf('\0');
+        }
+        if (type == Long.TYPE) {
+            return Long.valueOf(0L);
+        }
+        if (type == Float.TYPE) {
+            return Float.valueOf(0.0f);
+        }
+        if (type == Double.TYPE) {
+            return Double.valueOf(0.0d);
+        }
+        if (type == Byte.TYPE) {
+            return Byte.valueOf((byte) 0);
+        }
+        if (type == Short.TYPE) {
+            return Short.valueOf((short) 0);
+        }
+        return Integer.valueOf(0);
     }
 
     private static void configurePreferences(File tempDir) {

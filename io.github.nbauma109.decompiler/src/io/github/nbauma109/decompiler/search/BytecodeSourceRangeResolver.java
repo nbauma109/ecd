@@ -694,7 +694,8 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(CreationReference node) {
-            if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())) {
+            if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())
+                    && matchesArgumentCount(0)) {
                 addLastName(node.getType());
             }
             return true;

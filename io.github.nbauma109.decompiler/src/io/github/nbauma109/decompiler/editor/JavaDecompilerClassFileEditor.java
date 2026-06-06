@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
@@ -29,6 +30,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IField;
@@ -763,11 +765,11 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         String methodName = sourceMethodName(method, nestedClassFile);
         Matcher matcher = Pattern.compile("\\b" + Pattern.quote(methodName) + "\\s*\\(").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
         matcher.region(typeOffset, boundedEnd(source, typeEnd));
-        String[] parameterTypes = method.getParameterTypes();
+        String[] parameterTypes = sourceParameterTypes(method, method.getParameterTypes());
         int fallback = -1;
         while (matcher.find()) {
             int openParenOffset = matcher.end() - 1;
-            if (hasParameterCount(source, openParenOffset, method.getNumberOfParameters())
+            if (hasParameterCount(source, openParenOffset, parameterTypes.length)
                     && isMethodDeclaration(source, typeOffset, matcher.start(), openParenOffset)) {
                 if (matchesParameterTypes(source, openParenOffset, parameterTypes)) {
                     return matcher.start();
@@ -801,6 +803,31 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         } catch (JavaModelException e) {
             Logger.debug(e);
             return method.getElementName();
+        }
+    }
+
+    private String[] sourceParameterTypes(IMethod method, String[] parameterTypes) {
+        if (hasSyntheticConstructorParameter(method, parameterTypes)) {
+            return Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
+        }
+        return parameterTypes;
+    }
+
+    private boolean hasSyntheticConstructorParameter(IMethod method, String[] parameterTypes) {
+        if (parameterTypes.length == 0) {
+            return false;
+        }
+        try {
+            if (!method.isConstructor()) {
+                return false;
+            }
+            IType type = method.getDeclaringType();
+            return type != null
+                    && (type.getDeclaringType() != null && !Flags.isStatic(type.getFlags())
+                            || type.isLocal() || type.isAnonymous());
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return false;
         }
     }
 
