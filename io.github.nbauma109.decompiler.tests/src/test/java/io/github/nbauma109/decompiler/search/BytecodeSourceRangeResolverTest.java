@@ -762,6 +762,32 @@ public class BytecodeSourceRangeResolverTest {
                 range.offset() != explicitAccessOffset || range.length() != FIELD.length());
     }
 
+    @Test
+    public void localVariablesAreNotMatchedAsFieldReferences() {
+        String src = """
+                package fixture;
+                class Foo {
+                    static int value;
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        int value = count;
+                        consume(value);
+                        consume(Foo.value);
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        assertNotNull("qualified field reference must still resolve", range); //$NON-NLS-1$
+        assertEquals(src.indexOf("value", src.indexOf("Foo.value")), range.offset()); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
     /**
      * Regression test for the {@code VariableDeclarationFragment} parent-type guard
      * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.

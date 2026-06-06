@@ -14,10 +14,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -40,6 +42,7 @@ import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CastExpression;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
@@ -574,6 +577,7 @@ public class BytecodeSourceRangeResolver {
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
         private final List<SourceRange> ranges;
+        private final Deque<Set<String>> localNameScopes = new ArrayDeque<>();
 
         private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
                 List<SourceRange> ranges) {
@@ -581,6 +585,47 @@ public class BytecodeSourceRangeResolver {
             this.entry = entry;
             this.window = window;
             this.ranges = ranges;
+        }
+
+        @Override
+        public boolean visit(MethodDeclaration node) {
+            localNameScopes.push(new HashSet<>());
+            for (Object parameter : node.parameters()) {
+                if (parameter instanceof SingleVariableDeclaration variable) {
+                    localNameScopes.peek().add(variable.getName().getIdentifier());
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public void endVisit(MethodDeclaration node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(Block node) {
+            localNameScopes.push(new HashSet<>());
+            return true;
+        }
+
+        @Override
+        public void endVisit(Block node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(SingleVariableDeclaration node) {
+            addLocalName(node.getName());
+            return true;
+        }
+
+        @Override
+        public boolean visit(VariableDeclarationFragment node) {
+            if (!(node.getParent() instanceof FieldDeclaration)) {
+                addLocalName(node.getName());
+            }
+            return true;
         }
 
         @Override
@@ -741,7 +786,26 @@ public class BytecodeSourceRangeResolver {
             if (parent instanceof SuperFieldAccess superFieldAccess && superFieldAccess.getName() == node) {
                 return matchesSuperReceiverField();
             }
+            if (isLocalName(node)) {
+                return false;
+            }
             return matchesImplicitReceiverField();
+        }
+
+        private void addLocalName(SimpleName node) {
+            if (!localNameScopes.isEmpty()) {
+                localNameScopes.peek().add(node.getIdentifier());
+            }
+        }
+
+        private boolean isLocalName(SimpleName node) {
+            String identifier = node.getIdentifier();
+            for (Set<String> scope : localNameScopes) {
+                if (scope.contains(identifier)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean matchesImplicitReceiverField() {
