@@ -49,6 +49,7 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ConstructorInvocation;
 import org.eclipse.jdt.core.dom.CreationReference;
+import org.eclipse.jdt.core.dom.EnhancedForStatement;
 import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ExpressionMethodReference;
@@ -69,6 +70,7 @@ import org.eclipse.jdt.core.dom.SuperMethodInvocation;
 import org.eclipse.jdt.core.dom.SuperMethodReference;
 import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.TypeMethodReference;
@@ -611,6 +613,28 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public void endVisit(Block node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(ForStatement node) {
+            localNameScopes.push(new HashSet<>());
+            return true;
+        }
+
+        @Override
+        public void endVisit(ForStatement node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(EnhancedForStatement node) {
+            localNameScopes.push(new HashSet<>());
+            return true;
+        }
+
+        @Override
+        public void endVisit(EnhancedForStatement node) {
             localNameScopes.pop();
         }
 

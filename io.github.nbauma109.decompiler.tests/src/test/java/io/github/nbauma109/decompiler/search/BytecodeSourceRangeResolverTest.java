@@ -788,6 +788,65 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals(src.indexOf("value", src.indexOf("Foo.value")), range.offset()); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
+    @Test
+    public void forLoopVariablesDoNotHideLaterFieldReferences() {
+        String src = """
+                package fixture;
+                class Foo {
+                    static int value;
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        for (int value = 0; value < count; value++) {
+                            consume(value);
+                        }
+                        consume(value);
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int afterLoopValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertNotNull("field reference after loop must still resolve", range); //$NON-NLS-1$
+        assertEquals(afterLoopValueOffset, range.offset());
+        assertEquals("value", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
+    public void enhancedForVariablesDoNotHideLaterFieldReferences() {
+        String src = """
+                package fixture;
+                class Foo {
+                    static int value;
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        for (int value : values()) {
+                            consume(value);
+                        }
+                        consume(value);
+                    }
+                    int[] values() { return new int[0]; }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int afterLoopValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertNotNull("field reference after enhanced loop must still resolve", range); //$NON-NLS-1$
+        assertEquals(afterLoopValueOffset, range.offset());
+        assertEquals("value", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
     /**
      * Regression test for the {@code VariableDeclarationFragment} parent-type guard
      * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.
