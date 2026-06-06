@@ -74,7 +74,9 @@ import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.TypeMethodReference;
+import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.util.Logger;
@@ -764,7 +766,7 @@ public class BytecodeSourceRangeResolver {
         @Override
         public boolean visit(CreationReference node) {
             if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())
-                    && matchesArgumentCount(0)) {
+                    && matchesCreationReference(node)) {
                 addLastName(node.getType());
             }
             return true;
@@ -949,6 +951,54 @@ public class BytecodeSourceRangeResolver {
 
         private boolean matches(SimpleName node, int argumentCount) {
             return matches(node) && matchesArgumentCount(argumentCount);
+        }
+
+        private boolean matchesCreationReference(CreationReference node) {
+            Integer argumentCount = creationReferenceArgumentCount(node);
+            return argumentCount == null || matchesArgumentCount(argumentCount.intValue());
+        }
+
+        private Integer creationReferenceArgumentCount(CreationReference node) {
+            Type targetType = creationReferenceTargetType(node);
+            return targetType == null ? null : functionalInterfaceArgumentCount(targetType);
+        }
+
+        private Type creationReferenceTargetType(CreationReference node) {
+            ASTNode parent = node.getParent();
+            if (parent instanceof VariableDeclarationFragment fragment) {
+                ASTNode declaration = fragment.getParent();
+                if (declaration instanceof VariableDeclarationStatement statement) {
+                    return statement.getType();
+                }
+                if (declaration instanceof VariableDeclarationExpression expression) {
+                    return expression.getType();
+                }
+                if (declaration instanceof FieldDeclaration field) {
+                    return field.getType();
+                }
+            }
+            if (parent instanceof CastExpression cast) {
+                return cast.getType();
+            }
+            return null;
+        }
+
+        private static Integer functionalInterfaceArgumentCount(Type targetType) {
+            String name = rawTypeName(targetType);
+            String simpleName = simpleName(name);
+            return switch (simpleName) {
+            case "Callable", "Supplier" -> 0; //$NON-NLS-1$ //$NON-NLS-2$
+            case "Function", "IntFunction", "LongFunction", "DoubleFunction", "UnaryOperator" -> 1; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+            case "BiFunction", "BinaryOperator" -> 2; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> null;
+            };
+        }
+
+        private static String rawTypeName(Type targetType) {
+            if (targetType instanceof ParameterizedType parameterizedType) {
+                return parameterizedType.getType().toString();
+            }
+            return targetType.toString();
         }
 
         private boolean matchesArgumentCount(int argumentCount) {

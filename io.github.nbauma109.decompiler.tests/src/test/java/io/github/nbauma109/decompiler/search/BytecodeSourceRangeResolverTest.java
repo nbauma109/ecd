@@ -625,6 +625,32 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void parameterizedConstructorReferencesIgnoreAbsentSourceArguments() {
+        String src = """
+                package fixture;
+                class Foo {
+                    Foo(String value) {}
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        java.util.function.Function<String, Foo> created = Foo::new;
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod, "Foo", "fixture.Foo", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Foo", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int referenceOffset = src.indexOf("Foo", src.indexOf("Foo::new")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertNotNull("parameterized constructor reference must resolve", range); //$NON-NLS-1$
+        assertEquals(referenceOffset, range.offset());
+        assertEquals("Foo", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
     public void packageQualifiedConstructorTypesRequireExactOwners() {
         String src = """
                 package fixture;
