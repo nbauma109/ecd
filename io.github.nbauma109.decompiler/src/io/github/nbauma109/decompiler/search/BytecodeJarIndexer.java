@@ -93,7 +93,7 @@ public class BytecodeJarIndexer {
             return jarWork(effectiveEntries.values());
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
-            return new JarWork(List.of(), 0L, 0);
+            return null;
         }
     }
 

@@ -80,6 +80,18 @@ public class BytecodeJarIndexerTest {
     }
 
     @Test
+    public void planFailureDoesNotProduceEmptyJarWork()
+            throws IOException {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-plan-failure"); //$NON-NLS-1$
+        File jar = new File(tempDir, "missing.jar"); //$NON-NLS-1$
+        try {
+            assertNull(BytecodeJarIndexer.plan(jar));
+        } finally {
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
     public void canceledIndexDoesNotReturnPartialJar() throws Exception {
         File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-canceled"); //$NON-NLS-1$
         File jar = new File(tempDir, "canceled.jar"); //$NON-NLS-1$
