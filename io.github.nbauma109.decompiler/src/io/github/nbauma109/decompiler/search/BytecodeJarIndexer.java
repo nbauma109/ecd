@@ -604,30 +604,8 @@ public class BytecodeJarIndexer {
             while (iterator.hasNext()) {
                 MemberReference current = iterator.next();
                 if (current.compoundCandidate() && current.access() == Access.READ) {
-                    // Scan ahead for the matching WRITE, skipping intervening reads that
-                    // represent other field accesses on the RHS (e.g. holder.count += other.value
-                    // emits GETFIELD other.value between the compound GETFIELD/PUTFIELD pair).
                     List<MemberReference> skipped = new ArrayList<>();
-                    boolean collapsed = false;
-                    while (iterator.hasNext()) {
-                        MemberReference lookahead = iterator.next();
-                        if (lookahead.access() == Access.WRITE) {
-                            if (lookahead.name().equals(current.name())
-                                    && lookahead.owner().equals(current.owner())
-                                    && lookahead.descriptor().equals(current.descriptor())) {
-                                result.add(new MemberReference(current.name(), current.owner(), current.descriptor(),
-                                        Access.READ_WRITE, false));
-                                result.addAll(skipped);
-                                collapsed = true;
-                            } else {
-                                // Write to a different field — cannot safely scan past it.
-                                iterator.previous();
-                            }
-                            break;
-                        }
-                        skipped.add(lookahead);
-                    }
-                    if (!collapsed) {
+                    if (!tryCollapseIntoReadWrite(current, iterator, skipped, result)) {
                         result.add(current);
                         result.addAll(skipped);
                     }
@@ -636,6 +614,36 @@ public class BytecodeJarIndexer {
                 }
             }
             return result;
+        }
+
+        /**
+         * Scans ahead for the WRITE that pairs with a compound-candidate READ, skipping
+         * intervening reads from the RHS expression (e.g. {@code holder.count += other.value}
+         * emits {@code GETFIELD other.value} between the compound GETFIELD/PUTFIELD pair).
+         * Returns {@code true} and appends the collapsed READ_WRITE + skipped refs to
+         * {@code result} when a matching WRITE is found; returns {@code false} otherwise
+         * (leaving {@code skipped} populated for the caller to handle).
+         */
+        private static boolean tryCollapseIntoReadWrite(MemberReference candidate,
+                ListIterator<MemberReference> iterator, List<MemberReference> skipped,
+                List<MemberReference> result) {
+            while (iterator.hasNext()) {
+                MemberReference lookahead = iterator.next();
+                if (lookahead.access() == Access.WRITE) {
+                    if (lookahead.name().equals(candidate.name())
+                            && lookahead.owner().equals(candidate.owner())
+                            && lookahead.descriptor().equals(candidate.descriptor())) {
+                        result.add(new MemberReference(candidate.name(), candidate.owner(), candidate.descriptor(),
+                                Access.READ_WRITE, false));
+                        result.addAll(skipped);
+                        return true;
+                    }
+                    iterator.previous();
+                    return false;
+                }
+                skipped.add(lookahead);
+            }
+            return false;
         }
 
         private void add(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
