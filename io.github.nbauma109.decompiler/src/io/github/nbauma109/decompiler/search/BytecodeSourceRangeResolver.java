@@ -719,10 +719,22 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public boolean visit(QualifiedName node) {
-            if (entry.getKind() == Kind.PACKAGE && sameName(node.getFullyQualifiedName(), entry.getName())) {
-                add(node);
+            if (entry.getKind() == Kind.PACKAGE) {
+                addPackageReference(node);
             }
             return true;
+        }
+
+        private void addPackageReference(QualifiedName node) {
+            String packageName = entry.getName();
+            if (sameName(node.getFullyQualifiedName(), packageName)) {
+                add(node);
+                return;
+            }
+            Name qualifier = node.getQualifier();
+            if (!(qualifier instanceof QualifiedName) && sameName(qualifier.getFullyQualifiedName(), packageName)) {
+                add(qualifier);
+            }
         }
 
         @Override

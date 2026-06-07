@@ -80,8 +80,7 @@ public class BytecodeJarIndexerTest {
     }
 
     @Test
-    public void planFailureDoesNotProduceEmptyJarWork()
-            throws IOException {
+    public void planFailureDoesNotProduceEmptyJarWork() {
         File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-plan-failure"); //$NON-NLS-1$
         File jar = new File(tempDir, "missing.jar"); //$NON-NLS-1$
         try {

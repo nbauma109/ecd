@@ -479,6 +479,28 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
+    @Test
+    public void singleSegmentPackageQualifierIsFoundAsPackageReference() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        pkg.Foo value = null;
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.PACKAGE, takesMethod, "pkg", "pkg", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int packageOffset = src.indexOf("pkg.Foo"); //$NON-NLS-1$
+        assertNotNull("single-segment package qualifier must resolve to the visible package token", range); //$NON-NLS-1$
+        assertEquals(packageOffset, range.offset());
+        assertEquals("pkg", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
     /**
      * Verifies fix: for a CONSTRUCTOR entry whose bytecode descriptor has one extra
      * synthetic outer-instance parameter, {@code matchesArgumentCount} now accepts

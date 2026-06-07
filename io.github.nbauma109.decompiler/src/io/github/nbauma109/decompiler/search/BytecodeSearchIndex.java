@@ -187,7 +187,7 @@ public final class BytecodeSearchIndex {
         try {
             Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
             List<JarPlan> plans = plan(roots);
-            if (plans == null) {
+            if (!roots.isEmpty() && plans.isEmpty()) {
                 return;
             }
             SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
@@ -245,7 +245,7 @@ public final class BytecodeSearchIndex {
             } else {
                 BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
                 if (work == null) {
-                    return null;
+                    return List.of();
                 }
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, work.totalTicks()));
             }
