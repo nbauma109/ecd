@@ -603,19 +603,37 @@ public class BytecodeJarIndexer {
             ListIterator<MemberReference> iterator = members.listIterator();
             while (iterator.hasNext()) {
                 MemberReference current = iterator.next();
-                if (current.compoundCandidate() && current.access() == Access.READ && iterator.hasNext()) {
-                    MemberReference next = iterator.next();
-                    if (next.access() == Access.WRITE
-                            && next.name().equals(current.name())
-                            && next.owner().equals(current.owner())
-                            && next.descriptor().equals(current.descriptor())) {
-                        result.add(new MemberReference(current.name(), current.owner(), current.descriptor(),
-                                Access.READ_WRITE, false));
-                        continue;
+                if (current.compoundCandidate() && current.access() == Access.READ) {
+                    // Scan ahead for the matching WRITE, skipping intervening reads that
+                    // represent other field accesses on the RHS (e.g. holder.count += other.value
+                    // emits GETFIELD other.value between the compound GETFIELD/PUTFIELD pair).
+                    List<MemberReference> skipped = new ArrayList<>();
+                    boolean collapsed = false;
+                    while (iterator.hasNext()) {
+                        MemberReference lookahead = iterator.next();
+                        if (lookahead.access() == Access.WRITE) {
+                            if (lookahead.name().equals(current.name())
+                                    && lookahead.owner().equals(current.owner())
+                                    && lookahead.descriptor().equals(current.descriptor())) {
+                                result.add(new MemberReference(current.name(), current.owner(), current.descriptor(),
+                                        Access.READ_WRITE, false));
+                                result.addAll(skipped);
+                                collapsed = true;
+                            } else {
+                                // Write to a different field — cannot safely scan past it.
+                                iterator.previous();
+                            }
+                            break;
+                        }
+                        skipped.add(lookahead);
                     }
-                    iterator.previous();
+                    if (!collapsed) {
+                        result.add(current);
+                        result.addAll(skipped);
+                    }
+                } else {
+                    result.add(current);
                 }
-                result.add(current);
             }
             return result;
         }
