@@ -68,6 +68,8 @@ public class BytecodeJarIndexer {
     private static final String CONSTRUCTOR = "<init>"; //$NON-NLS-1$
     private static final String META_INF_VERSIONS = "META-INF/versions/"; //$NON-NLS-1$
     private static final String MODULE_INFO = "module-info"; //$NON-NLS-1$
+    private static final String ANNOTATION_INTERNAL_NAME = "java/lang/annotation/Annotation"; //$NON-NLS-1$
+    private static final String ENUM_INTERNAL_NAME = "java/lang/Enum"; //$NON-NLS-1$
     private static final String OBJECT_INTERNAL_NAME = "java/lang/Object"; //$NON-NLS-1$
     private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
     private static final Attributes.Name MULTI_RELEASE = new Attributes.Name("Multi-Release"); //$NON-NLS-1$
@@ -730,11 +732,20 @@ public class BytecodeJarIndexer {
                     type = typeForInternalName(root, name);
                 }
                 addDescriptor(signature);
-                if (!OBJECT_INTERNAL_NAME.equals(superName)) {
+                if (!OBJECT_INTERNAL_NAME.equals(superName)
+                        && !(typeCategory == TypeCategory.ENUM && ENUM_INTERNAL_NAME.equals(superName))) {
+                    // Enum classes have java/lang/Enum as a compiler-mandated supertype that is
+                    // not written in source; skip it so type searches don't produce phantom matches.
                     addTypeReference(superName);
                 }
                 if (interfaces != null) {
-                    Collections.addAll(typeReferences, interfaces);
+                    for (String iface : interfaces) {
+                        if (!(typeCategory == TypeCategory.ANNOTATION && ANNOTATION_INTERNAL_NAME.equals(iface))) {
+                            // @interface types have java/lang/annotation/Annotation as a compiler-
+                            // mandated interface that is not written in source; skip it likewise.
+                            typeReferences.add(iface);
+                        }
+                    }
                 }
             }
 
@@ -1093,7 +1104,15 @@ public class BytecodeJarIndexer {
                 // GETSTATIC/PUTSTATIC pair must still be collapsed.  The pending read is demoted
                 // only by a subsequent GETSTATIC (new compound starts) or a local-variable store
                 // (the value was saved, breaking the compound chain).
-                if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
+                if (CONSTRUCTOR.equals(name)) {
+                    // For constructor calls the owner is source-visible only when the new-object
+                    // expression was not already consumed (tracked via pendingNewTypes).
+                    if (!consumePendingNew(owner)) {
+                        addTypeReference(owner, method);
+                    }
+                } else if (opcode == Opcodes.INVOKESTATIC) {
+                    // Static calls are qualified with the declaring type in source (e.g. Math.abs());
+                    // instance calls (INVOKEVIRTUAL/INVOKEINTERFACE/INVOKESPECIAL) are not.
                     addTypeReference(owner, method);
                 }
                 // Descriptor holds parameter/return types, which are not source-visible tokens at
