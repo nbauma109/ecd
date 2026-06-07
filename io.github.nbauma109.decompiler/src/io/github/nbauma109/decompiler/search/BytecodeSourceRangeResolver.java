@@ -1048,20 +1048,20 @@ public class BytecodeSourceRangeResolver {
             }
             try {
                 org.objectweb.asm.Type[] argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor);
-                if (argumentCount == argTypes.length) {
+                int syntheticParameterCount = syntheticConstructorParameterCount();
+                int sourceParameterCount = argTypes.length - syntheticParameterCount;
+                if (argumentCount == argTypes.length || argumentCount == sourceParameterCount) {
                     return true;
                 }
-                // Non-static member, local, and anonymous class constructors may carry one
-                // synthetic parameter that has no counterpart in source.
-                if (entry.getKind() == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameter()
-                        && argumentCount == argTypes.length - 1) {
-                    return true;
-                }
-                return isVarargsTarget(argTypes)
-                        && argumentCount >= argTypes.length - 1;
+                return isVarargsTarget(argTypes, syntheticParameterCount)
+                        && argumentCount >= sourceParameterCount - 1;
             } catch (IllegalArgumentException e) {
                 return true;
             }
+        }
+
+        private int syntheticConstructorParameterCount() {
+            return entry.getKind() == Kind.CONSTRUCTOR && mayHaveSyntheticConstructorParameter() ? 1 : 0;
         }
 
         private boolean mayHaveSyntheticConstructorParameter() {
@@ -1098,7 +1098,7 @@ public class BytecodeSourceRangeResolver {
             return null;
         }
 
-        private boolean isVarargsTarget(org.objectweb.asm.Type[] argumentTypes) {
+        private boolean isVarargsTarget(org.objectweb.asm.Type[] argumentTypes, int syntheticParameterCount) {
             if (argumentTypes.length == 0
                     || argumentTypes[argumentTypes.length - 1].getSort() != org.objectweb.asm.Type.ARRAY) {
                 return false;
@@ -1110,12 +1110,13 @@ public class BytecodeSourceRangeResolver {
                 return false;
             }
             try {
-                IType declaringType = project.findType(declaringTypeName);
+                IType declaringType = findType(element, declaringTypeName);
                 if (declaringType == null) {
                     return false;
                 }
                 for (IMethod method : declaringType.getMethods()) {
-                    if (matchesTargetMethod(method, argumentTypes) && Flags.isVarargs(method.getFlags())) {
+                    if (matchesTargetMethod(method, argumentTypes, syntheticParameterCount)
+                            && Flags.isVarargs(method.getFlags())) {
                         return true;
                     }
                 }
@@ -1125,19 +1126,19 @@ public class BytecodeSourceRangeResolver {
             return false;
         }
 
-        private boolean matchesTargetMethod(IMethod method, org.objectweb.asm.Type[] argumentTypes)
+        private boolean matchesTargetMethod(IMethod method, org.objectweb.asm.Type[] argumentTypes, int argumentTypeOffset)
                 throws JavaModelException {
             if (method.isConstructor() != (entry.getKind() == Kind.CONSTRUCTOR)
                     || !method.isConstructor() && !sameName(method.getElementName(), entry.getName())) {
                 return false;
             }
             String[] parameterTypes = method.getParameterTypes();
-            if (parameterTypes.length != argumentTypes.length) {
+            if (parameterTypes.length != argumentTypes.length - argumentTypeOffset) {
                 return false;
             }
             for (int i = 0; i < parameterTypes.length; i++) {
                 if (!AstDeclarationWindow.sameType(AstDeclarationWindow.normalizeJdtType(parameterTypes[i]),
-                        normalizeAsmType(argumentTypes[i]))) {
+                        normalizeAsmType(argumentTypes[i + argumentTypeOffset]))) {
                     return false;
                 }
             }

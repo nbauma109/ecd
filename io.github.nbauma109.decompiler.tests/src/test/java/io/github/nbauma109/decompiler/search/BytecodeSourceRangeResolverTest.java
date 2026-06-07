@@ -97,6 +97,7 @@ public class BytecodeSourceRangeResolverTest {
 
                 class Inner {
                     Inner(int value) {}
+                    Inner(String... values) {}
                 }
 
                 Owner() {
@@ -539,6 +540,31 @@ public class BytecodeSourceRangeResolverTest {
         assertNotNull("constructor with synthetic outer-ref must be resolved to the source call site", range); //$NON-NLS-1$
         assertEquals("resolved range must cover the constructor type name", //$NON-NLS-1$
                 "Inner", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
+    public void varargsConstructorWithSyntheticParameterMatchesZeroSourceArgs() {
+        BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod,
+                "Inner", "fixture.Owner.Inner", "fixture.Owner.Inner", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                "(Lfixture/Owner;[Ljava/lang/String;)V"); //$NON-NLS-1$
+
+        String src = """
+                package fixture;
+                class Owner {
+                    class Inner {
+                        Inner(String... values) {}
+                    }
+                    void takes(int count, java.lang.String... names) {
+                        new Inner();
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        assertNotNull("varargs constructor with synthetic outer-ref must resolve to the source call site", range); //$NON-NLS-1$
+        assertEquals("Inner", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
     @Test
