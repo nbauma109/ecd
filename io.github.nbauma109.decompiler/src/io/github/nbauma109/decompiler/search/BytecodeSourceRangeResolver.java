@@ -889,8 +889,13 @@ public class BytecodeSourceRangeResolver {
             if (node.getExpression() instanceof CastExpression cast) {
                 return matchesDeclaringOwner(sourceName(rawConstructorType(cast.getType())));
             }
-            // Receiver expression types are unavailable because decompiled text is parsed
-            // without bindings; use literal argument types as a conservative discriminator.
+            if (node.getExpression() != null) {
+                // Receiver expression types are unavailable because decompiled text is parsed
+                // without bindings. Only retain static-field-style receivers such as System.out,
+                // where the root qualifier is type-like; reject local/expression receivers.
+                return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
+                        && matchesArgumentTypeSyntax(node.arguments());
+            }
             return matchesArgumentTypeSyntax(node.arguments());
         }
 
@@ -955,6 +960,17 @@ public class BytecodeSourceRangeResolver {
         private static boolean isTypeLikeQualifier(Name receiver) {
             String receiverName = simpleName(receiver.getFullyQualifiedName());
             return !receiverName.isEmpty() && Character.isUpperCase(receiverName.charAt(0));
+        }
+
+        private static boolean isTypeRootQualifiedName(Name receiver) {
+            if (!(receiver instanceof QualifiedName qualifiedName)) {
+                return false;
+            }
+            Name root = qualifiedName.getQualifier();
+            while (root instanceof QualifiedName nested) {
+                root = nested.getQualifier();
+            }
+            return isTypeLikeQualifier(root);
         }
 
         private boolean matchesDeclaringOwner(String ownerName) {

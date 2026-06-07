@@ -811,6 +811,35 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void expressionQualifiedMethodInvocationIsNotAssignedWithoutReceiverBindings() {
+        String src = """
+                package fixture;
+                class First {
+                    int size() { return 1; }
+                }
+                class Second {
+                    int size() { return 2; }
+                }
+                class Owner {
+                    void takes(First first, Second second) {
+                        first.size();
+                        second.size();
+                    }
+                }
+                """;
+
+        BytecodeSearchEntry secondSize = reference(Kind.METHOD, takesMethod, "size", "size", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Second", "()I"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(secondSize), src).get(secondSize);
+        int firstSizeOffset = src.indexOf("size", src.indexOf("first.")); //$NON-NLS-1$ //$NON-NLS-2$
+        int secondSizeOffset = src.indexOf("size", src.indexOf("second.")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue("Expression-based invocation must not be assigned to an owner without receiver bindings", //$NON-NLS-1$
+                range.offset() != firstSizeOffset && range.offset() != secondSizeOffset);
+    }
+
+    @Test
     public void localVariablesAreNotMatchedAsFieldReferences() {
         String src = """
                 package fixture;
