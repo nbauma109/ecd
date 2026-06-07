@@ -1076,9 +1076,11 @@ public class BytecodeJarIndexer {
                 if (opcode == Opcodes.GETSTATIC) {
                     clearPendingStaticCompoundRead();
                 }
-                if (opcode == Opcodes.GETSTATIC || opcode == Opcodes.PUTSTATIC) {
-                    // Owner is source-visible only for qualified static accesses (e.g. MyClass.FIELD).
-                    // Instance field owners (GETFIELD/PUTFIELD) are not written as type tokens in source.
+                if ((opcode == Opcodes.GETSTATIC || opcode == Opcodes.PUTSTATIC) && !owner.equals(className)) {
+                    // Owner is source-visible only for qualified static accesses to a different class
+                    // (e.g. MyClass.FIELD).  Same-class accesses (count++, CLASS_INITIALIZER, etc.)
+                    // and static imports emit no owner token in source, so skip them.
+                    // Instance field owners (GETFIELD/PUTFIELD) are never type tokens in source.
                     addTypeReference(owner, method);
                 }
                 // Descriptor holds the field's value type, which is not a source-visible token at
@@ -1110,9 +1112,10 @@ public class BytecodeJarIndexer {
                     if (!consumePendingNew(owner)) {
                         addTypeReference(owner, method);
                     }
-                } else if (opcode == Opcodes.INVOKESTATIC) {
-                    // Static calls are qualified with the declaring type in source (e.g. Math.abs())
-                    // instance calls (INVOKEVIRTUAL/INVOKEINTERFACE/INVOKESPECIAL) are not.
+                } else if (opcode == Opcodes.INVOKESTATIC && !owner.equals(className)) {
+                    // Static calls to a different class are qualified with the declaring type in
+                    // source (e.g. Math.abs()); same-class helpers and static imports are not.
+                    // Instance calls (INVOKEVIRTUAL/INVOKEINTERFACE/INVOKESPECIAL) are never typed.
                     addTypeReference(owner, method);
                 }
                 // Descriptor holds parameter/return types, which are not source-visible tokens at
