@@ -690,7 +690,11 @@ public class BytecodeSourceRangeResolver {
             if (StringUtils.isBlank(qualifiedTypeName)) {
                 return true;
             }
-            return sameName(qualifiedName.getFullyQualifiedName(), qualifiedTypeName);
+            // Accept both the fully-qualified form (pkg.Outer.Inner) and the import-shortened or
+            // same-package form (Outer.Inner) that the decompiler may emit in source.
+            String astName = qualifiedName.getFullyQualifiedName();
+            return sameName(astName, qualifiedTypeName)
+                    || Strings.CS.endsWith(qualifiedTypeName, "." + astName); //$NON-NLS-1$
         }
 
         private static boolean isTypePositionName(SimpleName node) {
@@ -784,7 +788,8 @@ public class BytecodeSourceRangeResolver {
         @Override
         public boolean visit(ClassInstanceCreation node) {
             if (entry.getKind() == Kind.CONSTRUCTOR && node.getType() != null && matchesLastName(node.getType())
-                    && matchesArgumentCount(node.arguments().size())) {
+                    && matchesArgumentCount(node.arguments().size())
+                    && matchesArgumentTypeSyntax(node.arguments())) {
                 addLastName(node.getType());
             }
             return true;
