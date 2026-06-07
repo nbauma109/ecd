@@ -256,6 +256,28 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void findNestedTypeDeclarationOffsetUsesLocalClassOrdinal()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IClassFile editorClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> "Outer.class"; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        IClassFile localClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> "Outer$1Helper.class"; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        String source = "class Outer { static class Helper {} void method() { class Helper {} } }"; //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findNestedTypeDeclarationOffset", String.class, IClassFile.class, IClassFile.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, editorClassFile, localClassFile);
+
+        assertEquals(source.indexOf("class Helper", source.indexOf("void method")), offset); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void testOpenClassFileWithDecompilerEditorIdShowsSource()
             throws IOException, CoreException {
         String editorId = resolveDecompilerEditorIdFromRegistry();
@@ -659,6 +681,32 @@ public class JavaDecompilerClassFileEditorTest {
         int offset = (int) finder.invoke(editor, source, constructor, classFile, innerOffset, source.length());
 
         assertEquals(source.indexOf("Inner(String"), offset); //$NON-NLS-1$
+    }
+
+    @Test
+    public void findMethodNameOffsetMatchesQualifiedParameterOverload()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IMethod method = proxy(IMethod.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
+          case "isConstructor" -> Boolean.FALSE; //$NON-NLS-1$
+          case "getElementName" -> "use"; //$NON-NLS-1$ //$NON-NLS-2$
+          case "getParameterTypes" -> new String[] { "Ljava.util.Date;" }; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(reflectedMethod.getReturnType());
+        });
+        IClassFile classFile = proxy(IClassFile.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
+          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+          default -> defaultValue(reflectedMethod.getReturnType());
+        });
+        String source =
+                "class Outer { class Inner { void use(java.sql.Date d) {} void use(java.util.Date d) {} } }"; //$NON-NLS-1$
+        int innerOffset = source.indexOf("class Inner"); //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findMethodNameOffset", String.class, IMethod.class, IClassFile.class, int.class, int.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, method, classFile, innerOffset, source.length());
+
+        assertEquals(source.indexOf("use(java.util.Date"), offset); //$NON-NLS-1$
     }
 
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws CoreException {

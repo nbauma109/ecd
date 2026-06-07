@@ -702,10 +702,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         }
 
         String suffix = nestedName.substring(topLevelName.length() + 1);
-        return resolveNestedSourceOffset(source, suffix, 0);
+        int topLevelOffset = findTypeDeclarationOffset(source, sourceTypeSegment(topLevelName), 0);
+        int fromOffset = topLevelOffset < 0 ? 0 : topLevelOffset;
+        return resolveNestedSourceOffset(source, suffix, fromOffset, fromOffset);
     }
 
-    private int resolveNestedSourceOffset(String source, String suffix, int fromOffset) {
+    private int resolveNestedSourceOffset(String source, String suffix, int fromOffset, int enclosingTypeOffset) {
         if (suffix.isEmpty()) {
             return fromOffset;
         }
@@ -717,7 +719,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             }
             candidate.append(parts[i]);
             String sourceSegment = sourceTypeSegment(candidate.toString());
-            int typeOffset = sourceSegment.isEmpty() ? -1 : findTypeDeclarationOffset(source, sourceSegment, fromOffset);
+            int localOrdinal = localClassOrdinal(candidate.toString());
+            int typeOffset = sourceSegment.isEmpty() ? -1
+                    : findTypeDeclarationOffset(source, sourceSegment, fromOffset, enclosingTypeOffset, localOrdinal);
             if (typeOffset < 0) {
                 continue;
             }
@@ -727,7 +731,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             }
             int openBrace = source.indexOf('{', typeOffset);
             int innerFrom = openBrace < 0 ? typeOffset + sourceSegment.length() : openBrace + 1;
-            int deeper = resolveNestedSourceOffset(source, remaining.substring(1), innerFrom);
+            int deeper = resolveNestedSourceOffset(source, remaining.substring(1), innerFrom, typeOffset);
             if (deeper >= 0) {
                 return deeper;
             }
@@ -749,9 +753,45 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     private int findTypeDeclarationOffset(String source, String typeName, int fromIndex) {
-        Matcher matcher = Pattern.compile("(?:\\b(?:class|interface|enum|record)|@interface)\\s+" //$NON-NLS-1$
-                + Pattern.quote(typeName) + "\\b").matcher(source); //$NON-NLS-1$
+        Matcher matcher = typeDeclarationMatcher(source, typeName);
         return matcher.find(Math.max(0, fromIndex)) ? matcher.start() : -1;
+    }
+
+    private int findTypeDeclarationOffset(String source, String typeName, int fromIndex, int enclosingTypeOffset,
+            int localOrdinal) {
+        if (localOrdinal <= 0) {
+            return findTypeDeclarationOffset(source, typeName, fromIndex);
+        }
+        Matcher matcher = typeDeclarationMatcher(source, typeName);
+        matcher.region(Math.max(0, fromIndex), source.length());
+        int matchedLocalTypes = 0;
+        while (matcher.find()) {
+            if (JavaSourceMemberParser.isDirectTypeMember(source, enclosingTypeOffset, matcher.start())) {
+                continue;
+            }
+            matchedLocalTypes++;
+            if (matchedLocalTypes == localOrdinal) {
+                return matcher.start();
+            }
+        }
+        return -1;
+    }
+
+    private Matcher typeDeclarationMatcher(String source, String typeName) {
+        return Pattern.compile("(?:@interface|\\b(?:class|interface|enum|record))\\s+" //$NON-NLS-1$
+                + Pattern.quote(typeName) + "\\b").matcher(source); //$NON-NLS-1$
+    }
+
+    private int localClassOrdinal(String classFileSegment) {
+        int offset = 0;
+        while (offset < classFileSegment.length() && Character.isDigit(classFileSegment.charAt(offset))) {
+            offset++;
+        }
+        if (offset == 0 || offset >= classFileSegment.length()
+                || !Character.isJavaIdentifierStart(classFileSegment.charAt(offset))) {
+            return -1;
+        }
+        return Integer.parseInt(classFileSegment.substring(0, offset));
     }
 
     private int findTypeNameOffset(String source, IClassFile nestedClassFile, int typeOffset) {
@@ -874,14 +914,41 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             return true;
         }
         for (int i = 0; i < parameterTypes.length; i++) {
-            if (!jdtSignatureToSimpleName(parameterTypes[i]).equals(sourceTypes.get(i))) {
+            if (!matchesParameterType(parameterTypes[i], sourceTypes.get(i))) {
                 return false;
             }
         }
         return true;
     }
 
-    private static String jdtSignatureToSimpleName(String sig) {
+    private static boolean matchesParameterType(String jdtSignature, String sourceType) {
+        String normalizedSourceType = normalizeParameterType(sourceType);
+        String normalizedJdtType = jdtSignatureToTypeName(jdtSignature);
+        if (isQualifiedTypeName(normalizedSourceType)) {
+            return normalizedJdtType.equals(normalizedSourceType);
+        }
+        return simpleTypeName(normalizedJdtType).equals(normalizedSourceType);
+    }
+
+    private static String normalizeParameterType(String typeName) {
+        return typeName.trim().replace('$', '.');
+    }
+
+    private static boolean isQualifiedTypeName(String typeName) {
+        int arrayStart = typeName.indexOf("[]"); //$NON-NLS-1$
+        String elementName = arrayStart < 0 ? typeName : typeName.substring(0, arrayStart);
+        return elementName.indexOf('.') >= 0;
+    }
+
+    private static String simpleTypeName(String typeName) {
+        int arrayStart = typeName.indexOf("[]"); //$NON-NLS-1$
+        String elementName = arrayStart < 0 ? typeName : typeName.substring(0, arrayStart);
+        String suffix = arrayStart < 0 ? "" : typeName.substring(arrayStart); //$NON-NLS-1$
+        int dot = elementName.lastIndexOf('.');
+        return (dot < 0 ? elementName : elementName.substring(dot + 1)) + suffix;
+    }
+
+    private static String jdtSignatureToTypeName(String sig) {
         int arrayCount = 0;
         int pos = 0;
         while (pos < sig.length() && sig.charAt(pos) == '[') {
@@ -892,8 +959,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         String baseName;
         if (elementSig.length() > 1 && elementSig.charAt(0) == 'L' && elementSig.endsWith(";")) { //$NON-NLS-1$
             String qualified = elementSig.substring(1, elementSig.length() - 1);
-            int dot = qualified.lastIndexOf('.');
-            baseName = dot < 0 ? qualified : qualified.substring(dot + 1);
+            baseName = qualified.replace('$', '.');
         } else {
             baseName = Signature.getSignatureSimpleName(elementSig);
         }
