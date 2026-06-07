@@ -1065,7 +1065,11 @@ public class BytecodeJarIndexer {
                 if (opcode == Opcodes.GETSTATIC) {
                     clearPendingStaticCompoundRead();
                 }
-                addTypeReference(owner, method);
+                if (opcode == Opcodes.GETSTATIC || opcode == Opcodes.PUTSTATIC) {
+                    // Owner is source-visible only for qualified static accesses (e.g. MyClass.FIELD).
+                    // Instance field owners (GETFIELD/PUTFIELD) are not written as type tokens in source.
+                    addTypeReference(owner, method);
+                }
                 addDescriptorReferences(descriptor, method);
                 boolean compoundCandidate = opcode == Opcodes.GETSTATIC
                         || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
