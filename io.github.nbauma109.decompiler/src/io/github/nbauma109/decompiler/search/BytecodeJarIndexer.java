@@ -1070,7 +1070,8 @@ public class BytecodeJarIndexer {
                     // Instance field owners (GETFIELD/PUTFIELD) are not written as type tokens in source.
                     addTypeReference(owner, method);
                 }
-                addDescriptorReferences(descriptor, method);
+                // Descriptor holds the field's value type, which is not a source-visible token at
+                // an access site — skip it here; it is stored in the member reference for matching.
                 boolean compoundCandidate = opcode == Opcodes.GETSTATIC
                         || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
                 MemberReference member = addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner),
@@ -1091,7 +1092,8 @@ public class BytecodeJarIndexer {
                 if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
                     addTypeReference(owner, method);
                 }
-                addDescriptorReferences(descriptor, method);
+                // Descriptor holds parameter/return types, which are not source-visible tokens at
+                // a call site — skip it here; it is stored in the member reference for matching.
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
                             qualifiedTypeName(owner), descriptor, method);
