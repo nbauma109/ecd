@@ -45,6 +45,7 @@ import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CastExpression;
+import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ConstructorInvocation;
@@ -637,6 +638,17 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public void endVisit(EnhancedForStatement node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(CatchClause node) {
+            localNameScopes.push(new HashSet<>());
+            return true;
+        }
+
+        @Override
+        public void endVisit(CatchClause node) {
             localNameScopes.pop();
         }
 
