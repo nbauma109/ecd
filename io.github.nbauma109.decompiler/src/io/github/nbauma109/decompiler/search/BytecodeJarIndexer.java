@@ -758,6 +758,9 @@ public class BytecodeJarIndexer {
 
             @Override
             public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
+                    return null;
+                }
                 IField field = type == null ? null : type.getField(name);
                 add(Kind.FIELD, true, field, pool(name), pool(name), pool(qualifiedTypeName(className)),
                         pool(descriptor));

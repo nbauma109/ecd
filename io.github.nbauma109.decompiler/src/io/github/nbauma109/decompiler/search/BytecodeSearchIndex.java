@@ -190,34 +190,11 @@ public final class BytecodeSearchIndex {
             if (!roots.isEmpty() && plans.isEmpty()) {
                 return;
             }
-            SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
-                    totalTicks(plans));
-            Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
-            for (JarPlan plan : plans) {
-                if (subMonitor.isCanceled()) {
-                    return;
-                }
-                File jar = plan.jar();
-                subMonitor.subTask(jar.getName());
-                if (plan.existing() != null) {
-                    rebuilt.put(plan.key(), plan.existing());
-                    subMonitor.worked(1);
-                } else {
-                    JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(),
-                            subMonitor.split(plan.ticks()));
-                    if (index == null || subMonitor.isCanceled()) {
-                        return;
-                    }
-                    rebuilt.put(plan.key(), index);
-                }
+            Map<RootKey, JarIndex> rebuilt = rebuild(plans, monitor);
+            if (rebuilt == null) {
+                return;
             }
-            synchronized (this) {
-                if (!started.get()) {
-                    return;
-                }
-                indexes.set(Collections.unmodifiableMap(rebuilt));
-                refreshCompleted.set(true);
-            }
+            publish(rebuilt);
         } catch (CoreException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index application library bytecode"); //$NON-NLS-1$
         } finally {
@@ -230,6 +207,41 @@ public final class BytecodeSearchIndex {
         }
         if (scheduleAgain) {
             scheduleRefresh();
+        }
+    }
+
+    private Map<RootKey, JarIndex> rebuild(List<JarPlan> plans, IProgressMonitor monitor) {
+        SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
+                totalTicks(plans));
+        Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
+        for (JarPlan plan : plans) {
+            JarIndex index = rebuild(plan, subMonitor);
+            if (index == null) {
+                return null;
+            }
+            rebuilt.put(plan.key(), index);
+        }
+        return rebuilt;
+    }
+
+    private JarIndex rebuild(JarPlan plan, SubMonitor subMonitor) {
+        if (subMonitor.isCanceled()) {
+            return null;
+        }
+        File jar = plan.jar();
+        subMonitor.subTask(jar.getName());
+        if (plan.existing() != null) {
+            subMonitor.worked(1);
+            return plan.existing();
+        }
+        JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(), subMonitor.split(plan.ticks()));
+        return index == null || subMonitor.isCanceled() ? null : index;
+    }
+
+    private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
+        if (started.get()) {
+            indexes.set(Collections.unmodifiableMap(rebuilt));
+            refreshCompleted.set(true);
         }
     }
 
