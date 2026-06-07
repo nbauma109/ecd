@@ -376,6 +376,27 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void implicitObjectSupertypesDoNotContributeTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "implicit-object-supertype.jar"); //$NON-NLS-1$
+        createImplicitObjectSuperclassJar(jar);
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "application-library-search-implicit-object-supertype-test-project"); //$NON-NLS-1$
+        project = setup.project();
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, typeReferenceSpecification(
+                "java.lang.Object", scope)); //$NON-NLS-1$
+
+        assertTrue("Implicit Object supertypes must not produce source-level type references", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
     public void qualifiedTypePatternsDoNotMatchOtherPackagesWithTheSameSimpleName()
             throws Exception {
         File jar = new File(tempDir, "same-simple-type-references.jar"); //$NON-NLS-1$
@@ -2559,6 +2580,14 @@ public class ApplicationLibrarySearchParticipantTest {
     private static void createStringReferenceJar(File jar) throws Exception {
         try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
             addClass(output, "pkg/ExternalReference.class", classBytesWithStringField("pkg/ExternalReference")); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+    }
+
+    private static void createImplicitObjectSuperclassJar(File jar) throws Exception {
+        try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+            addType(output, "pkg/PlainClass", Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "java/lang/Object"); //$NON-NLS-1$ //$NON-NLS-2$
+            addType(output, "pkg/PlainInterface", //$NON-NLS-1$
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT, "java/lang/Object"); //$NON-NLS-1$
         }
     }
 

@@ -68,6 +68,7 @@ public class BytecodeJarIndexer {
     private static final String CONSTRUCTOR = "<init>"; //$NON-NLS-1$
     private static final String META_INF_VERSIONS = "META-INF/versions/"; //$NON-NLS-1$
     private static final String MODULE_INFO = "module-info"; //$NON-NLS-1$
+    private static final String OBJECT_INTERNAL_NAME = "java/lang/Object"; //$NON-NLS-1$
     private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
     private static final Attributes.Name MULTI_RELEASE = new Attributes.Name("Multi-Release"); //$NON-NLS-1$
     private static final int ZIP_LOCAL_FILE_HEADER_SIZE = 30;
@@ -703,7 +704,9 @@ public class BytecodeJarIndexer {
                     type = typeForInternalName(root, name);
                 }
                 addDescriptor(signature);
-                addTypeReference(superName);
+                if (!OBJECT_INTERNAL_NAME.equals(superName)) {
+                    addTypeReference(superName);
+                }
                 if (interfaces != null) {
                     Collections.addAll(typeReferences, interfaces);
                 }
@@ -1033,7 +1036,7 @@ public class BytecodeJarIndexer {
                         || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
                 MemberReference member = addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner),
                         descriptor, fieldAccess(opcode), compoundCandidate), method);
-                if (opcode == Opcodes.GETSTATIC && compoundCandidate) {
+                if (opcode == Opcodes.GETSTATIC) {
                     pendingStaticCompoundRead = member;
                     pendingStaticCompoundElement = method == null ? type : method;
                 } else if (opcode == Opcodes.PUTSTATIC) {
