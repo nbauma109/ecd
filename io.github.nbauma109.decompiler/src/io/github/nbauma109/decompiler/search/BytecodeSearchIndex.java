@@ -186,15 +186,15 @@ public final class BytecodeSearchIndex {
         boolean scheduleAgain;
         try {
             Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
-            List<JarPlan> plans = plan(roots);
-            if (!roots.isEmpty() && plans.isEmpty()) {
+            PlanningResult planning = plan(roots);
+            if (!planning.completed()) {
                 return;
             }
-            Map<RootKey, JarIndex> rebuilt = rebuild(plans, monitor);
-            if (rebuilt == null) {
+            RebuildResult rebuilt = rebuild(planning.plans(), monitor);
+            if (!rebuilt.completed()) {
                 return;
             }
-            publish(rebuilt);
+            publish(rebuilt.indexes());
         } catch (CoreException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index application library bytecode"); //$NON-NLS-1$
         } finally {
@@ -210,18 +210,18 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private Map<RootKey, JarIndex> rebuild(List<JarPlan> plans, IProgressMonitor monitor) {
+    private RebuildResult rebuild(List<JarPlan> plans, IProgressMonitor monitor) {
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
         for (JarPlan plan : plans) {
             JarIndex index = rebuild(plan, subMonitor);
             if (index == null) {
-                return null;
+                return new RebuildResult(false, Map.of());
             }
             rebuilt.put(plan.key(), index);
         }
-        return rebuilt;
+        return new RebuildResult(true, rebuilt);
     }
 
     private JarIndex rebuild(JarPlan plan, SubMonitor subMonitor) {
@@ -245,7 +245,7 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private List<JarPlan> plan(Map<RootKey, IPackageFragmentRoot> roots) {
+    private PlanningResult plan(Map<RootKey, IPackageFragmentRoot> roots) {
         List<JarPlan> plans = new ArrayList<>(roots.size());
         for (Map.Entry<RootKey, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
             RootKey key = rootEntry.getKey();
@@ -257,12 +257,12 @@ public final class BytecodeSearchIndex {
             } else {
                 BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
                 if (work == null) {
-                    return List.of();
+                    return new PlanningResult(false, List.of());
                 }
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, work.totalTicks()));
             }
         }
-        return plans;
+        return new PlanningResult(true, plans);
     }
 
     private static int totalTicks(List<JarPlan> plans) {
@@ -776,6 +776,12 @@ public final class BytecodeSearchIndex {
     }
 
     private record RootKey(String rootHandle, IPath path) {
+    }
+
+    private record PlanningResult(boolean completed, List<JarPlan> plans) {
+    }
+
+    private record RebuildResult(boolean completed, Map<RootKey, JarIndex> indexes) {
     }
 
     private record JarPlan(RootKey key, IPackageFragmentRoot root, File jar, JarIndex existing,
