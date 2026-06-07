@@ -1997,6 +1997,34 @@ public class ApplicationLibrarySearchParticipantTest {
                 2, matches.size());
     }
 
+    @Test
+    public void consumedStaticFieldReadAndLaterWriteRemainDistinctReferenceMatches() throws Exception {
+        File jar = new File(tempDir, "consumed-static-field-accesses.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Holder.class", buildStaticHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HolderUser.class", buildHolderUserWithConsumedStaticReadAndWrite()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "consumed-static-field-accesses-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "consumed-static-field-access-refs")); //$NON-NLS-1$
+        assertEquals("static read consumed by invocation and later write must remain separate references", //$NON-NLS-1$
+                2, matches.size());
+    }
+
     /**
      * Verifies fix: {@code annotationVisitor.visitEnum} now calls
      * {@code addReference(Kind.FIELD, value, value, qualifiedTypeName(owner), descriptor, element, Access.READ)}
@@ -2372,6 +2400,23 @@ public class ApplicationLibrarySearchParticipantTest {
         mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(2, 1);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderUserWithConsumedStaticReadAndWrite() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "replace", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(I)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 0);
         mv.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();

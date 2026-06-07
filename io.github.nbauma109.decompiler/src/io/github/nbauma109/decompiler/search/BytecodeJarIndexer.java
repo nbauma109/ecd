@@ -1033,6 +1033,9 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+                if (opcode == Opcodes.GETSTATIC) {
+                    clearPendingStaticCompoundRead();
+                }
                 addTypeReference(owner, method);
                 addDescriptorReferences(descriptor, method);
                 boolean compoundCandidate = opcode == Opcodes.GETSTATIC
@@ -1051,6 +1054,7 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                clearPendingStaticCompoundRead();
                 if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
                     addTypeReference(owner, method);
                 }
@@ -1067,6 +1071,7 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInvokeDynamicInsn(String name, String descriptor, org.objectweb.asm.Handle bootstrapMethodHandle,
                     Object... bootstrapMethodArguments) {
+                clearPendingStaticCompoundRead();
                 addDescriptorReferences(descriptor, method);
                 if (bootstrapMethodArguments != null) {
                     for (Object argument : bootstrapMethodArguments) {
