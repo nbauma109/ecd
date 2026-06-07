@@ -1111,7 +1111,7 @@ public class BytecodeJarIndexer {
                         addTypeReference(owner, method);
                     }
                 } else if (opcode == Opcodes.INVOKESTATIC) {
-                    // Static calls are qualified with the declaring type in source (e.g. Math.abs());
+                    // Static calls are qualified with the declaring type in source (e.g. Math.abs())
                     // instance calls (INVOKEVIRTUAL/INVOKEINTERFACE/INVOKESPECIAL) are not.
                     addTypeReference(owner, method);
                 }
