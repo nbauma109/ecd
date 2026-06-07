@@ -42,6 +42,7 @@ import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CastExpression;
@@ -61,6 +62,8 @@ import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NumberLiteral;
 import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.ParameterizedType;
+import org.eclipse.jdt.core.dom.PostfixExpression;
+import org.eclipse.jdt.core.dom.PrefixExpression;
 import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.RecordDeclaration;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -821,6 +824,14 @@ public class BytecodeSourceRangeResolver {
             if (!matches(node) || isDeclarationName(node)) {
                 return false;
             }
+            BytecodeSearchEntry.Access access = entry.getAccess();
+            if ((access == BytecodeSearchEntry.Access.WRITE || access == BytecodeSearchEntry.Access.READ_WRITE)
+                    && !isWriteContext(node)) {
+                return false;
+            }
+            if (access == BytecodeSearchEntry.Access.READ && isWriteContext(node)) {
+                return false;
+            }
             ASTNode parent = node.getParent();
             if (parent instanceof QualifiedName qualifiedName && qualifiedName.getName() == node) {
                 return matchesDeclaringOwner(qualifiedName.getQualifier().getFullyQualifiedName());
@@ -840,6 +851,33 @@ public class BytecodeSourceRangeResolver {
                 return false;
             }
             return matchesImplicitReceiverField();
+        }
+
+        /**
+         * Returns {@code true} when {@code node} is in a write position: the left-hand side of
+         * any assignment (simple {@code =} or compound {@code +=}/etc.), or the operand of a
+         * prefix/postfix increment or decrement. Walks up through {@link Name}, {@link FieldAccess},
+         * and {@link SuperFieldAccess} wrappers so that {@code this.field = x} and
+         * {@code Outer.field++} are correctly identified as write contexts.
+         */
+        private static boolean isWriteContext(SimpleName node) {
+            ASTNode child = node;
+            ASTNode parent = node.getParent();
+            while (parent instanceof Name || parent instanceof FieldAccess || parent instanceof SuperFieldAccess) {
+                child = parent;
+                parent = parent.getParent();
+            }
+            if (parent instanceof Assignment assignment && assignment.getLeftHandSide() == child) {
+                return true;
+            }
+            if (parent instanceof PostfixExpression postfix && postfix.getOperand() == child) {
+                return true;
+            }
+            if (parent instanceof PrefixExpression prefix && prefix.getOperand() == child) {
+                return prefix.getOperator() == PrefixExpression.Operator.INCREMENT
+                        || prefix.getOperator() == PrefixExpression.Operator.DECREMENT;
+            }
+            return false;
         }
 
         private void addLocalName(SimpleName node) {
