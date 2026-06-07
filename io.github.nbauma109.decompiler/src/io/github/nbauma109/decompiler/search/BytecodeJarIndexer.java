@@ -771,6 +771,9 @@ public class BytecodeJarIndexer {
             @Override
             public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
                     String[] exceptions) {
+                if ((access & (Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE)) != 0) {
+                    return null;
+                }
                 IMethod method = null;
                 if (CONSTRUCTOR.equals(name)) {
                     method = type == null ? null : type.getMethod(type.getElementName(), jdtParameterTypes(descriptor));
