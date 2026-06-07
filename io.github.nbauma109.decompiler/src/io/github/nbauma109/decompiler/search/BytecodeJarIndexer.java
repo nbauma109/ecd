@@ -1088,7 +1088,11 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                clearPendingStaticCompoundRead();
+                // Do NOT clear pendingStaticCompoundRead here: a method call may be the RHS of a
+                // static compound update (e.g. Holder.count += compute()), in which case the
+                // GETSTATIC/PUTSTATIC pair must still be collapsed.  The pending read is demoted
+                // only by a subsequent GETSTATIC (new compound starts) or a local-variable store
+                // (the value was saved, breaking the compound chain).
                 if (!CONSTRUCTOR.equals(name) || !consumePendingNew(owner)) {
                     addTypeReference(owner, method);
                 }

@@ -824,12 +824,7 @@ public class BytecodeSourceRangeResolver {
             if (!matches(node) || isDeclarationName(node)) {
                 return false;
             }
-            BytecodeSearchEntry.Access access = entry.getAccess();
-            if ((access == BytecodeSearchEntry.Access.WRITE || access == BytecodeSearchEntry.Access.READ_WRITE)
-                    && !isWriteContext(node)) {
-                return false;
-            }
-            if (access == BytecodeSearchEntry.Access.READ && isWriteContext(node)) {
+            if (!accessMatchesContext(node)) {
                 return false;
             }
             ASTNode parent = node.getParent();
@@ -851,6 +846,22 @@ public class BytecodeSourceRangeResolver {
                 return false;
             }
             return matchesImplicitReceiverField();
+        }
+
+        /**
+         * Returns {@code true} when the node's syntactic write/read context is consistent with
+         * {@code entry.getAccess()}: READ must not be a write target; WRITE and READ_WRITE must
+         * be a write target; NONE passes unconditionally.
+         */
+        private boolean accessMatchesContext(SimpleName node) {
+            BytecodeSearchEntry.Access access = entry.getAccess();
+            if (access == BytecodeSearchEntry.Access.READ) {
+                return !isWriteContext(node);
+            }
+            if (access == BytecodeSearchEntry.Access.WRITE || access == BytecodeSearchEntry.Access.READ_WRITE) {
+                return isWriteContext(node);
+            }
+            return true;
         }
 
         /**
