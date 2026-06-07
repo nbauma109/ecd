@@ -507,17 +507,18 @@ public class BytecodeJarIndexer {
             }
         }
 
-        private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+        private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
-            addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, Access.NONE, false), element);
+            return addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, Access.NONE, false),
+                    element);
         }
 
-        private void addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+        private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
-            addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, access, false), element);
+            return addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, access, false), element);
         }
 
-        private void addReference(ReferenceSpec reference, IJavaElement element) {
+        private MemberReference addReference(ReferenceSpec reference, IJavaElement element) {
             IJavaElement enclosingElement = element == null ? type : element;
             MemberReference member = new MemberReference(reference.name(), reference.owner(), reference.descriptor(),
                     reference.access(), reference.compoundCandidate());
@@ -528,6 +529,7 @@ public class BytecodeJarIndexer {
               default -> add(reference.kind(), false, enclosingElement, pool(reference.name()),
                       pool(reference.qualifiedName()), pool(reference.owner()), null);
             }
+            return member;
         }
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
@@ -586,14 +588,14 @@ public class BytecodeJarIndexer {
         }
 
         /**
-         * Collapses consecutive GETFIELD/PUTFIELD pairs on the same field into one READ_WRITE entry.
+         * Collapses consecutive read/write pairs on the same field into one READ_WRITE entry.
          * Such pairs are emitted by javac for compound assignments ({@code holder.count++},
          * {@code holder.count += 1}) and produce two bytecode instructions that map to a single
          * source-level field occurrence.  Keeping both would cause REFERENCES and ALL_OCCURRENCES
          * searches to report the same occurrence twice.  The combined access keeps the occurrence
          * visible to both READ_ACCESSES and WRITE_ACCESSES searches.  A read is eligible only when
-         * bytecode duplicated the receiver immediately before GETFIELD, which avoids merging
-         * unrelated read and write expressions on the same field.
+         * bytecode duplicated the receiver immediately before GETFIELD, or when a GETSTATIC read
+         * remains on the operand stack instead of being stored to a local.
          */
         private static List<MemberReference> collapseCompoundFieldAccesses(List<MemberReference> members) {
             List<MemberReference> result = new ArrayList<>(members.size());
@@ -963,6 +965,8 @@ public class BytecodeJarIndexer {
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
+            private MemberReference pendingStaticCompoundRead;
+            private IJavaElement pendingStaticCompoundElement;
             private int previousOpcode = -1;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -1025,8 +1029,17 @@ public class BytecodeJarIndexer {
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                 addTypeReference(owner, method);
                 addDescriptorReferences(descriptor, method);
-                addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner), descriptor,
-                        fieldAccess(opcode), opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP), method);
+                boolean compoundCandidate = opcode == Opcodes.GETSTATIC
+                        || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
+                MemberReference member = addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner),
+                        descriptor, fieldAccess(opcode), compoundCandidate), method);
+                if (opcode == Opcodes.GETSTATIC && compoundCandidate) {
+                    pendingStaticCompoundRead = member;
+                    pendingStaticCompoundElement = method == null ? type : method;
+                } else if (opcode == Opcodes.PUTSTATIC) {
+                    pendingStaticCompoundRead = null;
+                    pendingStaticCompoundElement = null;
+                }
                 previousOpcode = opcode;
             }
 
@@ -1081,6 +1094,9 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitVarInsn(int opcode, int varIndex) {
+                if (isStoreOpcode(opcode)) {
+                    clearPendingStaticCompoundRead();
+                }
                 previousOpcode = opcode;
             }
 
@@ -1092,6 +1108,25 @@ public class BytecodeJarIndexer {
             @Override
             public void visitIincInsn(int varIndex, int increment) {
                 previousOpcode = Opcodes.IINC;
+            }
+
+            private void clearPendingStaticCompoundRead() {
+                if (pendingStaticCompoundRead == null) {
+                    return;
+                }
+                List<MemberReference> references = fieldReferencesByElement.get(pendingStaticCompoundElement);
+                if (references != null && !references.isEmpty()
+                        && references.get(references.size() - 1) == pendingStaticCompoundRead) {
+                    references.set(references.size() - 1, new MemberReference(pendingStaticCompoundRead.name(),
+                            pendingStaticCompoundRead.owner(), pendingStaticCompoundRead.descriptor(),
+                            pendingStaticCompoundRead.access(), false));
+                }
+                pendingStaticCompoundRead = null;
+                pendingStaticCompoundElement = null;
+            }
+
+            private static boolean isStoreOpcode(int opcode) {
+                return opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE;
             }
 
             @Override

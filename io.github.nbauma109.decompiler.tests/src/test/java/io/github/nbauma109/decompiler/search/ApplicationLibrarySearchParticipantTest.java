@@ -1874,6 +1874,54 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void staticCompoundFieldAccessReportsOnlyOneReferenceMatch() throws Exception {
+        File jar = new File(tempDir, "static-compound-field.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Holder.class", buildStaticHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HolderUser.class", buildHolderUserWithStaticCompoundAccess()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "static-compound-field-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> refMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "static-compound-field-refs")); //$NON-NLS-1$
+        assertEquals("static compound field access (count++) must produce exactly 1 REFERENCES match, not 2", //$NON-NLS-1$
+                1, refMatches.size());
+
+        List<Match> readMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.READ_ACCESSES,
+                scope,
+                "static-compound-field-reads")); //$NON-NLS-1$
+        assertFalse("static compound field access (count++) must still appear in READ_ACCESSES", //$NON-NLS-1$
+                readMatches.isEmpty());
+
+        List<Match> writeMatches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.WRITE_ACCESSES,
+                scope,
+                "static-compound-field-writes")); //$NON-NLS-1$
+        assertFalse("static compound field access (count++) must still appear in WRITE_ACCESSES", //$NON-NLS-1$
+                writeMatches.isEmpty());
+    }
+
+    @Test
     public void separateFieldReadAndWriteRemainDistinctReferenceMatches() throws Exception {
         File jar = new File(tempDir, "separate-field-accesses.jar"); //$NON-NLS-1$
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
@@ -1898,6 +1946,34 @@ public class ApplicationLibrarySearchParticipantTest {
                 scope,
                 "separate-field-access-refs")); //$NON-NLS-1$
         assertEquals("separate field read and write expressions must remain separate references", 2, matches.size()); //$NON-NLS-1$
+    }
+
+    @Test
+    public void separateStaticFieldReadAndWriteRemainDistinctReferenceMatches() throws Exception {
+        File jar = new File(tempDir, "separate-static-field-accesses.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Holder.class", buildStaticHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/HolderUser.class", buildHolderUserWithSeparateStaticAccesses()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "separate-static-field-accesses-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Holder.count", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "separate-static-field-access-refs")); //$NON-NLS-1$
+        assertEquals("separate static field read and write expressions must remain separate references", //$NON-NLS-1$
+                2, matches.size());
     }
 
     /**
@@ -2198,6 +2274,14 @@ public class ApplicationLibrarySearchParticipantTest {
         return cw.toByteArray();
     }
 
+    private static byte[] buildStaticHolderClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Holder", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "count", "I", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     private static byte[] buildHolderUserWithCompoundAccess() {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
@@ -2233,6 +2317,40 @@ public class ApplicationLibrarySearchParticipantTest {
         mv.visitFieldInsn(Opcodes.PUTFIELD, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(3, 2);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderUserWithStaticCompoundAccess() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "increment", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 0);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildHolderUserWithSeparateStaticAccesses() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "replace", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitVarInsn(Opcodes.ISTORE, 0);
+        mv.visitVarInsn(Opcodes.ILOAD, 0);
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(2, 1);
         mv.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
