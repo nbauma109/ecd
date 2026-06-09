@@ -229,28 +229,43 @@ public class ConflictingPluginsDialogTest {
             dialog.create();
             Shell shell = dialog.getShell();
 
-            // The MessageDialog opened by showManualInstructions() runs its own event loop.
-            // A daemon thread queues an asyncExec to dismiss it so the test does not hang.
-            Thread closer = new Thread(() -> {
-                try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-                display.asyncExec(() -> {
-                    for (Shell s : display.getShells()) {
-                        if (!s.isDisposed() && "Manual Uninstall Required".equals(s.getText())) { //$NON-NLS-1$
-                            s.close();
-                        }
-                    }
-                });
-            });
-            closer.setDaemon(true);
-            closer.start();
+            Button uninstall = collectButtons(shell).stream()
+                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                .findFirst().orElse(null);
+            assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
+
+            // Queue the dismissal before clicking — the MessageDialog's inner event loop
+            // (inside openInformation) will pick this up after its shell is created.
+            display.asyncExec(() -> dismissShellByTitle(display, "Manual Uninstall Required")); //$NON-NLS-1$
+            uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
+
+            assertFalse("dialog should remain open after failed P2 uninstall", shell.isDisposed()); //$NON-NLS-1$
+            dialog.close();
+        });
+    }
+
+    @Test
+    public void uninstallSelectedHandlesExceptionFromTryP2Uninstall() {
+        Display display = Display.getDefault();
+        display.syncExec(() -> {
+            ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT)) {
+                @Override
+                public boolean tryP2Uninstall(List<ConflictInfo> selected) {
+                    throw new RuntimeException("simulated P2 failure"); //$NON-NLS-1$
+                }
+            };
+            dialog.create();
+            Shell shell = dialog.getShell();
 
             Button uninstall = collectButtons(shell).stream()
                 .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
                 .findFirst().orElse(null);
             assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
+
+            display.asyncExec(() -> dismissShellByTitle(display, "Manual Uninstall Required")); //$NON-NLS-1$
             uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
 
-            assertFalse("dialog should remain open after failed P2 uninstall", shell.isDisposed()); //$NON-NLS-1$
+            assertFalse("dialog should remain open after exception in P2 uninstall", shell.isDisposed()); //$NON-NLS-1$
             dialog.close();
         });
     }
@@ -285,6 +300,14 @@ public class ConflictingPluginsDialogTest {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private static void dismissShellByTitle(Display display, String title) {
+        for (Shell s : display.getShells()) {
+            if (!s.isDisposed() && title.equals(s.getText())) {
+                s.close();
+            }
+        }
+    }
 
     private static Table findTable(Composite parent) {
         for (Control child : parent.getChildren()) {
