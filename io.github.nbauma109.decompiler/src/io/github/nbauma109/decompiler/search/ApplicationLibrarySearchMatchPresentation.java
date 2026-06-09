@@ -58,7 +58,7 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
         if (match instanceof BytecodeSearchMatch bytecodeMatch) {
             ResolvedRanges resolved = editor instanceof ITextEditor textEditor
                     ? resolveRanges(bytecodeMatch, textEditor, source)
-                    : new ResolvedRanges(sourceRangeResolver.rangeFor(bytecodeMatch.getEntry(), source), List.of());
+                            : new ResolvedRanges(sourceRangeResolver.rangeFor(bytecodeMatch.getEntry(), source), List.of());
             BytecodeSourceRangeResolver.SourceRange range = resolved.selected();
             highlights = resolved.highlights();
             bytecodeMatch.update(range);
@@ -69,7 +69,7 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
             protectExternalTextSelection(editor);
             BytecodeSearchEditorHighlighter.highlight(textEditor, highlights == null || highlights.isEmpty()
                     ? List.of(new BytecodeSourceRangeResolver.SourceRange(currentOffset, currentLength))
-                    : highlights);
+                            : highlights);
             selectAndReveal(textEditor, currentOffset, currentLength);
         } else {
             JavaUI.revealInEditor(editor, javaElement);

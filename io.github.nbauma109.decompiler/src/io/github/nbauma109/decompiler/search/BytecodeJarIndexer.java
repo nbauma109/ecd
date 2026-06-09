@@ -543,11 +543,11 @@ public class BytecodeJarIndexer {
             MemberReference member = new MemberReference(reference.name(), reference.owner(), reference.descriptor(),
                     reference.access(), reference.compoundCandidate());
             switch (reference.kind()) {
-              case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              case CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
-              default -> add(reference.kind(), false, enclosingElement, pool(reference.name()),
-                      pool(reference.qualifiedName()), pool(reference.owner()), null);
+                case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+                case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+                case CONSTRUCTOR -> constructorReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
+                default -> add(reference.kind(), false, enclosingElement, pool(reference.name()),
+                        pool(reference.qualifiedName()), pool(reference.owner()), null);
             }
             return member;
         }
@@ -699,9 +699,9 @@ public class BytecodeJarIndexer {
 
         private static Access fieldAccess(int opcode) {
             return switch (opcode) {
-            case Opcodes.GETFIELD, Opcodes.GETSTATIC, Opcodes.H_GETFIELD, Opcodes.H_GETSTATIC -> Access.READ;
-            case Opcodes.PUTFIELD, Opcodes.PUTSTATIC, Opcodes.H_PUTFIELD, Opcodes.H_PUTSTATIC -> Access.WRITE;
-            default -> Access.NONE;
+                case Opcodes.GETFIELD, Opcodes.GETSTATIC, Opcodes.H_GETFIELD, Opcodes.H_GETSTATIC -> Access.READ;
+                case Opcodes.PUTFIELD, Opcodes.PUTSTATIC, Opcodes.H_PUTFIELD, Opcodes.H_PUTSTATIC -> Access.WRITE;
+                default -> Access.NONE;
             };
         }
 
@@ -846,7 +846,7 @@ public class BytecodeJarIndexer {
                 boolean syntheticLambda = isSyntheticLambdaMethod(access, name);
                 IJavaElement methodOrType = syntheticLambda
                         ? lambdaBodyElement(name, descriptor)
-                        : indexMethodDeclaration(name, descriptor);
+                                : indexMethodDeclaration(name, descriptor);
                 if (!syntheticLambda) {
                     indexMethodDeclarationReferences(name, descriptor, signature, exceptions, methodOrType);
                 }
@@ -940,7 +940,7 @@ public class BytecodeJarIndexer {
                     throws org.eclipse.jdt.core.JavaModelException {
                 return "new".equals(sourceMethodName) //$NON-NLS-1$
                         ? candidate.isConstructor()
-                        : sourceMethodName.equals(candidate.getElementName());
+                                : sourceMethodName.equals(candidate.getElementName());
             }
 
             private String declarationDescriptor(String name, String descriptor, String signature) {
@@ -1394,11 +1394,11 @@ public class BytecodeJarIndexer {
 
             private static int jumpConsumedSlots(int opcode) {
                 return switch (opcode) {
-                  case Opcodes.IFEQ, Opcodes.IFNE, Opcodes.IFLT, Opcodes.IFGE, Opcodes.IFGT, Opcodes.IFLE,
-                          Opcodes.IFNULL, Opcodes.IFNONNULL -> 1;
-                  case Opcodes.IF_ICMPEQ, Opcodes.IF_ICMPNE, Opcodes.IF_ICMPLT, Opcodes.IF_ICMPGE,
-                          Opcodes.IF_ICMPGT, Opcodes.IF_ICMPLE, Opcodes.IF_ACMPEQ, Opcodes.IF_ACMPNE -> 2;
-                  default -> 0;
+                    case Opcodes.IFEQ, Opcodes.IFNE, Opcodes.IFLT, Opcodes.IFGE, Opcodes.IFGT, Opcodes.IFLE,
+                    Opcodes.IFNULL, Opcodes.IFNONNULL -> 1;
+                    case Opcodes.IF_ICMPEQ, Opcodes.IF_ICMPNE, Opcodes.IF_ICMPLT, Opcodes.IF_ICMPGE,
+                    Opcodes.IF_ICMPGT, Opcodes.IF_ICMPLE, Opcodes.IF_ACMPEQ, Opcodes.IF_ACMPNE -> 2;
+                    default -> 0;
                 };
             }
 
@@ -1408,22 +1408,22 @@ public class BytecodeJarIndexer {
 
             private static int stackDelta(int opcode) {
                 return switch (opcode) {
-                  case Opcodes.ACONST_NULL, Opcodes.ICONST_M1, Opcodes.ICONST_0, Opcodes.ICONST_1, Opcodes.ICONST_2,
-                          Opcodes.ICONST_3, Opcodes.ICONST_4, Opcodes.ICONST_5, Opcodes.FCONST_0, Opcodes.FCONST_1,
-                          Opcodes.FCONST_2 -> 1;
-                  case Opcodes.LCONST_0, Opcodes.LCONST_1, Opcodes.DCONST_0, Opcodes.DCONST_1 -> 2;
-                  case Opcodes.IADD, Opcodes.FADD, Opcodes.ISUB, Opcodes.FSUB, Opcodes.IMUL, Opcodes.FMUL,
-                          Opcodes.IDIV, Opcodes.FDIV, Opcodes.IREM, Opcodes.FREM, Opcodes.IAND, Opcodes.IOR,
-                          Opcodes.IXOR, Opcodes.ISHL, Opcodes.ISHR, Opcodes.IUSHR, Opcodes.L2I, Opcodes.L2F,
-                          Opcodes.D2I, Opcodes.D2F, Opcodes.POP, Opcodes.IRETURN, Opcodes.FRETURN,
-                          Opcodes.ARETURN -> -1;
-                  case Opcodes.LADD, Opcodes.DADD, Opcodes.LSUB, Opcodes.DSUB, Opcodes.LMUL, Opcodes.DMUL,
-                          Opcodes.LDIV, Opcodes.DDIV, Opcodes.LREM, Opcodes.DREM, Opcodes.LAND, Opcodes.LOR,
-                          Opcodes.LXOR, Opcodes.LSHL, Opcodes.LSHR, Opcodes.LUSHR, Opcodes.POP2, Opcodes.LRETURN,
-                          Opcodes.DRETURN -> -2;
-                  case Opcodes.I2L, Opcodes.I2D, Opcodes.F2L, Opcodes.F2D, Opcodes.DUP -> 1;
-                  case Opcodes.DUP2 -> 2;
-                  default -> 0;
+                    case Opcodes.ACONST_NULL, Opcodes.ICONST_M1, Opcodes.ICONST_0, Opcodes.ICONST_1, Opcodes.ICONST_2,
+                    Opcodes.ICONST_3, Opcodes.ICONST_4, Opcodes.ICONST_5, Opcodes.FCONST_0, Opcodes.FCONST_1,
+                    Opcodes.FCONST_2 -> 1;
+                    case Opcodes.LCONST_0, Opcodes.LCONST_1, Opcodes.DCONST_0, Opcodes.DCONST_1 -> 2;
+                    case Opcodes.IADD, Opcodes.FADD, Opcodes.ISUB, Opcodes.FSUB, Opcodes.IMUL, Opcodes.FMUL,
+                    Opcodes.IDIV, Opcodes.FDIV, Opcodes.IREM, Opcodes.FREM, Opcodes.IAND, Opcodes.IOR,
+                    Opcodes.IXOR, Opcodes.ISHL, Opcodes.ISHR, Opcodes.IUSHR, Opcodes.L2I, Opcodes.L2F,
+                    Opcodes.D2I, Opcodes.D2F, Opcodes.POP, Opcodes.IRETURN, Opcodes.FRETURN,
+                    Opcodes.ARETURN -> -1;
+                    case Opcodes.LADD, Opcodes.DADD, Opcodes.LSUB, Opcodes.DSUB, Opcodes.LMUL, Opcodes.DMUL,
+                    Opcodes.LDIV, Opcodes.DDIV, Opcodes.LREM, Opcodes.DREM, Opcodes.LAND, Opcodes.LOR,
+                    Opcodes.LXOR, Opcodes.LSHL, Opcodes.LSHR, Opcodes.LUSHR, Opcodes.POP2, Opcodes.LRETURN,
+                    Opcodes.DRETURN -> -2;
+                    case Opcodes.I2L, Opcodes.I2D, Opcodes.F2L, Opcodes.F2D, Opcodes.DUP -> 1;
+                    case Opcodes.DUP2 -> 2;
+                    default -> 0;
                 };
             }
 

@@ -57,15 +57,15 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
-            if (monitor != null && monitor.isCanceled()) {
-                throw new OperationCanceledException();
-            }
-            IJavaElement element = entry.getElement();
-            if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
-                BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
-                requestor.reportMatch(match);
-            }
-        });
+                    if (monitor != null && monitor.isCanceled()) {
+                        throw new OperationCanceledException();
+                    }
+                    IJavaElement element = entry.getElement();
+                    if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
+                        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+                        requestor.reportMatch(match);
+                    }
+                });
     }
 
     @Override
@@ -495,7 +495,7 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
                         name = StringUtils.substringAfterLast(memberPattern, "."); //$NON-NLS-1$
                         qualifiedName = name;
                     }
-                    break;
+                break;
                 case CONSTRUCTOR:
                     declaringTypeName = memberPattern;
                     name = simpleName(memberPattern);
@@ -636,16 +636,16 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             String baseType = arrayStart < 0 ? type : type.substring(0, arrayStart);
             String suffix = arrayStart < 0 ? "" : type.substring(arrayStart); //$NON-NLS-1$
             return switch (baseType) {
-            case "boolean" -> "z"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "byte" -> "b"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "char" -> "c"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "double" -> "d"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "float" -> "f"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "int" -> "i"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "long" -> "j"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "short" -> "s"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "void" -> "v"; //$NON-NLS-1$ //$NON-NLS-2$
-            default -> baseType;
+                case "boolean" -> "z"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "byte" -> "b"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "char" -> "c"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "double" -> "d"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "float" -> "f"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "int" -> "i"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "long" -> "j"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "short" -> "s"; //$NON-NLS-1$ //$NON-NLS-2$
+                case "void" -> "v"; //$NON-NLS-1$ //$NON-NLS-2$
+                default -> baseType;
             } + suffix;
         }
 
@@ -659,29 +659,29 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
         private static Kind kindFor(int searchFor) {
             return switch (searchFor) {
-            case IJavaSearchConstants.TYPE, IJavaSearchConstants.CLASS, IJavaSearchConstants.INTERFACE,
-                    IJavaSearchConstants.ENUM, IJavaSearchConstants.ANNOTATION_TYPE,
-                    IJavaSearchConstants.CLASS_AND_ENUM, IJavaSearchConstants.CLASS_AND_INTERFACE,
-                    IJavaSearchConstants.INTERFACE_AND_ANNOTATION -> Kind.TYPE;
-            case IJavaSearchConstants.METHOD -> Kind.METHOD;
-            case IJavaSearchConstants.CONSTRUCTOR -> Kind.CONSTRUCTOR;
-            case IJavaSearchConstants.FIELD -> Kind.FIELD;
-            case IJavaSearchConstants.PACKAGE -> Kind.PACKAGE;
-            case IJavaSearchConstants.MODULE -> Kind.MODULE;
-            default -> null;
+                case IJavaSearchConstants.TYPE, IJavaSearchConstants.CLASS, IJavaSearchConstants.INTERFACE,
+                IJavaSearchConstants.ENUM, IJavaSearchConstants.ANNOTATION_TYPE,
+                IJavaSearchConstants.CLASS_AND_ENUM, IJavaSearchConstants.CLASS_AND_INTERFACE,
+                IJavaSearchConstants.INTERFACE_AND_ANNOTATION -> Kind.TYPE;
+                case IJavaSearchConstants.METHOD -> Kind.METHOD;
+                case IJavaSearchConstants.CONSTRUCTOR -> Kind.CONSTRUCTOR;
+                case IJavaSearchConstants.FIELD -> Kind.FIELD;
+                case IJavaSearchConstants.PACKAGE -> Kind.PACKAGE;
+                case IJavaSearchConstants.MODULE -> Kind.MODULE;
+                default -> null;
             };
         }
 
         private static TypeFilter typeFilterFor(int searchFor) {
             return switch (searchFor) {
-            case IJavaSearchConstants.CLASS -> TypeFilter.CLASS;
-            case IJavaSearchConstants.INTERFACE -> TypeFilter.INTERFACE;
-            case IJavaSearchConstants.ENUM -> TypeFilter.ENUM;
-            case IJavaSearchConstants.ANNOTATION_TYPE -> TypeFilter.ANNOTATION;
-            case IJavaSearchConstants.CLASS_AND_ENUM -> TypeFilter.CLASS_AND_ENUM;
-            case IJavaSearchConstants.CLASS_AND_INTERFACE -> TypeFilter.CLASS_AND_INTERFACE;
-            case IJavaSearchConstants.INTERFACE_AND_ANNOTATION -> TypeFilter.INTERFACE_AND_ANNOTATION;
-            default -> TypeFilter.ALL;
+                case IJavaSearchConstants.CLASS -> TypeFilter.CLASS;
+                case IJavaSearchConstants.INTERFACE -> TypeFilter.INTERFACE;
+                case IJavaSearchConstants.ENUM -> TypeFilter.ENUM;
+                case IJavaSearchConstants.ANNOTATION_TYPE -> TypeFilter.ANNOTATION;
+                case IJavaSearchConstants.CLASS_AND_ENUM -> TypeFilter.CLASS_AND_ENUM;
+                case IJavaSearchConstants.CLASS_AND_INTERFACE -> TypeFilter.CLASS_AND_INTERFACE;
+                case IJavaSearchConstants.INTERFACE_AND_ANNOTATION -> TypeFilter.INTERFACE_AND_ANNOTATION;
+                default -> TypeFilter.ALL;
             };
         }
 
@@ -795,9 +795,9 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             int arrayDepth = Signature.getArrayCount(signature);
             String elementType = eraseJdtType(Signature.getElementType(signature), typeVariableErasures);
             String normalized = switch (Signature.getTypeSignatureKind(elementType)) {
-            case Signature.BASE_TYPE_SIGNATURE -> elementType;
-            case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('/', '.').replace('$', '.');
-            default -> Signature.getSignatureSimpleName(elementType);
+                case Signature.BASE_TYPE_SIGNATURE -> elementType;
+                case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('/', '.').replace('$', '.');
+                default -> Signature.getSignatureSimpleName(elementType);
             };
             return normalized.toLowerCase(Locale.ROOT) + "[]".repeat(arrayDepth); //$NON-NLS-1$
         }
