@@ -183,7 +183,7 @@ public final class JavaSourceMemberParser {
      * method <em>declaration</em> rather than a method <em>invocation</em>.
      *
      * <p>The method looks at the first non-whitespace token after the closing parenthesis
-     * of the parameter list and recognises three declaration forms:</p>
+     * of the parameter list and recognises the following declaration forms:</p>
      * <ul>
      *   <li>{@code '{'} — the method has a concrete body.</li>
      *   <li>{@code ';'} at a position that is a {@link #isDirectTypeMember direct type member} —
