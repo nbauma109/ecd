@@ -943,6 +943,9 @@ public class BytecodeSourceRangeResolver {
             if (node.getExpression() instanceof CastExpression cast) {
                 return matchesDeclaringOwner(sourceName(rawConstructorType(cast.getType())));
             }
+            if (node.getExpression() instanceof ThisExpression receiver) {
+                return matchesThisReceiverMethod(receiver, node.arguments());
+            }
             if (node.getExpression() != null) {
                 // Receiver expression types are unavailable because decompiled text is parsed
                 // without bindings. Only retain static-field-style receivers such as System.out,
@@ -951,6 +954,12 @@ public class BytecodeSourceRangeResolver {
                         && matchesArgumentTypeSyntax(node.arguments());
             }
             return matchesArgumentTypeSyntax(node.arguments());
+        }
+
+        private boolean matchesThisReceiverMethod(ThisExpression receiver, List<?> arguments) {
+            Name qualifier = receiver.getQualifier();
+            return (qualifier == null || matchesDeclaringOwner(qualifier.getFullyQualifiedName()))
+                    && matchesArgumentTypeSyntax(arguments);
         }
 
         private boolean matchesArgumentTypeSyntax(List<?> arguments) {

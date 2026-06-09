@@ -153,6 +153,7 @@ public class BytecodeSourceRangeResolverTest {
     private IType recType;
     private IType ownerType;
     private IType primsType;
+    private IPackageFragment packageFragment;
     private IMethod takesMethod;
     private IMethod defaultConstructor;
     private IMethod intConstructor;
@@ -181,8 +182,8 @@ public class BytecodeSourceRangeResolverTest {
                 project.getFullPath().append("bin"), new NullProgressMonitor()); //$NON-NLS-1$
 
         IPackageFragmentRoot sourceRoot = javaProject.getPackageFragmentRoot(sourceFolder);
-        IPackageFragment pkg = sourceRoot.createPackageFragment(PACKAGE_NAME, true, new NullProgressMonitor());
-        ICompilationUnit unit = pkg.createCompilationUnit("Owner.java", SOURCE, true, new NullProgressMonitor()); //$NON-NLS-1$
+        packageFragment = sourceRoot.createPackageFragment(PACKAGE_NAME, true, new NullProgressMonitor());
+        ICompilationUnit unit = packageFragment.createCompilationUnit("Owner.java", SOURCE, true, new NullProgressMonitor()); //$NON-NLS-1$
 
         markerType = unit.getType("Marker"); //$NON-NLS-1$
         modeType = unit.getType("Mode"); //$NON-NLS-1$
@@ -863,6 +864,55 @@ public class BytecodeSourceRangeResolverTest {
         int secondSizeOffset = src.indexOf("size", src.indexOf("second.")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("Expression-based invocation must not be assigned to an owner without receiver bindings", //$NON-NLS-1$
                 range.offset() != firstSizeOffset && range.offset() != secondSizeOffset);
+    }
+
+    @Test
+    public void explicitThisMethodInvocationResolvesLikeImplicitReceiver() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void helper() {}
+                    void takes(int count, java.lang.String... names) {
+                        this.helper();
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry helper = reference(Kind.METHOD, takesMethod, "helper", "helper", //$NON-NLS-1$ //$NON-NLS-2$
+                FIXTURE_OWNER, "()V"); //$NON-NLS-1$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(helper), src).get(helper);
+        int helperOffset = src.indexOf("helper", src.indexOf("this.")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(helperOffset, range.offset());
+        assertEquals("helper()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
+    @Test
+    public void qualifiedThisMethodInvocationResolvesToDeclaringOwner() throws JavaModelException {
+        String src = """
+                package fixture;
+                class QualifiedThisOwner {
+                    void helper() {}
+                    class Inner {
+                        void takes(int count, java.lang.String... names) {
+                            QualifiedThisOwner.this.helper();
+                        }
+                    }
+                }
+                """; //$NON-NLS-1$
+        ICompilationUnit unit = packageFragment.createCompilationUnit("QualifiedThisOwner.java", src, true, //$NON-NLS-1$
+                new NullProgressMonitor());
+        IMethod innerTakes = method(unit.getType("QualifiedThisOwner").getType("Inner"), "takes", 2); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSearchEntry helper = reference(Kind.METHOD, innerTakes, "helper", "helper", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.QualifiedThisOwner", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(helper), src).get(helper);
+        int helperOffset = src.indexOf("helper", src.indexOf("QualifiedThisOwner.this.")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(helperOffset, range.offset());
+        assertEquals("helper()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
     @Test
