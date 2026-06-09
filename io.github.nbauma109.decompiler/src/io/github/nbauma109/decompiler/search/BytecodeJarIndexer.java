@@ -565,7 +565,8 @@ public class BytecodeJarIndexer {
             if (StringUtils.isBlank(packageName)) {
                 return;
             }
-            add(Kind.PACKAGE, false, element, pool(packageName), pool(packageName), null, null);
+            addReferenceEntry(new EntrySpec(Kind.PACKAGE, false, pool(packageName), pool(packageName), null, null,
+                    Access.NONE, TypeCategory.UNKNOWN), element);
         }
 
         private void flushTypeReferencesByElement() {
@@ -1163,8 +1164,9 @@ public class BytecodeJarIndexer {
                     // Instance field owners (GETFIELD/PUTFIELD) are never type tokens in source.
                     addTypeReference(owner, method);
                 }
-                // Descriptor holds the field's value type, which is not a source-visible token at
-                // an access site — skip it here; it is stored in the member reference for matching.
+                if (opcode == Opcodes.GETSTATIC || opcode == Opcodes.GETFIELD) {
+                    addDescriptorReferences(descriptor, method);
+                }
                 boolean compoundCandidate = opcode == Opcodes.GETSTATIC
                         || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
                 MemberReference member = addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner),
@@ -1272,6 +1274,8 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitJumpInsn(int opcode, Label label) {
+                clearPendingStaticCompoundReadIfConsumed(jumpConsumedSlots(opcode));
+                stackDepth = Math.max(0, stackDepth - jumpConsumedSlots(opcode));
                 previousOpcode = opcode;
             }
 
@@ -1350,6 +1354,16 @@ public class BytecodeJarIndexer {
 
             private static int stackSize(String descriptor) {
                 return Type.getType(descriptor).getSize();
+            }
+
+            private static int jumpConsumedSlots(int opcode) {
+                return switch (opcode) {
+                  case Opcodes.IFEQ, Opcodes.IFNE, Opcodes.IFLT, Opcodes.IFGE, Opcodes.IFGT, Opcodes.IFLE,
+                          Opcodes.IFNULL, Opcodes.IFNONNULL -> 1;
+                  case Opcodes.IF_ICMPEQ, Opcodes.IF_ICMPNE, Opcodes.IF_ICMPLT, Opcodes.IF_ICMPGE,
+                          Opcodes.IF_ICMPGT, Opcodes.IF_ICMPLE, Opcodes.IF_ACMPEQ, Opcodes.IF_ACMPNE -> 2;
+                  default -> 0;
+                };
             }
 
             private static int ldcStackSize(Object value) {

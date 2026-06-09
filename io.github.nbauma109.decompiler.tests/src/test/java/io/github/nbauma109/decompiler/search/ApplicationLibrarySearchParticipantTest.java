@@ -1750,6 +1750,33 @@ public class ApplicationLibrarySearchParticipantTest {
                 matches.size() >= 2);
     }
 
+    @Test
+    public void repeatedElementScopedPackageReferencesArePreserved() throws Exception {
+        File jar = new File(tempDir, "repeated-package-refs.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/UsesJavaUtilTypes.class", buildClassWithRepeatedJavaUtilReferences()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "repeated-package-refs-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "java.util", //$NON-NLS-1$
+                IJavaSearchConstants.PACKAGE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "repeated-java-util-package-refs")); //$NON-NLS-1$
+
+        assertEquals("Two java.util type uses must produce two package-reference matches", 2, matches.size()); //$NON-NLS-1$
+    }
+
     /**
      * Verifies fix: the {@code visitLabel} override in {@code MethodIndexer} maps the LVT-start
      * label (the instruction immediately after the {@code astore}) to the same exception types as
@@ -2084,6 +2111,34 @@ public class ApplicationLibrarySearchParticipantTest {
                 2, matches.size());
     }
 
+    @Test
+    public void conditionalStaticFieldReadAndLaterWriteRemainDistinctReferenceMatches() throws Exception {
+        File jar = new File(tempDir, "conditional-static-field-accesses.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/FlagHolder.class", buildFlagHolderClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/FlagUser.class", buildFlagUserWithConditionalStaticReadAndWrite()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "conditional-static-field-accesses-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.FlagHolder.flag", //$NON-NLS-1$
+                IJavaSearchConstants.FIELD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "conditional-static-field-access-refs")); //$NON-NLS-1$
+        assertEquals("static read consumed by a conditional jump and later write must remain separate references", //$NON-NLS-1$
+                2, matches.size());
+    }
+
     /**
      * Verifies fix: {@code annotationVisitor.visitEnum} now calls
      * {@code addReference(Kind.FIELD, value, value, qualifiedTypeName(owner), descriptor, element, Access.READ)}
@@ -2209,6 +2264,20 @@ public class ApplicationLibrarySearchParticipantTest {
         sv.visitInsn(Opcodes.RETURN);
         sv.visitMaxs(2, 0);
         sv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildClassWithRepeatedJavaUtilReferences() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/UsesJavaUtilTypes", null, //$NON-NLS-1$
+                "java/lang/Object", null); //$NON-NLS-1$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "use", //$NON-NLS-1$
+                "(Ljava/util/List;Ljava/util/Set;)V", null, null); //$NON-NLS-1$
+        mv.visitCode();
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 2);
+        mv.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
     }
@@ -2390,6 +2459,15 @@ public class ApplicationLibrarySearchParticipantTest {
         return cw.toByteArray();
     }
 
+    private static byte[] buildFlagHolderClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/FlagHolder", null, "java/lang/Object", //$NON-NLS-1$ //$NON-NLS-2$
+                null);
+        cw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "flag", "Z", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     private static byte[] buildHolderUserWithCompoundAccess() {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/HolderUser", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
@@ -2476,6 +2554,25 @@ public class ApplicationLibrarySearchParticipantTest {
         mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/Holder", "count", "I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(2, 0);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildFlagUserWithConditionalStaticReadAndWrite() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/FlagUser", null, "java/lang/Object", //$NON-NLS-1$ //$NON-NLS-2$
+                null);
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "replace", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        Label afterIf = new Label();
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "pkg/FlagHolder", "flag", "Z"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitJumpInsn(Opcodes.IFEQ, afterIf);
+        mv.visitLabel(afterIf);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitFieldInsn(Opcodes.PUTSTATIC, "pkg/FlagHolder", "flag", "Z"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(1, 0);
         mv.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
