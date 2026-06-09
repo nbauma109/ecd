@@ -50,12 +50,7 @@ public class SetupRunnable implements Runnable {
                     || PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage() == null) {
                 Display.getDefault().timerExec(1000, SetupRunnable.this::run);
             } else {
-                try {
-                    ConflictingPluginsDialog.openIfNeeded(
-                        PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
-                } catch (Exception | NoClassDefFoundError e) {
-                    Logger.debug(e);
-                }
+                openConflictDialogSafely();
                 checkClassFileAssociation();
                 setupPartListener();
                 DecompilerSourceLookupBridge.install();
@@ -63,6 +58,15 @@ public class SetupRunnable implements Runnable {
                 new UpdateCheckJob().schedule(2000L);
             }
         } catch (Throwable e) {
+            Logger.debug(e);
+        }
+    }
+
+    private static void openConflictDialogSafely() {
+        try {
+            ConflictingPluginsDialog.openIfNeeded(
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+        } catch (Exception | NoClassDefFoundError e) {
             Logger.debug(e);
         }
     }

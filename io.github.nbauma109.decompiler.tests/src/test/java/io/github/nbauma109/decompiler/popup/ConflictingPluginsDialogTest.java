@@ -53,13 +53,15 @@ public class ConflictingPluginsDialogTest {
     @Test
     public void openIfNeededDoesNothingWhenNoConflictsDetected() {
         Display.getDefault().syncExec(() -> {
+            if (!ConflictingPluginsDialog.detectConflicts().isEmpty()) {
+                return; // skip: a real modal dialog would block the test thread
+            }
             Shell parent = new Shell(Display.getDefault());
             try {
-                // Avoid hanging the test if conflicts are present (openIfNeeded opens a modal dialog)
-                if (!ConflictingPluginsDialog.detectConflicts().isEmpty()) {
-                    return;
-                }
-                ConflictingPluginsDialog.openIfNeeded(parent); // must not throw or open any dialog
+                int shellsBefore = Display.getDefault().getShells().length;
+                ConflictingPluginsDialog.openIfNeeded(parent);
+                assertEquals("no dialog shell should be opened when there are no conflicts", //$NON-NLS-1$
+                    shellsBefore, Display.getDefault().getShells().length);
             } finally {
                 parent.dispose();
             }

@@ -192,85 +192,96 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
         if (selected == null || selected.isEmpty()) {
             return false;
         }
-
         Bundle bundle = FrameworkUtil.getBundle(ConflictingPluginsDialog.class);
         if (bundle == null || bundle.getBundleContext() == null) {
             return false;
         }
-        org.osgi.framework.BundleContext ctx = bundle.getBundleContext();
-
         ServiceTracker<IProvisioningAgent, IProvisioningAgent> tracker =
-            new ServiceTracker<>(ctx, IProvisioningAgent.class, null);
+            new ServiceTracker<>(bundle.getBundleContext(), IProvisioningAgent.class, null);
         tracker.open();
         try {
             IProvisioningAgent agent = tracker.getService();
             if (agent == null) {
                 return false;
             }
-
-            IProfileRegistry registry = (IProfileRegistry) agent.getService(IProfileRegistry.SERVICE_NAME);
-            if (registry == null) {
-                return false;
-            }
-            IProfile profile = registry.getProfile(IProfileRegistry.SELF);
+            IProfile profile = resolveP2Profile(agent);
             if (profile == null) {
                 return false;
             }
-
-            List<IInstallableUnit> ius = new ArrayList<>();
-            for (ConflictInfo ci : selected) {
-                addMatchingIUs(ius, profile, ci.p2Prefix());
-            }
-
+            List<IInstallableUnit> ius = collectIUsToUninstall(profile, selected);
             if (ius.isEmpty()) {
                 return false;
             }
-
-            ProvisioningSession session = new ProvisioningSession(agent);
-            UninstallOperation operation = new UninstallOperation(session, ius);
-            IStatus resolveStatus = operation.resolveModal(new NullProgressMonitor());
-            int severity = resolveStatus.getSeverity();
-            if (severity == IStatus.ERROR || severity == IStatus.CANCEL) {
-                Logger.debug(resolveStatus.getMessage(), null);
-                return false;
-            }
-
-            ProvisioningJob job = operation.getProvisioningJob(new NullProgressMonitor());
-            if (job == null) {
-                return false;
-            }
-
-            job.addJobChangeListener(new JobChangeAdapter() {
-                @Override
-                public void done(IJobChangeEvent event) {
-                    Display display = Display.getDefault();
-                    if (display == null || display.isDisposed()) {
-                        return;
-                    }
-                    int severity = event.getResult().getSeverity();
-                    if (severity == IStatus.OK || severity == IStatus.WARNING) {
-                        display.asyncExec(() -> {
-                            Shell s = getShell();
-                            if (s != null && !s.isDisposed()) {
-                                close();
-                            }
-                            promptRestart();
-                        });
-                    } else {
-                        display.asyncExec(() -> {
-                            Shell s = getShell();
-                            if (s != null && !s.isDisposed()) {
-                                showManualInstructions();
-                            }
-                        });
-                    }
-                }
-            });
-            job.schedule();
-            return true;
-
+            return scheduleUninstallJob(agent, ius);
         } finally {
             tracker.close();
+        }
+    }
+
+    private static IProfile resolveP2Profile(IProvisioningAgent agent) {
+        IProfileRegistry registry = (IProfileRegistry) agent.getService(IProfileRegistry.SERVICE_NAME);
+        if (registry == null) {
+            return null;
+        }
+        return registry.getProfile(IProfileRegistry.SELF);
+    }
+
+    private static List<IInstallableUnit> collectIUsToUninstall(IProfile profile, List<ConflictInfo> selected) {
+        List<IInstallableUnit> ius = new ArrayList<>();
+        for (ConflictInfo ci : selected) {
+            addMatchingIUs(ius, profile, ci.p2Prefix());
+        }
+        return ius;
+    }
+
+    private boolean scheduleUninstallJob(IProvisioningAgent agent, List<IInstallableUnit> ius) {
+        ProvisioningSession session = new ProvisioningSession(agent);
+        UninstallOperation operation = new UninstallOperation(session, ius);
+        IStatus resolveStatus = operation.resolveModal(new NullProgressMonitor());
+        int severity = resolveStatus.getSeverity();
+        if (severity == IStatus.ERROR || severity == IStatus.CANCEL) {
+            Logger.debug(resolveStatus.getMessage(), null);
+            return false;
+        }
+        ProvisioningJob job = operation.getProvisioningJob(new NullProgressMonitor());
+        if (job == null) {
+            return false;
+        }
+        job.addJobChangeListener(new JobChangeAdapter() {
+            @Override
+            public void done(IJobChangeEvent event) {
+                onJobDone(event);
+            }
+        });
+        job.schedule();
+        return true;
+    }
+
+    private void onJobDone(IJobChangeEvent event) {
+        Display display = Display.getDefault();
+        if (display == null || display.isDisposed()) {
+            return;
+        }
+        int severity = event.getResult().getSeverity();
+        if (severity == IStatus.OK || severity == IStatus.WARNING) {
+            display.asyncExec(this::closeAndPromptRestart);
+        } else {
+            display.asyncExec(this::showManualInstructionsIfOpen);
+        }
+    }
+
+    private void closeAndPromptRestart() {
+        Shell s = getShell();
+        if (s != null && !s.isDisposed()) {
+            close();
+        }
+        promptRestart();
+    }
+
+    private void showManualInstructionsIfOpen() {
+        Shell s = getShell();
+        if (s != null && !s.isDisposed()) {
+            showManualInstructions();
         }
     }
 
