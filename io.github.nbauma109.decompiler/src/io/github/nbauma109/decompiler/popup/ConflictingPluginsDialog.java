@@ -80,9 +80,11 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
 
     public static void openIfNeeded(Shell shell) {
         List<ConflictInfo> conflicts = detectConflicts();
-        if (!conflicts.isEmpty()) {
-            new ConflictingPluginsDialog(shell, conflicts).open();
+        if (conflicts.isEmpty()) {
+            return;
         }
+        Shell parent = (shell != null && !shell.isDisposed()) ? shell : Display.getDefault().getActiveShell();
+        new ConflictingPluginsDialog(parent, conflicts).open();
     }
 
     @Override
@@ -176,11 +178,10 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             }
         }
         try {
-            if (tryP2Uninstall(selected)) {
-                close();
-            } else {
+            if (!tryP2Uninstall(selected)) {
                 showManualInstructions();
             }
+            // on success: dialog is closed and restart prompted by the job listener once the job actually completes
         } catch (Exception | NoClassDefFoundError e) {
             Logger.debug(e);
             showManualInstructions();
@@ -188,8 +189,15 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
     }
 
     public boolean tryP2Uninstall(List<ConflictInfo> selected) {
-        org.osgi.framework.BundleContext ctx =
-            FrameworkUtil.getBundle(ConflictingPluginsDialog.class).getBundleContext();
+        if (selected == null || selected.isEmpty()) {
+            return false;
+        }
+
+        Bundle bundle = FrameworkUtil.getBundle(ConflictingPluginsDialog.class);
+        if (bundle == null || bundle.getBundleContext() == null) {
+            return false;
+        }
+        org.osgi.framework.BundleContext ctx = bundle.getBundleContext();
 
         ServiceTracker<IProvisioningAgent, IProvisioningAgent> tracker =
             new ServiceTracker<>(ctx, IProvisioningAgent.class, null);
@@ -201,6 +209,9 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             }
 
             IProfileRegistry registry = (IProfileRegistry) agent.getService(IProfileRegistry.SERVICE_NAME);
+            if (registry == null) {
+                return false;
+            }
             IProfile profile = registry.getProfile(IProfileRegistry.SELF);
             if (profile == null) {
                 return false;
@@ -218,7 +229,8 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             ProvisioningSession session = new ProvisioningSession(agent);
             UninstallOperation operation = new UninstallOperation(session, ius);
             IStatus resolveStatus = operation.resolveModal(new NullProgressMonitor());
-            if (resolveStatus.getSeverity() == IStatus.ERROR) {
+            int severity = resolveStatus.getSeverity();
+            if (severity == IStatus.ERROR || severity == IStatus.CANCEL) {
                 Logger.debug(resolveStatus.getMessage(), null);
                 return false;
             }
@@ -231,11 +243,26 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             job.addJobChangeListener(new JobChangeAdapter() {
                 @Override
                 public void done(IJobChangeEvent event) {
-                    if (event.getResult().isOK() || event.getResult().getSeverity() == IStatus.WARNING) {
-                        Display display = Display.getDefault();
-                        if (display != null && !display.isDisposed()) {
-                            display.asyncExec(() -> promptRestart());
-                        }
+                    Display display = Display.getDefault();
+                    if (display == null || display.isDisposed()) {
+                        return;
+                    }
+                    int severity = event.getResult().getSeverity();
+                    if (severity == IStatus.OK || severity == IStatus.WARNING) {
+                        display.asyncExec(() -> {
+                            Shell s = getShell();
+                            if (s != null && !s.isDisposed()) {
+                                close();
+                            }
+                            promptRestart();
+                        });
+                    } else {
+                        display.asyncExec(() -> {
+                            Shell s = getShell();
+                            if (s != null && !s.isDisposed()) {
+                                showManualInstructions();
+                            }
+                        });
                     }
                 }
             });
@@ -260,7 +287,14 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
         if (!PlatformUI.isWorkbenchRunning()) {
             return;
         }
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+        var window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (window == null) {
+            return;
+        }
+        Shell shell = window.getShell();
+        if (shell == null || shell.isDisposed()) {
+            return;
+        }
         boolean restart = MessageDialog.openQuestion(shell,
             "Restart Required", //$NON-NLS-1$
             "The selected plugins have been uninstalled.\nEclipse must restart to apply the changes. Restart now?"); //$NON-NLS-1$
@@ -271,11 +305,12 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
 
     private void showManualInstructions() {
         MessageDialog.openInformation(getShell(),
-		            "Manual Uninstall Required", //$NON-NLS-1$
-		            """
-			Automatic uninstall is not available.
+            "Manual Uninstall Required", //$NON-NLS-1$
+            """
+            Automatic uninstall is not available.
 
-			To uninstall manually: Help → About Eclipse → Installation Details → Installed Software
-			Select the conflicting plugins and click 'Uninstall'."""); //$NON-NLS-1$
+            To uninstall manually: Help → About Eclipse → Installation Details → Installed Software
+            Select the conflicting plugins and click 'Uninstall'.
+            """.stripIndent());
     }
 }

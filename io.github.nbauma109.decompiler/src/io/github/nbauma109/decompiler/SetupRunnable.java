@@ -50,8 +50,12 @@ public class SetupRunnable implements Runnable {
                     || PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage() == null) {
                 Display.getDefault().timerExec(1000, SetupRunnable.this::run);
             } else {
-                ConflictingPluginsDialog.openIfNeeded(
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+                try {
+                    ConflictingPluginsDialog.openIfNeeded(
+                        PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+                } catch (Exception | NoClassDefFoundError e) {
+                    Logger.debug(e);
+                }
                 checkClassFileAssociation();
                 setupPartListener();
                 DecompilerSourceLookupBridge.install();

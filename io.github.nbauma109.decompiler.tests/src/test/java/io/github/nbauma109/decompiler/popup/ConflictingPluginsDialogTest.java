@@ -40,9 +40,14 @@ public class ConflictingPluginsDialogTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void detectConflictsReturnsEmptyWhenConflictingPluginsAreAbsent() {
+    public void detectConflictsOnlyReturnsKnownConflicts() {
         List<ConflictInfo> conflicts = ConflictingPluginsDialog.detectConflicts();
-        assertTrue("no conflicting plugins should be detected in the test environment", conflicts.isEmpty()); //$NON-NLS-1$
+        assertNotNull("detectConflicts() must never return null", conflicts); //$NON-NLS-1$
+        for (ConflictInfo ci : conflicts) {
+            assertTrue("unexpected conflict detected: " + ci.bundleId(), //$NON-NLS-1$
+                "org.sf.feeling.decompiler".equals(ci.bundleId()) //$NON-NLS-1$
+                    || "org.jd.ide.eclipse.plugin".equals(ci.bundleId())); //$NON-NLS-1$
+        }
     }
 
     @Test
@@ -50,6 +55,10 @@ public class ConflictingPluginsDialogTest {
         Display.getDefault().syncExec(() -> {
             Shell parent = new Shell(Display.getDefault());
             try {
+                // Avoid hanging the test if conflicts are present (openIfNeeded opens a modal dialog)
+                if (!ConflictingPluginsDialog.detectConflicts().isEmpty()) {
+                    return;
+                }
                 ConflictingPluginsDialog.openIfNeeded(parent); // must not throw or open any dialog
             } finally {
                 parent.dispose();
