@@ -178,10 +178,18 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             }
         }
         try {
-            if (!tryP2Uninstall(selected)) {
-                showManualInstructions();
+            if (tryP2Uninstall(selected)) {
+                var uninstallButton = getButton(UNINSTALL_ID);
+                if (uninstallButton != null) {
+                    uninstallButton.setEnabled(false);
+                }
+                if (tableViewer != null) {
+                    tableViewer.getTable().setEnabled(false);
+                }
+                setMessage("Uninstall scheduled. Please wait for completion..."); //$NON-NLS-1$
+                return;
             }
-            // on success: dialog is closed and restart prompted by the job listener once the job actually completes
+            showManualInstructions();
         } catch (Exception | NoClassDefFoundError e) {
             Logger.debug(e);
             showManualInstructions();
