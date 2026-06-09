@@ -330,6 +330,6 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
 
             To uninstall manually: Help → About Eclipse → Installation Details → Installed Software
             Select the conflicting plugins and click 'Uninstall'.
-            """.stripIndent());
+            """.stripIndent()); //$NON-NLS-1$
     }
 }
