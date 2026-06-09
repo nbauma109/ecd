@@ -407,6 +407,35 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void enumConstantDeclarationsDoNotContributeOwnerTypeReferences()
+            throws Exception {
+        File jar = new File(tempDir, "enum-constant-owner-reference.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/EnumWithConstant.class", buildEnumWithConstant()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "enum-constant-owner-reference-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        assertTrue("enum constant descriptors must not create source-level enum type references", //$NON-NLS-1$
+                runSearchInBackground(participant, typeReferenceSpecification("pkg.EnumWithConstant", scope)).isEmpty()); //$NON-NLS-1$
+        assertEquals("enum constant field declaration must still be indexed", 1, //$NON-NLS-1$
+                runSearchInBackground(participant, new PatternQuerySpecification(
+                        "pkg.EnumWithConstant.A", //$NON-NLS-1$
+                        IJavaSearchConstants.FIELD,
+                        true,
+                        IJavaSearchConstants.ALL_OCCURRENCES,
+                        scope,
+                        "enum-constant-field-declaration")).size()); //$NON-NLS-1$
+    }
+
+    @Test
     public void narrowedClassSearchKeepsUnknownExternalTypeReferences()
             throws Exception {
         File jar = new File(tempDir, "external-type-reference.jar"); //$NON-NLS-1$
@@ -2428,6 +2457,16 @@ public class ApplicationLibrarySearchParticipantTest {
                 "pkg/RepeatedClassDeclarationRefs", //$NON-NLS-1$
                 "Lpkg/Foo;Ljava/util/function/Supplier<Lpkg/Foo;>;", //$NON-NLS-1$
                 "pkg/Foo", new String[] { "java/util/function/Supplier" }); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildEnumWithConstant() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER | Opcodes.ACC_ENUM,
+                "pkg/EnumWithConstant", null, "java/lang/Enum", null); //$NON-NLS-1$ //$NON-NLS-2$
+        cw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_ENUM,
+                "A", "Lpkg/EnumWithConstant;", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
         cw.visitEnd();
         return cw.toByteArray();
     }

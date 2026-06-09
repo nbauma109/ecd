@@ -816,7 +816,9 @@ public class BytecodeJarIndexer {
                 IField field = type == null ? null : type.getField(name);
                 add(Kind.FIELD, true, field, pool(name), pool(name), pool(qualifiedTypeName(className)),
                         pool(descriptor));
-                addDescriptorReferences(signature == null ? descriptor : signature, field);
+                if ((access & Opcodes.ACC_ENUM) == 0) {
+                    addDescriptorReferences(signature == null ? descriptor : signature, field);
+                }
                 return new FieldIndexer(field);
             }
 
