@@ -228,12 +228,11 @@ public class ConflictingPluginsDialogTest {
     @Test
     public void tryP2UninstallReturnsFalseWhenConflictingPluginsAreNotInProfile() {
         Display.getDefault().syncExec(() -> {
-            ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT, JDE_CONFLICT));
+            ConflictInfo fake = new ConflictInfo("Fake Plugin", "com.example.fake", "0.0.0", "com.example.__definitely_not_installed__"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(fake));
             dialog.create();
-            // Neither old ECD nor JD-Eclipse is installed, so no matching feature.group IUs
-            // exist in the P2 profile → ius list stays empty → method returns false
             assertFalse("should return false when IUs are absent from the P2 profile", //$NON-NLS-1$
-                dialog.tryP2Uninstall(List.of(ECD_CONFLICT, JDE_CONFLICT)));
+                dialog.tryP2Uninstall(List.of(fake)));
             dialog.close();
         });
     }
