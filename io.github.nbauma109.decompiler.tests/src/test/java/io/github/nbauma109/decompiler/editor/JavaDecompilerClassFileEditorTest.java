@@ -87,7 +87,7 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_ANONYMOUS_CLASS = "Test$1.class"; //$NON-NLS-1$
 
     // Constants for test-with-field.jar — a separate fixture jar that adds a user-declared
-    // field and a parametered method to its inner class so we can drive findFieldNameOffset,
+    // field and a parameterized method to its inner class so we can drive findFieldNameOffset,
     // isFieldDeclaration, and countParameters without modifying the canonical test.jar.
     private static final String TEST_WITH_FIELD_JAR_PATH = "src/test/resources/test-with-field.jar"; //$NON-NLS-1$
     private static final String FIXTURE_PACKAGE = "fixture"; //$NON-NLS-1$
