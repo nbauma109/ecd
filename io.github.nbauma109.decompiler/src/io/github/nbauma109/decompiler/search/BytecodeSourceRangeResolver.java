@@ -58,6 +58,7 @@ import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NumberLiteral;
 import org.eclipse.jdt.core.dom.StringLiteral;
@@ -652,6 +653,17 @@ public class BytecodeSourceRangeResolver {
 
         @Override
         public void endVisit(CatchClause node) {
+            localNameScopes.pop();
+        }
+
+        @Override
+        public boolean visit(LambdaExpression node) {
+            localNameScopes.push(new HashSet<>());
+            return true;
+        }
+
+        @Override
+        public void endVisit(LambdaExpression node) {
             localNameScopes.pop();
         }
 

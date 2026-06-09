@@ -377,14 +377,6 @@ public class BytecodeJarIndexer {
             }
         }
 
-        private void addDirectTypeReference(String internalName, IJavaElement element) {
-            if (element == null) {
-                typeReferences.add(internalName);
-            } else {
-                typeReferencesByElement.computeIfAbsent(element, key -> new ArrayList<>()).add(internalName);
-            }
-        }
-
         private void addEnclosingTypeReferences(String internalName, IJavaElement element) {
             NestedTypeName nestedType = nestedTypeNames.get(internalName);
             if (nestedType == null) {
@@ -1064,6 +1056,14 @@ public class BytecodeJarIndexer {
             public void visitInnerClassType(String name) {
                 className = className == null ? name : className + "$" + name; //$NON-NLS-1$
                 addDirectTypeReference(className, element);
+            }
+
+            private void addDirectTypeReference(String internalName, IJavaElement targetElement) {
+                if (targetElement == null) {
+                    typeReferences.add(internalName);
+                } else {
+                    typeReferencesByElement.computeIfAbsent(targetElement, key -> new ArrayList<>()).add(internalName);
+                }
             }
 
             @Override

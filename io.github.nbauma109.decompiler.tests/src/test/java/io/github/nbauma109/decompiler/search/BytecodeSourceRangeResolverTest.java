@@ -1031,6 +1031,34 @@ public class BytecodeSourceRangeResolverTest {
         assertEquals("value", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
     }
 
+    @Test
+    public void lambdaParametersDoNotHideLaterFieldReferences() {
+        String src = """
+                package fixture;
+                import java.util.function.Consumer;
+                class Foo {
+                    static String value;
+                }
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        Consumer<String> consumer = (String value) -> consume(value);
+                        consume(value);
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
+                "fixture.Foo", "Ljava/lang/String;", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(entry), src).get(entry);
+
+        int afterLambdaValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertNotNull("field reference after lambda must still resolve", range); //$NON-NLS-1$
+        assertEquals(afterLambdaValueOffset, range.offset());
+        assertEquals("value", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+    }
+
     /**
      * Regression test for the {@code VariableDeclarationFragment} parent-type guard
      * added to {@code AstDeclarationWindow.visit(VariableDeclarationFragment)}.
