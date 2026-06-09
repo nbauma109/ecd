@@ -280,9 +280,14 @@ public class ConflictingPluginsDialogTest {
             ConflictInfo fake = new ConflictInfo("Fake Plugin", "com.example.fake", "0.0.0", "com.example.__definitely_not_installed__"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
             ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(fake));
             dialog.create();
-            assertFalse("should return false when IUs are absent from the P2 profile", //$NON-NLS-1$
-                dialog.tryP2Uninstall(List.of(fake)));
-            dialog.close();
+            try {
+                assertFalse("should return false when IUs are absent from the P2 profile", //$NON-NLS-1$
+                    dialog.tryP2Uninstall(List.of(fake)));
+            } catch (NoClassDefFoundError e) {
+                org.junit.Assume.assumeNoException("P2 is not available in this test runtime", e); //$NON-NLS-1$
+            } finally {
+                dialog.close();
+            }
         });
     }
 
@@ -291,9 +296,14 @@ public class ConflictingPluginsDialogTest {
         Display.getDefault().syncExec(() -> {
             ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT));
             dialog.create();
-            assertFalse("should return false when nothing is selected", //$NON-NLS-1$
-                dialog.tryP2Uninstall(List.of()));
-            dialog.close();
+            try {
+                assertFalse("should return false when nothing is selected", //$NON-NLS-1$
+                    dialog.tryP2Uninstall(List.of()));
+            } catch (NoClassDefFoundError e) {
+                org.junit.Assume.assumeNoException("P2 is not available in this test runtime", e); //$NON-NLS-1$
+            } finally {
+                dialog.close();
+            }
         });
     }
 
