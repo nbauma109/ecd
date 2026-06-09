@@ -268,6 +268,36 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void lambdaBodyMethodReferencesAreIndexed() throws Exception {
+        File jar = new File(tempDir, "lambda-body-method-reference.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Helper.class", buildLambdaHelperClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/LambdaUser.class", buildLambdaUserClass()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "lambda-body-method-reference-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        PatternQuerySpecification specification = new PatternQuerySpecification(
+                "pkg.Helper.help", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "lambda body helper references"); //$NON-NLS-1$
+
+        List<Match> matches = runSearchInBackground(participant, specification);
+
+        assertEquals("Method calls inside synthetic lambda bodies must be indexed as source references", //$NON-NLS-1$
+                1, matches.size());
+    }
+
+    @Test
     public void applicationLibrarySearchIndexesNonJarArchiveRoots()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
@@ -2418,6 +2448,48 @@ public class ApplicationLibrarySearchParticipantTest {
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(2, 0);
         mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildLambdaHelperClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Helper", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "help", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        mv.visitCode();
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildLambdaUserClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/LambdaUser", null, "java/lang/Object", //$NON-NLS-1$ //$NON-NLS-2$
+                null);
+        MethodVisitor run = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        run.visitCode();
+        Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "java/lang/invoke/LambdaMetafactory", "metafactory", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;" //$NON-NLS-1$
+                        + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
+                        + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
+                false);
+        Handle implementation = new Handle(Opcodes.H_INVOKESTATIC, "pkg/LambdaUser", "lambda$run$0", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        run.visitInvokeDynamicInsn("run", "()Ljava/lang/Runnable;", bootstrap, Type.getType("()V"), implementation, //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                Type.getType("()V")); //$NON-NLS-1$
+        run.visitInsn(Opcodes.POP);
+        run.visitInsn(Opcodes.RETURN);
+        run.visitMaxs(1, 0);
+        run.visitEnd();
+
+        MethodVisitor lambda = cw.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
+                "lambda$run$0", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        lambda.visitCode();
+        lambda.visitMethodInsn(Opcodes.INVOKESTATIC, "pkg/Helper", "help", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        lambda.visitInsn(Opcodes.RETURN);
+        lambda.visitMaxs(0, 0);
+        lambda.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
     }

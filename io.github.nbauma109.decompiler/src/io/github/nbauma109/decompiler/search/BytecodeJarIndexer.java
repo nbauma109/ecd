@@ -66,6 +66,7 @@ public class BytecodeJarIndexer {
     private static final String CLASS_FILE_EXTENSION = ".class"; //$NON-NLS-1$
     private static final String CLASS_INITIALIZER = "<clinit>"; //$NON-NLS-1$
     private static final String CONSTRUCTOR = "<init>"; //$NON-NLS-1$
+    private static final String LAMBDA_METHOD_PREFIX = "lambda$"; //$NON-NLS-1$
     private static final String META_INF_VERSIONS = "META-INF/versions/"; //$NON-NLS-1$
     private static final String MODULE_INFO = "module-info"; //$NON-NLS-1$
     private static final String ANNOTATION_INTERNAL_NAME = "java/lang/annotation/Annotation"; //$NON-NLS-1$
@@ -808,22 +809,34 @@ public class BytecodeJarIndexer {
             @Override
             public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
                     String[] exceptions) {
-                if ((access & (Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE)) != 0) {
+                if ((access & Opcodes.ACC_BRIDGE) != 0) {
+                    return null;
+                }
+                boolean syntheticLambda = isSyntheticLambdaMethod(access, name);
+                if ((access & Opcodes.ACC_SYNTHETIC) != 0 && !syntheticLambda) {
                     return null;
                 }
                 IMethod method = null;
-                if (CONSTRUCTOR.equals(name)) {
+                IJavaElement methodOrType;
+                if (syntheticLambda) {
+                    methodOrType = lambdaBodyElement(name);
+                } else if (CONSTRUCTOR.equals(name)) {
                     method = type == null ? null : type.getMethod(type.getElementName(), jdtParameterTypes(descriptor));
                     add(Kind.CONSTRUCTOR, true, method, pool(simpleTypeName(className)), pool(simpleTypeName(className)),
                             pool(qualifiedTypeName(className)), pool(descriptor));
+                    methodOrType = method != null ? method : type;
                 } else if (!CLASS_INITIALIZER.equals(name)) {
                     method = type == null ? null : type.getMethod(name, jdtParameterTypes(descriptor));
                     add(Kind.METHOD, true, method, pool(name), pool(name), pool(qualifiedTypeName(className)),
                             pool(descriptor));
+                    methodOrType = method != null ? method : type;
+                } else {
+                    methodOrType = type;
                 }
-                IJavaElement methodOrType = method != null ? method : type;
-                addDescriptorReferences(declarationDescriptor(name, descriptor, signature), methodOrType);
-                if (exceptions != null) {
+                if (!syntheticLambda) {
+                    addDescriptorReferences(declarationDescriptor(name, descriptor, signature), methodOrType);
+                }
+                if (!syntheticLambda && exceptions != null) {
                     for (String exception : exceptions) {
                         addTypeReference(exception, methodOrType);
                     }
@@ -834,6 +847,46 @@ public class BytecodeJarIndexer {
                 }
                 boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
                 return new MethodIndexer(methodOrType, paramSlots + (isStatic ? 0 : 1));
+            }
+
+            private static boolean isSyntheticLambdaMethod(int access, String name) {
+                return (access & Opcodes.ACC_SYNTHETIC) != 0 && name.startsWith(LAMBDA_METHOD_PREFIX);
+            }
+
+            private IJavaElement lambdaBodyElement(String lambdaName) {
+                String sourceMethodName = lambdaSourceMethodName(lambdaName);
+                if (type == null || sourceMethodName == null) {
+                    return type;
+                }
+                try {
+                    IMethod matched = null;
+                    for (IMethod candidate : type.getMethods()) {
+                        if (!matchesLambdaSourceMethod(sourceMethodName, candidate)) {
+                            continue;
+                        }
+                        if (matched != null) {
+                            return type;
+                        }
+                        matched = candidate;
+                    }
+                    return matched == null ? type : matched;
+                } catch (org.eclipse.jdt.core.JavaModelException e) {
+                    JavaDecompilerPlugin.logError(e, "Failed to resolve lambda body owner"); //$NON-NLS-1$
+                    return type;
+                }
+            }
+
+            private static String lambdaSourceMethodName(String lambdaName) {
+                int start = LAMBDA_METHOD_PREFIX.length();
+                int end = lambdaName.lastIndexOf('$');
+                return end <= start ? null : lambdaName.substring(start, end);
+            }
+
+            private static boolean matchesLambdaSourceMethod(String sourceMethodName, IMethod candidate)
+                    throws org.eclipse.jdt.core.JavaModelException {
+                return "new".equals(sourceMethodName) //$NON-NLS-1$
+                        ? candidate.isConstructor()
+                        : sourceMethodName.equals(candidate.getElementName());
             }
 
             private String declarationDescriptor(String name, String descriptor, String signature) {
@@ -1013,6 +1066,8 @@ public class BytecodeJarIndexer {
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
             private IJavaElement pendingStaticCompoundElement;
+            private int pendingStaticCompoundStackDepth = -1;
+            private int stackDepth = 0;
             private int previousOpcode = -1;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -1066,6 +1121,7 @@ public class BytecodeJarIndexer {
             public void visitTypeInsn(int opcode, String type) {
                 if (opcode == Opcodes.NEW) {
                     pendingNewTypes.merge(type, 1, Integer::sum);
+                    stackDepth++;
                 }
                 addTypeReference(type, method);
                 previousOpcode = opcode;
@@ -1092,20 +1148,20 @@ public class BytecodeJarIndexer {
                 if (opcode == Opcodes.GETSTATIC) {
                     pendingStaticCompoundRead = member;
                     pendingStaticCompoundElement = method == null ? type : method;
+                    pendingStaticCompoundStackDepth = stackDepth;
                 } else if (opcode == Opcodes.PUTSTATIC) {
                     pendingStaticCompoundRead = null;
                     pendingStaticCompoundElement = null;
+                    pendingStaticCompoundStackDepth = -1;
                 }
+                updateFieldStackDepth(opcode, descriptor);
                 previousOpcode = opcode;
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                // Do NOT clear pendingStaticCompoundRead here: a method call may be the RHS of a
-                // static compound update (e.g. Holder.count += compute()), in which case the
-                // GETSTATIC/PUTSTATIC pair must still be collapsed.  The pending read is demoted
-                // only by a subsequent GETSTATIC (new compound starts) or a local-variable store
-                // (the value was saved, breaking the compound chain).
+                int consumedSlots = methodConsumedSlots(opcode, descriptor);
+                clearPendingStaticCompoundReadIfConsumed(consumedSlots);
                 if (CONSTRUCTOR.equals(name)) {
                     // For constructor calls the owner is source-visible only when the new-object
                     // expression was not already consumed (tracked via pendingNewTypes).
@@ -1126,25 +1182,29 @@ public class BytecodeJarIndexer {
                 } else {
                     addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method);
                 }
+                updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = opcode;
             }
 
             @Override
             public void visitInvokeDynamicInsn(String name, String descriptor, org.objectweb.asm.Handle bootstrapMethodHandle,
                     Object... bootstrapMethodArguments) {
-                clearPendingStaticCompoundRead();
+                int consumedSlots = argumentStackSize(descriptor);
+                clearPendingStaticCompoundReadIfConsumed(consumedSlots);
                 addDescriptorReferences(descriptor, method);
                 if (bootstrapMethodArguments != null) {
                     for (Object argument : bootstrapMethodArguments) {
                         addBootstrapArgumentReference(argument, method);
                     }
                 }
+                updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = Opcodes.INVOKEDYNAMIC;
             }
 
             @Override
             public void visitLdcInsn(Object value) {
                 addBootstrapArgumentReference(value, method);
+                stackDepth += ldcStackSize(value);
                 previousOpcode = Opcodes.LDC;
             }
 
@@ -1156,11 +1216,15 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitInsn(int opcode) {
+                stackDepth = Math.max(0, stackDepth + stackDelta(opcode));
                 previousOpcode = opcode;
             }
 
             @Override
             public void visitIntInsn(int opcode, int operand) {
+                if (opcode == Opcodes.BIPUSH || opcode == Opcodes.SIPUSH) {
+                    stackDepth++;
+                }
                 previousOpcode = opcode;
             }
 
@@ -1169,6 +1233,7 @@ public class BytecodeJarIndexer {
                 if (isStoreOpcode(opcode)) {
                     clearPendingStaticCompoundRead();
                 }
+                updateVarStackDepth(opcode);
                 previousOpcode = opcode;
             }
 
@@ -1195,10 +1260,87 @@ public class BytecodeJarIndexer {
                 }
                 pendingStaticCompoundRead = null;
                 pendingStaticCompoundElement = null;
+                pendingStaticCompoundStackDepth = -1;
             }
 
             private static boolean isStoreOpcode(int opcode) {
                 return opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE;
+            }
+
+            private void clearPendingStaticCompoundReadIfConsumed(int consumedSlots) {
+                if (pendingStaticCompoundRead != null
+                        && stackDepth - consumedSlots <= pendingStaticCompoundStackDepth) {
+                    clearPendingStaticCompoundRead();
+                }
+            }
+
+            private void updateFieldStackDepth(int opcode, String descriptor) {
+                int fieldSize = stackSize(descriptor);
+                switch (opcode) {
+                  case Opcodes.GETSTATIC -> stackDepth += fieldSize;
+                  case Opcodes.PUTSTATIC -> stackDepth = Math.max(0, stackDepth - fieldSize);
+                  case Opcodes.GETFIELD -> stackDepth = Math.max(0, stackDepth - 1) + fieldSize;
+                  case Opcodes.PUTFIELD -> stackDepth = Math.max(0, stackDepth - fieldSize - 1);
+                  default -> {
+                  }
+                }
+            }
+
+            private void updateMethodStackDepth(int consumedSlots, String descriptor) {
+                stackDepth = Math.max(0, stackDepth - consumedSlots) + returnStackSize(descriptor);
+            }
+
+            private void updateVarStackDepth(int opcode) {
+                if (opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
+                    stackDepth += opcode == Opcodes.LLOAD || opcode == Opcodes.DLOAD ? 2 : 1;
+                } else if (isStoreOpcode(opcode)) {
+                    stackDepth = Math.max(0, stackDepth - (opcode == Opcodes.LSTORE || opcode == Opcodes.DSTORE ? 2 : 1));
+                }
+            }
+
+            private static int methodConsumedSlots(int opcode, String descriptor) {
+                return argumentStackSize(descriptor) + (opcode == Opcodes.INVOKESTATIC ? 0 : 1);
+            }
+
+            private static int argumentStackSize(String descriptor) {
+                int size = 0;
+                for (Type argument : Type.getArgumentTypes(descriptor)) {
+                    size += argument.getSize();
+                }
+                return size;
+            }
+
+            private static int returnStackSize(String descriptor) {
+                return Type.getReturnType(descriptor).getSize();
+            }
+
+            private static int stackSize(String descriptor) {
+                return Type.getType(descriptor).getSize();
+            }
+
+            private static int ldcStackSize(Object value) {
+                return value instanceof Long || value instanceof Double ? 2 : 1;
+            }
+
+            private static int stackDelta(int opcode) {
+                return switch (opcode) {
+                  case Opcodes.ACONST_NULL, Opcodes.ICONST_M1, Opcodes.ICONST_0, Opcodes.ICONST_1, Opcodes.ICONST_2,
+                          Opcodes.ICONST_3, Opcodes.ICONST_4, Opcodes.ICONST_5, Opcodes.FCONST_0, Opcodes.FCONST_1,
+                          Opcodes.FCONST_2 -> 1;
+                  case Opcodes.LCONST_0, Opcodes.LCONST_1, Opcodes.DCONST_0, Opcodes.DCONST_1 -> 2;
+                  case Opcodes.IADD, Opcodes.FADD, Opcodes.ISUB, Opcodes.FSUB, Opcodes.IMUL, Opcodes.FMUL,
+                          Opcodes.IDIV, Opcodes.FDIV, Opcodes.IREM, Opcodes.FREM, Opcodes.IAND, Opcodes.IOR,
+                          Opcodes.IXOR, Opcodes.ISHL, Opcodes.ISHR, Opcodes.IUSHR, Opcodes.L2I, Opcodes.L2F,
+                          Opcodes.D2I, Opcodes.D2F, Opcodes.POP, Opcodes.IRETURN, Opcodes.FRETURN,
+                          Opcodes.ARETURN -> -1;
+                  case Opcodes.LADD, Opcodes.DADD, Opcodes.LSUB, Opcodes.DSUB, Opcodes.LMUL, Opcodes.DMUL,
+                          Opcodes.LDIV, Opcodes.DDIV, Opcodes.LREM, Opcodes.DREM, Opcodes.LAND, Opcodes.LOR,
+                          Opcodes.LXOR, Opcodes.LSHL, Opcodes.LSHR, Opcodes.LUSHR, Opcodes.POP2, Opcodes.LRETURN,
+                          Opcodes.DRETURN -> -2;
+                  case Opcodes.I2L, Opcodes.I2D, Opcodes.F2L, Opcodes.F2D, Opcodes.DUP -> 1;
+                  case Opcodes.DUP2 -> 2;
+                  default -> 0;
+                };
             }
 
             @Override
