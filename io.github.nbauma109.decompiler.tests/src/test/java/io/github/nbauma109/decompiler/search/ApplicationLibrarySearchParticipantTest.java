@@ -678,6 +678,8 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertEquals(1, runSearchInBackground(participant, typeReferenceSpecification(
                 "pkg.Outer.Inner", scope)).size()); //$NON-NLS-1$
+        assertEquals("qualified member-type descriptors must also index the enclosing Outer token", 1, //$NON-NLS-1$
+                runSearchInBackground(participant, typeReferenceSpecification("pkg.Outer", scope)).size()); //$NON-NLS-1$
     }
 
     @Test
@@ -701,6 +703,8 @@ public class ApplicationLibrarySearchParticipantTest {
         assertEquals(1, runSearchInBackground(participant, new PatternQuerySpecification(
                 "pkg.Price$Tag.value", IJavaSearchConstants.FIELD, true, IJavaSearchConstants.ALL_OCCURRENCES, scope, //$NON-NLS-1$
                 "Application library dollar-named field declarations")).size()); //$NON-NLS-1$
+        assertEquals(0, runSearchInBackground(participant, typeReferenceSpecification(
+                "pkg.Price", scope)).size()); //$NON-NLS-1$
     }
 
     @Test

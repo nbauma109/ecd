@@ -357,6 +357,7 @@ public class BytecodeJarIndexer {
                 addDescriptorReferences(internalName);
             } else {
                 typeReferences.add(internalName);
+                addEnclosingTypeReferences(internalName, null);
             }
         }
 
@@ -372,7 +373,29 @@ public class BytecodeJarIndexer {
                 addDescriptorReferences(internalName, element);
             } else {
                 typeReferencesByElement.computeIfAbsent(element, key -> new ArrayList<>()).add(internalName);
+                addEnclosingTypeReferences(internalName, element);
             }
+        }
+
+        private void addDirectTypeReference(String internalName, IJavaElement element) {
+            if (element == null) {
+                typeReferences.add(internalName);
+            } else {
+                typeReferencesByElement.computeIfAbsent(element, key -> new ArrayList<>()).add(internalName);
+            }
+        }
+
+        private void addEnclosingTypeReferences(String internalName, IJavaElement element) {
+            NestedTypeName nestedType = nestedTypeNames.get(internalName);
+            if (nestedType == null) {
+                return;
+            }
+            if (element == null) {
+                typeReferences.add(nestedType.outerName());
+            } else {
+                typeReferencesByElement.computeIfAbsent(element, key -> new ArrayList<>()).add(nestedType.outerName());
+            }
+            addEnclosingTypeReferences(nestedType.outerName(), element);
         }
 
         private void addTypeReference(Type asmType, IJavaElement element) {
@@ -1040,7 +1063,7 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInnerClassType(String name) {
                 className = className == null ? name : className + "$" + name; //$NON-NLS-1$
-                addTypeReference(className, element);
+                addDirectTypeReference(className, element);
             }
 
             @Override
