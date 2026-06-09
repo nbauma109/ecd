@@ -256,6 +256,7 @@ public class BytecodeJarIndexer {
         private final Map<IJavaElement, List<MemberReference>> constructorReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> fieldReferencesByElement = new HashMap<>();
         private final Map<String, NestedTypeName> nestedTypeNames = new HashMap<>();
+        private final Map<LambdaMethodKey, IJavaElement> lambdaBodyOwners = new HashMap<>();
         private final Set<String> moduleReferences = new HashSet<>();
         private final SignatureIndexer signatureIndexer = new SignatureIndexer();
         private final ClassVisitor visitor = new LightweightClassVisitor();
@@ -809,51 +810,74 @@ public class BytecodeJarIndexer {
             @Override
             public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
                     String[] exceptions) {
-                if ((access & Opcodes.ACC_BRIDGE) != 0) {
+                if (!isIndexableMethod(access, name)) {
                     return null;
                 }
                 boolean syntheticLambda = isSyntheticLambdaMethod(access, name);
-                if ((access & Opcodes.ACC_SYNTHETIC) != 0 && !syntheticLambda) {
-                    return null;
-                }
-                IMethod method = null;
-                IJavaElement methodOrType;
-                if (syntheticLambda) {
-                    methodOrType = lambdaBodyElement(name);
-                } else if (CONSTRUCTOR.equals(name)) {
-                    method = type == null ? null : type.getMethod(type.getElementName(), jdtParameterTypes(descriptor));
-                    add(Kind.CONSTRUCTOR, true, method, pool(simpleTypeName(className)), pool(simpleTypeName(className)),
-                            pool(qualifiedTypeName(className)), pool(descriptor));
-                    methodOrType = method != null ? method : type;
-                } else if (!CLASS_INITIALIZER.equals(name)) {
-                    method = type == null ? null : type.getMethod(name, jdtParameterTypes(descriptor));
-                    add(Kind.METHOD, true, method, pool(name), pool(name), pool(qualifiedTypeName(className)),
-                            pool(descriptor));
-                    methodOrType = method != null ? method : type;
-                } else {
-                    methodOrType = type;
-                }
+                IJavaElement methodOrType = syntheticLambda
+                        ? lambdaBodyElement(name, descriptor)
+                        : indexMethodDeclaration(name, descriptor);
                 if (!syntheticLambda) {
-                    addDescriptorReferences(declarationDescriptor(name, descriptor, signature), methodOrType);
+                    indexMethodDeclarationReferences(name, descriptor, signature, exceptions, methodOrType);
                 }
-                if (!syntheticLambda && exceptions != null) {
-                    for (String exception : exceptions) {
-                        addTypeReference(exception, methodOrType);
-                    }
+                return new MethodIndexer(methodOrType, firstLocalSlot(access, descriptor));
+            }
+
+            private static boolean isIndexableMethod(int access, String name) {
+                if ((access & Opcodes.ACC_BRIDGE) != 0) {
+                    return false;
                 }
-                int paramSlots = 0;
-                for (org.objectweb.asm.Type argType : org.objectweb.asm.Type.getArgumentTypes(descriptor)) {
-                    paramSlots += argType.getSize();
-                }
-                boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
-                return new MethodIndexer(methodOrType, paramSlots + (isStatic ? 0 : 1));
+                return (access & Opcodes.ACC_SYNTHETIC) == 0 || name.startsWith(LAMBDA_METHOD_PREFIX);
             }
 
             private static boolean isSyntheticLambdaMethod(int access, String name) {
                 return (access & Opcodes.ACC_SYNTHETIC) != 0 && name.startsWith(LAMBDA_METHOD_PREFIX);
             }
 
-            private IJavaElement lambdaBodyElement(String lambdaName) {
+            private IJavaElement indexMethodDeclaration(String name, String descriptor) {
+                if (CONSTRUCTOR.equals(name)) {
+                    return indexConstructorDeclaration(descriptor);
+                }
+                if (CLASS_INITIALIZER.equals(name)) {
+                    return type;
+                }
+                IMethod method = type == null ? null : type.getMethod(name, jdtParameterTypes(descriptor));
+                add(Kind.METHOD, true, method, pool(name), pool(name), pool(qualifiedTypeName(className)),
+                        pool(descriptor));
+                return method != null ? method : type;
+            }
+
+            private IJavaElement indexConstructorDeclaration(String descriptor) {
+                IMethod method = type == null ? null : type.getMethod(type.getElementName(), jdtParameterTypes(descriptor));
+                add(Kind.CONSTRUCTOR, true, method, pool(simpleTypeName(className)), pool(simpleTypeName(className)),
+                        pool(qualifiedTypeName(className)), pool(descriptor));
+                return method != null ? method : type;
+            }
+
+            private void indexMethodDeclarationReferences(String name, String descriptor, String signature,
+                    String[] exceptions, IJavaElement methodOrType) {
+                addDescriptorReferences(declarationDescriptor(name, descriptor, signature), methodOrType);
+                if (exceptions == null) {
+                    return;
+                }
+                for (String exception : exceptions) {
+                    addTypeReference(exception, methodOrType);
+                }
+            }
+
+            private static int firstLocalSlot(int access, String descriptor) {
+                int paramSlots = 0;
+                for (Type argType : Type.getArgumentTypes(descriptor)) {
+                    paramSlots += argType.getSize();
+                }
+                return paramSlots + ((access & Opcodes.ACC_STATIC) == 0 ? 1 : 0);
+            }
+
+            private IJavaElement lambdaBodyElement(String lambdaName, String descriptor) {
+                IJavaElement owner = lambdaBodyOwners.get(new LambdaMethodKey(lambdaName, descriptor));
+                if (owner != null) {
+                    return owner;
+                }
                 String sourceMethodName = lambdaSourceMethodName(lambdaName);
                 if (type == null || sourceMethodName == null) {
                     return type;
@@ -1194,11 +1218,20 @@ public class BytecodeJarIndexer {
                 addDescriptorReferences(descriptor, method);
                 if (bootstrapMethodArguments != null) {
                     for (Object argument : bootstrapMethodArguments) {
+                        recordLambdaBodyOwner(argument);
                         addBootstrapArgumentReference(argument, method);
                     }
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = Opcodes.INVOKEDYNAMIC;
+            }
+
+            private void recordLambdaBodyOwner(Object argument) {
+                if (argument instanceof Handle handle && className.equals(handle.getOwner())
+                        && handle.getName().startsWith(LAMBDA_METHOD_PREFIX)) {
+                    lambdaBodyOwners.put(new LambdaMethodKey(handle.getName(), handle.getDesc()),
+                            method == null ? type : method);
+                }
             }
 
             @Override
@@ -1276,13 +1309,14 @@ public class BytecodeJarIndexer {
 
             private void updateFieldStackDepth(int opcode, String descriptor) {
                 int fieldSize = stackSize(descriptor);
-                switch (opcode) {
-                  case Opcodes.GETSTATIC -> stackDepth += fieldSize;
-                  case Opcodes.PUTSTATIC -> stackDepth = Math.max(0, stackDepth - fieldSize);
-                  case Opcodes.GETFIELD -> stackDepth = Math.max(0, stackDepth - 1) + fieldSize;
-                  case Opcodes.PUTFIELD -> stackDepth = Math.max(0, stackDepth - fieldSize - 1);
-                  default -> {
-                  }
+                if (opcode == Opcodes.GETSTATIC) {
+                    stackDepth += fieldSize;
+                } else if (opcode == Opcodes.PUTSTATIC) {
+                    stackDepth = Math.max(0, stackDepth - fieldSize);
+                } else if (opcode == Opcodes.GETFIELD) {
+                    stackDepth = Math.max(0, stackDepth - 1) + fieldSize;
+                } else if (opcode == Opcodes.PUTFIELD) {
+                    stackDepth = Math.max(0, stackDepth - fieldSize - 1);
                 }
             }
 
@@ -1463,6 +1497,9 @@ public class BytecodeJarIndexer {
     }
 
     private record NestedTypeName(String outerName, String innerName, int access) {
+    }
+
+    private record LambdaMethodKey(String name, String descriptor) {
     }
 
     private record EntryKey(Kind kind, boolean declaration, String elementHandle, String name, String qualifiedName,

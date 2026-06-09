@@ -298,6 +298,35 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void lambdaBodyReferencesAreScopedToDeclaringOverload() throws Exception {
+        File jar = new File(tempDir, "overloaded-lambda-body-method-reference.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Helper.class", buildLambdaHelperClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/OverloadedLambdaUser.class", buildOverloadedLambdaUserClass()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "overloaded-lambda-body-method-reference-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Helper.help", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "overloaded lambda body helper references")); //$NON-NLS-1$
+
+        assertEquals("Direct and lambda-body helper calls must both be indexed", 2, matches.size()); //$NON-NLS-1$
+        assertTrue("The lambda-body call must stay scoped to run(String), not the whole type", //$NON-NLS-1$
+                matches.stream().anyMatch(ApplicationLibrarySearchParticipantTest::isSingleArgumentRunMatch));
+    }
+
+    @Test
     public void applicationLibrarySearchIndexesNonJarArchiveRoots()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
@@ -2494,6 +2523,45 @@ public class ApplicationLibrarySearchParticipantTest {
         return cw.toByteArray();
     }
 
+    private static byte[] buildOverloadedLambdaUserClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/OverloadedLambdaUser", null, //$NON-NLS-1$
+                "java/lang/Object", null); //$NON-NLS-1$
+        MethodVisitor noArg = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        noArg.visitCode();
+        noArg.visitMethodInsn(Opcodes.INVOKESTATIC, "pkg/Helper", "help", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        noArg.visitInsn(Opcodes.RETURN);
+        noArg.visitMaxs(0, 0);
+        noArg.visitEnd();
+
+        MethodVisitor oneArg = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", //$NON-NLS-1$
+                "(Ljava/lang/String;)V", null, null); //$NON-NLS-1$
+        oneArg.visitCode();
+        Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "java/lang/invoke/LambdaMetafactory", "metafactory", //$NON-NLS-1$ //$NON-NLS-2$
+                "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;" //$NON-NLS-1$
+                        + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
+                        + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
+                false);
+        Handle implementation = new Handle(Opcodes.H_INVOKESTATIC, "pkg/OverloadedLambdaUser", "lambda$run$0", //$NON-NLS-1$ //$NON-NLS-2$
+                "()V", false); //$NON-NLS-1$
+        oneArg.visitInvokeDynamicInsn("run", "()Ljava/lang/Runnable;", bootstrap, Type.getType("()V"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                implementation, Type.getType("()V")); //$NON-NLS-1$
+        oneArg.visitInsn(Opcodes.POP);
+        oneArg.visitInsn(Opcodes.RETURN);
+        oneArg.visitMaxs(1, 1);
+        oneArg.visitEnd();
+
+        MethodVisitor lambda = cw.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
+                "lambda$run$0", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        lambda.visitCode();
+        lambda.visitMethodInsn(Opcodes.INVOKESTATIC, "pkg/Helper", "help", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        lambda.visitInsn(Opcodes.RETURN);
+        lambda.visitMaxs(0, 0);
+        lambda.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
     private static byte[] buildClassAnnotatedWithRetention() {
         ClassWriter cw = new ClassWriter(0);
         cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Annotated", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
@@ -3137,6 +3205,15 @@ public class ApplicationLibrarySearchParticipantTest {
             return false;
         }
         return bytecodeMatch.getEntry().isDeclaration();
+    }
+
+    private static boolean isSingleArgumentRunMatch(Match match) {
+        Object element = match.getElement();
+        IJavaElement javaElement = element instanceof IAdaptable adaptable
+                ? adaptable.getAdapter(IJavaElement.class) : null;
+        return javaElement instanceof IMethod method
+                && "run".equals(method.getElementName()) //$NON-NLS-1$
+                && method.getNumberOfParameters() == 1;
     }
 
     private static String selectedText(Match match) throws Exception {
