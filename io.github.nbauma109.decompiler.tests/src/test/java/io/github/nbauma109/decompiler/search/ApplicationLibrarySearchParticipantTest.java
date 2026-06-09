@@ -1777,6 +1777,36 @@ public class ApplicationLibrarySearchParticipantTest {
         assertEquals("Two java.util type uses must produce two package-reference matches", 2, matches.size()); //$NON-NLS-1$
     }
 
+    @Test
+    public void repeatedClassDeclarationTypeReferencesArePreserved() throws Exception {
+        File jar = new File(tempDir, "repeated-class-declaration-refs.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Foo.class", buildEmptyClass("pkg/Foo")); //$NON-NLS-1$ //$NON-NLS-2$
+            addClass(jos, "pkg/RepeatedClassDeclarationRefs.class", //$NON-NLS-1$
+                    buildClassWithRepeatedDeclarationTypeReferences());
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "repeated-class-declaration-refs-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.Foo", //$NON-NLS-1$
+                IJavaSearchConstants.TYPE,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "repeated-class-declaration-foo-refs")); //$NON-NLS-1$
+
+        assertEquals("extends Foo and Supplier<Foo> must produce two class-declaration type-reference matches", //$NON-NLS-1$
+                2, matches.size());
+    }
+
     /**
      * Verifies fix: the {@code visitLabel} override in {@code MethodIndexer} maps the LVT-start
      * label (the instruction immediately after the {@code astore}) to the same exception types as
@@ -2278,6 +2308,16 @@ public class ApplicationLibrarySearchParticipantTest {
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(0, 2);
         mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildClassWithRepeatedDeclarationTypeReferences() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT | Opcodes.ACC_SUPER,
+                "pkg/RepeatedClassDeclarationRefs", //$NON-NLS-1$
+                "Lpkg/Foo;Ljava/util/function/Supplier<Lpkg/Foo;>;", //$NON-NLS-1$
+                "pkg/Foo", new String[] { "java/util/function/Supplier" }); //$NON-NLS-1$ //$NON-NLS-2$
         cw.visitEnd();
         return cw.toByteArray();
     }

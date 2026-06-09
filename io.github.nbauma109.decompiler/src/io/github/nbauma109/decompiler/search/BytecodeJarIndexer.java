@@ -249,7 +249,7 @@ public class BytecodeJarIndexer {
         private final Map<String, String> strings;
         private final Map<String, String> elementHandles = new HashMap<>();
         private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
-        private final Set<String> typeReferences = new HashSet<>();
+        private final List<String> typeReferences = new ArrayList<>();
         private final Set<String> descriptorSet = new HashSet<>();
         private final Map<IJavaElement, List<String>> typeReferencesByElement = new HashMap<>();
         private final Map<IJavaElement, List<MemberReference>> methodReferencesByElement = new HashMap<>();
@@ -735,18 +735,20 @@ public class BytecodeJarIndexer {
                     type = typeForInternalName(root, name);
                 }
                 addDescriptor(signature);
-                if (!OBJECT_INTERNAL_NAME.equals(superName)
-                        && !(typeCategory == TypeCategory.ENUM && ENUM_INTERNAL_NAME.equals(superName))) {
-                    // Enum classes have java/lang/Enum as a compiler-mandated supertype that is
-                    // not written in source; skip it so type searches don't produce phantom matches.
-                    addTypeReference(superName);
-                }
-                if (interfaces != null) {
-                    for (String iface : interfaces) {
-                        if (!(typeCategory == TypeCategory.ANNOTATION && ANNOTATION_INTERNAL_NAME.equals(iface))) {
-                            // @interface types have java/lang/annotation/Annotation as a compiler-
-                            // mandated interface that is not written in source; skip it likewise.
-                            typeReferences.add(iface);
+                if (StringUtils.isBlank(signature)) {
+                    if (!OBJECT_INTERNAL_NAME.equals(superName)
+                            && !(typeCategory == TypeCategory.ENUM && ENUM_INTERNAL_NAME.equals(superName))) {
+                        // Enum classes have java/lang/Enum as a compiler-mandated supertype that is
+                        // not written in source; skip it so type searches don't produce phantom matches.
+                        addTypeReference(superName);
+                    }
+                    if (interfaces != null) {
+                        for (String iface : interfaces) {
+                            if (!(typeCategory == TypeCategory.ANNOTATION && ANNOTATION_INTERNAL_NAME.equals(iface))) {
+                                // @interface types have java/lang/annotation/Annotation as a compiler-
+                                // mandated interface that is not written in source; skip it likewise.
+                                addTypeReference(iface);
+                            }
                         }
                     }
                 }
@@ -1490,7 +1492,9 @@ public class BytecodeJarIndexer {
             public void visitProvide(String service, String... providers) {
                 addTypeReference(service);
                 if (providers != null) {
-                    Collections.addAll(typeReferences, providers);
+                    for (String provider : providers) {
+                        addTypeReference(provider);
+                    }
                 }
             }
 
