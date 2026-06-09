@@ -75,10 +75,11 @@ public class DecompileUtil {
         return origSrc;
     }
 
+    @SuppressWarnings("restriction")
     public static void updateSourceRanges(IClassFile cf, String contents) throws JavaModelException {
-        if (cf instanceof ClassFile classFile) {
+        if (cf instanceof ClassFile classFile && contents != null) {
             Object info = classFile.getElementInfo();
-            IBinaryType typeInfo = info instanceof IBinaryType ? (IBinaryType) info : null;
+            IBinaryType typeInfo = info instanceof IBinaryType iBinaryType ? iBinaryType : null;
             SourceMapper mapper = classFile.getSourceMapper();
             IType type = (IType) ReflectionUtils.invokeMethod(classFile, "getOuterMostEnclosingType", //$NON-NLS-1$
                     new Class[0], new Object[0]);

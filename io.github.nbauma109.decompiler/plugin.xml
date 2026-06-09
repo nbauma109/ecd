@@ -72,6 +72,15 @@
       </filter>
    </extension>
    <extension
+         point="org.eclipse.jdt.ui.queryParticipants">
+      <queryParticipant
+            class="io.github.nbauma109.decompiler.search.ApplicationLibrarySearchParticipant"
+            id="io.github.nbauma109.decompiler.search.ApplicationLibrarySearchParticipant"
+            name="Application Library Bytecode Search"
+            nature="org.eclipse.jdt.core.javanature">
+      </queryParticipant>
+   </extension>
+   <extension
          point="org.eclipse.ui.menus">
       <menuContribution
             allPopups="false"

@@ -67,6 +67,7 @@ Export-Package: com.eclipsesource.json,
  io.github.nbauma109.decompiler.i18n,
  io.github.nbauma109.decompiler.popup,
  io.github.nbauma109.decompiler.preferences,
+ io.github.nbauma109.decompiler.search;x-internal:=true,
  io.github.nbauma109.decompiler.source.attach,
  io.github.nbauma109.decompiler.util
 Automatic-Module-Name: io.github.nbauma109.decompiler

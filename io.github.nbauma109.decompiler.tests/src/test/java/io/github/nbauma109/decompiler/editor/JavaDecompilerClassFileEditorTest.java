@@ -17,6 +17,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -33,7 +35,9 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -42,6 +46,7 @@ import org.eclipse.jdt.ui.IPackagesViewPart;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
@@ -64,6 +69,7 @@ import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport.BundleJarProjectSetup;
 import io.github.nbauma109.decompiler.util.ClassUtil;
 
+@SuppressWarnings("restriction")
 public class JavaDecompilerClassFileEditorTest {
 
     private static final String KEYWORD_CLASS = "class";
@@ -79,6 +85,16 @@ public class JavaDecompilerClassFileEditorTest {
     private static final String TEST_TOP_LEVEL_SOURCE_DECLARATION = "class Test"; //$NON-NLS-1$
 
     private static final String TEST_ANONYMOUS_CLASS = "Test$1.class"; //$NON-NLS-1$
+
+    // Constants for test-with-field.jar — a separate fixture jar that adds a user-declared
+    // field and a parameterized method to its inner class so we can drive findFieldNameOffset,
+    // isFieldDeclaration, and countParameters without modifying the canonical test.jar.
+    private static final String TEST_WITH_FIELD_JAR_PATH = "src/test/resources/test-with-field.jar"; //$NON-NLS-1$
+    private static final String FIXTURE_PACKAGE = "fixture"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_CLASS = "Outer$Inner.class"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_TYPE = "Inner"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_FIELD = "name"; //$NON-NLS-1$
+    private static final String FIXTURE_INNER_METHOD3 = "method3"; //$NON-NLS-1$
 
     private IProject project;
     private IPackageFragmentRoot jarRoot;
@@ -202,6 +218,63 @@ public class JavaDecompilerClassFileEditorTest {
         IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
         String contents = waitForNonEmptyDocument(document);
         assertTrue(contents.contains(TEST_TOP_LEVEL_SOURCE_DECLARATION));
+    }
+
+    @Test
+    public void testSourceTypeSegmentDropsLocalClassOrdinalPrefix() {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+
+        assertEquals("Local", editor.sourceTypeSegment("1Local")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Inner1", editor.sourceTypeSegment("Inner1")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("1", editor.sourceTypeSegment("1")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
+    public void testSimpleClassNameDropsLocalClassOrdinalPrefix()
+            throws Exception {
+        IClassFile localClassFile = jarRoot.getPackageFragment(TEST_PACKAGE).getClassFile("Outer$1Local.class"); //$NON-NLS-1$
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        java.lang.reflect.Method simpleClassName = JavaDecompilerClassFileEditor.class
+                .getDeclaredMethod("simpleClassName", IClassFile.class); //$NON-NLS-1$
+        simpleClassName.setAccessible(true);
+
+        assertEquals("Local", simpleClassName.invoke(editor, localClassFile)); //$NON-NLS-1$
+    }
+
+    @Test
+    public void findTypeDeclarationOffsetMatchesNestedAnnotationTypes()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        java.lang.reflect.Method findTypeDeclarationOffset = JavaDecompilerClassFileEditor.class
+                .getDeclaredMethod("findTypeDeclarationOffset", String.class, String.class, int.class); //$NON-NLS-1$
+        findTypeDeclarationOffset.setAccessible(true);
+        String source = "class Outer { @interface Ann { String value(); } }"; //$NON-NLS-1$
+
+        int offset = (int) findTypeDeclarationOffset.invoke(editor, source, "Ann", 0); //$NON-NLS-1$
+
+        assertEquals(source.indexOf("@interface Ann"), offset); //$NON-NLS-1$
+    }
+
+    @Test
+    public void findNestedTypeDeclarationOffsetUsesLocalClassOrdinal()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IClassFile editorClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> "Outer.class"; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        IClassFile localClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> "Outer$1Helper.class"; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        String source = "class Outer { static class Helper {} void method() { class Helper {} } }"; //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findNestedTypeDeclarationOffset", String.class, IClassFile.class, IClassFile.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, editorClassFile, localClassFile);
+
+        assertEquals(source.indexOf("class Helper", source.indexOf("void method")), offset); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
@@ -335,6 +408,34 @@ public class JavaDecompilerClassFileEditorTest {
     }
 
     @Test
+    public void testNullSourceSelectionClearsCachedSelectedElement()
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        openedEditor = openDefault(getType(innerClassFile));
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        assertTrue(waitForSelectedElement(editor, TEST_INNER_TYPE));
+
+        runInUiThread(() -> editor.setSelection(null, false));
+
+        assertNull(editor.getSelectedElement());
+    }
+
+    @Test
+    public void testOpeningInnerMethodDeclarationsSelectsEachNestedMethod()
+            throws CoreException {
+        assertInnerMethodDeclarationSelection(TEST_INNER_CLASS, "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertInnerMethodDeclarationSelection("Test$Inner3.class", "Inner3.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+        assertInnerMethodDeclarationSelection("Test$Inner4.class", "Inner4.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void testOpeningInnerTypeLinksPackageExplorerToNestedType()
             throws CoreException {
         IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
@@ -454,6 +555,160 @@ public class JavaDecompilerClassFileEditorTest {
         }
     }
 
+    @Test
+    public void testOpeningInnerFieldSelectsNestedField()
+            throws CoreException, IOException {
+        // Uses test-with-field.jar (separate from test.jar) which contains fixture.Outer$Inner
+        // with a user-declared String field called "name".  Opening the field element drives
+        // the code path: revealNestedDeclaration → findFieldNameOffset → isFieldDeclaration.
+        BundleJarProjectSetup fieldSetup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID, TEST_WITH_FIELD_JAR_PATH,
+                "java-decompiler-classfile-editor-field-test-project"); //$NON-NLS-1$
+        project = fieldSetup.project(); // picked up by tearDown()
+
+        IPackageFragment pkg = fieldSetup.jarRoot().getPackageFragment(FIXTURE_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(FIXTURE_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IType innerType = getType(innerClassFile);
+        IField field = innerType.getField(FIXTURE_INNER_FIELD);
+        assertTrue("Expected field '" + FIXTURE_INNER_FIELD + "' to exist in Outer$Inner", field.exists()); //$NON-NLS-1$ //$NON-NLS-2$
+
+        openedEditor = openDefault(field);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        // The field declaration must eventually be selected (or the editor falls back to the
+        // enclosing type). Either way, findFieldNameOffset and isFieldDeclaration are exercised.
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue("Decompiled source should contain the inner type name", //$NON-NLS-1$
+                contents.contains(FIXTURE_INNER_TYPE));
+    }
+
+    /**
+     * Exercises the {@code suffix.isEmpty() → return null} branch inside
+     * {@link JavaDecompilerClassFileEditor#getNestedClassFileName}.
+     * <p>
+     * When {@code type} is the same object as the editor's top-level type (i.e.
+     * {@code editorType.equals(type)} is true from the very first iteration), the
+     * {@code while} loop body never executes and {@code suffix} stays empty.
+     * The method therefore returns {@code null} instead of a class-file name, which
+     * is the correct signal that no separate nested class file needs to be opened.
+     */
+    @Test
+    public void getNestedClassFileNameReturnsNullWhenTypeIsEditorType() {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        IClassFile topLevelClassFile = pkg.getClassFile(TEST_TOP_LEVEL_CLASS);
+        assertTrue(topLevelClassFile.exists());
+        IType topLevelType = getType(topLevelClassFile);
+
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        // Passing the top-level type and its own class file means editorType == type,
+        // so the while-loop never executes, suffix stays empty → returns null.
+        assertNull(editor.getNestedClassFileName(topLevelType, topLevelClassFile));
+    }
+
+    @Test
+    public void testOpeningInnerMethodWithParameterSelectsDeclaration()
+            throws CoreException, IOException {
+        // Uses test-with-field.jar.  Outer$Inner.method3(String) has one parameter; opening it
+        // drives countParameters() via hasParameterCount → findMethodNameOffset.
+        BundleJarProjectSetup fieldSetup = DecompilerTestSupport.createJavaProjectWithBundleJar(
+                TEST_BUNDLE_ID, TEST_WITH_FIELD_JAR_PATH,
+                "java-decompiler-classfile-editor-param-method-test-project"); //$NON-NLS-1$
+        project = fieldSetup.project(); // picked up by tearDown()
+
+        IPackageFragment pkg = fieldSetup.jarRoot().getPackageFragment(FIXTURE_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(FIXTURE_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IType innerType = getType(innerClassFile);
+        IMethod method = null;
+        for (IMethod m : innerType.getMethods()) {
+            if (FIXTURE_INNER_METHOD3.equals(m.getElementName()) && m.getNumberOfParameters() == 1) {
+                method = m;
+                break;
+            }
+        }
+        assertNotNull("Expected method '" + FIXTURE_INNER_METHOD3 + "(String)' to exist in Outer$Inner", method); //$NON-NLS-1$ //$NON-NLS-2$
+
+        openedEditor = openDefault(method);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+
+        ITextEditor textEditor = adaptToTextEditor(openedEditor);
+        assertNotNull(textEditor);
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        String contents = waitForNonEmptyDocument(document);
+        assertTrue("Decompiled source should contain the inner type name", //$NON-NLS-1$
+                contents.contains(FIXTURE_INNER_TYPE));
+    }
+
+    @Test
+    public void findMethodNameOffsetDiscountsSyntheticConstructorParameter()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IType outerType = proxy(IType.class, (proxy, method, args) -> null);
+        IType innerType = proxy(IType.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getDeclaringType" -> outerType; //$NON-NLS-1$
+          case "getFlags" -> Integer.valueOf(0); //$NON-NLS-1$
+          case "isLocal", "isAnonymous" -> Boolean.FALSE; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(method.getReturnType());
+        });
+        IMethod constructor = proxy(IMethod.class, (proxy, method, args) -> switch (method.getName()) {
+          case "isConstructor" -> Boolean.TRUE; //$NON-NLS-1$
+          case "getElementName" -> FIXTURE_INNER_TYPE; //$NON-NLS-1$
+          case "getNumberOfParameters" -> Integer.valueOf(2); //$NON-NLS-1$
+          case "getParameterTypes" -> new String[] { "Lfixture.Outer;", "QString;" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+          case "getDeclaringType" -> innerType; //$NON-NLS-1$
+          default -> defaultValue(method.getReturnType());
+        });
+        IClassFile classFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
+          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+          default -> defaultValue(method.getReturnType());
+        });
+        String source = "class Outer { class Inner { Inner(String name) {} } }"; //$NON-NLS-1$
+        int innerOffset = source.indexOf("class Inner"); //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findMethodNameOffset", String.class, IMethod.class, IClassFile.class, int.class, int.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, constructor, classFile, innerOffset, source.length());
+
+        assertEquals(source.indexOf("Inner(String"), offset); //$NON-NLS-1$
+    }
+
+    @Test
+    public void findMethodNameOffsetMatchesQualifiedParameterOverload()
+            throws Exception {
+        JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
+        IMethod method = proxy(IMethod.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
+          case "isConstructor" -> Boolean.FALSE; //$NON-NLS-1$
+          case "getElementName" -> "use"; //$NON-NLS-1$ //$NON-NLS-2$
+          case "getParameterTypes" -> new String[] { "Ljava.util.Date;" }; //$NON-NLS-1$ //$NON-NLS-2$
+          default -> defaultValue(reflectedMethod.getReturnType());
+        });
+        IClassFile classFile = proxy(IClassFile.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
+          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+          default -> defaultValue(reflectedMethod.getReturnType());
+        });
+        String source =
+                "class Outer { class Inner { void use(java.sql.Date d) {} void use(java.util.Date d) {} } }"; //$NON-NLS-1$
+        int innerOffset = source.indexOf("class Inner"); //$NON-NLS-1$
+        java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
+                "findMethodNameOffset", String.class, IMethod.class, IClassFile.class, int.class, int.class); //$NON-NLS-1$
+        finder.setAccessible(true);
+
+        int offset = (int) finder.invoke(editor, source, method, classFile, innerOffset, source.length());
+
+        assertEquals(source.indexOf("use(java.util.Date"), offset); //$NON-NLS-1$
+    }
+
     private static IEditorPart openWithEditorId(IClassFile classFile, String editorId) throws CoreException {
         return runInUiThreadWithResult(() -> {
             IWorkbenchWindow window = resolveWorkbenchWindow();
@@ -566,6 +821,81 @@ public class JavaDecompilerClassFileEditorTest {
         return false;
     }
 
+    private void assertInnerMethodDeclarationSelection(String classFileName, String selectedSource)
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(classFileName);
+        assertTrue(innerClassFile.exists());
+
+        IMethod method = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        assertTrue(method.exists());
+
+        openedEditor = openDefault(method);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+        assertTrue("Expected opening " + classFileName + "#method1 to select " + selectedSource //$NON-NLS-1$ //$NON-NLS-2$
+                + ", actual selection: " + selectedText(openedEditor) //$NON-NLS-1$
+                + ", context: " + selectedContext(openedEditor), //$NON-NLS-1$
+                waitForNestedMethodDeclarationSelection(openedEditor, selectedSource));
+    }
+
+    private static boolean waitForNestedMethodDeclarationSelection(IEditorPart editor, String expectedMarker) {
+        int attempts = 250;
+        for (int i = 0; i < attempts; i++) {
+            if (hasNestedMethodDeclarationSelection(editor, expectedMarker)) {
+                return true;
+            }
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(25L));
+            drainUiEvents();
+        }
+        return hasNestedMethodDeclarationSelection(editor, expectedMarker);
+    }
+
+    private static boolean hasNestedMethodDeclarationSelection(IEditorPart editor, String expectedMarker) {
+        ITextSelection selection = selectedSelection(editor);
+        if (selection == null || !"method1".equals(selection.getText())) { //$NON-NLS-1$
+            return false;
+        }
+        String source = documentText(editor);
+        int markerOffset = source.indexOf(expectedMarker);
+        int selectionOffset = selection.getOffset();
+        return markerOffset > selectionOffset && markerOffset - selectionOffset < 200;
+    }
+
+    private static String selectedText(IEditorPart editor) {
+        ITextSelection selection = selectedSelection(editor);
+        return selection == null ? "" : selection.getText(); //$NON-NLS-1$
+    }
+
+    private static ITextSelection selectedSelection(IEditorPart editor) {
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        if (textEditor == null || !(textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection)) {
+            return null;
+        }
+        return selection;
+    }
+
+    private static String selectedContext(IEditorPart editor) {
+        ITextSelection selection = selectedSelection(editor);
+        if (selection == null) {
+            return "<none>"; //$NON-NLS-1$
+        }
+        String source = documentText(editor);
+        int start = Math.max(0, selection.getOffset() - 80);
+        int end = Math.min(source.length(), selection.getOffset() + Math.max(selection.getLength(), 1) + 160);
+        return source.substring(start, end).replaceAll("\\s+", " "); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private static String documentText(IEditorPart editor) {
+        ITextEditor textEditor = adaptToTextEditor(editor);
+        if (textEditor == null) {
+            return ""; //$NON-NLS-1$
+        }
+        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+        return document == null ? "" : document.get(); //$NON-NLS-1$
+    }
+
     private static boolean waitForPackageExplorerSelection(IPackagesViewPart packagesView, String... elementNames) {
         int attempts = 250;
         for (int i = 0; i < attempts; i++) {
@@ -598,6 +928,47 @@ public class JavaDecompilerClassFileEditorTest {
             return javaElement.getElementName() + " (" + javaElement.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$
         }
         return selected == null ? "<null>" : selected.toString() + " (" + selected.getClass().getName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T proxy(Class<T> type, InvocationHandler handler) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type }, (proxy, method, args) -> {
+            if ("hashCode".equals(method.getName())) { //$NON-NLS-1$
+                return Integer.valueOf(System.identityHashCode(proxy));
+            }
+            if ("equals".equals(method.getName())) { //$NON-NLS-1$
+                return Boolean.valueOf(proxy == args[0]);
+            }
+            return handler.invoke(proxy, method, args);
+        });
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (!type.isPrimitive()) {
+            return null;
+        }
+        if (type == Boolean.TYPE) {
+            return Boolean.FALSE;
+        }
+        if (type == Character.TYPE) {
+            return Character.valueOf('\0');
+        }
+        if (type == Long.TYPE) {
+            return Long.valueOf(0L);
+        }
+        if (type == Float.TYPE) {
+            return Float.valueOf(0.0f);
+        }
+        if (type == Double.TYPE) {
+            return Double.valueOf(0.0d);
+        }
+        if (type == Byte.TYPE) {
+            return Byte.valueOf((byte) 0);
+        }
+        if (type == Short.TYPE) {
+            return Short.valueOf((short) 0);
+        }
+        return Integer.valueOf(0);
     }
 
     private static void configurePreferences(File tempDir) {

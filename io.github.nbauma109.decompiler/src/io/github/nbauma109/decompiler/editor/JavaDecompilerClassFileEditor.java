@@ -17,6 +17,9 @@ package io.github.nbauma109.decompiler.editor;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,15 +30,19 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.internal.core.BufferManager;
 import org.eclipse.jdt.internal.core.ClassFile;
 import org.eclipse.jdt.internal.core.PackageFragment;
@@ -99,6 +106,7 @@ import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.ReflectionUtils;
 import io.github.nbauma109.decompiler.util.UIUtil;
 
+@SuppressWarnings("restriction")
 public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
     private static final String NO_LINE_NUMBER = "// Warning: No line numbers available in class file"; //$NON-NLS-1$
@@ -117,6 +125,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     private int loadingSpinnerFrame = 0;
     private IJavaElement nestedOpenTarget;
     private IClassFile nestedOpenClassFile;
+    private int externalTextSelectionSequence;
     private int packageExplorerRevealSequence;
     private Runnable pendingPackageExplorerReveal150;
     private Runnable pendingPackageExplorerReveal750;
@@ -203,12 +212,64 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
     }
 
     @Override
-    protected void setSelection(ISourceReference reference, boolean moveCursor) {
+    public void setSelection(ISourceReference reference, boolean moveCursor) {
+        if (isExternalTextSelectionProtected(reference)) {
+            return;
+        }
+        if (reference == null) {
+            selectedElement = null;
+            super.setSelection(reference, moveCursor);
+            return;
+        }
         ISourceReference selection = resolveSelectionTarget(reference);
         super.setSelection(selection, moveCursor);
+        revealNestedDeclaration(selection);
 
         this.selectedElement = selection;
         syncPackageExplorer(selection);
+    }
+
+    @Override
+    public void setSelection(IJavaElement element) {
+        if (isExternalTextSelectionProtected(element)) {
+            return;
+        }
+        IJavaElement selection = resolveJavaElementSelectionTarget(element);
+        if (selection instanceof ISourceReference sourceReference) {
+            setSelection(sourceReference, true);
+            return;
+        }
+        super.setSelection(selection);
+    }
+
+    public void protectExternalTextSelection() {
+        nestedOpenTarget = null;
+        nestedOpenClassFile = null;
+        Display display = Display.getDefault();
+        if (display == null || display.isDisposed()) {
+            externalTextSelectionSequence++;
+            return;
+        }
+
+        int sequence = ++externalTextSelectionSequence;
+        display.timerExec(1000, () -> {
+            if (externalTextSelectionSequence == sequence) {
+                externalTextSelectionSequence = 0;
+            }
+        });
+    }
+
+    private boolean isExternalTextSelectionProtected(Object selection) {
+        return externalTextSelectionSequence != 0 && selection instanceof IJavaElement;
+    }
+
+    @Override
+    protected IJavaElement getCorrespondingElement(IJavaElement element) {
+        IJavaElement selection = resolveJavaElementSelectionTarget(element);
+        if (selection != null && !selection.equals(element)) {
+            return selection;
+        }
+        return super.getCorrespondingElement(element);
     }
 
     @Override
@@ -487,27 +548,68 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         if (!(reference instanceof IJavaElement javaElement)) {
             return reference;
         }
+        IJavaElement nestedElement = resolveJavaElementSelectionTarget(javaElement);
+        return nestedElement instanceof ISourceReference sourceReference ? sourceReference : reference;
+    }
+
+    private IJavaElement resolveJavaElementSelectionTarget(IJavaElement javaElement) {
+        if (javaElement == null) {
+            return null;
+        }
         if (belongsToEditorInput(javaElement)) {
             rememberNestedSelection(javaElement);
-            return reference;
+            return javaElement;
         }
 
         IClassFile classFile = getClassFile(javaElement);
         IClassFile editorClassFile = getEditorClassFile();
         if (classFile == null || editorClassFile == null || editorClassFile.equals(classFile)) {
-            return reference;
+            return javaElement;
         }
 
         nestedOpenClassFile = classFile;
+        IJavaElement nestedElement = findNestedElement(javaElement, editorClassFile, classFile);
+        nestedOpenTarget = nestedElement;
+        return nestedElement;
+    }
+
+    private IJavaElement findNestedElement(IJavaElement javaElement, IClassFile editorClassFile,
+            IClassFile classFile) {
         IJavaElement nestedType = findNestedType(editorClassFile, classFile);
-        nestedOpenTarget = nestedType;
-        return nestedType instanceof ISourceReference sourceReference ? sourceReference : reference;
+        if (!(nestedType instanceof IType type)) {
+            return nestedType;
+        }
+        if (javaElement instanceof IType) {
+            return type;
+        }
+        if (javaElement instanceof IMethod method) {
+            return findNestedMethod(type, method);
+        }
+        if (javaElement instanceof IField field) {
+            IField nestedField = type.getField(field.getElementName());
+            return nestedField.exists() ? nestedField : type;
+        }
+        return type;
+    }
+
+    private IJavaElement findNestedMethod(IType type, IMethod method) {
+        try {
+            String methodName = method.isConstructor() ? type.getElementName() : method.getElementName();
+            IMethod nestedMethod = type.getMethod(methodName, method.getParameterTypes());
+            return nestedMethod.exists() ? nestedMethod : type;
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return type;
+        }
     }
 
     private void rememberNestedSelection(IJavaElement javaElement) {
         IClassFile editorClassFile = getEditorClassFile();
         IType editorType = getType(editorClassFile);
-        if (!(javaElement instanceof IType type) || editorType == null) {
+        IType type = declaringType(javaElement);
+        if (type == null || editorType == null) {
+            nestedOpenTarget = null;
+            nestedOpenClassFile = null;
             return;
         }
         if (editorType.equals(type)) {
@@ -519,10 +621,467 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         nestedOpenClassFile = findNestedClassFile(type, editorClassFile);
     }
 
+    private IType declaringType(IJavaElement javaElement) {
+        if (javaElement instanceof IType type) {
+            return type;
+        }
+        if (javaElement instanceof IMethod method) {
+            return method.getDeclaringType();
+        }
+        if (javaElement instanceof IField field) {
+            return field.getDeclaringType();
+        }
+        IJavaElement type = javaElement.getAncestor(IJavaElement.TYPE);
+        return type instanceof IType declaringType ? declaringType : null;
+    }
+
     private boolean belongsToEditorInput(IJavaElement javaElement) {
         IClassFile editorClassFile = getEditorClassFile();
         IClassFile classFile = getClassFile(javaElement);
         return editorClassFile != null && editorClassFile.equals(classFile);
+    }
+
+    private boolean revealNestedDeclaration(ISourceReference selection) {
+        if (!(selection instanceof IJavaElement javaElement)) {
+            return false;
+        }
+        IClassFile editorClassFile = getEditorClassFile();
+        IClassFile nestedClassFile = nestedOpenClassFile;
+        IDocument document = getCurrentDocument();
+        if (editorClassFile == null || nestedClassFile == null || editorClassFile.equals(nestedClassFile)
+                || document == null) {
+            return false;
+        }
+
+        String source = document.get();
+        int typeOffset = findNestedTypeDeclarationOffset(source, editorClassFile, nestedClassFile);
+        if (typeOffset < 0) {
+            return false;
+        }
+
+        int typeEnd = findDeclarationBlockEnd(source, typeOffset);
+        int offset = nestedDeclarationOffset(source, javaElement, nestedClassFile, typeOffset, typeEnd);
+        int length = nestedDeclarationLength(javaElement, nestedClassFile);
+        if (offset < 0 || length <= 0) {
+            return false;
+        }
+
+        selectAndReveal(offset, length);
+        return true;
+    }
+
+    private int nestedDeclarationOffset(String source, IJavaElement javaElement, IClassFile nestedClassFile,
+            int typeOffset, int typeEnd) {
+        if (javaElement instanceof IType) {
+            return findTypeNameOffset(source, nestedClassFile, typeOffset);
+        }
+        if (javaElement instanceof IMethod method) {
+            return findMethodNameOffset(source, method, nestedClassFile, typeOffset, typeEnd);
+        }
+        if (javaElement instanceof IField field) {
+            return findFieldNameOffset(source, field, typeOffset, typeEnd);
+        }
+        return -1;
+    }
+
+    private int nestedDeclarationLength(IJavaElement javaElement, IClassFile nestedClassFile) {
+        if (javaElement instanceof IMethod method) {
+            return sourceMethodName(method, nestedClassFile).length();
+        }
+        if (javaElement instanceof IField field) {
+            return field.getElementName().length();
+        }
+        return simpleClassName(nestedClassFile).length();
+    }
+
+    private int findNestedTypeDeclarationOffset(String source, IClassFile editorClassFile, IClassFile nestedClassFile) {
+        String topLevelName = stripClassExtension(editorClassFile.getElementName());
+        String nestedName = stripClassExtension(nestedClassFile.getElementName());
+        if (!nestedName.startsWith(topLevelName + NESTED_CLASS_SEPARATOR)) {
+            return -1;
+        }
+
+        String suffix = nestedName.substring(topLevelName.length() + 1);
+        int topLevelOffset = findTypeDeclarationOffset(source, sourceTypeSegment(topLevelName), 0);
+        int fromOffset = topLevelOffset < 0 ? 0 : topLevelOffset;
+        return resolveNestedSourceOffset(source, suffix, fromOffset, fromOffset);
+    }
+
+    private int resolveNestedSourceOffset(String source, String suffix, int fromOffset, int enclosingTypeOffset) {
+        if (suffix.isEmpty()) {
+            return fromOffset;
+        }
+        String[] parts = suffix.split("\\$", -1); //$NON-NLS-1$
+        StringBuilder candidate = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                candidate.append(NESTED_CLASS_SEPARATOR);
+            }
+            candidate.append(parts[i]);
+            String sourceSegment = sourceTypeSegment(candidate.toString());
+            int localOrdinal = localClassOrdinal(candidate.toString());
+            int typeOffset = sourceSegment.isEmpty() ? -1
+                    : findTypeDeclarationOffset(source, sourceSegment, fromOffset, enclosingTypeOffset, localOrdinal);
+            if (typeOffset < 0) {
+                continue;
+            }
+            String remaining = suffix.substring(candidate.length());
+            if (remaining.isEmpty()) {
+                return typeOffset;
+            }
+            int openBrace = source.indexOf('{', typeOffset);
+            int innerFrom = openBrace < 0 ? typeOffset + sourceSegment.length() : openBrace + 1;
+            int deeper = resolveNestedSourceOffset(source, remaining.substring(1), innerFrom, typeOffset);
+            if (deeper >= 0) {
+                return deeper;
+            }
+            // child matched but deeper resolution failed — try a longer candidate at this level
+        }
+        return -1;
+    }
+
+    public String sourceTypeSegment(String classFileSegment) {
+        int offset = 0;
+        while (offset < classFileSegment.length() && Character.isDigit(classFileSegment.charAt(offset))) {
+            offset++;
+        }
+        if (offset == 0 || offset >= classFileSegment.length()
+                || !Character.isJavaIdentifierStart(classFileSegment.charAt(offset))) {
+            return classFileSegment;
+        }
+        return classFileSegment.substring(offset);
+    }
+
+    private int findTypeDeclarationOffset(String source, String typeName, int fromIndex) {
+        Matcher matcher = typeDeclarationMatcher(source, typeName);
+        return matcher.find(Math.max(0, fromIndex)) ? matcher.start() : -1;
+    }
+
+    private int findTypeDeclarationOffset(String source, String typeName, int fromIndex, int enclosingTypeOffset,
+            int localOrdinal) {
+        if (localOrdinal <= 0) {
+            return findTypeDeclarationOffset(source, typeName, fromIndex);
+        }
+        Matcher matcher = typeDeclarationMatcher(source, typeName);
+        matcher.region(Math.max(0, fromIndex), source.length());
+        int matchedLocalTypes = 0;
+        while (matcher.find()) {
+            if (JavaSourceMemberParser.isDirectTypeMember(source, enclosingTypeOffset, matcher.start())) {
+                continue;
+            }
+            matchedLocalTypes++;
+            if (matchedLocalTypes == localOrdinal) {
+                return matcher.start();
+            }
+        }
+        return -1;
+    }
+
+    private Matcher typeDeclarationMatcher(String source, String typeName) {
+        return Pattern.compile("(?:@interface|\\b(?:class|interface|enum|record))\\s+" //$NON-NLS-1$
+                + Pattern.quote(typeName) + "\\b").matcher(source); //$NON-NLS-1$
+    }
+
+    private int localClassOrdinal(String classFileSegment) {
+        int offset = 0;
+        while (offset < classFileSegment.length() && Character.isDigit(classFileSegment.charAt(offset))) {
+            offset++;
+        }
+        if (offset == 0 || offset >= classFileSegment.length()
+                || !Character.isJavaIdentifierStart(classFileSegment.charAt(offset))) {
+            return -1;
+        }
+        return Integer.parseInt(classFileSegment.substring(0, offset));
+    }
+
+    private int findTypeNameOffset(String source, IClassFile nestedClassFile, int typeOffset) {
+        String typeName = simpleClassName(nestedClassFile);
+        int offset = source.indexOf(typeName, typeOffset);
+        return offset >= typeOffset ? offset : -1;
+    }
+
+    private int findMethodNameOffset(String source, IMethod method, IClassFile nestedClassFile, int typeOffset,
+            int typeEnd) {
+        String methodName = sourceMethodName(method, nestedClassFile);
+        Matcher matcher = Pattern.compile("\\b" + Pattern.quote(methodName) + "\\s*\\(").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
+        matcher.region(typeOffset, boundedEnd(source, typeEnd));
+        String[] parameterTypes = sourceParameterTypes(method, method.getParameterTypes());
+        int fallback = -1;
+        while (matcher.find()) {
+            int openParenOffset = matcher.end() - 1;
+            if (hasParameterCount(source, openParenOffset, parameterTypes.length)
+                    && isMethodDeclaration(source, typeOffset, matcher.start(), openParenOffset)) {
+                if (matchesParameterTypes(source, openParenOffset, parameterTypes)) {
+                    return matcher.start();
+                }
+                if (fallback < 0) {
+                    fallback = matcher.start();
+                }
+            }
+        }
+        return fallback;
+    }
+
+    private int findFieldNameOffset(String source, IField field, int typeOffset, int typeEnd) {
+        Matcher matcher = Pattern.compile("\\b" + Pattern.quote(field.getElementName()) + "\\b").matcher(source); //$NON-NLS-1$ //$NON-NLS-2$
+        matcher.region(typeOffset, boundedEnd(source, typeEnd));
+        while (matcher.find()) {
+            if (isFieldDeclaration(source, typeOffset, matcher.start(), matcher.end())) {
+                return matcher.start();
+            }
+        }
+        return -1;
+    }
+
+    private int boundedEnd(String source, int typeEnd) {
+        return typeEnd < 0 ? source.length() : Math.min(typeEnd, source.length());
+    }
+
+    private String sourceMethodName(IMethod method, IClassFile nestedClassFile) {
+        try {
+            return method.isConstructor() ? simpleClassName(nestedClassFile) : method.getElementName();
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return method.getElementName();
+        }
+    }
+
+    private String[] sourceParameterTypes(IMethod method, String[] parameterTypes) {
+        if (hasSyntheticConstructorParameter(method, parameterTypes)) {
+            return Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
+        }
+        return parameterTypes;
+    }
+
+    private boolean hasSyntheticConstructorParameter(IMethod method, String[] parameterTypes) {
+        if (parameterTypes.length == 0) {
+            return false;
+        }
+        try {
+            if (!method.isConstructor()) {
+                return false;
+            }
+            IType type = method.getDeclaringType();
+            return type != null
+                    && (type.getDeclaringType() != null && !Flags.isStatic(type.getFlags())
+                            || type.isLocal() || type.isAnonymous());
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return false;
+        }
+    }
+
+    private String simpleClassName(IClassFile classFile) {
+        String className = stripClassExtension(classFile.getElementName());
+        int nestedSeparator = className.lastIndexOf(NESTED_CLASS_SEPARATOR);
+        return sourceTypeSegment(nestedSeparator < 0 ? className : className.substring(nestedSeparator + 1));
+    }
+
+    private int findDeclarationBlockEnd(String source, int declarationOffset) {
+        int openBrace = source.indexOf('{', declarationOffset);
+        if (openBrace < 0) {
+            return -1;
+        }
+        return JavaSourceMemberParser.findMatchingClose(source, openBrace, '{', '}');
+    }
+
+    private boolean hasParameterCount(String source, int openParenOffset, int expectedParameterCount) {
+        int closeParen = JavaSourceMemberParser.findMatchingClose(source, openParenOffset, '(', ')');
+        if (closeParen < 0) {
+            return true;
+        }
+        String parameters = source.substring(openParenOffset + 1, closeParen).trim();
+        if (parameters.isEmpty()) {
+            return expectedParameterCount == 0;
+        }
+        return countParameters(parameters) == expectedParameterCount;
+    }
+
+    private boolean matchesParameterTypes(String source, int openParenOffset, String[] parameterTypes) {
+        if (parameterTypes.length == 0) {
+            return true;
+        }
+        int closeParen = JavaSourceMemberParser.findMatchingClose(source, openParenOffset, '(', ')');
+        if (closeParen < 0) {
+            return true;
+        }
+        String paramsStr = source.substring(openParenOffset + 1, closeParen).trim();
+        if (paramsStr.isEmpty()) {
+            return true;
+        }
+        List<String> sourceTypes = extractSourceParamTypes(paramsStr);
+        if (sourceTypes.size() != parameterTypes.length) {
+            return true;
+        }
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (!matchesParameterType(parameterTypes[i], sourceTypes.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean matchesParameterType(String jdtSignature, String sourceType) {
+        String normalizedSourceType = normalizeParameterType(sourceType);
+        String normalizedJdtType = jdtSignatureToTypeName(jdtSignature);
+        if (isQualifiedTypeName(normalizedSourceType)) {
+            return normalizedJdtType.equals(normalizedSourceType);
+        }
+        return simpleTypeName(normalizedJdtType).equals(normalizedSourceType);
+    }
+
+    private static String normalizeParameterType(String typeName) {
+        return typeName.trim().replace('$', '.');
+    }
+
+    private static boolean isQualifiedTypeName(String typeName) {
+        int arrayStart = typeName.indexOf("[]"); //$NON-NLS-1$
+        String elementName = arrayStart < 0 ? typeName : typeName.substring(0, arrayStart);
+        return elementName.indexOf('.') >= 0;
+    }
+
+    private static String simpleTypeName(String typeName) {
+        int arrayStart = typeName.indexOf("[]"); //$NON-NLS-1$
+        String elementName = arrayStart < 0 ? typeName : typeName.substring(0, arrayStart);
+        String suffix = arrayStart < 0 ? "" : typeName.substring(arrayStart); //$NON-NLS-1$
+        int dot = elementName.lastIndexOf('.');
+        return (dot < 0 ? elementName : elementName.substring(dot + 1)) + suffix;
+    }
+
+    private static String jdtSignatureToTypeName(String sig) {
+        int arrayCount = 0;
+        int pos = 0;
+        while (pos < sig.length() && sig.charAt(pos) == '[') {
+            arrayCount++;
+            pos++;
+        }
+        String elementSig = sig.substring(pos);
+        String baseName;
+        if (elementSig.length() > 1 && elementSig.charAt(0) == 'L' && elementSig.endsWith(";")) { //$NON-NLS-1$
+            String qualified = elementSig.substring(1, elementSig.length() - 1);
+            baseName = qualified.replace('$', '.');
+        } else {
+            baseName = Signature.getSignatureSimpleName(elementSig);
+        }
+        if (arrayCount == 0) {
+            return baseName;
+        }
+        StringBuilder sb = new StringBuilder(baseName);
+        for (int i = 0; i < arrayCount; i++) {
+            sb.append("[]"); //$NON-NLS-1$
+        }
+        return sb.toString();
+    }
+
+    private List<String> extractSourceParamTypes(String paramsStr) {
+        List<String> types = new ArrayList<>();
+        for (String part : splitByTopLevelComma(paramsStr)) {
+            types.add(extractParamType(part.trim()));
+        }
+        return types;
+    }
+
+    private List<String> splitByTopLevelComma(String str) {
+        List<String> parts = new ArrayList<>();
+        int start = 0;
+        int depth = 0;
+        for (int i = 0; i < str.length(); i++) {
+            char ch = str.charAt(i);
+            if (ch == '<' || ch == '(') {
+                depth++;
+            } else if ((ch == '>' || ch == ')') && depth > 0) {
+                depth--;
+            } else if (ch == ',' && depth == 0) {
+                parts.add(str.substring(start, i).trim());
+                start = i + 1;
+            }
+        }
+        parts.add(str.substring(start).trim());
+        return parts;
+    }
+
+    private String stripLeadingModifiers(String param) {
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            if (param.startsWith("final ")) { //$NON-NLS-1$
+                param = param.substring(6).trim();
+                changed = true;
+            }
+            if (param.startsWith("@")) { //$NON-NLS-1$
+                int spaceIdx = param.indexOf(' ');
+                if (spaceIdx < 0) {
+                    return param;
+                }
+                param = param.substring(spaceIdx).trim();
+                changed = true;
+            }
+        }
+        return param;
+    }
+
+    private String extractParamType(String param) {
+        param = stripLeadingModifiers(param.trim());
+        int lastSpace = -1;
+        int depth = 0;
+        for (int i = 0; i < param.length(); i++) {
+            char ch = param.charAt(i);
+            if (ch == '<') {
+                depth++;
+            } else if (ch == '>' && depth > 0) {
+                depth--;
+            } else if (ch == ' ' && depth == 0) {
+                lastSpace = i;
+            }
+        }
+        if (lastSpace < 0) {
+            return param;
+        }
+        String typePart = param.substring(0, lastSpace).trim();
+        int angleIdx = typePart.indexOf('<');
+        if (angleIdx >= 0) {
+            int lastAngle = typePart.lastIndexOf('>');
+            String suffix = lastAngle >= 0 ? typePart.substring(lastAngle + 1) : ""; //$NON-NLS-1$
+            typePart = typePart.substring(0, angleIdx) + suffix;
+        }
+        return typePart.replace("...", "[]"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private boolean isMethodDeclaration(String source, int typeOffset, int nameStart, int openParenOffset) {
+        return JavaSourceMemberParser.isMethodDeclaration(source, typeOffset, nameStart, openParenOffset);
+    }
+
+    private boolean isFieldDeclaration(String source, int typeOffset, int nameStart, int nameEnd) {
+        if (!JavaSourceMemberParser.isDirectTypeMember(source, typeOffset, nameStart)) {
+            return false;
+        }
+        int nextToken = JavaSourceMemberParser.skipWhitespace(source, nameEnd);
+        if (nextToken >= source.length()) {
+            return false;
+        }
+        char next = source.charAt(nextToken);
+        return next == ';' || next == '=' || next == ',';
+    }
+
+    private int countParameters(String parameters) {
+        int count = 1;
+        int genericDepth = 0;
+        int parenDepth = 0;
+        for (int i = 0; i < parameters.length(); i++) {
+            char ch = parameters.charAt(i);
+            if (ch == '<') {
+                genericDepth++;
+            } else if (ch == '>' && genericDepth > 0) {
+                genericDepth--;
+            } else if (ch == '(') {
+                parenDepth++;
+            } else if (ch == ')' && parenDepth > 0) {
+                parenDepth--;
+            } else if (ch == ',' && genericDepth == 0 && parenDepth == 0) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private void revealNestedOpenTarget() {
@@ -533,6 +1092,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
 
         Display.getDefault().asyncExec(() -> {
             if (isEditorControlDisposed()) {
+                return;
+            }
+            if (nestedOpenTarget != target) {
                 return;
             }
             setSelection(sourceReference, true);
@@ -640,7 +1202,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         return null;
     }
 
-    private String getNestedClassFileName(IType type, IClassFile editorClassFile) {
+    public String getNestedClassFileName(IType type, IClassFile editorClassFile) {
         String topLevelName = stripClassExtension(editorClassFile.getElementName());
         StringBuilder suffix = new StringBuilder();
         IType editorType = getType(editorClassFile);
@@ -656,7 +1218,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             suffix.insert(0, segment).insert(0, NESTED_CLASS_SEPARATOR);
             current = currentType.getParent();
         }
-        if (suffix.length() == 0) {
+        if (suffix.isEmpty()) {
             return null;
         }
         return topLevelName + suffix + CLASS_FILE_EXTENSION;
