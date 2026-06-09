@@ -456,6 +456,50 @@ public class ApplicationLibrarySearchParticipantTest {
     }
 
     @Test
+    public void superConstructorCallDoesNotContributeOwnerTypeReference() throws Exception {
+        File jar = new File(tempDir, "super-constructor-owner-reference.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Super.class", buildEmptyClass("pkg/Super")); //$NON-NLS-1$ //$NON-NLS-2$
+            addClass(jos, "pkg/Child.class", buildChildCallingSuperConstructor()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "super-constructor-owner-reference-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, typeReferenceSpecification("pkg.Super", scope)); //$NON-NLS-1$
+
+        assertEquals("extends Super is source-visible, but the super() instruction must not add another type reference", //$NON-NLS-1$
+                1, matches.size());
+    }
+
+    @Test
+    public void thisConstructorCallDoesNotContributeOwnerTypeReference() throws Exception {
+        File jar = new File(tempDir, "this-constructor-owner-reference.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Chained.class", buildChainedConstructorClass()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "this-constructor-owner-reference-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, typeReferenceSpecification("pkg.Chained", scope)); //$NON-NLS-1$
+
+        assertTrue("this(...) constructor chaining must not create a self type-reference match", matches.isEmpty()); //$NON-NLS-1$
+    }
+
+    @Test
     public void qualifiedTypePatternsDoNotMatchOtherPackagesWithTheSameSimpleName()
             throws Exception {
         File jar = new File(tempDir, "same-simple-type-references.jar"); //$NON-NLS-1$
@@ -2169,6 +2213,35 @@ public class ApplicationLibrarySearchParticipantTest {
                 2, matches.size());
     }
 
+    @Test
+    public void lambdaBootstrapImplementationHandlesDoNotContributeSyntheticMethodReferences() throws Exception {
+        File jar = new File(tempDir, "lambda-bootstrap-handle-refs.jar"); //$NON-NLS-1$
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jar))) {
+            addClass(jos, "pkg/Helper.class", buildLambdaHelperClass()); //$NON-NLS-1$
+            addClass(jos, "pkg/LambdaUser.class", buildLambdaUserClass()); //$NON-NLS-1$
+        }
+        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "lambda-bootstrap-handle-refs-test-project"); //$NON-NLS-1$
+        extraProjects.add(setup.project());
+
+        BytecodeSearchIndex.getDefault().stop();
+        BytecodeSearchIndex.getDefault().start();
+
+        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
+        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
+
+        List<Match> matches = runSearchInBackground(participant, new PatternQuerySpecification(
+                "pkg.LambdaUser.lambda$run$0()", //$NON-NLS-1$
+                IJavaSearchConstants.METHOD,
+                true,
+                IJavaSearchConstants.REFERENCES,
+                scope,
+                "lambda-bootstrap-synthetic-method-refs")); //$NON-NLS-1$
+
+        assertTrue("lambda bootstrap implementation handles must not appear as source-level method references", //$NON-NLS-1$
+                matches.isEmpty());
+    }
+
     /**
      * Verifies fix: {@code annotationVisitor.visitEnum} now calls
      * {@code addReference(Kind.FIELD, value, value, qualifiedTypeName(owner), descriptor, element, Access.READ)}
@@ -2274,6 +2347,43 @@ public class ApplicationLibrarySearchParticipantTest {
         ctor.visitInsn(Opcodes.RETURN);
         ctor.visitMaxs(1, 1);
         ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildChildCallingSuperConstructor() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Child", null, "pkg/Super", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Super", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(1, 1);
+        ctor.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static byte[] buildChainedConstructorClass() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER, "pkg/Chained", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+        MethodVisitor defaultCtor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        defaultCtor.visitCode();
+        defaultCtor.visitVarInsn(Opcodes.ALOAD, 0);
+        defaultCtor.visitInsn(Opcodes.ICONST_0);
+        defaultCtor.visitMethodInsn(Opcodes.INVOKESPECIAL, "pkg/Chained", "<init>", "(I)V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        defaultCtor.visitInsn(Opcodes.RETURN);
+        defaultCtor.visitMaxs(2, 1);
+        defaultCtor.visitEnd();
+
+        MethodVisitor intCtor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "(I)V", null, null); //$NON-NLS-1$ //$NON-NLS-2$
+        intCtor.visitCode();
+        intCtor.visitVarInsn(Opcodes.ALOAD, 0);
+        intCtor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        intCtor.visitInsn(Opcodes.RETURN);
+        intCtor.visitMaxs(1, 2);
+        intCtor.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
     }

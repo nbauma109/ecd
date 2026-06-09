@@ -736,22 +736,32 @@ public class BytecodeJarIndexer {
                 }
                 addDescriptor(signature);
                 if (StringUtils.isBlank(signature)) {
-                    if (!OBJECT_INTERNAL_NAME.equals(superName)
-                            && !(typeCategory == TypeCategory.ENUM && ENUM_INTERNAL_NAME.equals(superName))) {
-                        // Enum classes have java/lang/Enum as a compiler-mandated supertype that is
-                        // not written in source; skip it so type searches don't produce phantom matches.
-                        addTypeReference(superName);
-                    }
-                    if (interfaces != null) {
-                        for (String iface : interfaces) {
-                            if (!(typeCategory == TypeCategory.ANNOTATION && ANNOTATION_INTERNAL_NAME.equals(iface))) {
-                                // @interface types have java/lang/annotation/Annotation as a compiler-
-                                // mandated interface that is not written in source; skip it likewise.
-                                addTypeReference(iface);
-                            }
+                    addRawDeclarationSupertypes(superName, interfaces);
+                }
+            }
+
+            private void addRawDeclarationSupertypes(String superName, String[] interfaces) {
+                if (isSourceVisibleSuperclass(superName)) {
+                    addTypeReference(superName);
+                }
+                if (interfaces != null) {
+                    for (String iface : interfaces) {
+                        if (isSourceVisibleInterface(iface)) {
+                            addTypeReference(iface);
                         }
                     }
                 }
+            }
+
+            private boolean isSourceVisibleSuperclass(String superName) {
+                // Object and Enum are compiler-mandated supertypes in these shapes.
+                return !OBJECT_INTERNAL_NAME.equals(superName)
+                        && !(typeCategory == TypeCategory.ENUM && ENUM_INTERNAL_NAME.equals(superName));
+            }
+
+            private boolean isSourceVisibleInterface(String iface) {
+                // @interface types have this compiler-mandated interface even when it is not written in source.
+                return !(typeCategory == TypeCategory.ANNOTATION && ANNOTATION_INTERNAL_NAME.equals(iface));
             }
 
             @Override
@@ -1191,11 +1201,7 @@ public class BytecodeJarIndexer {
                 int consumedSlots = methodConsumedSlots(opcode, descriptor);
                 clearPendingStaticCompoundReadIfConsumed(consumedSlots);
                 if (CONSTRUCTOR.equals(name)) {
-                    // For constructor calls the owner is source-visible only when the new-object
-                    // expression was not already consumed (tracked via pendingNewTypes).
-                    if (!consumePendingNew(owner)) {
-                        addTypeReference(owner, method);
-                    }
+                    consumePendingNew(owner);
                 } else if (opcode == Opcodes.INVOKESTATIC && !owner.equals(className)) {
                     // Static calls to a different class are qualified with the declaring type in
                     // source (e.g. Math.abs()); same-class helpers and static imports are not.
@@ -1222,20 +1228,23 @@ public class BytecodeJarIndexer {
                 addDescriptorReferences(descriptor, method);
                 if (bootstrapMethodArguments != null) {
                     for (Object argument : bootstrapMethodArguments) {
-                        recordLambdaBodyOwner(argument);
-                        addBootstrapArgumentReference(argument, method);
+                        if (!recordLambdaBodyOwner(argument)) {
+                            addBootstrapArgumentReference(argument, method);
+                        }
                     }
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = Opcodes.INVOKEDYNAMIC;
             }
 
-            private void recordLambdaBodyOwner(Object argument) {
+            private boolean recordLambdaBodyOwner(Object argument) {
                 if (argument instanceof Handle handle && className.equals(handle.getOwner())
                         && handle.getName().startsWith(LAMBDA_METHOD_PREFIX)) {
                     lambdaBodyOwners.put(new LambdaMethodKey(handle.getName(), handle.getDesc()),
                             method == null ? type : method);
+                    return true;
                 }
+                return false;
             }
 
             @Override
