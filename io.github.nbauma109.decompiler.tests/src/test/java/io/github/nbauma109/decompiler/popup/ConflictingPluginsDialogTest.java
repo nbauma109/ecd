@@ -221,6 +221,40 @@ public class ConflictingPluginsDialogTest {
         });
     }
 
+    @Test
+    public void uninstallSelectedWithCheckedItemsShowsManualInstructions() {
+        Display display = Display.getDefault();
+        display.syncExec(() -> {
+            ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT));
+            dialog.create();
+            Shell shell = dialog.getShell();
+
+            // The MessageDialog opened by showManualInstructions() runs its own event loop.
+            // A daemon thread queues an asyncExec to dismiss it so the test does not hang.
+            Thread closer = new Thread(() -> {
+                try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                display.asyncExec(() -> {
+                    for (Shell s : display.getShells()) {
+                        if (!s.isDisposed() && "Manual Uninstall Required".equals(s.getText())) { //$NON-NLS-1$
+                            s.close();
+                        }
+                    }
+                });
+            });
+            closer.setDaemon(true);
+            closer.start();
+
+            Button uninstall = collectButtons(shell).stream()
+                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                .findFirst().orElse(null);
+            assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
+            uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
+
+            assertFalse("dialog should remain open after failed P2 uninstall", shell.isDisposed()); //$NON-NLS-1$
+            dialog.close();
+        });
+    }
+
     // -------------------------------------------------------------------------
     // tryP2Uninstall
     // -------------------------------------------------------------------------
