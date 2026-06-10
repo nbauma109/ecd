@@ -37,6 +37,7 @@ import io.github.nbauma109.decompiler.actions.DecompileAction;
 import io.github.nbauma109.decompiler.debug.BreakpointPresentationBridge;
 import io.github.nbauma109.decompiler.debug.DecompilerSourceLookupBridge;
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
+import io.github.nbauma109.decompiler.popup.ConflictingPluginsDialog;
 import io.github.nbauma109.decompiler.util.Logger;
 import io.github.nbauma109.decompiler.util.UIUtil;
 
@@ -49,6 +50,7 @@ public class SetupRunnable implements Runnable {
                     || PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage() == null) {
                 Display.getDefault().timerExec(1000, SetupRunnable.this::run);
             } else {
+                openConflictDialogSafely();
                 checkClassFileAssociation();
                 setupPartListener();
                 DecompilerSourceLookupBridge.install();
@@ -56,6 +58,15 @@ public class SetupRunnable implements Runnable {
                 new UpdateCheckJob().schedule(2000L);
             }
         } catch (Throwable e) {
+            Logger.debug(e);
+        }
+    }
+
+    private static void openConflictDialogSafely() {
+        try {
+            ConflictingPluginsDialog.openIfNeeded(
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+        } catch (Exception | NoClassDefFoundError e) {
             Logger.debug(e);
         }
     }
