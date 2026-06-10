@@ -48,6 +48,7 @@ public class BytecodeSearchEntry {
     private final String descriptor;
     private final Access access;
     private final TypeCategory typeCategory;
+    private final int occurrenceCount;
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference) {
@@ -61,6 +62,11 @@ public class BytecodeSearchEntry {
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference, Access access, TypeCategory typeCategory) {
+        this(kind, declaration, elementReference, symbolReference, access, typeCategory, 1);
+    }
+
+    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+            SymbolReference symbolReference, Access access, TypeCategory typeCategory, int occurrenceCount) {
         this.kind = kind;
         this.declaration = declaration;
         this.elementHandle = elementReference.handle();
@@ -71,6 +77,7 @@ public class BytecodeSearchEntry {
         this.descriptor = symbolReference.descriptor();
         this.access = access == null ? Access.NONE : access;
         this.typeCategory = typeCategory == null ? TypeCategory.UNKNOWN : typeCategory;
+        this.occurrenceCount = occurrenceCount < 1 ? 1 : occurrenceCount;
     }
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
@@ -149,6 +156,10 @@ public class BytecodeSearchEntry {
 
     TypeCategory getTypeCategory() {
         return typeCategory;
+    }
+
+    int getOccurrenceCount() {
+        return occurrenceCount;
     }
 
 }

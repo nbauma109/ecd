@@ -108,14 +108,11 @@ public class BytecodeSourceRangeResolver {
         return selectRange(entry, ranges);
     }
 
-    public Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
+    public Map<BytecodeSearchMatch, SourceRange> rangesFor(List<BytecodeSearchMatch> matches, String source) {
         ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source);
-        Map<BytecodeSearchEntry, SourceRange> ranges = new IdentityHashMap<>(entries.size());
-        Map<ReferenceKey, Integer> ordinals = new HashMap<>();
-        for (BytecodeSearchEntry entry : entries) {
-            ReferenceKey key = ReferenceKey.from(entry);
-            int ordinal = ordinals.merge(key, Integer.valueOf(1), Integer::sum).intValue() - 1;
-            ranges.put(entry, selectRange(entry, rangesFor(entry, source, parsed), ordinal));
+        Map<BytecodeSearchMatch, SourceRange> ranges = new IdentityHashMap<>(matches.size());
+        for (BytecodeSearchMatch match : matches) {
+            ranges.put(match, selectRange(match.getEntry(), rangesFor(match.getEntry(), source, parsed), match.getOrdinal()));
         }
         return ranges;
     }

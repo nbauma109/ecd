@@ -82,16 +82,12 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
             matches = new ArrayList<>(matches);
             matches.add(selectedMatch);
         }
-        List<BytecodeSearchEntry> entries = new ArrayList<>(matches.size());
-        for (BytecodeSearchMatch match : matches) {
-            entries.add(match.getEntry());
-        }
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                sourceRangeResolver.rangesFor(entries, source);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                sourceRangeResolver.rangesFor(matches, source);
         List<BytecodeSourceRangeResolver.SourceRange> highlights = new ArrayList<>(matches.size());
-        BytecodeSourceRangeResolver.SourceRange selectedRange = ranges.get(selectedMatch.getEntry());
+        BytecodeSourceRangeResolver.SourceRange selectedRange = ranges.get(selectedMatch);
         for (BytecodeSearchMatch match : matches) {
-            BytecodeSourceRangeResolver.SourceRange range = ranges.get(match.getEntry());
+            BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
             if (range != null) {
                 match.update(range);
                 highlights.add(range);

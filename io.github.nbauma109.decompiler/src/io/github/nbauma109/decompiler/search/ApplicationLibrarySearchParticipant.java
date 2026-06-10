@@ -62,8 +62,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             IJavaElement element = entry.getElement();
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
-                BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
-                requestor.reportMatch(match);
+                int count = entry.getOccurrenceCount();
+                for (int ordinal = 0; ordinal < count; ordinal++) {
+                    requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+                }
             }
         });
     }

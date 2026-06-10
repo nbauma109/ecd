@@ -19,14 +19,24 @@ import io.github.nbauma109.decompiler.util.Logger;
 public final class BytecodeSearchMatch extends Match {
 
     private final BytecodeSearchEntry entry;
+    private final int ordinal;
 
     public BytecodeSearchMatch(BytecodeSearchEntry entry) {
+        this(entry, 0);
+    }
+
+    public BytecodeSearchMatch(BytecodeSearchEntry entry, int ordinal) {
         super(new BytecodeSearchElement(entry), initialOffset(entry), initialLength(entry));
         this.entry = entry;
+        this.ordinal = ordinal;
     }
 
     public BytecodeSearchEntry getEntry() {
         return entry;
+    }
+
+    public int getOrdinal() {
+        return ordinal;
     }
 
     void update(BytecodeSourceRangeResolver.SourceRange range) {

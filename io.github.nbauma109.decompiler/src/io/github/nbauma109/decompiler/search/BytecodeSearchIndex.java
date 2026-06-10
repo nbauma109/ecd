@@ -378,11 +378,11 @@ public final class BytecodeSearchIndex {
         private final CompactEntries entries;
         private final Map<Kind, Map<String, int[]>> byKindAndName;
 
-        JarIndex(File jar, List<BytecodeSearchEntry> entries) {
+        JarIndex(File jar, List<BytecodeSearchEntry> entries, int[] counts) {
             this.lastModified = jar.lastModified();
             this.length = jar.length();
             this.byKindAndName = buildNameIndex(entries);
-            this.entries = CompactEntries.from(entries);
+            this.entries = CompactEntries.from(entries, counts);
         }
 
         boolean matches(File jar) {
@@ -514,6 +514,7 @@ public final class BytecodeSearchIndex {
             private final int[] declaringTypeNameIds;
             private final int[] descriptorIds;
             private final byte[] typeCategoryIds;
+            private final int[] occurrenceCounts;
 
             private CompactEntries(EntryArrays arrays) {
                 this.strings = arrays.tables().strings();
@@ -526,9 +527,10 @@ public final class BytecodeSearchIndex {
                 this.declaringTypeNameIds = arrays.columns().declaringTypeNameIds();
                 this.descriptorIds = arrays.columns().descriptorIds();
                 this.typeCategoryIds = arrays.columns().typeCategoryIds();
+                this.occurrenceCounts = arrays.columns().occurrenceCounts();
             }
 
-            private static CompactEntries from(List<BytecodeSearchEntry> entries) {
+            private static CompactEntries from(List<BytecodeSearchEntry> entries, int[] counts) {
                 Dictionary strings = new Dictionary();
                 ElementDictionary elements = new ElementDictionary();
                 int size = entries.size();
@@ -539,6 +541,7 @@ public final class BytecodeSearchIndex {
                 int[] declaringTypeNameIds = new int[size];
                 int[] descriptorIds = new int[size];
                 byte[] typeCategoryIds = new byte[size];
+                int[] occurrenceCounts = new int[size];
                 for (int i = 0; i < size; i++) {
                     BytecodeSearchEntry entry = entries.get(i);
                     kindAndFlags[i] = kindAndFlags(entry);
@@ -548,10 +551,11 @@ public final class BytecodeSearchIndex {
                     declaringTypeNameIds[i] = strings.id(entry.getDeclaringTypeName());
                     descriptorIds[i] = strings.id(entry.getDescriptor());
                     typeCategoryIds[i] = (byte) entry.getTypeCategory().ordinal();
+                    occurrenceCounts[i] = counts[i];
                 }
                 StringTables tables = new StringTables(strings.values(), elements.handles(), elements.fallbacks());
                 EntryColumns columns = new EntryColumns(kindAndFlags, elementHandleIds, nameIds, qualifiedNameIds,
-                        declaringTypeNameIds, descriptorIds, typeCategoryIds);
+                        declaringTypeNameIds, descriptorIds, typeCategoryIds, occurrenceCounts);
                 return new CompactEntries(new EntryArrays(tables, columns));
             }
 
@@ -597,7 +601,8 @@ public final class BytecodeSearchIndex {
             }
 
             public record EntryColumns(byte[] kindAndFlags, int[] elementHandleIds, int[] nameIds,
-                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds, byte[] typeCategoryIds) {
+                    int[] qualifiedNameIds, int[] declaringTypeNameIds, int[] descriptorIds, byte[] typeCategoryIds,
+                    int[] occurrenceCounts) {
 
                 @Override
                 public boolean equals(Object other) {
@@ -616,6 +621,7 @@ public final class BytecodeSearchIndex {
                             .append(declaringTypeNameIds, that.declaringTypeNameIds)
                             .append(descriptorIds, that.descriptorIds)
                             .append(typeCategoryIds, that.typeCategoryIds)
+                            .append(occurrenceCounts, that.occurrenceCounts)
                             .isEquals();
                 }
 
@@ -629,6 +635,7 @@ public final class BytecodeSearchIndex {
                             .append(declaringTypeNameIds)
                             .append(descriptorIds)
                             .append(typeCategoryIds)
+                            .append(occurrenceCounts)
                             .toHashCode();
                 }
 
@@ -642,6 +649,7 @@ public final class BytecodeSearchIndex {
                             .append("declaringTypeNameIds", declaringTypeNameIds) //$NON-NLS-1$
                             .append("descriptorIds", descriptorIds) //$NON-NLS-1$
                             .append("typeCategoryIds", typeCategoryIds) //$NON-NLS-1$
+                            .append("occurrenceCounts", occurrenceCounts) //$NON-NLS-1$
                             .toString();
                 }
             }
@@ -658,7 +666,7 @@ public final class BytecodeSearchIndex {
                         BytecodeSearchEntry.symbolReference(string(nameIds[entryId]),
                                 string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
                                 string(descriptorIds[entryId])),
-                        access(entryId), typeCategory(entryId));
+                        access(entryId), typeCategory(entryId), occurrenceCounts[entryId]);
             }
 
             private Kind kind(int entryId) {
