@@ -270,6 +270,30 @@ public class ConflictingPluginsDialogTest {
         });
     }
 
+    @Test
+    public void uninstallSelectedWithSuccessfulP2UninstallDisablesControls() {
+        Display.getDefault().syncExec(() -> {
+            ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT)) {
+                @Override
+                public boolean tryP2Uninstall(List<ConflictInfo> selected) {
+                    return true; // simulate uninstall job successfully scheduled
+                }
+            };
+            dialog.create();
+            Shell shell = dialog.getShell();
+
+            Button uninstall = collectButtons(shell).stream()
+                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                .findFirst().orElse(null);
+            assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
+            uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
+
+            assertFalse("uninstall button should be disabled after scheduling", uninstall.isEnabled()); //$NON-NLS-1$
+            assertFalse("dialog should stay open while the job runs", shell.isDisposed()); //$NON-NLS-1$
+            dialog.close();
+        });
+    }
+
     // -------------------------------------------------------------------------
     // tryP2Uninstall
     // -------------------------------------------------------------------------
