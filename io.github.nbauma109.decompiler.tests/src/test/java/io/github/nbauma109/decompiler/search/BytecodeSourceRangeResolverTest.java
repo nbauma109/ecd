@@ -903,6 +903,31 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void singleLocalVariableReceiverCallResolvesToTheOnlyCandidate() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        java.io.PrintWriter pw = null;
+                        pw.println(count);
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(match), src).get(match);
+
+        int printlnOffset = src.indexOf("println"); //$NON-NLS-1$
+        assertNotNull("local-variable receiver with single call must resolve to the call site", range); //$NON-NLS-1$
+        assertEquals("println(count)", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+        assertEquals(printlnOffset, range.offset());
+    }
+
+    @Test
     public void explicitThisMethodInvocationResolvesLikeImplicitReceiver() {
         String src = """
                 package fixture;

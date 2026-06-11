@@ -258,9 +258,31 @@ public class BytecodeSourceRangeResolver {
             }
             SourceWindow window = new SourceWindow(enclosing.offset(), enclosing.length());
             List<SourceRange> ranges = new ArrayList<>();
-            unit.accept(new ReferenceVisitor(source, entry, window, ranges));
+            unit.accept(new ReferenceVisitor(source, entry, window, ranges, false));
             ranges.sort(Comparator.comparingInt(SourceRange::offset));
-            return List.copyOf(ranges);
+            if (!ranges.isEmpty()) {
+                return List.copyOf(ranges);
+            }
+            // Strict pass found nothing. For METHOD references, try a relaxed pass that
+            // accepts non-type-qualified receivers (e.g. local variable like "pw.println()").
+            // When all relaxed matches share the same simple receiver name (e.g. all
+            // "writer.println()") they are unambiguously from the same declaring type, so
+            // return all of them and let the ordinal select the correct occurrence.
+            // Fall back to the size()==1 guard only when receiver names differ (ambiguous).
+            if (entry.getKind() == Kind.METHOD) {
+                List<SourceRange> relaxed = new ArrayList<>();
+                Set<String> relaxedReceivers = new HashSet<>();
+                unit.accept(new ReferenceVisitor(source, entry, window, relaxed, relaxedReceivers));
+                if (!relaxed.isEmpty()) {
+                    if (relaxedReceivers.size() <= 1) {
+                        return List.copyOf(relaxed);
+                    }
+                    if (relaxed.size() == 1) {
+                        return List.copyOf(relaxed);
+                    }
+                }
+            }
+            return List.of();
         }
 
         private static SourceRange enclosingSourceRange(IJavaElement element, CompilationUnit unit) {
@@ -583,14 +605,28 @@ public class BytecodeSourceRangeResolver {
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
         private final List<SourceRange> ranges;
+        private final boolean relaxed;
+        private final Set<String> relaxedReceivers;
         private final Deque<Set<String>> localNameScopes = new ArrayDeque<>();
 
         private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
-                List<SourceRange> ranges) {
+                List<SourceRange> ranges, boolean relaxed) {
+            this(source, entry, window, ranges, relaxed, null);
+        }
+
+        private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
+                List<SourceRange> ranges, Set<String> relaxedReceivers) {
+            this(source, entry, window, ranges, true, relaxedReceivers);
+        }
+
+        private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
+                List<SourceRange> ranges, boolean relaxed, Set<String> relaxedReceivers) {
             this.source = source;
             this.entry = entry;
             this.window = window;
             this.ranges = ranges;
+            this.relaxed = relaxed;
+            this.relaxedReceivers = relaxedReceivers;
         }
 
         @Override
@@ -757,6 +793,10 @@ public class BytecodeSourceRangeResolver {
         public boolean visit(MethodInvocation node) {
             if (entry.getKind() == Kind.METHOD && matchesMethodInvocation(node)) {
                 addFromNameThroughNode(node.getName(), node);
+                if (relaxedReceivers != null && node.getExpression() instanceof SimpleName sn
+                        && !isTypeLikeQualifier(sn)) {
+                    relaxedReceivers.add(sn.getIdentifier());
+                }
             }
             return true;
         }
@@ -956,11 +996,16 @@ public class BytecodeSourceRangeResolver {
                 return matchesThisReceiverMethod(receiver, node.arguments());
             }
             if (node.getExpression() != null) {
-                // Receiver expression types are unavailable because decompiled text is parsed
-                // without bindings. Only retain static-field-style receivers such as System.out,
-                // where the root qualifier is type-like; reject local/expression receivers.
-                return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
-                        && matchesArgumentTypeSyntax(node.arguments());
+                if (!relaxed) {
+                    // Receiver expression types are unavailable because decompiled text is parsed
+                    // without bindings. Only retain static-field-style receivers such as System.out,
+                    // where the root qualifier is type-like; reject local/expression receivers.
+                    return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
+                            && matchesArgumentTypeSyntax(node.arguments());
+                }
+                // Relaxed pass: accept non-type-qualified receivers (local variables, expressions).
+                // The caller only uses this result when there is exactly one match in the window.
+                return matchesArgumentTypeSyntax(node.arguments());
             }
             return matchesArgumentTypeSyntax(node.arguments());
         }
