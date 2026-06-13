@@ -68,45 +68,49 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             IJavaElement element = entry.getElement();
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
-                String handle = entry.getElementHandle();
-                int count = entry.getOccurrenceCount();
-                boolean newHandle = registeredHandles.add(handle);
-                if (newHandle && searchResult == null) {
-                    // No reflection fallback — only ordinal=0 per handle survives participant check
-                    for (int ordinal = 0; ordinal < count; ordinal++) {
-                        requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
-                    }
-                } else if (newHandle) {
-                    // Register the element with the participant via ordinal=0
-                    requestor.reportMatch(new BytecodeSearchMatch(entry, 0));
-                    // Add remaining ordinals directly, bypassing the participant ownership check
-                    for (int ordinal = 1; ordinal < count; ordinal++) {
-                        searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
-                    }
-                } else {
-                    // Same element handle already registered — add all ordinals directly
-                    for (int ordinal = 0; ordinal < count; ordinal++) {
-                        searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
-                    }
-                }
+                reportMatches(requestor, searchResult, registeredHandles, entry);
             }
         });
     }
 
+    private static void reportMatches(ISearchRequestor requestor, AbstractTextSearchResult searchResult,
+            Set<String> registeredHandles, BytecodeSearchEntry entry) {
+        String handle = entry.getElementHandle();
+        int count = entry.getOccurrenceCount();
+        boolean newHandle = registeredHandles.add(handle);
+        if (newHandle && searchResult == null) {
+            // No reflection fallback — only ordinal=0 per handle survives participant check
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+        } else if (newHandle) {
+            // Register the element with the participant via ordinal=0
+            requestor.reportMatch(new BytecodeSearchMatch(entry, 0));
+            // Add remaining ordinals directly, bypassing the participant ownership check
+            for (int ordinal = 1; ordinal < count; ordinal++) {
+                searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+        } else {
+            // Same element handle already registered — add all ordinals directly
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+        }
+    }
+
     private static AbstractTextSearchResult searchResultFrom(ISearchRequestor requestor) {
-        for (Class<?> cls = requestor.getClass(); cls != null; cls = cls.getSuperclass()) {
-            for (Field f : cls.getDeclaredFields()) {
-                if (AbstractTextSearchResult.class.isAssignableFrom(f.getType())) {
-                    try {
-                        f.setAccessible(true);
-                        Object value = f.get(requestor);
-                        if (value instanceof AbstractTextSearchResult r) {
-                            return r;
-                        }
-                    } catch (Exception e) {
-                        Logger.debug(e);
-                    }
+        for (Field f : requestor.getClass().getDeclaredFields()) {
+            if (!AbstractTextSearchResult.class.isAssignableFrom(f.getType())) {
+                continue;
+            }
+            try {
+                f.setAccessible(true);
+                Object value = f.get(requestor);
+                if (value instanceof AbstractTextSearchResult r) {
+                    return r;
                 }
+            } catch (Exception e) {
+                Logger.debug(e);
             }
         }
         return null;

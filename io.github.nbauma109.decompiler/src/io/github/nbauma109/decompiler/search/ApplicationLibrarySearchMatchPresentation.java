@@ -52,29 +52,11 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
         if (javaElement == null) {
             return;
         }
-
         IEditorPart editor = openJavaElement(editorOpenTarget(match, javaElement), activate);
-        String source = documentText(editor);
-        if (source == null || source.isBlank()) {
-            // Editor document may not yet be populated (async decompilation).
-            // Fall back to JDT's source accessor — ECD hooks this via its SourceMapper.
-            IClassFile topLevel = ClassUtil.getTopLevelClassFile(classFile(javaElement));
-            if (topLevel != null) {
-                try {
-                    String classFileSource = topLevel.getSource();
-                    if (classFileSource != null && !classFileSource.isBlank()) {
-                        source = classFileSource;
-                    }
-                } catch (JavaModelException e) {
-                    Logger.debug(e);
-                }
-            }
-        }
+        String source = resolvedSource(editor, javaElement);
         List<BytecodeSourceRangeResolver.SourceRange> highlights = null;
         if (match instanceof BytecodeSearchMatch bytecodeMatch) {
-            ResolvedRanges resolved = editor instanceof ITextEditor textEditor
-                    ? resolveRanges(bytecodeMatch, textEditor, source)
-                    : new ResolvedRanges(sourceRangeResolver.rangeFor(bytecodeMatch.getEntry(), source), List.of());
+            ResolvedRanges resolved = resolveMatchRanges(bytecodeMatch, editor, source);
             BytecodeSourceRangeResolver.SourceRange range = resolved.selected();
             highlights = resolved.highlights();
             bytecodeMatch.update(range);
@@ -83,13 +65,43 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
         }
         if (editor instanceof ITextEditor textEditor && currentOffset >= 0 && currentLength > 0) {
             protectExternalTextSelection(editor);
-            BytecodeSearchEditorHighlighter.highlight(textEditor, highlights == null || highlights.isEmpty()
+            List<BytecodeSourceRangeResolver.SourceRange> toHighlight = highlights == null || highlights.isEmpty()
                     ? List.of(new BytecodeSourceRangeResolver.SourceRange(currentOffset, currentLength))
-                    : highlights);
+                    : highlights;
+            BytecodeSearchEditorHighlighter.highlight(textEditor, toHighlight);
             selectAndReveal(textEditor, currentOffset, currentLength);
         } else {
             JavaUI.revealInEditor(editor, javaElement);
         }
+    }
+
+    private String resolvedSource(IEditorPart editor, IJavaElement javaElement) {
+        String source = documentText(editor);
+        if (source != null && !source.isBlank()) {
+            return source;
+        }
+        // Editor document may not yet be populated (async decompilation).
+        // Fall back to JDT's source accessor — ECD hooks this via its SourceMapper.
+        IClassFile topLevel = ClassUtil.getTopLevelClassFile(classFile(javaElement));
+        if (topLevel == null) {
+            return source;
+        }
+        try {
+            String classFileSource = topLevel.getSource();
+            if (classFileSource != null && !classFileSource.isBlank()) {
+                return classFileSource;
+            }
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+        }
+        return source;
+    }
+
+    private ResolvedRanges resolveMatchRanges(BytecodeSearchMatch bytecodeMatch, IEditorPart editor, String source) {
+        if (editor instanceof ITextEditor textEditor) {
+            return resolveRanges(bytecodeMatch, textEditor, source);
+        }
+        return new ResolvedRanges(sourceRangeResolver.rangeFor(bytecodeMatch.getEntry(), source), List.of());
     }
 
     private ResolvedRanges resolveRanges(BytecodeSearchMatch selectedMatch, ITextEditor textEditor, String source) {

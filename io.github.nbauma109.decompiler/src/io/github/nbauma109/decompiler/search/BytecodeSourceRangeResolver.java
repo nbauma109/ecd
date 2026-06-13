@@ -153,7 +153,8 @@ public class BytecodeSourceRangeResolver {
         ParsedClassFile parsed = parsedSource;
         if (parsed == null) {
             IJavaElement el = entry.getElement();
-            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, el == null ? null : el.getJavaProject());
+            IJavaProject project = el == null ? null : el.getJavaProject();
+            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, project);
         }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
@@ -277,17 +278,12 @@ public class BytecodeSourceRangeResolver {
         private List<SourceRange> computeReferences(BytecodeSearchEntry entry) {
             SourceRange enclosing = enclosingSourceRange(entry.getElement(), unit);
             if (enclosing == null) {
-                Logger.debug("computeReferences: no enclosing window for " + entry.getName() + " " + entry.getDescriptor()); //$NON-NLS-1$ //$NON-NLS-2$
                 return List.of();
             }
             SourceWindow window = new SourceWindow(enclosing.offset(), enclosing.length());
             List<SourceRange> ranges = new ArrayList<>();
             unit.accept(new ReferenceVisitor(source, entry, window, ranges));
             ranges.sort(Comparator.comparingInt(SourceRange::offset));
-            Logger.debug("computeReferences: " + entry.getName() + " " + entry.getDescriptor() //$NON-NLS-1$ //$NON-NLS-2$
-                    + " declaring=" + entry.getDeclaringTypeName() //$NON-NLS-1$
-                    + " window=[" + enclosing.offset() + "," + enclosing.length() + "]" //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                    + " found=" + ranges.size()); //$NON-NLS-1$
             return ranges.isEmpty() ? List.of() : List.copyOf(ranges);
         }
 
