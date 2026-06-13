@@ -75,15 +75,16 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
 
     private static void reportMatches(ISearchRequestor requestor, AbstractTextSearchResult searchResult,
             Set<String> registeredHandles, BytecodeSearchEntry entry) {
-        String handle = entry.getElementHandle();
         int count = entry.getOccurrenceCount();
-        boolean newHandle = registeredHandles.add(handle);
-        if (newHandle && searchResult == null) {
-            // No reflection fallback — only ordinal=0 per handle survives participant check
+        if (searchResult == null) {
+            // Reflection unavailable — report all ordinals directly; no grouping
             for (int ordinal = 0; ordinal < count; ordinal++) {
                 requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
             }
-        } else if (newHandle) {
+            return;
+        }
+        String handle = entry.getElementHandle();
+        if (registeredHandles.add(handle)) {
             // Register the element with the participant via ordinal=0
             requestor.reportMatch(new BytecodeSearchMatch(entry, 0));
             // Add remaining ordinals directly, bypassing the participant ownership check
