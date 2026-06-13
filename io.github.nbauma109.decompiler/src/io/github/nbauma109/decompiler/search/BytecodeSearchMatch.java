@@ -26,7 +26,7 @@ public final class BytecodeSearchMatch extends Match {
     }
 
     public BytecodeSearchMatch(BytecodeSearchEntry entry, int ordinal) {
-        super(new BytecodeSearchElement(entry), initialOffset(entry), initialLength(entry));
+        super(new BytecodeSearchElement(entry), initialOffset(entry, ordinal), initialLength(entry));
         this.entry = entry;
         this.ordinal = ordinal;
     }
@@ -44,9 +44,16 @@ public final class BytecodeSearchMatch extends Match {
         setLength(range.length());
     }
 
-    private static int initialOffset(BytecodeSearchEntry entry) {
+    private static int initialOffset(BytecodeSearchEntry entry, int ordinal) {
         ISourceRange range = initialRange(entry);
-        return range == null || range.getOffset() < 0 ? 0 : range.getOffset();
+        int base = range == null || range.getOffset() < 0 ? 0 : range.getOffset();
+        // Eclipse deduplicates matches whose (element, offset, length) tuple is identical.
+        // With handle-only element equality, different descriptor groups share the same element
+        // key, so their initial offsets must also differ.  We fold the descriptor into a slot
+        // number and multiply by a value that exceeds any realistic per-entry occurrence count.
+        // The real offset is set via update() before any navigation, so this value is transient.
+        int descriptorSlot = Math.abs(java.util.Objects.hashCode(entry.getDescriptor()) % 9973);
+        return base + descriptorSlot * 10000 + ordinal;
     }
 
     private static int initialLength(BytecodeSearchEntry entry) {

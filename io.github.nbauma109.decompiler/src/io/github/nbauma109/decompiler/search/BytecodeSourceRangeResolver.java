@@ -56,6 +56,8 @@ import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.LambdaExpression;
@@ -109,7 +111,8 @@ public class BytecodeSourceRangeResolver {
     }
 
     public Map<BytecodeSearchMatch, SourceRange> rangesFor(List<BytecodeSearchMatch> matches, String source) {
-        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source);
+        IJavaProject project = projectFrom(matches);
+        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source, project);
         Map<BytecodeSearchMatch, SourceRange> ranges = new IdentityHashMap<>(matches.size());
         for (BytecodeSearchMatch match : matches) {
             ranges.put(match, selectRange(match.getEntry(), rangesFor(match.getEntry(), source, parsed), match.getOrdinal()));
@@ -117,8 +120,21 @@ public class BytecodeSourceRangeResolver {
         return ranges;
     }
 
+    private static IJavaProject projectFrom(List<BytecodeSearchMatch> matches) {
+        for (BytecodeSearchMatch match : matches) {
+            IJavaElement element = match.getEntry().getElement();
+            if (element != null) {
+                IJavaProject project = element.getJavaProject();
+                if (project != null) {
+                    return project;
+                }
+            }
+        }
+        return null;
+    }
+
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges) {
-        return selectRange(entry, ranges, 0);
+        return selectRange(entry, ranges, Math.max(0, entry.getOccurrenceCount() - 1));
     }
 
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges, int ordinal) {
@@ -136,7 +152,8 @@ public class BytecodeSourceRangeResolver {
 
         ParsedClassFile parsed = parsedSource;
         if (parsed == null) {
-            parsed = StringUtils.isBlank(source) ? parsedClassFile(entry.getElement()) : parse(source);
+            IJavaElement el = entry.getElement();
+            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, el == null ? null : el.getJavaProject());
         }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
@@ -151,11 +168,16 @@ public class BytecodeSourceRangeResolver {
         return List.of(fallback);
     }
 
-    private ParsedClassFile parse(String source) {
+    private ParsedClassFile parse(String source, IJavaProject project) {
         try {
             ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setSource(source.toCharArray());
+            if (project != null) {
+                parser.setProject(project);
+                parser.setResolveBindings(true);
+                parser.setBindingsRecovery(true);
+            }
             CompilationUnit unit = (CompilationUnit) parser.createAST(null);
             return new ParsedClassFile(source, unit);
         } catch (RuntimeException e) {
@@ -169,16 +191,17 @@ public class BytecodeSourceRangeResolver {
         if (classFile == null) {
             return null;
         }
-        return classFiles.computeIfAbsent(classFile.getHandleIdentifier(), ignored -> parse(classFile));
+        IJavaProject project = classFile.getJavaProject();
+        return classFiles.computeIfAbsent(classFile.getHandleIdentifier(), ignored -> parse(classFile, project));
     }
 
-    private ParsedClassFile parse(IClassFile classFile) {
+    private ParsedClassFile parse(IClassFile classFile, IJavaProject project) {
         try {
             String source = classFile.getSource();
             if (StringUtils.isBlank(source)) {
                 return null;
             }
-            return parse(source);
+            return parse(source, project);
         } catch (JavaModelException | RuntimeException e) {
             Logger.debug(e);
             return null;
@@ -254,35 +277,18 @@ public class BytecodeSourceRangeResolver {
         private List<SourceRange> computeReferences(BytecodeSearchEntry entry) {
             SourceRange enclosing = enclosingSourceRange(entry.getElement(), unit);
             if (enclosing == null) {
+                Logger.debug("computeReferences: no enclosing window for " + entry.getName() + " " + entry.getDescriptor()); //$NON-NLS-1$ //$NON-NLS-2$
                 return List.of();
             }
             SourceWindow window = new SourceWindow(enclosing.offset(), enclosing.length());
             List<SourceRange> ranges = new ArrayList<>();
-            unit.accept(new ReferenceVisitor(source, entry, window, ranges, false));
+            unit.accept(new ReferenceVisitor(source, entry, window, ranges));
             ranges.sort(Comparator.comparingInt(SourceRange::offset));
-            if (!ranges.isEmpty()) {
-                return List.copyOf(ranges);
-            }
-            // Strict pass found nothing. For METHOD references, try a relaxed pass that
-            // accepts non-type-qualified receivers (e.g. local variable like "pw.println()").
-            // When all relaxed matches share the same simple receiver name (e.g. all
-            // "writer.println()") they are unambiguously from the same declaring type, so
-            // return all of them and let the ordinal select the correct occurrence.
-            // Fall back to the size()==1 guard only when receiver names differ (ambiguous).
-            if (entry.getKind() == Kind.METHOD) {
-                List<SourceRange> relaxed = new ArrayList<>();
-                Set<String> relaxedReceivers = new HashSet<>();
-                unit.accept(new ReferenceVisitor(source, entry, window, relaxed, relaxedReceivers));
-                if (!relaxed.isEmpty()) {
-                    if (relaxedReceivers.size() <= 1) {
-                        return List.copyOf(relaxed);
-                    }
-                    if (relaxed.size() == 1) {
-                        return List.copyOf(relaxed);
-                    }
-                }
-            }
-            return List.of();
+            Logger.debug("computeReferences: " + entry.getName() + " " + entry.getDescriptor() //$NON-NLS-1$ //$NON-NLS-2$
+                    + " declaring=" + entry.getDeclaringTypeName() //$NON-NLS-1$
+                    + " window=[" + enclosing.offset() + "," + enclosing.length() + "]" //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    + " found=" + ranges.size()); //$NON-NLS-1$
+            return ranges.isEmpty() ? List.of() : List.copyOf(ranges);
         }
 
         private static SourceRange enclosingSourceRange(IJavaElement element, CompilationUnit unit) {
@@ -605,36 +611,26 @@ public class BytecodeSourceRangeResolver {
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
         private final List<SourceRange> ranges;
-        private final boolean relaxed;
-        private final Set<String> relaxedReceivers;
         private final Deque<Set<String>> localNameScopes = new ArrayDeque<>();
+        private final Deque<Map<String, String>> localTypeScopes = new ArrayDeque<>();
 
         private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
-                List<SourceRange> ranges, boolean relaxed) {
-            this(source, entry, window, ranges, relaxed, null);
-        }
-
-        private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
-                List<SourceRange> ranges, Set<String> relaxedReceivers) {
-            this(source, entry, window, ranges, true, relaxedReceivers);
-        }
-
-        private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
-                List<SourceRange> ranges, boolean relaxed, Set<String> relaxedReceivers) {
+                List<SourceRange> ranges) {
             this.source = source;
             this.entry = entry;
             this.window = window;
             this.ranges = ranges;
-            this.relaxed = relaxed;
-            this.relaxedReceivers = relaxedReceivers;
         }
 
         @Override
         public boolean visit(MethodDeclaration node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             for (Object parameter : node.parameters()) {
                 if (parameter instanceof SingleVariableDeclaration variable) {
-                    localNameScopes.peek().add(variable.getName().getIdentifier());
+                    String name = variable.getName().getIdentifier();
+                    localNameScopes.peek().add(name);
+                    localTypeScopes.peek().put(name, typeSimpleName(variable.getType()));
                 }
             }
             return true;
@@ -643,66 +639,78 @@ public class BytecodeSourceRangeResolver {
         @Override
         public void endVisit(MethodDeclaration node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(Block node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(Block node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(ForStatement node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(ForStatement node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(EnhancedForStatement node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(EnhancedForStatement node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(CatchClause node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(CatchClause node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(LambdaExpression node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(LambdaExpression node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(SingleVariableDeclaration node) {
             addLocalName(node.getName());
+            addLocalType(node.getName().getIdentifier(), node.getType());
             return true;
         }
 
@@ -710,6 +718,10 @@ public class BytecodeSourceRangeResolver {
         public boolean visit(VariableDeclarationFragment node) {
             if (!(node.getParent() instanceof FieldDeclaration)) {
                 addLocalName(node.getName());
+                Type declType = localDeclarationType(node.getParent());
+                if (declType != null) {
+                    addLocalType(node.getName().getIdentifier(), declType);
+                }
             }
             return true;
         }
@@ -793,10 +805,6 @@ public class BytecodeSourceRangeResolver {
         public boolean visit(MethodInvocation node) {
             if (entry.getKind() == Kind.METHOD && matchesMethodInvocation(node)) {
                 addFromNameThroughNode(node.getName(), node);
-                if (relaxedReceivers != null && node.getExpression() instanceof SimpleName sn
-                        && !isTypeLikeQualifier(sn)) {
-                    relaxedReceivers.add(sn.getIdentifier());
-                }
             }
             return true;
         }
@@ -945,6 +953,47 @@ public class BytecodeSourceRangeResolver {
             return false;
         }
 
+        private static Type localDeclarationType(ASTNode parent) {
+            if (parent instanceof VariableDeclarationStatement stmt) {
+                return stmt.getType();
+            }
+            if (parent instanceof VariableDeclarationExpression expr) {
+                return expr.getType();
+            }
+            return null;
+        }
+
+        private void addLocalType(String name, Type type) {
+            if (type != null && !localTypeScopes.isEmpty()) {
+                String typeName = typeSimpleName(type);
+                if (typeName != null && !typeName.isEmpty()) {
+                    localTypeScopes.peek().put(name, typeName);
+                }
+            }
+        }
+
+        private static String typeSimpleName(Type type) {
+            if (type == null) {
+                return null;
+            }
+            if (type instanceof ParameterizedType parameterized) {
+                type = parameterized.getType();
+            }
+            String text = type.toString();
+            int dot = text.lastIndexOf('.');
+            return dot >= 0 ? text.substring(dot + 1) : text;
+        }
+
+        private String lookupLocalType(String name) {
+            for (Map<String, String> scope : localTypeScopes) {
+                String type = scope.get(name);
+                if (type != null) {
+                    return type;
+                }
+            }
+            return null;
+        }
+
         private void addLocalName(SimpleName node) {
             if (!localNameScopes.isEmpty()) {
                 localNameScopes.peek().add(node.getIdentifier());
@@ -986,6 +1035,15 @@ public class BytecodeSourceRangeResolver {
             if (!matches(node.getName(), node.arguments().size())) {
                 return false;
             }
+            IMethodBinding binding = node.resolveMethodBinding();
+            if (binding != null) {
+                ITypeBinding declaringClass = binding.getDeclaringClass();
+                if (declaringClass != null) {
+                    return matchesDeclaringClass(declaringClass);
+                }
+                // Recovery binding with no declaring class — fall through to heuristics.
+            }
+            // Fallback heuristic for when binding is unavailable (e.g. decompiled source)
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
                 return matchesDeclaringOwner(receiver.getFullyQualifiedName());
             }
@@ -995,19 +1053,26 @@ public class BytecodeSourceRangeResolver {
             if (node.getExpression() instanceof ThisExpression receiver) {
                 return matchesThisReceiverMethod(receiver, node.arguments());
             }
-            if (node.getExpression() != null) {
-                if (!relaxed) {
-                    // Receiver expression types are unavailable because decompiled text is parsed
-                    // without bindings. Only retain static-field-style receivers such as System.out,
-                    // where the root qualifier is type-like; reject local/expression receivers.
-                    return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
-                            && matchesArgumentTypeSyntax(node.arguments());
+            if (node.getExpression() instanceof SimpleName sn && !isTypeLikeQualifier(sn)) {
+                // Local variable or parameter receiver: use declared-type lookup, no binding needed.
+                String localType = lookupLocalType(sn.getIdentifier());
+                if (localType != null) {
+                    return matchesDeclaringOwner(localType) && matchesArgumentTypeSyntax(node.arguments());
                 }
-                // Relaxed pass: accept non-type-qualified receivers (local variables, expressions).
-                // The caller only uses this result when there is exactly one match in the window.
-                return matchesArgumentTypeSyntax(node.arguments());
+                return false;
+            }
+            if (node.getExpression() != null) {
+                return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
+                        && matchesArgumentTypeSyntax(node.arguments());
             }
             return matchesArgumentTypeSyntax(node.arguments());
+        }
+
+        private boolean matchesDeclaringClass(ITypeBinding declaring) {
+            if (declaring == null) {
+                return false;
+            }
+            return matchesDeclaringOwner(declaring.getQualifiedName());
         }
 
         private boolean matchesThisReceiverMethod(ThisExpression receiver, List<?> arguments) {
@@ -1064,6 +1129,15 @@ public class BytecodeSourceRangeResolver {
             if (!matches(node.getName())) {
                 return false;
             }
+            IMethodBinding binding = node.resolveMethodBinding();
+            if (binding != null) {
+                ITypeBinding declaringClass = binding.getDeclaringClass();
+                if (declaringClass != null) {
+                    return matchesDeclaringClass(declaringClass);
+                }
+                // Recovery binding with no declaring class — fall through to heuristics.
+            }
+            // Fallback heuristic
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
                 return matchesDeclaringOwner(receiver.getFullyQualifiedName());
             }

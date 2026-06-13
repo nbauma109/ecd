@@ -8,10 +8,13 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +42,7 @@ import org.eclipse.jdt.ui.search.IQueryParticipant;
 import org.eclipse.jdt.ui.search.ISearchRequestor;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jdt.ui.search.QuerySpecification;
+import org.eclipse.search.ui.text.AbstractTextSearchResult;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -55,6 +59,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         if (matcher == null) {
             return;
         }
+        AbstractTextSearchResult searchResult = searchResultFrom(requestor);
+        Set<String> registeredHandles = new HashSet<>();
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {
@@ -62,12 +68,48 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             IJavaElement element = entry.getElement();
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
+                String handle = entry.getElementHandle();
                 int count = entry.getOccurrenceCount();
-                for (int ordinal = 0; ordinal < count; ordinal++) {
-                    requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+                boolean newHandle = registeredHandles.add(handle);
+                if (newHandle && searchResult == null) {
+                    // No reflection fallback — only ordinal=0 per handle survives participant check
+                    for (int ordinal = 0; ordinal < count; ordinal++) {
+                        requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+                    }
+                } else if (newHandle) {
+                    // Register the element with the participant via ordinal=0
+                    requestor.reportMatch(new BytecodeSearchMatch(entry, 0));
+                    // Add remaining ordinals directly, bypassing the participant ownership check
+                    for (int ordinal = 1; ordinal < count; ordinal++) {
+                        searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+                    }
+                } else {
+                    // Same element handle already registered — add all ordinals directly
+                    for (int ordinal = 0; ordinal < count; ordinal++) {
+                        searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+                    }
                 }
             }
         });
+    }
+
+    private static AbstractTextSearchResult searchResultFrom(ISearchRequestor requestor) {
+        for (Class<?> cls = requestor.getClass(); cls != null; cls = cls.getSuperclass()) {
+            for (Field f : cls.getDeclaredFields()) {
+                if (AbstractTextSearchResult.class.isAssignableFrom(f.getType())) {
+                    try {
+                        f.setAccessible(true);
+                        Object value = f.get(requestor);
+                        if (value instanceof AbstractTextSearchResult r) {
+                            return r;
+                        }
+                    } catch (Exception e) {
+                        Logger.debug(e);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     @Override

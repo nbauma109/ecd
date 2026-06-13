@@ -9,6 +9,8 @@
 package io.github.nbauma109.decompiler.search;
 
 import org.apache.commons.lang3.Strings;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 
@@ -160,6 +162,43 @@ public class BytecodeSearchEntry {
 
     int getOccurrenceCount() {
         return occurrenceCount;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        BytecodeSearchEntry other = (BytecodeSearchEntry) obj;
+        return new EqualsBuilder()
+            .append(kind, other.kind)
+            .append(declaration, other.declaration)
+            .append(elementHandle, other.elementHandle)
+            .append(name, other.name)
+            .append(qualifiedName, other.qualifiedName)
+            .append(declaringTypeName, other.declaringTypeName)
+            .append(descriptor, other.descriptor)
+            .append(access, other.access)
+            .append(typeCategory, other.typeCategory)
+            .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+            .append(kind)
+            .append(declaration)
+            .append(elementHandle)
+            .append(name)
+            .append(qualifiedName)
+            .append(declaringTypeName)
+            .append(descriptor)
+            .append(access)
+            .append(typeCategory)
+            .toHashCode();
     }
 
 }

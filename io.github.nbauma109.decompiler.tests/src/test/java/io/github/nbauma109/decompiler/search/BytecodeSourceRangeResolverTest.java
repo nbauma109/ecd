@@ -11,8 +11,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +43,8 @@ import org.junit.Test;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
+import io.github.nbauma109.decompiler.testutil.PrintlnFixtureJarBuilder;
 
 @SuppressWarnings("restriction")
 public class BytecodeSourceRangeResolverTest {
@@ -130,6 +134,7 @@ public class BytecodeSourceRangeResolverTest {
 
                 void target() {}
                 static void staticTarget() {}
+                void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {}
             }
 
             class Prims {
@@ -155,6 +160,7 @@ public class BytecodeSourceRangeResolverTest {
     private IType primsType;
     private IPackageFragment packageFragment;
     private IMethod takesMethod;
+    private IMethod printLinesMethod;
     private IMethod defaultConstructor;
     private IMethod intConstructor;
     private IMethod targetMethod;
@@ -191,6 +197,7 @@ public class BytecodeSourceRangeResolverTest {
         ownerType = unit.getType(OWNER); //$NON-NLS-1$
         primsType = unit.getType("Prims"); //$NON-NLS-1$
         takesMethod = method(ownerType, "takes", 2); //$NON-NLS-1$
+        printLinesMethod = method(ownerType, "printLines", 2); //$NON-NLS-1$
         defaultConstructor = constructor(ownerType, 0);
         intConstructor = constructor(ownerType, 1);
         targetMethod = method(ownerType, TARGET, 0); //$NON-NLS-1$
@@ -928,6 +935,66 @@ public class BytecodeSourceRangeResolverTest {
     }
 
     @Test
+    public void multipleLocalVariableReceiverCallsWithImportResolveInOrder() {
+        String src = """
+                package fixture;
+                import java.io.PrintWriter;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        PrintWriter pw = null;
+                        pw.println("first");
+                        pw.println("second");
+                        pw.println("third");
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry e = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchMatch m0 = new BytecodeSearchMatch(e, 0);
+        BytecodeSearchMatch m1 = new BytecodeSearchMatch(e, 1);
+        BytecodeSearchMatch m2 = new BytecodeSearchMatch(e, 2);
+
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(m0, m1, m2), src);
+
+        assertEquals("println(\"first\")", rangeText(ranges.get(m0), src)); //$NON-NLS-1$
+        assertEquals("println(\"second\")", rangeText(ranges.get(m1), src)); //$NON-NLS-1$
+        assertEquals("println(\"third\")", rangeText(ranges.get(m2), src)); //$NON-NLS-1$
+    }
+
+    @Test
+    public void multipleParameterReceiverCallsResolveInOrder() {
+        // Mirrors ComponentHelper.class: PrintWriter out is a method parameter (not a local var).
+        // Two receivers 'out' and 'err' (both PrintWriter) are disambiguated by the type-scope
+        // which maps each variable name to its declared type and filters against the declaring owner.
+        String src = """
+                package fixture;
+                import java.io.PrintWriter;
+                class Owner {
+                    void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {
+                        out.println("alpha");
+                        err.println("beta");
+                        out.println("gamma");
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry e = reference(Kind.METHOD, printLinesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchMatch m0 = new BytecodeSearchMatch(e, 0);
+        BytecodeSearchMatch m1 = new BytecodeSearchMatch(e, 1);
+        BytecodeSearchMatch m2 = new BytecodeSearchMatch(e, 2);
+
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(m0, m1, m2), src);
+
+        assertEquals("println(\"alpha\")", rangeText(ranges.get(m0), src)); //$NON-NLS-1$
+        assertEquals("println(\"beta\")", rangeText(ranges.get(m1), src)); //$NON-NLS-1$
+        assertEquals("println(\"gamma\")", rangeText(ranges.get(m2), src)); //$NON-NLS-1$
+    }
+
+    @Test
     public void explicitThisMethodInvocationResolvesLikeImplicitReceiver() {
         String src = """
                 package fixture;
@@ -1402,6 +1469,125 @@ public class BytecodeSourceRangeResolverTest {
                 customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
     }
 
+    /**
+     * Regression test for {@code generateFile(PrintWriter)} with 21 {@code println(String)} and
+     * 15 {@code println()} call sites (36 total). The resolver must navigate to each distinct
+     * occurrence in source order using the type-scope heuristic that resolves
+     * {@code writer} → {@code PrintWriter}.
+     */
+    @Test
+    public void destinationDotFileInterceptorGenerateFilePrintWriterResolvesAllOccurrencesInOrder() throws Exception {
+        File jar = PrintlnFixtureJarBuilder.buildJar(DecompilerTestSupport.createTargetTempDir("println-fixture")); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "destination-dot-file-test"); //$NON-NLS-1$
+        try {
+            IType type = setup.javaProject().findType(PrintlnFixtureJarBuilder.DESTINATION_CLASS);
+            assertNotNull("DestinationDotFileFixture must be resolvable from fixture JAR", type); //$NON-NLS-1$
+
+            IMethod generateFile = method(type, "generateFile", 1); //$NON-NLS-1$
+
+            BytecodeSearchEntry printlnStr = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchEntry println = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+            int printlnStrCount = 21;
+            int printlnCount = 15;
+            List<BytecodeSearchMatch> matches = new ArrayList<>();
+            for (int i = 0; i < printlnStrCount; i++) {
+                matches.add(new BytecodeSearchMatch(printlnStr, i));
+            }
+            for (int i = 0; i < printlnCount; i++) {
+                matches.add(new BytecodeSearchMatch(println, i));
+            }
+
+            Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                    new BytecodeSourceRangeResolver().rangesFor(matches, PrintlnFixtureJarBuilder.destinationSource());
+
+            // All 21 println(String) ordinals must navigate to distinct, in-order positions.
+            int prevOffset = -1;
+            for (int i = 0; i < printlnStrCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(i));
+                assertNotNull("println(String) ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println(String) ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+            // All 15 println() ordinals must navigate to distinct, in-order positions.
+            prevOffset = -1;
+            for (int i = 0; i < printlnCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(printlnStrCount + i));
+                assertNotNull("println() ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println() ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+        } finally {
+            if (setup.project().exists()) {
+                setup.project().delete(true, true, new NullProgressMonitor());
+            }
+        }
+    }
+
+    /**
+     * Regression test for {@code generateFile(PrintWriter)} with 4 {@code println(String)} and
+     * 7 {@code println()} call sites (11 total). The resolver must navigate to each distinct
+     * occurrence in source order using the type-scope heuristic.
+     */
+    @Test
+    public void connectionDotFileInterceptorGenerateFilePrintWriterResolvesAllOccurrencesInOrder() throws Exception {
+        File jar = PrintlnFixtureJarBuilder.buildJar(DecompilerTestSupport.createTargetTempDir("println-fixture")); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "connection-dot-file-test"); //$NON-NLS-1$
+        try {
+            IType type = setup.javaProject().findType(PrintlnFixtureJarBuilder.CONNECTION_CLASS);
+            assertNotNull("ConnectionDotFileFixture must be resolvable from fixture JAR", type); //$NON-NLS-1$
+
+            IMethod generateFile = method(type, "generateFile", 1); //$NON-NLS-1$
+
+            BytecodeSearchEntry printlnStr = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchEntry println = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+            int printlnStrCount = 4;
+            int printlnCount = 7;
+            List<BytecodeSearchMatch> matches = new ArrayList<>();
+            for (int i = 0; i < printlnStrCount; i++) {
+                matches.add(new BytecodeSearchMatch(printlnStr, i));
+            }
+            for (int i = 0; i < printlnCount; i++) {
+                matches.add(new BytecodeSearchMatch(println, i));
+            }
+
+            Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                    new BytecodeSourceRangeResolver().rangesFor(matches, PrintlnFixtureJarBuilder.connectionSource());
+
+            // All 4 println(String) ordinals must navigate to distinct, in-order positions.
+            int prevOffset = -1;
+            for (int i = 0; i < printlnStrCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(i));
+                assertNotNull("println(String) ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println(String) ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+            // All 7 println() ordinals must navigate to distinct, in-order positions.
+            prevOffset = -1;
+            for (int i = 0; i < printlnCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(printlnStrCount + i));
+                assertNotNull("println() ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println() ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+        } finally {
+            if (setup.project().exists()) {
+                setup.project().delete(true, true, new NullProgressMonitor());
+            }
+        }
+    }
+
     private static IField binaryLocalClassField(String classFileName, String fieldName) {
         IClassFile classFile = proxy(IClassFile.class, (proxy, method, args) -> {
             if ("getElementName".equals(method.getName())) { //$NON-NLS-1$
@@ -1498,6 +1684,10 @@ public class BytecodeSourceRangeResolverTest {
             }
         }
         throw new AssertionError("Missing constructor with " + parameterCount + " parameters"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private static String rangeText(BytecodeSourceRangeResolver.SourceRange range, String src) {
+        return src.substring(range.offset(), range.offset() + range.length());
     }
 
     private static void assertRangeText(BytecodeSourceRangeResolver.SourceRange range, String expected) {

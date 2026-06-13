@@ -18,6 +18,12 @@ public class Logger {
     private Logger() {
     }
 
+    public static void debug(String message) {
+        if (message != null) {
+            System.err.println(message);
+        }
+    }
+
     public static void debug(String message, Throwable throwable) {
         try {
             if (message != null) {

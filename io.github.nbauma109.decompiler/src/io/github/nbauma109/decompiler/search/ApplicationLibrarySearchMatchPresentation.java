@@ -34,6 +34,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 
 import io.github.nbauma109.decompiler.editor.JavaDecompilerClassFileEditor;
 import io.github.nbauma109.decompiler.util.ClassUtil;
+import io.github.nbauma109.decompiler.util.Logger;
 
 public class ApplicationLibrarySearchMatchPresentation implements IMatchPresentation {
 
@@ -54,6 +55,21 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
 
         IEditorPart editor = openJavaElement(editorOpenTarget(match, javaElement), activate);
         String source = documentText(editor);
+        if (source == null || source.isBlank()) {
+            // Editor document may not yet be populated (async decompilation).
+            // Fall back to JDT's source accessor — ECD hooks this via its SourceMapper.
+            IClassFile topLevel = ClassUtil.getTopLevelClassFile(classFile(javaElement));
+            if (topLevel != null) {
+                try {
+                    String classFileSource = topLevel.getSource();
+                    if (classFileSource != null && !classFileSource.isBlank()) {
+                        source = classFileSource;
+                    }
+                } catch (JavaModelException e) {
+                    Logger.debug(e);
+                }
+            }
+        }
         List<BytecodeSourceRangeResolver.SourceRange> highlights = null;
         if (match instanceof BytecodeSearchMatch bytecodeMatch) {
             ResolvedRanges resolved = editor instanceof ITextEditor textEditor

@@ -8,6 +8,8 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jdt.core.IJavaElement;
 
@@ -34,6 +36,27 @@ public final class BytecodeSearchElement implements IAdaptable {
             return adapter.cast(javaElement);
         }
         return null;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        BytecodeSearchElement other = (BytecodeSearchElement) obj;
+        return new EqualsBuilder()
+            .append(entry.getElementHandle(), other.entry.getElementHandle())
+            .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+            .append(entry.getElementHandle())
+            .toHashCode();
     }
 
     @Override
