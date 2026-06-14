@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,9 +26,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
@@ -112,7 +115,8 @@ public class BytecodeSourceRangeResolver {
 
     public Map<BytecodeSearchMatch, SourceRange> rangesFor(List<BytecodeSearchMatch> matches, String source) {
         IJavaProject project = projectFrom(matches);
-        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source, project);
+        String unitName = unitNameFrom(matches);
+        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source, project, unitName);
         Map<BytecodeSearchMatch, SourceRange> ranges = new IdentityHashMap<>(matches.size());
         for (BytecodeSearchMatch match : matches) {
             ranges.put(match, selectRange(match.getEntry(), rangesFor(match.getEntry(), source, parsed), match.getOrdinal()));
@@ -154,7 +158,7 @@ public class BytecodeSourceRangeResolver {
         if (parsed == null) {
             IJavaElement el = entry.getElement();
             IJavaProject project = el == null ? null : el.getJavaProject();
-            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, project);
+            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, project, unitName(el));
         }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
@@ -169,15 +173,18 @@ public class BytecodeSourceRangeResolver {
         return List.of(fallback);
     }
 
-    private ParsedClassFile parse(String source, IJavaProject project) {
+    private ParsedClassFile parse(String source, IJavaProject project, String unitName) {
         try {
             ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setSource(source.toCharArray());
             if (project != null) {
-                parser.setProject(project);
+                parser.setEnvironment(classpathOf(project), null, null, false);
                 parser.setResolveBindings(true);
                 parser.setBindingsRecovery(true);
+                if (unitName != null) {
+                    parser.setUnitName(unitName);
+                }
             }
             CompilationUnit unit = (CompilationUnit) parser.createAST(null);
             return new ParsedClassFile(source, unit);
@@ -185,6 +192,40 @@ public class BytecodeSourceRangeResolver {
             Logger.debug(e);
             return null;
         }
+    }
+
+    private static String[] classpathOf(IJavaProject project) {
+        try {
+            IClasspathEntry[] entries = project.getResolvedClasspath(true);
+            List<String> paths = new ArrayList<>();
+            for (IClasspathEntry entry : entries) {
+                if (entry.getEntryKind() != IClasspathEntry.CPE_LIBRARY) {
+                    continue;
+                }
+                File file = entry.getPath().toFile();
+                if (file.exists()) {
+                    paths.add(file.getAbsolutePath());
+                }
+            }
+            return paths.toArray(String[]::new);
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return new String[0];
+        }
+    }
+
+    private static String unitName(IJavaElement element) {
+        IJavaElement ancestor = element == null ? null : element.getAncestor(IJavaElement.CLASS_FILE);
+        return ancestor instanceof IClassFile cf ? unitName(cf) : null;
+    }
+
+    private static String unitName(IClassFile classFile) {
+        if (classFile.getParent() instanceof IPackageFragment pkg) {
+            String packagePath = pkg.getElementName().replace('.', '/');
+            String className = classFile.getElementName().replace(".class", ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+            return packagePath.isEmpty() ? className : packagePath + "/" + className; //$NON-NLS-1$
+        }
+        return classFile.getElementName().replace(".class", ".java"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     private ParsedClassFile parsedClassFile(IJavaElement element) {
@@ -202,11 +243,21 @@ public class BytecodeSourceRangeResolver {
             if (StringUtils.isBlank(source)) {
                 return null;
             }
-            return parse(source, project);
+            return parse(source, project, unitName(classFile));
         } catch (JavaModelException | RuntimeException e) {
             Logger.debug(e);
             return null;
         }
+    }
+
+    private static String unitNameFrom(List<BytecodeSearchMatch> matches) {
+        for (BytecodeSearchMatch match : matches) {
+            String unitName = unitName(match.getEntry().getElement());
+            if (unitName != null) {
+                return unitName;
+            }
+        }
+        return null;
     }
 
     private static IClassFile classFile(IJavaElement element) {
@@ -1034,10 +1085,12 @@ public class BytecodeSourceRangeResolver {
             IMethodBinding binding = node.resolveMethodBinding();
             if (binding != null) {
                 ITypeBinding declaringClass = binding.getDeclaringClass();
-                if (declaringClass != null) {
-                    return matchesDeclaringClass(declaringClass);
+                if (declaringClass != null
+                        && matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
+                    return true;
                 }
-                // Recovery binding with no declaring class — fall through to heuristics.
+                // Binding incomplete or declaring class didn't match — fall through to heuristics.
+                // Recovery bindings (insufficient classpath) can have non-null but empty declaring class.
             }
             // Fallback heuristic for when binding is unavailable (e.g. decompiled source)
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
@@ -1068,7 +1121,32 @@ public class BytecodeSourceRangeResolver {
             if (declaring == null) {
                 return false;
             }
-            return matchesDeclaringOwner(declaring.getQualifiedName());
+            return matchesDeclaringOwner(declaring.getQualifiedName())
+                || matchesDeclaringOwner(declaring.getName());
+        }
+
+        private boolean matchesMethodBindingDescriptor(IMethodBinding binding) {
+            String descriptor = entry.getDescriptor();
+            if (StringUtils.isBlank(descriptor)) {
+                return true;
+            }
+            try {
+                org.objectweb.asm.Type[] descriptorParams = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+                ITypeBinding[] bindingParams = binding.getParameterTypes();
+                if (descriptorParams.length != bindingParams.length) {
+                    return false;
+                }
+                for (int i = 0; i < descriptorParams.length; i++) {
+                    ITypeBinding bindingParam = bindingParams[i];
+                    if (bindingParam != null
+                            && !bindingParam.getQualifiedName().equals(descriptorParams[i].getClassName())) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (IllegalArgumentException e) {
+                return true;
+            }
         }
 
         private boolean matchesThisReceiverMethod(ThisExpression receiver, List<?> arguments) {
@@ -1117,6 +1195,10 @@ public class BytecodeSourceRangeResolver {
                 if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
                     return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
                 }
+                // Bare integer literal — decompilers emit explicit boxing for autoboxed args,
+                // so a plain int literal is incompatible with any reference type.
+                int sort = expectedType.getSort();
+                return sort != org.objectweb.asm.Type.OBJECT && sort != org.objectweb.asm.Type.ARRAY;
             }
             return true;
         }
@@ -1128,10 +1210,11 @@ public class BytecodeSourceRangeResolver {
             IMethodBinding binding = node.resolveMethodBinding();
             if (binding != null) {
                 ITypeBinding declaringClass = binding.getDeclaringClass();
-                if (declaringClass != null) {
-                    return matchesDeclaringClass(declaringClass);
+                if (declaringClass != null
+                        && matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
+                    return true;
                 }
-                // Recovery binding with no declaring class — fall through to heuristics.
+                // Binding incomplete or declaring class didn't match — fall through to heuristics.
             }
             // Fallback heuristic
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {

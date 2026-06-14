@@ -8,6 +8,8 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.util.Objects;
+
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
@@ -52,8 +54,8 @@ public final class BytecodeSearchMatch extends Match {
         // key, so their initial offsets must also differ.  We fold the descriptor into a slot
         // number and multiply by a value that exceeds any realistic per-entry occurrence count.
         // The real offset is set via update() before any navigation, so this value is transient.
-        int descriptorSlot = Math.abs(java.util.Objects.hashCode(entry.getDescriptor()) % 9973);
-        return base + descriptorSlot * 10000 + ordinal;
+        int slot = Math.abs(Objects.hash(entry.getDescriptor(), entry.getName()) % 9973);
+        return base + slot * 10000 + ordinal;
     }
 
     private static int initialLength(BytecodeSearchEntry entry) {
