@@ -533,8 +533,13 @@ public class BytecodeJarIndexer {
 
         private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
+            return addReference(kind, name, qualifiedName, owner, descriptor, element, true);
+        }
+
+        private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, boolean countable) {
             return addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, Access.NONE, false),
-                    element);
+                    element, countable);
         }
 
         private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
@@ -543,9 +548,13 @@ public class BytecodeJarIndexer {
         }
 
         private MemberReference addReference(ReferenceSpec reference, IJavaElement element) {
+            return addReference(reference, element, true);
+        }
+
+        private MemberReference addReference(ReferenceSpec reference, IJavaElement element, boolean countable) {
             IJavaElement enclosingElement = element == null ? type : element;
             MemberReference member = new MemberReference(reference.name(), reference.owner(), reference.descriptor(),
-                    reference.access(), reference.compoundCandidate());
+                    reference.access(), reference.compoundCandidate(), countable);
             switch (reference.kind()) {
               case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
@@ -558,12 +567,21 @@ public class BytecodeJarIndexer {
 
         private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element, Access access) {
+            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, access, true);
+        }
+
+        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, Access access, boolean countable) {
             addReferenceEntry(new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor), access, TypeCategory.UNKNOWN), element);
+                    pool(descriptor), access, TypeCategory.UNKNOWN), element, countable);
         }
 
         private void addReferenceEntry(EntrySpec spec, IJavaElement element) {
-            add(newEntry(element, spec), true);
+            addReferenceEntry(spec, element, true);
+        }
+
+        private void addReferenceEntry(EntrySpec spec, IJavaElement element, boolean countable) {
+            add(newEntry(element, spec), countable);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
@@ -607,7 +625,7 @@ public class BytecodeJarIndexer {
                         qualifiedName = member.owner();
                     }
                     addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
-                            entry.getKey(), member.access());
+                            entry.getKey(), member.access(), member.countable());
                 }
             }
         }
@@ -658,7 +676,7 @@ public class BytecodeJarIndexer {
                             && lookahead.owner().equals(candidate.owner())
                             && lookahead.descriptor().equals(candidate.descriptor())) {
                         result.add(new MemberReference(candidate.name(), candidate.owner(), candidate.descriptor(),
-                                Access.READ_WRITE, false));
+                                Access.READ_WRITE, false, true));
                         result.addAll(skipped);
                         return true;
                     }
@@ -1135,6 +1153,7 @@ public class BytecodeJarIndexer {
             private final IJavaElement method;
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
+            private final Set<Label> finallyHandlerLabels = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
@@ -1142,6 +1161,7 @@ public class BytecodeJarIndexer {
             private int pendingStaticCompoundStackDepth = -1;
             private int stackDepth = 0;
             private int previousOpcode = -1;
+            private boolean inFinallyHandler = false;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
                 super(Opcodes.ASM9);
@@ -1248,9 +1268,9 @@ public class BytecodeJarIndexer {
                 // a call site — skip it here; it is stored in the member reference for matching.
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
-                            qualifiedTypeName(owner), descriptor, method);
+                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
                 } else {
-                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method);
+                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = opcode;
@@ -1299,7 +1319,15 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInsn(int opcode) {
                 stackDepth = Math.max(0, stackDepth + stackDelta(opcode));
+                if (inFinallyHandler && isFinallyExitInsn(opcode)) {
+                    inFinallyHandler = false;
+                }
                 previousOpcode = opcode;
+            }
+
+            private static boolean isFinallyExitInsn(int opcode) {
+                return opcode == Opcodes.ATHROW
+                    || (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN);
             }
 
             @Override
@@ -1340,7 +1368,7 @@ public class BytecodeJarIndexer {
                         && references.get(references.size() - 1) == pendingStaticCompoundRead) {
                     references.set(references.size() - 1, new MemberReference(pendingStaticCompoundRead.name(),
                             pendingStaticCompoundRead.owner(), pendingStaticCompoundRead.descriptor(),
-                            pendingStaticCompoundRead.access(), false));
+                            pendingStaticCompoundRead.access(), false, pendingStaticCompoundRead.countable()));
                 }
                 pendingStaticCompoundRead = null;
                 pendingStaticCompoundElement = null;
@@ -1473,6 +1501,9 @@ public class BytecodeJarIndexer {
                 if (catchHandlerTypes.containsKey(label)) {
                     prevHandlerLabel = label;
                 }
+                if (finallyHandlerLabels.contains(label)) {
+                    inFinallyHandler = true;
+                }
             }
 
             @Override
@@ -1496,6 +1527,11 @@ public class BytecodeJarIndexer {
                     Label handler, String type) {
                 if (type != null) {
                     catchHandlerTypes.computeIfAbsent(handler, k -> new HashSet<>()).add(type);
+                } else {
+                    // type == null marks the compiler-generated exception path of a finally block.
+                    // Instructions in this handler are duplicates of the inline finally copy; tracking
+                    // the entry label lets visitLabel suppress their occurrence counts.
+                    finallyHandlerLabels.add(handler);
                 }
                 addTypeReference(type, method);
             }
@@ -1552,7 +1588,7 @@ public class BytecodeJarIndexer {
     }
 
     private record MemberReference(String name, String owner, String descriptor, Access access,
-            boolean compoundCandidate) {
+            boolean compoundCandidate, boolean countable) {
     }
 
     private record ReferenceSpec(Kind kind, String name, String qualifiedName, String owner, String descriptor,
