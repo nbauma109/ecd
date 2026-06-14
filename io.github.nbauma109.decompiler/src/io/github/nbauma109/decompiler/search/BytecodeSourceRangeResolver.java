@@ -1209,10 +1209,10 @@ public class BytecodeSourceRangeResolver {
                 if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
                     return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
                 }
-                // Bare integer literal — decompilers emit explicit boxing for autoboxed args,
-                // so a plain int literal is incompatible with any reference type.
-                int sort = expectedType.getSort();
-                return sort != org.objectweb.asm.Type.OBJECT && sort != org.objectweb.asm.Type.ARRAY;
+                // Bare integer literal can be widened (int→long/float/double) or autoboxed
+                // (e.g. list.add(1) compiles to an Object descriptor). Only boolean is
+                // definitively incompatible with an integer value.
+                return expectedType.getSort() != org.objectweb.asm.Type.BOOLEAN;
             }
             return true;
         }
@@ -1229,7 +1229,10 @@ public class BytecodeSourceRangeResolver {
             boolean expectPrimitive = sort >= org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE;
             boolean localPrimitive = PRIMITIVE_TYPE_NAMES.contains(localType);
             if (expectPrimitive != localPrimitive) {
-                return false; // primitive/reference mismatch — definitive rejection
+                // A primitive local can be autoboxed to a reference parameter (e.g. list.add(i)
+                // compiles to Object descriptor). The inverse — a reference local where a
+                // primitive is expected — cannot be implicitly unboxed.
+                return localPrimitive; // true → primitive→reference: allow; false → reference→primitive: reject
             }
             if (expectPrimitive) {
                 return expectedType.getClassName().equals(localType); // e.g. "int" vs "long"
