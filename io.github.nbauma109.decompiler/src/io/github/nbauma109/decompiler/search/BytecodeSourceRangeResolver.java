@@ -655,6 +655,9 @@ public class BytecodeSourceRangeResolver {
 
     private static final class ReferenceVisitor extends ASTVisitor {
 
+        private static final Set<String> PRIMITIVE_TYPE_NAMES = Set.of(
+                "boolean", "byte", "char", "short", "int", "long", "float", "double"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$ //$NON-NLS-8$
+
         private final String source;
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
@@ -1172,7 +1175,9 @@ public class BytecodeSourceRangeResolver {
                     return true;
                 }
                 for (int i = 0; i < argTypes.length; i++) {
-                    if (!compatibleArgumentSyntax(arguments.get(i), argTypes[i])) {
+                    Object arg = arguments.get(i);
+                    if (!compatibleArgumentSyntax(arg, argTypes[i])
+                            || !compatibleLocalVariableType(arg, argTypes[i])) {
                         return false;
                     }
                 }
@@ -1206,6 +1211,28 @@ public class BytecodeSourceRangeResolver {
                 int sort = expectedType.getSort();
                 return sort != org.objectweb.asm.Type.OBJECT && sort != org.objectweb.asm.Type.ARRAY;
             }
+            return true;
+        }
+
+        private boolean compatibleLocalVariableType(Object arg, org.objectweb.asm.Type expectedType) {
+            if (!(arg instanceof SimpleName sn)) {
+                return true;
+            }
+            String localType = lookupLocalType(sn.getIdentifier());
+            if (localType == null) {
+                return true;
+            }
+            int sort = expectedType.getSort();
+            boolean expectPrimitive = sort >= org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE;
+            boolean localPrimitive = PRIMITIVE_TYPE_NAMES.contains(localType);
+            if (expectPrimitive != localPrimitive) {
+                return false; // primitive/reference mismatch — definitive rejection
+            }
+            if (expectPrimitive) {
+                return expectedType.getClassName().equals(localType); // e.g. "int" vs "long"
+            }
+            // Both are reference types: subtype relationships are unknown without type hierarchy,
+            // so only reject if the local type is itself a known non-matching primitive.
             return true;
         }
 
