@@ -139,7 +139,7 @@ public class BytecodeSourceRangeResolver {
     }
 
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges) {
-        return selectRange(entry, ranges, Math.max(0, entry.getOccurrenceCount() - 1));
+        return selectRange(entry, ranges, 0);
     }
 
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges, int ordinal) {
@@ -1123,8 +1123,12 @@ public class BytecodeSourceRangeResolver {
             if (declaring == null) {
                 return false;
             }
-            return matchesDeclaringOwner(declaring.getQualifiedName())
-                || matchesDeclaringOwner(declaring.getName());
+            String qualifiedName = declaring.getQualifiedName();
+            if (!qualifiedName.isEmpty()) {
+                return matchesDeclaringOwner(qualifiedName);
+            }
+            // Recovery binding with no qualified name — fall back to simple name.
+            return matchesDeclaringOwner(declaring.getName());
         }
 
         private boolean matchesMethodBindingDescriptor(IMethodBinding binding) {
