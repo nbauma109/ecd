@@ -50,11 +50,14 @@ public final class BytecodeSearchMatch extends Match {
         ISourceRange range = initialRange(entry);
         int base = range == null || range.getOffset() < 0 ? 0 : range.getOffset();
         // Eclipse deduplicates matches whose (element, offset, length) tuple is identical.
-        // With handle-only element equality, different descriptor groups share the same element
-        // key, so their initial offsets must also differ.  We fold the descriptor into a slot
-        // number and multiply by a value that exceeds any realistic per-entry occurrence count.
-        // The real offset is set via update() before any navigation, so this value is transient.
-        int slot = Math.abs(Objects.hash(entry.getDescriptor(), entry.getName()) % 9973);
+        // With handle-only element equality, all entries for the same enclosing element share
+        // the same element key, so initial offsets must differ across every distinct entry
+        // (same-name/different-owner, READ vs WRITE of the same field, etc.).
+        // We hash the full entry identity into a slot and multiply by a value that exceeds any
+        // realistic per-entry occurrence count. The real offset is set via update() before any
+        // navigation, so this value is transient.
+        int slot = Math.abs(Objects.hash(entry.getKind(), entry.getName(), entry.getQualifiedName(),
+                entry.getDeclaringTypeName(), entry.getDescriptor(), entry.getAccess()) % 9973);
         return base + slot * 10000 + ordinal;
     }
 
