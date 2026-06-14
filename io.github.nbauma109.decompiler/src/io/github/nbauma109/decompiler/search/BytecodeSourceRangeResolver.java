@@ -94,6 +94,7 @@ import io.github.nbauma109.decompiler.util.Logger;
 public class BytecodeSourceRangeResolver {
 
     private static final int MAX_PARSED_CLASS_FILES = 8;
+    private static final String CLASS_SUFFIX = ".class"; //$NON-NLS-1$
 
     private final Map<String, ParsedClassFile> classFiles = new LinkedHashMap<>(MAX_PARSED_CLASS_FILES, 0.75f, true) {
         private static final long serialVersionUID = 1L;
@@ -222,10 +223,10 @@ public class BytecodeSourceRangeResolver {
     private static String unitName(IClassFile classFile) {
         if (classFile.getParent() instanceof IPackageFragment pkg) {
             String packagePath = pkg.getElementName().replace('.', '/');
-            String className = classFile.getElementName().replace(".class", ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+            String className = classFile.getElementName().replace(CLASS_SUFFIX, ".java"); //$NON-NLS-1$
             return packagePath.isEmpty() ? className : packagePath + "/" + className; //$NON-NLS-1$
         }
-        return classFile.getElementName().replace(".class", ".java"); //$NON-NLS-1$ //$NON-NLS-2$
+        return classFile.getElementName().replace(CLASS_SUFFIX, ".java"); //$NON-NLS-1$
     }
 
     private ParsedClassFile parsedClassFile(IJavaElement element) {
@@ -597,8 +598,8 @@ public class BytecodeSourceRangeResolver {
             IClassFile classFile = classFile(element);
             if (classFile != null) {
                 String classFileName = classFile.getElementName();
-                if (Strings.CS.endsWith(classFileName, ".class")) { //$NON-NLS-1$
-                    classFileName = classFileName.substring(0, classFileName.length() - ".class".length()); //$NON-NLS-1$
+                if (Strings.CS.endsWith(classFileName, CLASS_SUFFIX)) {
+                    classFileName = classFileName.substring(0, classFileName.length() - CLASS_SUFFIX.length());
                 }
                 List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
                 return new TypePath(names);
@@ -677,7 +678,7 @@ public class BytecodeSourceRangeResolver {
                 if (parameter instanceof SingleVariableDeclaration variable) {
                     String name = variable.getName().getIdentifier();
                     localNameScopes.peek().add(name);
-                    localTypeScopes.peek().put(name, typeSimpleName(variable.getType()));
+                    localTypeScopes.peek().put(name, typeSourceName(variable.getType()));
                 }
             }
             return true;
@@ -1012,23 +1013,21 @@ public class BytecodeSourceRangeResolver {
 
         private void addLocalType(String name, Type type) {
             if (type != null && !localTypeScopes.isEmpty()) {
-                String typeName = typeSimpleName(type);
+                String typeName = typeSourceName(type);
                 if (typeName != null && !typeName.isEmpty()) {
                     localTypeScopes.peek().put(name, typeName);
                 }
             }
         }
 
-        private static String typeSimpleName(Type type) {
+        private static String typeSourceName(Type type) {
             if (type == null) {
                 return null;
             }
             if (type instanceof ParameterizedType parameterized) {
                 type = parameterized.getType();
             }
-            String text = type.toString();
-            int dot = text.lastIndexOf('.');
-            return dot >= 0 ? text.substring(dot + 1) : text;
+            return type.toString();
         }
 
         private String lookupLocalType(String name) {
@@ -1103,18 +1102,21 @@ public class BytecodeSourceRangeResolver {
                 return matchesThisReceiverMethod(receiver, node.arguments());
             }
             if (node.getExpression() instanceof SimpleName sn && !isTypeLikeQualifier(sn)) {
-                // Local variable or parameter receiver: use declared-type lookup, no binding needed.
-                String localType = lookupLocalType(sn.getIdentifier());
-                if (localType != null) {
-                    return matchesDeclaringOwner(localType) && matchesArgumentTypeSyntax(node.arguments());
-                }
-                return false;
+                return matchesLocalReceiverMethod(sn, node.arguments());
             }
             if (node.getExpression() != null) {
                 return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
                         && matchesArgumentTypeSyntax(node.arguments());
             }
             return matchesArgumentTypeSyntax(node.arguments());
+        }
+
+        private boolean matchesLocalReceiverMethod(SimpleName receiver, List<?> arguments) {
+            String localType = lookupLocalType(receiver.getIdentifier());
+            if (localType == null) {
+                return false;
+            }
+            return matchesDeclaringOwner(localType) && matchesArgumentTypeSyntax(arguments);
         }
 
         private boolean matchesDeclaringClass(ITypeBinding declaring) {
