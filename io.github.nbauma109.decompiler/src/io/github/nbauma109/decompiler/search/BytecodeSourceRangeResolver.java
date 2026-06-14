@@ -658,6 +658,16 @@ public class BytecodeSourceRangeResolver {
         private static final Set<String> PRIMITIVE_TYPE_NAMES = Set.of(
                 "boolean", "byte", "char", "short", "int", "long", "float", "double"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$ //$NON-NLS-8$
 
+        private static final Map<String, String> WRAPPER_TO_PRIMITIVE = Map.ofEntries(
+                Map.entry("Boolean", "boolean"), Map.entry("java.lang.Boolean", "boolean"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Byte", "byte"), Map.entry("java.lang.Byte", "byte"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Character", "char"), Map.entry("java.lang.Character", "char"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Short", "short"), Map.entry("java.lang.Short", "short"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Integer", "int"), Map.entry("java.lang.Integer", "int"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Long", "long"), Map.entry("java.lang.Long", "long"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Float", "float"), Map.entry("java.lang.Float", "float"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Double", "double"), Map.entry("java.lang.Double", "double")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
         private final String source;
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
@@ -1229,17 +1239,39 @@ public class BytecodeSourceRangeResolver {
             boolean expectPrimitive = sort >= org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE;
             boolean localPrimitive = PRIMITIVE_TYPE_NAMES.contains(localType);
             if (expectPrimitive != localPrimitive) {
-                // A primitive local can be autoboxed to a reference parameter (e.g. list.add(i)
-                // compiles to Object descriptor). The inverse — a reference local where a
-                // primitive is expected — cannot be implicitly unboxed.
-                return localPrimitive; // true → primitive→reference: allow; false → reference→primitive: reject
+                if (localPrimitive) {
+                    // Primitive local → reference parameter: may be autoboxed (e.g. list.add(i)).
+                    return true;
+                }
+                // Reference local → primitive parameter: allowed only for known wrapper types
+                // that unbox (and optionally widen) to the expected primitive.
+                String unboxed = WRAPPER_TO_PRIMITIVE.get(localType);
+                return unboxed != null && widensPrimitiveTo(unboxed, expectedType.getClassName());
             }
             if (expectPrimitive) {
-                return expectedType.getClassName().equals(localType); // e.g. "int" vs "long"
+                return widensPrimitiveTo(localType, expectedType.getClassName());
             }
-            // Both are reference types: subtype relationships are unknown without type hierarchy,
-            // so only reject if the local type is itself a known non-matching primitive.
+            // Both are reference types: subtype relationships are unknown without type hierarchy.
             return true;
+        }
+
+        private static boolean widensPrimitiveTo(String from, String to) {
+            if (from.equals(to)) {
+                return true;
+            }
+            return switch (from) {
+                case "byte" -> //$NON-NLS-1$
+                    "short".equals(to) || "int".equals(to) || "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+                case "short", "char" -> //$NON-NLS-1$ //$NON-NLS-2$
+                    "int".equals(to) || "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                case "int" -> //$NON-NLS-1$
+                    "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                case "long" -> //$NON-NLS-1$
+                    "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$
+                case "float" -> //$NON-NLS-1$
+                    "double".equals(to); //$NON-NLS-1$
+                default -> false;
+            };
         }
 
         private boolean matchesExpressionMethodReference(ExpressionMethodReference node) {
