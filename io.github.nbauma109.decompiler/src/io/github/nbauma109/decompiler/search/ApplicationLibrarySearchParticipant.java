@@ -61,6 +61,13 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
         AbstractTextSearchResult searchResult = searchResultFrom(requestor);
         Set<String> registeredHandles = new HashSet<>();
+        if (searchResult != null) {
+            for (Object obj : searchResult.getElements()) {
+                if (obj instanceof BytecodeSearchElement bse) {
+                    registeredHandles.add(bse.getEntry().getElementHandle());
+                }
+            }
+        }
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {

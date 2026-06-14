@@ -95,6 +95,14 @@ public class BytecodeSourceRangeResolver {
 
     private static final int MAX_PARSED_CLASS_FILES = 8;
     private static final String CLASS_SUFFIX = ".class"; //$NON-NLS-1$
+    private static final String TYPE_BOOLEAN = "boolean"; //$NON-NLS-1$
+    private static final String TYPE_BYTE = "byte"; //$NON-NLS-1$
+    private static final String TYPE_CHAR = "char"; //$NON-NLS-1$
+    private static final String TYPE_DOUBLE = "double"; //$NON-NLS-1$
+    private static final String TYPE_FLOAT = "float"; //$NON-NLS-1$
+    private static final String TYPE_INT = "int"; //$NON-NLS-1$
+    private static final String TYPE_LONG = "long"; //$NON-NLS-1$
+    private static final String TYPE_SHORT = "short"; //$NON-NLS-1$
 
     private final Map<String, ParsedClassFile> classFiles = new LinkedHashMap<>(MAX_PARSED_CLASS_FILES, 0.75f, true) {
         private static final long serialVersionUID = 1L;
@@ -531,14 +539,14 @@ public class BytecodeSourceRangeResolver {
 
         private static String primitiveName(String signature) {
             return switch (signature) {
-            case "Z" -> "boolean"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "B" -> "byte"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "C" -> "char"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "D" -> "double"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "F" -> "float"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "I" -> "int"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "J" -> "long"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "S" -> "short"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "Z" -> TYPE_BOOLEAN; //$NON-NLS-1$
+            case "B" -> TYPE_BYTE; //$NON-NLS-1$
+            case "C" -> TYPE_CHAR; //$NON-NLS-1$
+            case "D" -> TYPE_DOUBLE; //$NON-NLS-1$
+            case "F" -> TYPE_FLOAT; //$NON-NLS-1$
+            case "I" -> TYPE_INT; //$NON-NLS-1$
+            case "J" -> TYPE_LONG; //$NON-NLS-1$
+            case "S" -> TYPE_SHORT; //$NON-NLS-1$
             default -> signature;
             };
         }
@@ -656,17 +664,17 @@ public class BytecodeSourceRangeResolver {
     private static final class ReferenceVisitor extends ASTVisitor {
 
         private static final Set<String> PRIMITIVE_TYPE_NAMES = Set.of(
-                "boolean", "byte", "char", "short", "int", "long", "float", "double"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$ //$NON-NLS-8$
+                TYPE_BOOLEAN, TYPE_BYTE, TYPE_CHAR, TYPE_SHORT, TYPE_INT, TYPE_LONG, TYPE_FLOAT, TYPE_DOUBLE);
 
         private static final Map<String, String> WRAPPER_TO_PRIMITIVE = Map.ofEntries(
-                Map.entry("Boolean", "boolean"), Map.entry("java.lang.Boolean", "boolean"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Byte", "byte"), Map.entry("java.lang.Byte", "byte"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Character", "char"), Map.entry("java.lang.Character", "char"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Short", "short"), Map.entry("java.lang.Short", "short"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Integer", "int"), Map.entry("java.lang.Integer", "int"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Long", "long"), Map.entry("java.lang.Long", "long"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Float", "float"), Map.entry("java.lang.Float", "float"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                Map.entry("Double", "double"), Map.entry("java.lang.Double", "double")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                Map.entry("Boolean", TYPE_BOOLEAN), Map.entry("java.lang.Boolean", TYPE_BOOLEAN), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Byte", TYPE_BYTE), Map.entry("java.lang.Byte", TYPE_BYTE), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Character", TYPE_CHAR), Map.entry("java.lang.Character", TYPE_CHAR), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Short", TYPE_SHORT), Map.entry("java.lang.Short", TYPE_SHORT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Integer", TYPE_INT), Map.entry("java.lang.Integer", TYPE_INT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Long", TYPE_LONG), Map.entry("java.lang.Long", TYPE_LONG), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Float", TYPE_FLOAT), Map.entry("java.lang.Float", TYPE_FLOAT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Double", TYPE_DOUBLE), Map.entry("java.lang.Double", TYPE_DOUBLE)); //$NON-NLS-1$ //$NON-NLS-2$
 
         private final String source;
         private final BytecodeSearchEntry entry;
@@ -1260,16 +1268,16 @@ public class BytecodeSourceRangeResolver {
                 return true;
             }
             return switch (from) {
-                case "byte" -> //$NON-NLS-1$
-                    "short".equals(to) || "int".equals(to) || "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-                case "short", "char" -> //$NON-NLS-1$ //$NON-NLS-2$
-                    "int".equals(to) || "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-                case "int" -> //$NON-NLS-1$
-                    "long".equals(to) || "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                case "long" -> //$NON-NLS-1$
-                    "float".equals(to) || "double".equals(to); //$NON-NLS-1$ //$NON-NLS-2$
-                case "float" -> //$NON-NLS-1$
-                    "double".equals(to); //$NON-NLS-1$
+                case TYPE_BYTE ->
+                    TYPE_SHORT.equals(to) || TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_SHORT, TYPE_CHAR ->
+                    TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_INT ->
+                    TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_LONG ->
+                    TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_FLOAT ->
+                    TYPE_DOUBLE.equals(to);
                 default -> false;
             };
         }
