@@ -1163,12 +1163,17 @@ public class BytecodeSourceRangeResolver {
                 if (descriptorParams.length != bindingParams.length) {
                     return false;
                 }
+                // Declaration-level params carry type variables (e.g. E in List<E>.add(E)); their
+                // erasure matches the bytecode descriptor. Substituted params (e.g. String from
+                // List<String>) do not — comparing them directly would reject generic call sites.
+                ITypeBinding[] declParams = binding.getMethodDeclaration().getParameterTypes();
                 for (int i = 0; i < descriptorParams.length; i++) {
                     ITypeBinding bindingParam = bindingParams[i];
                     if (bindingParam != null) {
                         // ASM uses '$' for nested classes (pkg.Outer$Inner); JDT uses '.' (pkg.Outer.Inner).
                         String descriptorClassName = descriptorParams[i].getClassName().replace('$', '.');
-                        if (!bindingParam.getQualifiedName().equals(descriptorClassName)) {
+                        ITypeBinding declParam = i < declParams.length ? declParams[i] : bindingParam;
+                        if (!declParam.getErasure().getQualifiedName().equals(descriptorClassName)) {
                             return false;
                         }
                     }
