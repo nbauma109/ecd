@@ -1232,7 +1232,7 @@ public class BytecodeSourceRangeResolver {
                 return true;
             }
             String localType = lookupLocalType(sn.getIdentifier());
-            if (localType == null) {
+            if (localType == null || "var".equals(localType)) { //$NON-NLS-1$
                 return true;
             }
             int sort = expectedType.getSort();
