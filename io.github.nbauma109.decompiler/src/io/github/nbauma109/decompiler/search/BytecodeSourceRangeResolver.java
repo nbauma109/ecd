@@ -831,7 +831,8 @@ public class BytecodeSourceRangeResolver {
         @Override
         public boolean visit(SingleVariableDeclaration node) {
             addLocalName(node.getName());
-            addLocalType(node.getName().getIdentifier(), node.getType());
+            int extraDims = node.extraDimensions().size() + (node.isVarargs() ? 1 : 0);
+            addLocalType(node.getName().getIdentifier(), node.getType(), extraDims);
             return true;
         }
 
@@ -841,7 +842,7 @@ public class BytecodeSourceRangeResolver {
                 addLocalName(node.getName());
                 Type declType = localDeclarationType(node.getParent());
                 if (declType != null) {
-                    addLocalType(node.getName().getIdentifier(), declType);
+                    addLocalType(node.getName().getIdentifier(), declType, node.extraDimensions().size());
                 }
             }
             return true;
@@ -1085,10 +1086,15 @@ public class BytecodeSourceRangeResolver {
         }
 
         private void addLocalType(String name, Type type) {
+            addLocalType(name, type, 0);
+        }
+
+        private void addLocalType(String name, Type type, int extraDimensions) {
             if (type != null && !localTypeScopes.isEmpty()) {
                 String typeName = typeSourceName(type);
                 if (typeName != null && !typeName.isEmpty()) {
-                    localTypeScopes.peek().put(name, typeName);
+                    String resolved = extraDimensions > 0 ? typeName + "[]".repeat(extraDimensions) : typeName; //$NON-NLS-1$
+                    localTypeScopes.peek().put(name, resolved);
                 }
             }
         }
