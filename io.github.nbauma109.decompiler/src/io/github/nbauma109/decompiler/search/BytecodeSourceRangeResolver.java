@@ -24,9 +24,12 @@ import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
@@ -208,18 +211,47 @@ public class BytecodeSourceRangeResolver {
             IClasspathEntry[] entries = project.getResolvedClasspath(true);
             List<String> paths = new ArrayList<>();
             for (IClasspathEntry entry : entries) {
-                if (entry.getEntryKind() != IClasspathEntry.CPE_LIBRARY) {
-                    continue;
-                }
-                File file = entry.getPath().toFile();
-                if (file.exists()) {
-                    paths.add(file.getAbsolutePath());
+                if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
+                    File file = entry.getPath().toFile();
+                    if (file.exists()) {
+                        paths.add(file.getAbsolutePath());
+                    }
+                } else if (entry.getEntryKind() == IClasspathEntry.CPE_PROJECT) {
+                    addProjectOutputToClasspath(entry, paths);
                 }
             }
             return paths.toArray(String[]::new);
         } catch (JavaModelException e) {
             Logger.debug(e);
             return new String[0];
+        }
+    }
+
+    private static void addProjectOutputToClasspath(IClasspathEntry entry, List<String> paths) {
+        try {
+            IProject requiredProject = ResourcesPlugin.getWorkspace().getRoot()
+                    .getProject(entry.getPath().lastSegment());
+            if (!requiredProject.isOpen()) {
+                return;
+            }
+            IJavaProject requiredJavaProject = JavaCore.create(requiredProject);
+            if (!requiredJavaProject.exists()) {
+                return;
+            }
+            var outputPath = requiredJavaProject.getOutputLocation();
+            if (outputPath == null) {
+                return;
+            }
+            var location = ResourcesPlugin.getWorkspace().getRoot().getFolder(outputPath).getLocation();
+            if (location == null) {
+                return;
+            }
+            File outputDir = location.toFile();
+            if (outputDir.exists()) {
+                paths.add(outputDir.getAbsolutePath());
+            }
+        } catch (JavaModelException e) {
+            Logger.debug(e);
         }
     }
 
