@@ -1154,6 +1154,8 @@ public class BytecodeJarIndexer {
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final Set<Label> finallyHandlerLabels = new HashSet<>();
+            private final Map<Label, Integer> finallyTryStartCounts = new HashMap<>();
+            private final Map<Label, Integer> finallyTryEndCounts = new HashMap<>();
             private final Set<String> seenMethodCallsAtLine = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
@@ -1163,6 +1165,7 @@ public class BytecodeJarIndexer {
             private int stackDepth = 0;
             private int previousOpcode = -1;
             private int currentLine = -1;
+            private int finallyTryDepth = 0;
             private boolean inFinallyHandler = false;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -1269,7 +1272,7 @@ public class BytecodeJarIndexer {
                 // Descriptor holds parameter/return types, which are not source-visible tokens at
                 // a call site — skip it here; it is stored in the member reference for matching.
                 String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                boolean firstAtLine = currentLine < 0 || seenMethodCallsAtLine.add(callKey);
+                boolean firstAtLine = currentLine < 0 || finallyTryDepth <= 0 || seenMethodCallsAtLine.add(callKey);
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
                             qualifiedTypeName(owner), descriptor, method, !inFinallyHandler && firstAtLine);
@@ -1500,6 +1503,16 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitLabel(Label label) {
+                // Process ends before starts so a label shared between an ending region and a
+                // starting region doesn't transiently drop to zero and miscount.
+                Integer endCount = finallyTryEndCounts.get(label);
+                if (endCount != null) {
+                    finallyTryDepth = Math.max(0, finallyTryDepth - endCount);
+                }
+                Integer startCount = finallyTryStartCounts.get(label);
+                if (startCount != null) {
+                    finallyTryDepth += startCount;
+                }
                 if (prevHandlerLabel != null) {
                     Set<String> types = catchHandlerTypes.get(prevHandlerLabel);
                     if (types != null) {
@@ -1541,6 +1554,8 @@ public class BytecodeJarIndexer {
                     // Instructions in this handler are duplicates of the inline finally copy; tracking
                     // the entry label lets visitLabel suppress their occurrence counts.
                     finallyHandlerLabels.add(handler);
+                    finallyTryStartCounts.merge(start, 1, Integer::sum);
+                    finallyTryEndCounts.merge(end, 1, Integer::sum);
                 }
                 addTypeReference(type, method);
             }
