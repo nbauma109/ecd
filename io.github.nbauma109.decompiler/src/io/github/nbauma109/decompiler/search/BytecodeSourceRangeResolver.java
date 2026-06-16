@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -249,20 +250,28 @@ public class BytecodeSourceRangeResolver {
             if (!requiredJavaProject.exists()) {
                 return;
             }
-            var outputPath = requiredJavaProject.getOutputLocation();
-            if (outputPath == null) {
-                return;
-            }
-            var location = ResourcesPlugin.getWorkspace().getRoot().getFolder(outputPath).getLocation();
-            if (location == null) {
-                return;
-            }
-            File outputDir = location.toFile();
-            if (outputDir.exists()) {
-                paths.add(outputDir.getAbsolutePath());
+            addWorkspaceOutputFolder(requiredJavaProject.getOutputLocation(), paths);
+            for (IClasspathEntry sourceEntry : requiredJavaProject.getResolvedClasspath(true)) {
+                if (sourceEntry.getEntryKind() == IClasspathEntry.CPE_SOURCE) {
+                    addWorkspaceOutputFolder(sourceEntry.getOutputLocation(), paths);
+                }
             }
         } catch (JavaModelException e) {
             Logger.debug(e);
+        }
+    }
+
+    private static void addWorkspaceOutputFolder(IPath outputPath, List<String> paths) {
+        if (outputPath == null) {
+            return;
+        }
+        var location = ResourcesPlugin.getWorkspace().getRoot().getFolder(outputPath).getLocation();
+        if (location == null) {
+            return;
+        }
+        File outputDir = location.toFile();
+        if (outputDir.exists()) {
+            paths.add(outputDir.getAbsolutePath());
         }
     }
 
