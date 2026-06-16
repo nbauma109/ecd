@@ -212,7 +212,18 @@ public class BytecodeSourceRangeResolver {
             List<String> paths = new ArrayList<>();
             for (IClasspathEntry entry : entries) {
                 if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
-                    File file = entry.getPath().toFile();
+                    File file;
+                    if (entry.getPath().segmentCount() >= 2) {
+                        var wsFile = ResourcesPlugin.getWorkspace().getRoot().getFile(entry.getPath());
+                        if (wsFile.exists()) {
+                            var loc = wsFile.getLocation();
+                            file = loc != null ? loc.toFile() : entry.getPath().toFile();
+                        } else {
+                            file = entry.getPath().toFile();
+                        }
+                    } else {
+                        file = entry.getPath().toFile();
+                    }
                     if (file.exists()) {
                         paths.add(file.getAbsolutePath());
                     }

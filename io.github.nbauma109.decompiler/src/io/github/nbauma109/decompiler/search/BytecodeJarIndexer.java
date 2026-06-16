@@ -1154,6 +1154,7 @@ public class BytecodeJarIndexer {
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
             private final Set<Label> finallyHandlerLabels = new HashSet<>();
+            private final Set<String> seenMethodCallsAtLine = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
@@ -1161,6 +1162,7 @@ public class BytecodeJarIndexer {
             private int pendingStaticCompoundStackDepth = -1;
             private int stackDepth = 0;
             private int previousOpcode = -1;
+            private int currentLine = -1;
             private boolean inFinallyHandler = false;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -1266,11 +1268,13 @@ public class BytecodeJarIndexer {
                 }
                 // Descriptor holds parameter/return types, which are not source-visible tokens at
                 // a call site — skip it here; it is stored in the member reference for matching.
+                String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                boolean firstAtLine = currentLine < 0 || seenMethodCallsAtLine.add(callKey);
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
-                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
+                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler && firstAtLine);
                 } else {
-                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
+                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler && firstAtLine);
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = opcode;
@@ -1487,6 +1491,11 @@ public class BytecodeJarIndexer {
                     pendingNewTypes.put(owner, count - 1);
                 }
                 return true;
+            }
+
+            @Override
+            public void visitLineNumber(int line, Label start) {
+                currentLine = line;
             }
 
             @Override
