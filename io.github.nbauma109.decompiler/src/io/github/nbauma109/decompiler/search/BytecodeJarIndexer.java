@@ -676,7 +676,7 @@ public class BytecodeJarIndexer {
                             && lookahead.owner().equals(candidate.owner())
                             && lookahead.descriptor().equals(candidate.descriptor())) {
                         result.add(new MemberReference(candidate.name(), candidate.owner(), candidate.descriptor(),
-                                Access.READ_WRITE, false, true));
+                                Access.READ_WRITE, false, candidate.countable() && lookahead.countable()));
                         result.addAll(skipped);
                         return true;
                     }
