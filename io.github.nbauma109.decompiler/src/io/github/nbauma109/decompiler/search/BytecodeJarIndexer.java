@@ -1156,6 +1156,7 @@ public class BytecodeJarIndexer {
             private final Set<Label> finallyHandlerLabels = new HashSet<>();
             private final Map<Label, Integer> finallyTryStartCounts = new HashMap<>();
             private final Map<Label, Integer> finallyTryEndCounts = new HashMap<>();
+            private final Map<Label, Label[]> pendingFinallyStarts = new HashMap<>();
             private final Set<String> seenMethodCallsAtLine = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
@@ -1166,6 +1167,7 @@ public class BytecodeJarIndexer {
             private int previousOpcode = -1;
             private int currentLine = -1;
             private int finallyTryDepth = 0;
+            private int pendingMonitorEnterCount = 0;
             private boolean inFinallyHandler = false;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
@@ -1326,6 +1328,9 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInsn(int opcode) {
                 stackDepth = Math.max(0, stackDepth + stackDelta(opcode));
+                if (opcode == Opcodes.MONITORENTER) {
+                    pendingMonitorEnterCount++;
+                }
                 if (inFinallyHandler && isFinallyExitInsn(opcode)) {
                     inFinallyHandler = false;
                 }
@@ -1503,6 +1508,19 @@ public class BytecodeJarIndexer {
 
             @Override
             public void visitLabel(Label label) {
+                // Classify any pending type==null try region whose start label we just reached.
+                // A MONITORENTER immediately before this label means it is a synchronized
+                // monitor-exit cleanup region, not a source finally block.
+                Label[] pending = pendingFinallyStarts.remove(label);
+                if (pending != null) {
+                    if (pendingMonitorEnterCount > 0) {
+                        pendingMonitorEnterCount--;
+                        finallyHandlerLabels.remove(pending[1]);
+                    } else {
+                        finallyTryStartCounts.merge(label, 1, Integer::sum);
+                        finallyTryEndCounts.merge(pending[0], 1, Integer::sum);
+                    }
+                }
                 // Process ends before starts so a label shared between an ending region and a
                 // starting region doesn't transiently drop to zero and miscount.
                 Integer endCount = finallyTryEndCounts.get(label);
@@ -1550,12 +1568,12 @@ public class BytecodeJarIndexer {
                 if (type != null) {
                     catchHandlerTypes.computeIfAbsent(handler, k -> new HashSet<>()).add(type);
                 } else {
-                    // type == null marks the compiler-generated exception path of a finally block.
-                    // Instructions in this handler are duplicates of the inline finally copy; tracking
-                    // the entry label lets visitLabel suppress their occurrence counts.
+                    // type == null can mean either a source finally block OR a javac-generated
+                    // synchronized monitor-exit cleanup region. Defer classification until
+                    // visitLabel sees the try-start: a MONITORENTER immediately before the start
+                    // label identifies the synchronized case; otherwise it is a true finally block.
                     finallyHandlerLabels.add(handler);
-                    finallyTryStartCounts.merge(start, 1, Integer::sum);
-                    finallyTryEndCounts.merge(end, 1, Integer::sum);
+                    pendingFinallyStarts.put(start, new Label[]{end, handler});
                 }
                 addTypeReference(type, method);
             }

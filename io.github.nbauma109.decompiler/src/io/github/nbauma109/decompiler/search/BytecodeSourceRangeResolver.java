@@ -192,7 +192,7 @@ public class BytecodeSourceRangeResolver {
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setSource(source.toCharArray());
             if (project != null) {
-                parser.setEnvironment(classpathOf(project), null, null, false);
+                parser.setEnvironment(classpathOf(project), null, null, true);
                 parser.setResolveBindings(true);
                 parser.setBindingsRecovery(true);
                 if (unitName != null) {
