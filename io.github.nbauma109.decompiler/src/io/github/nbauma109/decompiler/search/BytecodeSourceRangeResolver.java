@@ -1312,12 +1312,13 @@ public class BytecodeSourceRangeResolver {
                                 && (token.contains("e") || token.contains("E"))); //$NON-NLS-1$ //$NON-NLS-2$
                 int sort = expectedType.getSort();
                 if (isFloating) {
-                    // Unsuffixed double literal: only double/float params, or autoboxable reference
-                    if (sort == org.objectweb.asm.Type.DOUBLE || sort == org.objectweb.asm.Type.FLOAT) return true;
+                    // Unsuffixed double literal: only double (float would be narrowing).
+                    if (sort == org.objectweb.asm.Type.DOUBLE) return true;
                     return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
                 }
-                // Bare integer literal: accepts numeric widening targets and autoboxable references
-                if (sort > org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE) return true;
+                // Bare integer literal: int plus valid widening targets (long, float, double).
+                // byte/char/short require narrowing at call sites and are excluded.
+                if (sort >= org.objectweb.asm.Type.INT && sort <= org.objectweb.asm.Type.DOUBLE) return true;
                 return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_INT, expectedType);
             }
             return true;
