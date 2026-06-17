@@ -1282,11 +1282,16 @@ public class BytecodeJarIndexer {
                 } else {
                     addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, true);
                 }
-                if (finallyTryDepth > 0 || !inlineFinallyActiveHandlers.isEmpty()) {
+                // Only track finally suppression when line numbers are available; without them
+                // all calls collapse to the same key and would suppress legitimate call sites.
+                if (currentLine >= 0) {
                     String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                     if (inFinallyHandler) {
                         handlerCallKeys.add(callKey);
-                    } else {
+                    } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                        // Register inline copies only — not try-body calls — as suppression candidates.
+                        // A try-body call sharing the same line as the finally body would otherwise
+                        // get the same key and be incorrectly marked uncountable.
                         registerInlineFinallyCandidate(callKey, name);
                     }
                 }

@@ -1300,10 +1300,20 @@ public class BytecodeSourceRangeResolver {
                 if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
                     return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
                 }
-                // Bare integer literal can be widened (int→long/float/double) or autoboxed
-                // (e.g. list.add(1) compiles to an Object descriptor). Only boolean is
-                // definitively incompatible with an integer value.
-                return expectedType.getSort() != org.objectweb.asm.Type.BOOLEAN;
+                // Distinguish unsuffixed floating-point (e.g. 1.0, 1e5) from bare integer literals.
+                boolean isFloating = token.contains(".") //$NON-NLS-1$
+                        || token.contains("p") || token.contains("P") //$NON-NLS-1$ //$NON-NLS-2$
+                        || (!token.startsWith("0x") && !token.startsWith("0X") //$NON-NLS-1$ //$NON-NLS-2$
+                                && (token.contains("e") || token.contains("E"))); //$NON-NLS-1$ //$NON-NLS-2$
+                int sort = expectedType.getSort();
+                if (isFloating) {
+                    // Unsuffixed double literal: only double/float params, or autoboxable reference
+                    if (sort == org.objectweb.asm.Type.DOUBLE || sort == org.objectweb.asm.Type.FLOAT) return true;
+                    return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
+                }
+                // Bare integer literal: accepts numeric widening targets and autoboxable references
+                if (sort > org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE) return true;
+                return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_INT, expectedType);
             }
             return true;
         }
