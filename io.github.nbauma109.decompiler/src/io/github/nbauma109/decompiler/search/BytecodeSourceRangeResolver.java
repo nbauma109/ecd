@@ -53,6 +53,7 @@ import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CastExpression;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.CatchClause;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -1176,8 +1177,26 @@ public class BytecodeSourceRangeResolver {
                 if (declaringClass != null) {
                     String qualifiedName = declaringClass.getQualifiedName();
                     if (!qualifiedName.isEmpty()) {
-                        // Reliable binding: declaring class is known — authoritative, no heuristic fallback.
-                        return matchesDeclaringOwner(qualifiedName) && matchesMethodBindingDescriptor(binding);
+                        // Reliable binding: declaring class is known.
+                        if (matchesDeclaringOwner(qualifiedName)) {
+                            return matchesMethodBindingDescriptor(binding);
+                        }
+                        // Declaring class doesn't match. For inherited calls javac emits invokevirtual
+                        // with the receiver's declared type as the owner, not the declaring class.
+                        // If the receiver's static type matches the indexed owner it is an inheritance
+                        // case and we should fall through to the receiver heuristics.  If the receiver
+                        // type is a definitively different class, reject the call site now.
+                        Expression receiverExpr = node.getExpression();
+                        ITypeBinding receiverType = receiverExpr == null ? null : receiverExpr.resolveTypeBinding();
+                        if (receiverType != null) {
+                            String receiverQualName = receiverType.getQualifiedName();
+                            if (!receiverQualName.isEmpty() && !matchesDeclaringOwner(receiverQualName)) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                        // Fall through: receiver type matches (inherited method) or is anonymous/local.
                     }
                     if (matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
                         return true;
