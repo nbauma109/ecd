@@ -1173,12 +1173,17 @@ public class BytecodeSourceRangeResolver {
             IMethodBinding binding = node.resolveMethodBinding();
             if (binding != null) {
                 ITypeBinding declaringClass = binding.getDeclaringClass();
-                if (declaringClass != null
-                        && matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
-                    return true;
+                if (declaringClass != null) {
+                    String qualifiedName = declaringClass.getQualifiedName();
+                    if (!qualifiedName.isEmpty()) {
+                        // Reliable binding: declaring class is known — authoritative, no heuristic fallback.
+                        return matchesDeclaringOwner(qualifiedName) && matchesMethodBindingDescriptor(binding);
+                    }
+                    if (matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
+                        return true;
+                    }
                 }
-                // Binding incomplete or declaring class didn't match — fall through to heuristics.
-                // Recovery bindings (insufficient classpath) can have non-null but empty declaring class.
+                // Recovery binding (null or empty declaring class) — fall through to heuristics.
             }
             // Fallback heuristic for when binding is unavailable (e.g. decompiled source)
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
