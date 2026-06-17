@@ -1157,7 +1157,8 @@ public class BytecodeJarIndexer {
             private final Map<Label, Integer> finallyTryStartCounts = new HashMap<>();
             private final Map<Label, Integer> finallyTryEndCounts = new HashMap<>();
             private final Map<Label, Label[]> pendingFinallyStarts = new HashMap<>();
-            private final Set<String> seenMethodCallsAtLine = new HashSet<>();
+            private final Map<String, List<Runnable>> inlineFinallySuppressions = new HashMap<>();
+            private final Set<String> handlerCallKeys = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
@@ -1273,13 +1274,19 @@ public class BytecodeJarIndexer {
                 }
                 // Descriptor holds parameter/return types, which are not source-visible tokens at
                 // a call site — skip it here; it is stored in the member reference for matching.
-                String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                boolean firstAtLine = currentLine < 0 || finallyTryDepth <= 0 || seenMethodCallsAtLine.add(callKey);
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
-                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler && firstAtLine);
+                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
                 } else {
-                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler && firstAtLine);
+                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
+                }
+                if (finallyTryDepth > 0) {
+                    String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    if (inFinallyHandler) {
+                        handlerCallKeys.add(callKey);
+                    } else {
+                        registerInlineFinallyCandidate(callKey, name);
+                    }
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = opcode;
@@ -1576,6 +1583,33 @@ public class BytecodeJarIndexer {
                     pendingFinallyStarts.put(start, new Label[]{end, handler});
                 }
                 addTypeReference(type, method);
+            }
+
+            private void registerInlineFinallyCandidate(String callKey, String name) {
+                IJavaElement enclosingElement = method == null ? type : method;
+                List<MemberReference> refs = CONSTRUCTOR.equals(name)
+                        ? constructorReferencesByElement.get(enclosingElement)
+                        : methodReferencesByElement.get(enclosingElement);
+                if (refs != null && !refs.isEmpty()) {
+                    int idx = refs.size() - 1;
+                    inlineFinallySuppressions.computeIfAbsent(callKey, k -> new ArrayList<>())
+                            .add(() -> {
+                                MemberReference old = refs.get(idx);
+                                refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
+                                        old.access(), old.compoundCandidate(), false));
+                            });
+                }
+            }
+
+            @Override
+            public void visitEnd() {
+                for (String callKey : handlerCallKeys) {
+                    List<Runnable> suppressors = inlineFinallySuppressions.remove(callKey);
+                    if (suppressors != null) {
+                        suppressors.forEach(Runnable::run);
+                    }
+                }
+                super.visitEnd();
             }
         }
 
