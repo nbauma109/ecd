@@ -1249,6 +1249,14 @@ public class BytecodeJarIndexer {
                         || opcode == Opcodes.GETFIELD && previousOpcode == Opcodes.DUP;
                 MemberReference member = addReference(new ReferenceSpec(Kind.FIELD, name, name, qualifiedTypeName(owner),
                         descriptor, fieldAccess(opcode), compoundCandidate), method);
+                if (currentLine >= 0) {
+                    String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    if (inFinallyHandler) {
+                        handlerCallKeys.add(callKey);
+                    } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                        registerInlineFinallyFieldCandidate(callKey);
+                    }
+                }
                 if (opcode == Opcodes.GETSTATIC) {
                     pendingStaticCompoundRead = member;
                     pendingStaticCompoundElement = method == null ? type : method;
@@ -1596,6 +1604,20 @@ public class BytecodeJarIndexer {
                     pendingFinallyStarts.put(start, new Label[]{end, handler});
                 }
                 addTypeReference(type, method);
+            }
+
+            private void registerInlineFinallyFieldCandidate(String callKey) {
+                IJavaElement enclosingElement = method == null ? type : method;
+                List<MemberReference> refs = fieldReferencesByElement.get(enclosingElement);
+                if (refs != null && !refs.isEmpty()) {
+                    int idx = refs.size() - 1;
+                    inlineFinallySuppressions.computeIfAbsent(callKey, k -> new ArrayList<>())
+                            .add(() -> {
+                                MemberReference old = refs.get(idx);
+                                refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
+                                        old.access(), old.compoundCandidate(), false));
+                            });
+                }
             }
 
             private void registerInlineFinallyCandidate(String callKey, String name) {
