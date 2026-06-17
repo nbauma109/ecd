@@ -718,6 +718,16 @@ public class BytecodeSourceRangeResolver {
         private static final Set<String> PRIMITIVE_TYPE_NAMES = Set.of(
                 TYPE_BOOLEAN, TYPE_BYTE, TYPE_CHAR, TYPE_SHORT, TYPE_INT, TYPE_LONG, TYPE_FLOAT, TYPE_DOUBLE);
 
+        private static final Map<String, String> PRIMITIVE_TO_WRAPPER_INTERNAL = Map.of(
+                TYPE_BOOLEAN, "java/lang/Boolean", //$NON-NLS-1$
+                TYPE_BYTE, "java/lang/Byte", //$NON-NLS-1$
+                TYPE_CHAR, "java/lang/Character", //$NON-NLS-1$
+                TYPE_SHORT, "java/lang/Short", //$NON-NLS-1$
+                TYPE_INT, "java/lang/Integer", //$NON-NLS-1$
+                TYPE_LONG, "java/lang/Long", //$NON-NLS-1$
+                TYPE_FLOAT, "java/lang/Float", //$NON-NLS-1$
+                TYPE_DOUBLE, "java/lang/Double"); //$NON-NLS-1$
+
         private static final Map<String, String> WRAPPER_TO_PRIMITIVE = Map.ofEntries(
                 Map.entry("Boolean", TYPE_BOOLEAN), Map.entry("java.lang.Boolean", TYPE_BOOLEAN), //$NON-NLS-1$ //$NON-NLS-2$
                 Map.entry("Byte", TYPE_BYTE), Map.entry("java.lang.Byte", TYPE_BYTE), //$NON-NLS-1$ //$NON-NLS-2$
@@ -1311,8 +1321,9 @@ public class BytecodeSourceRangeResolver {
             boolean localPrimitive = PRIMITIVE_TYPE_NAMES.contains(localType);
             if (expectPrimitive != localPrimitive) {
                 if (localPrimitive) {
-                    // Primitive local → reference parameter: may be autoboxed (e.g. list.add(i)).
-                    return true;
+                    // Primitive local → reference parameter: only if the reference type can hold
+                    // the boxed value (e.g. int → Integer/Number/Object is ok, int → String is not).
+                    return canAutobox(localType, expectedType);
                 }
                 // Reference local → primitive parameter: allowed only for known wrapper types
                 // that unbox (and optionally widen) to the expected primitive.
@@ -1343,6 +1354,23 @@ public class BytecodeSourceRangeResolver {
                     TYPE_DOUBLE.equals(to);
                 default -> false;
             };
+        }
+
+        private static boolean canAutobox(String localPrimitiveType, org.objectweb.asm.Type expectedRefType) {
+            if (expectedRefType.getSort() != org.objectweb.asm.Type.OBJECT) {
+                return false;
+            }
+            String expected = expectedRefType.getInternalName();
+            if ("java/lang/Object".equals(expected) //$NON-NLS-1$
+                    || "java/io/Serializable".equals(expected) //$NON-NLS-1$
+                    || "java/lang/Comparable".equals(expected)) { //$NON-NLS-1$
+                return true;
+            }
+            if ("java/lang/Number".equals(expected)) { //$NON-NLS-1$
+                return !TYPE_BOOLEAN.equals(localPrimitiveType) && !TYPE_CHAR.equals(localPrimitiveType);
+            }
+            String wrapperInternal = PRIMITIVE_TO_WRAPPER_INTERNAL.get(localPrimitiveType);
+            return wrapperInternal != null && wrapperInternal.equals(expected);
         }
 
         private boolean matchesExpressionMethodReference(ExpressionMethodReference node) {

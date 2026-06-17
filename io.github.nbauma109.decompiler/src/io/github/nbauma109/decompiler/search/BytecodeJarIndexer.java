@@ -722,7 +722,7 @@ public class BytecodeJarIndexer {
                 return;
             }
             seen.put(key, entries.size());
-            counts.add(1);
+            counts.add(countOccurrences ? 1 : 0);
             entries.add(entry);
         }
 
