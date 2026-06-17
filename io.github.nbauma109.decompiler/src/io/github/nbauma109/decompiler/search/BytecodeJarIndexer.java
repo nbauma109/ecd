@@ -1159,6 +1159,8 @@ public class BytecodeJarIndexer {
             private final Map<Label, Label[]> pendingFinallyStarts = new HashMap<>();
             private final Map<String, List<Runnable>> inlineFinallySuppressions = new HashMap<>();
             private final Set<String> handlerCallKeys = new HashSet<>();
+            private final Map<Label, Set<Label>> endToHandlers = new HashMap<>();
+            private final Set<Label> inlineFinallyActiveHandlers = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
@@ -1276,11 +1278,11 @@ public class BytecodeJarIndexer {
                 // a call site — skip it here; it is stored in the member reference for matching.
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
-                            qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
+                            qualifiedTypeName(owner), descriptor, method, true);
                 } else {
-                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, !inFinallyHandler);
+                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, true);
                 }
-                if (finallyTryDepth > 0) {
+                if (finallyTryDepth > 0 || !inlineFinallyActiveHandlers.isEmpty()) {
                     String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                     if (inFinallyHandler) {
                         handlerCallKeys.add(callKey);
@@ -1526,6 +1528,7 @@ public class BytecodeJarIndexer {
                     } else {
                         finallyTryStartCounts.merge(label, 1, Integer::sum);
                         finallyTryEndCounts.merge(pending[0], 1, Integer::sum);
+                        endToHandlers.computeIfAbsent(pending[0], k -> new HashSet<>()).add(pending[1]);
                     }
                 }
                 // Process ends before starts so a label shared between an ending region and a
@@ -1533,6 +1536,10 @@ public class BytecodeJarIndexer {
                 Integer endCount = finallyTryEndCounts.get(label);
                 if (endCount != null) {
                     finallyTryDepth = Math.max(0, finallyTryDepth - endCount);
+                    Set<Label> handlers = endToHandlers.get(label);
+                    if (handlers != null) {
+                        inlineFinallyActiveHandlers.addAll(handlers);
+                    }
                 }
                 Integer startCount = finallyTryStartCounts.get(label);
                 if (startCount != null) {
@@ -1549,6 +1556,7 @@ public class BytecodeJarIndexer {
                     prevHandlerLabel = label;
                 }
                 if (finallyHandlerLabels.contains(label)) {
+                    inlineFinallyActiveHandlers.remove(label);
                     inFinallyHandler = true;
                 }
             }
