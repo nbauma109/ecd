@@ -1193,10 +1193,9 @@ public class BytecodeSourceRangeResolver {
                             if (!receiverQualName.isEmpty() && !matchesDeclaringOwner(receiverQualName)) {
                                 return false;
                             }
-                        } else {
-                            return false;
                         }
-                        // Fall through: receiver type matches (inherited method) or is anonymous/local.
+                        // Fall through: implicit receiver (this.m()), unresolved type, or type
+                        // matching the indexed owner — let the receiver heuristics decide.
                     }
                     if (matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
                         return true;
