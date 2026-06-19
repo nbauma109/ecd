@@ -213,18 +213,7 @@ public class BytecodeSourceRangeResolver {
             List<String> paths = new ArrayList<>();
             for (IClasspathEntry entry : entries) {
                 if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
-                    File file;
-                    if (entry.getPath().segmentCount() >= 2) {
-                        var wsFile = ResourcesPlugin.getWorkspace().getRoot().getFile(entry.getPath());
-                        if (wsFile.exists()) {
-                            var loc = wsFile.getLocation();
-                            file = loc != null ? loc.toFile() : entry.getPath().toFile();
-                        } else {
-                            file = entry.getPath().toFile();
-                        }
-                    } else {
-                        file = entry.getPath().toFile();
-                    }
+                    File file = resolveLibraryFile(entry);
                     if (file.exists()) {
                         paths.add(file.getAbsolutePath());
                     }
@@ -237,6 +226,19 @@ public class BytecodeSourceRangeResolver {
             Logger.debug(e);
             return new String[0];
         }
+    }
+
+    private static File resolveLibraryFile(IClasspathEntry entry) {
+        IPath path = entry.getPath();
+        if (path.segmentCount() < 2) {
+            return path.toFile();
+        }
+        var wsFile = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+        if (!wsFile.exists()) {
+            return path.toFile();
+        }
+        var loc = wsFile.getLocation();
+        return loc != null ? loc.toFile() : path.toFile();
     }
 
     private static void addProjectOutputToClasspath(IClasspathEntry entry, List<String> paths) {
@@ -1095,10 +1097,6 @@ public class BytecodeSourceRangeResolver {
             return null;
         }
 
-        private void addLocalType(String name, Type type) {
-            addLocalType(name, type, 0);
-        }
-
         private void addLocalType(String name, Type type, int extraDimensions) {
             if (type != null && !localTypeScopes.isEmpty()) {
                 String typeName = typeSourceName(type);
@@ -1290,32 +1288,39 @@ public class BytecodeSourceRangeResolver {
                 return expectedType.getSort() == org.objectweb.asm.Type.BOOLEAN;
             }
             if (arg instanceof NumberLiteral nl) {
-                String token = nl.getToken();
-                if (token.endsWith("L") || token.endsWith("l")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.LONG;
-                }
-                if (token.endsWith("F") || token.endsWith("f")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.FLOAT;
-                }
-                if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
-                }
-                // Distinguish unsuffixed floating-point (e.g. 1.0, 1e5) from bare integer literals.
-                boolean isFloating = token.contains(".") //$NON-NLS-1$
-                        || token.contains("p") || token.contains("P") //$NON-NLS-1$ //$NON-NLS-2$
-                        || (!token.startsWith("0x") && !token.startsWith("0X") //$NON-NLS-1$ //$NON-NLS-2$
-                                && (token.contains("e") || token.contains("E"))); //$NON-NLS-1$ //$NON-NLS-2$
-                int sort = expectedType.getSort();
-                if (isFloating) {
-                    // Unsuffixed double literal: only double/float params, or autoboxable reference
-                    if (sort == org.objectweb.asm.Type.DOUBLE || sort == org.objectweb.asm.Type.FLOAT) return true;
-                    return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
-                }
-                // Bare integer literal: accepts numeric widening targets and autoboxable references
-                if (sort > org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE) return true;
-                return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_INT, expectedType);
+                return compatibleNumberLiteralSyntax(nl, expectedType);
             }
             return true;
+        }
+
+        private static boolean compatibleNumberLiteralSyntax(NumberLiteral nl, org.objectweb.asm.Type expectedType) {
+            String token = nl.getToken();
+            if (token.endsWith("L") || token.endsWith("l")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.LONG;
+            }
+            if (token.endsWith("F") || token.endsWith("f")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.FLOAT;
+            }
+            if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
+            }
+            int sort = expectedType.getSort();
+            // Distinguish unsuffixed floating-point (e.g. 1.0, 1e5) from bare integer literals.
+            if (isFloatingPointLiteral(token)) {
+                // Unsuffixed double literal: only double/float params, or autoboxable reference
+                if (sort == org.objectweb.asm.Type.DOUBLE || sort == org.objectweb.asm.Type.FLOAT) return true;
+                return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
+            }
+            // Bare integer literal: accepts numeric widening targets and autoboxable references
+            if (sort > org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE) return true;
+            return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_INT, expectedType);
+        }
+
+        private static boolean isFloatingPointLiteral(String token) {
+            if (token.contains(".")) return true; //$NON-NLS-1$
+            if (token.contains("p") || token.contains("P")) return true; //$NON-NLS-1$ //$NON-NLS-2$
+            if (token.startsWith("0x") || token.startsWith("0X")) return false; //$NON-NLS-1$ //$NON-NLS-2$
+            return token.contains("e") || token.contains("E"); //$NON-NLS-1$ //$NON-NLS-2$
         }
 
         private boolean compatibleLocalVariableType(Object arg, org.objectweb.asm.Type expectedType) {

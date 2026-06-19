@@ -565,17 +565,6 @@ public class BytecodeJarIndexer {
             return member;
         }
 
-        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access) {
-            addReferenceEntry(kind, name, qualifiedName, owner, descriptor, element, access, true);
-        }
-
-        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access, boolean countable) {
-            addReferenceEntry(new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor), access, TypeCategory.UNKNOWN), element, countable);
-        }
-
         private void addReferenceEntry(EntrySpec spec, IJavaElement element) {
             addReferenceEntry(spec, element, true);
         }
@@ -624,8 +613,9 @@ public class BytecodeJarIndexer {
                     if (kind == Kind.CONSTRUCTOR || kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
                         qualifiedName = member.owner();
                     }
-                    addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
-                            entry.getKey(), member.access(), member.countable());
+                    addReferenceEntry(new EntrySpec(kind, false, pool(member.name()), pool(qualifiedName),
+                            pool(member.owner()), pool(member.descriptor()), member.access(), TypeCategory.UNKNOWN),
+                            entry.getKey(), member.countable());
                 }
             }
         }
