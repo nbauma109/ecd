@@ -211,12 +211,15 @@ public class BytecodeSourceRangeResolver {
         try {
             IClasspathEntry[] entries = project.getResolvedClasspath(true);
             List<String> paths = new ArrayList<>();
+            addWorkspaceOutputFolder(project.getOutputLocation(), paths);
             for (IClasspathEntry entry : entries) {
                 if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
                     File file = resolveLibraryFile(entry);
                     if (file.exists()) {
                         paths.add(file.getAbsolutePath());
                     }
+                } else if (entry.getEntryKind() == IClasspathEntry.CPE_SOURCE) {
+                    addWorkspaceOutputFolder(entry.getOutputLocation(), paths);
                 } else if (entry.getEntryKind() == IClasspathEntry.CPE_PROJECT) {
                     addProjectOutputToClasspath(entry, paths);
                 }
