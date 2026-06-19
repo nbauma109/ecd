@@ -1249,14 +1249,7 @@ public class BytecodeJarIndexer {
                     pendingStaticCompoundStackDepth = -1;
                 }
                 updateFieldStackDepth(opcode, descriptor);
-                if (currentLine >= 0) {
-                    String fieldKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                    if (inFinallyHandler) {
-                        handlerCallKeys.add(fieldKey);
-                    } else if (!inlineFinallyActiveHandlers.isEmpty()) {
-                        registerInlineFinallyFieldCandidate(fieldKey);
-                    }
-                }
+                trackFieldFinallySuppression(name, owner, descriptor);
                 previousOpcode = opcode;
             }
 
@@ -1609,6 +1602,18 @@ public class BytecodeJarIndexer {
                                 refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
                                         old.access(), old.compoundCandidate(), false));
                             });
+                }
+            }
+
+            private void trackFieldFinallySuppression(String name, String owner, String descriptor) {
+                if (currentLine < 0) {
+                    return;
+                }
+                String fieldKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                if (inFinallyHandler) {
+                    handlerCallKeys.add(fieldKey);
+                } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                    registerInlineFinallyFieldCandidate(fieldKey);
                 }
             }
 
