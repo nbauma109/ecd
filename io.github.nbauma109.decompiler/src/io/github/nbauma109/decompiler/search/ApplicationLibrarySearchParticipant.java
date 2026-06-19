@@ -92,11 +92,10 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         }
         String handle = entry.getElementHandle();
         if (registeredHandles.add(handle)) {
-            // Register the element with the participant via ordinal=0
-            requestor.reportMatch(new BytecodeSearchMatch(entry, 0));
-            // Add remaining ordinals directly, bypassing the participant ownership check
-            for (int ordinal = 1; ordinal < count; ordinal++) {
-                searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+            // Register the element with the participant for all ordinals so the IMatchPresentation
+            // is correctly associated with every match, not just the first one.
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
             }
         } else {
             // Same element handle already registered — add all ordinals directly

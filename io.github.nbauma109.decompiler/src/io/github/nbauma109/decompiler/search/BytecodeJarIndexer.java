@@ -666,7 +666,7 @@ public class BytecodeJarIndexer {
                             && lookahead.owner().equals(candidate.owner())
                             && lookahead.descriptor().equals(candidate.descriptor())) {
                         result.add(new MemberReference(candidate.name(), candidate.owner(), candidate.descriptor(),
-                                Access.READ_WRITE, false, true));
+                                Access.READ_WRITE, false, candidate.countable() && lookahead.countable()));
                         result.addAll(skipped);
                         return true;
                     }
@@ -1249,6 +1249,14 @@ public class BytecodeJarIndexer {
                     pendingStaticCompoundStackDepth = -1;
                 }
                 updateFieldStackDepth(opcode, descriptor);
+                if (currentLine >= 0) {
+                    String fieldKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    if (inFinallyHandler) {
+                        handlerCallKeys.add(fieldKey);
+                    } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                        registerInlineFinallyFieldCandidate(fieldKey);
+                    }
+                }
                 previousOpcode = opcode;
             }
 
@@ -1596,6 +1604,20 @@ public class BytecodeJarIndexer {
                 if (refs != null && !refs.isEmpty()) {
                     int idx = refs.size() - 1;
                     inlineFinallySuppressions.computeIfAbsent(callKey, k -> new ArrayList<>())
+                            .add(() -> {
+                                MemberReference old = refs.get(idx);
+                                refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
+                                        old.access(), old.compoundCandidate(), false));
+                            });
+                }
+            }
+
+            private void registerInlineFinallyFieldCandidate(String fieldKey) {
+                IJavaElement enclosingElement = method == null ? type : method;
+                List<MemberReference> refs = fieldReferencesByElement.get(enclosingElement);
+                if (refs != null && !refs.isEmpty()) {
+                    int idx = refs.size() - 1;
+                    inlineFinallySuppressions.computeIfAbsent(fieldKey, k -> new ArrayList<>())
                             .add(() -> {
                                 MemberReference old = refs.get(idx);
                                 refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),

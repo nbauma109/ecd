@@ -1310,8 +1310,8 @@ public class BytecodeSourceRangeResolver {
             int sort = expectedType.getSort();
             // Distinguish unsuffixed floating-point (e.g. 1.0, 1e5) from bare integer literals.
             if (isFloatingPointLiteral(token)) {
-                // Unsuffixed double literal: only double/float params, or autoboxable reference
-                if (sort == org.objectweb.asm.Type.DOUBLE || sort == org.objectweb.asm.Type.FLOAT) return true;
+                // Unsuffixed double literal: only double params, or autoboxable reference
+                if (sort == org.objectweb.asm.Type.DOUBLE) return true;
                 return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
             }
             // Bare integer literal: accepts numeric widening targets and autoboxable references
