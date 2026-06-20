@@ -475,6 +475,27 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void contentFingerprintMismatchTriggersRebuild() throws Exception {
+        // Write initial segment with one entry
+        List<BytecodeSearchEntry> original = List.of(
+                makeEntry("Original", "com.Original", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+        Object first = openOrCreate(original, counts);
+        storeClose(first);
+
+        // Call again with same entry count but a different entry (simulates same-metadata JAR replacement)
+        List<BytecodeSearchEntry> updated = List.of(
+                makeEntry("Updated", "com.Updated", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        Object rebuilt = openOrCreate(updated, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("Updated", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void staleEntryCountInSegmentFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Stale", "com.Stale", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));

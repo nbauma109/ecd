@@ -25,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
@@ -138,10 +139,15 @@ final class MappedEntryStore implements EntryStore {
             if (headerOk(file, jar, entries.size())) {
                 try {
                     MappedEntryStore store = map(file, jar);
-                    // Retry pruning stale siblings on reuse: by this point any previously
-                    // published mapping for an older version may have been GC'd on Windows.
-                    pruneOldSegments(file, cacheDir);
-                    return store;
+                    if (store.matchesSample(entries)) {
+                        // Retry pruning stale siblings on reuse: by this point any previously
+                        // published mapping for an older version may have been GC'd on Windows.
+                        pruneOldSegments(file, cacheDir);
+                        return store;
+                    }
+                    // Content fingerprint mismatch (e.g. same-metadata JAR replacement)
+                    store.close();
+                    deleteQuietly(file);
                 } catch (IOException | RuntimeException e) {
                     Logger.debug(e);
                     deleteQuietly(file);
@@ -387,6 +393,23 @@ final class MappedEntryStore implements EntryStore {
                 access(id),
                 typeCategory(id),
                 buf.getInt((int) (occurrenceCountsOff + (long) id * 4)));
+    }
+
+    /**
+     * Compares up to 4 element handles from the mapped segment against the freshly-parsed
+     * {@code expected} list. Returns {@code false} when any handle differs, indicating that the
+     * JAR content changed despite identical metadata (mtime/size/entryCount), so the segment
+     * must be rebuilt rather than reused.
+     */
+    private boolean matchesSample(List<BytecodeSearchEntry> expected) {
+        int samples = Math.min(4, entryCount);
+        for (int i = 0; i < samples; i++) {
+            int handleId = buf.getInt((int) (elementHandleIdsOff + (long) i * 4));
+            if (!Objects.equals(handle(handleId), expected.get(i).getElementHandle())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
