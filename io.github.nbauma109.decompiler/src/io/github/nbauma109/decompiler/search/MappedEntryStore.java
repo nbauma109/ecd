@@ -85,6 +85,7 @@ final class MappedEntryStore implements EntryStore {
     private static final int MAGIC = 0x42534558;
     private static final int VERSION = 4;
     private static final int HEADER_SIZE = 124;
+    private static final String SEGMENT_EXT = ".bsix"; //$NON-NLS-1$
     private static final int NULL_ID = HeapEntryStore.NULL_ID;
 
     private final MappedByteBuffer buf;
@@ -180,8 +181,8 @@ final class MappedEntryStore implements EntryStore {
      */
     private static Path alternateSegmentPath(Path file, int fingerprint) {
         String name = file.getFileName().toString();
-        String stem = name.substring(0, name.length() - ".bsix".length()); //$NON-NLS-1$
-        return file.resolveSibling(stem + "-" + Integer.toUnsignedString(fingerprint, 16) + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$
+        String stem = name.substring(0, name.length() - SEGMENT_EXT.length());
+        return file.resolveSibling(stem + "-" + Integer.toUnsignedString(fingerprint, 16) + SEGMENT_EXT); //$NON-NLS-1$
     }
 
     /**
@@ -208,100 +209,90 @@ final class MappedEntryStore implements EntryStore {
                 }
             }
             h.flip();
-            if (h.getInt() != MAGIC) return false;
-            if (h.getInt() != VERSION) return false;
-            if (h.getLong() != jar.lastModified()) return false;
-            if (h.getLong() != jar.length()) return false;
-            int n = entries.size();
-            if (h.getInt() != n) return false; // entryCount
-            int sc = h.getInt(); // stringCount
-            int hc = h.getInt(); // handleCount
-            if (sc < 0 || hc < 0 || hc > n) return false;
-            if (h.getInt() != fingerprintEntries(entries, counts)) return false;
-            // Compute expected fixed-width section offsets (deterministic from entryCount)
-            long off = HEADER_SIZE;
-            long expectedKindAndFlagsOff      = off; off += pad4(n);
-            long expectedTypeCategoryIdsOff   = off; off += pad4(n);
-            long expectedElementHandleIdsOff  = off; off += (long) n * 4;
-            long expectedNameIdsOff           = off; off += (long) n * 4;
-            long expectedQualifiedNameIdsOff  = off; off += (long) n * 4;
-            long expectedDeclaringTypeNameOff = off; off += (long) n * 4;
-            long expectedDescriptorIdsOff     = off; off += (long) n * 4;
-            long expectedOccurrenceCountsOff  = off; off += (long) n * 4;
-            long minStringsOff = off;
-            if (h.getLong() != expectedKindAndFlagsOff) return false;
-            if (h.getLong() != expectedTypeCategoryIdsOff) return false;
-            if (h.getLong() != expectedElementHandleIdsOff) return false;
-            if (h.getLong() != expectedNameIdsOff) return false;
-            if (h.getLong() != expectedQualifiedNameIdsOff) return false;
-            if (h.getLong() != expectedDeclaringTypeNameOff) return false;
-            if (h.getLong() != expectedDescriptorIdsOff) return false;
-            if (h.getLong() != expectedOccurrenceCountsOff) return false;
-            long stringsOff = h.getLong();
-            long handlesOff = h.getLong();
-            int storedBodyCrc = h.getInt(); // CRC32 over bytes [HEADER_SIZE..EOF)
-            // Validate variable-width section offsets: each must lie within the file and
-            // leave room for its length-index array.
-            if (stringsOff < minStringsOff || stringsOff > fileSize) return false;
-            if (handlesOff < stringsOff + (long) sc * 4 || handlesOff > fileSize) return false;
-            if (fileSize < handlesOff + (long) hc * 4) return false;
-            // Read string length-index and verify the UTF-8 payload exactly fills the gap
-            // between stringsOff and handlesOff (catches truncation after the index array).
-            long sDataStart = stringsOff + (long) sc * 4;
-            long stringSum = 0;
-            if (sc > 0) {
-                ByteBuffer sLens = ByteBuffer.allocate((int) ((long) sc * 4));
-                sLens.order(ByteOrder.BIG_ENDIAN);
-                long sPos = stringsOff;
-                while (sLens.hasRemaining()) {
-                    int r = ch.read(sLens, sPos);
-                    if (r <= 0) return false;
-                    sPos += r;
-                }
-                sLens.flip();
-                for (int i = 0; i < sc; i++) {
-                    int len = sLens.getInt();
-                    if (len < 0) return false;
-                    stringSum += len;
-                }
-            }
-            if (sDataStart + stringSum != handlesOff) return false;
-            // Read handle length-index and verify the UTF-8 payload exactly fills the gap
-            // between handlesOff and end-of-file.
-            long hDataStart = handlesOff + (long) hc * 4;
-            long handleSum = 0;
-            if (hc > 0) {
-                ByteBuffer hLens = ByteBuffer.allocate((int) ((long) hc * 4));
-                hLens.order(ByteOrder.BIG_ENDIAN);
-                long hPos = handlesOff;
-                while (hLens.hasRemaining()) {
-                    int r = ch.read(hLens, hPos);
-                    if (r <= 0) return false;
-                    hPos += r;
-                }
-                hLens.flip();
-                for (int i = 0; i < hc; i++) {
-                    int len = hLens.getInt();
-                    if (len < 0) return false;
-                    handleSum += len;
-                }
-            }
-            if (hDataStart + handleSum != fileSize) return false;
-            // Final: verify CRC32 of the serialized body so any bit-level corruption in
-            // column arrays or UTF-8 data is detected even when the header is intact.
-            CRC32 crc = new CRC32();
-            ByteBuffer bodyChunk = ByteBuffer.allocate(65536);
-            ch.position(HEADER_SIZE);
-            int r;
-            while ((r = ch.read(bodyChunk)) > 0) {
-                bodyChunk.flip();
-                crc.update(bodyChunk);
-                bodyChunk.clear();
-            }
-            return (int) crc.getValue() == storedBodyCrc;
+            return validateContents(h, fileSize, jar, entries, counts, ch);
         } catch (IOException e) {
             return false;
         }
+    }
+
+    private static boolean validateContents(ByteBuffer h, long fileSize, File jar,
+            List<BytecodeSearchEntry> entries, int[] counts, FileChannel ch) throws IOException {
+        if (h.getInt() != MAGIC || h.getInt() != VERSION) return false;
+        if (h.getLong() != jar.lastModified() || h.getLong() != jar.length()) return false;
+        int n = entries.size();
+        if (h.getInt() != n) return false;
+        int sc = h.getInt();
+        int hc = h.getInt();
+        if (sc < 0 || hc < 0 || hc > n) return false;
+        if (h.getInt() != fingerprintEntries(entries, counts)) return false;
+        if (!validateFixedOffsets(h, n)) return false;
+        long stringsOff = h.getLong();
+        long handlesOff = h.getLong();
+        int storedBodyCrc = h.getInt();
+        long minStringsOff = HEADER_SIZE + 2 * pad4(n) + 6L * n * 4;
+        if (stringsOff < minStringsOff || stringsOff > fileSize) return false;
+        if (handlesOff < stringsOff + (long) sc * 4 || handlesOff > fileSize) return false;
+        if (fileSize < handlesOff + (long) hc * 4) return false;
+        if (!validateLengthTables(ch, stringsOff, sc, handlesOff, hc, fileSize)) return false;
+        return verifyBodyCrc(ch, storedBodyCrc);
+    }
+
+    /** Reads the 8 fixed-width section offsets from {@code h} and returns false if any mismatch. */
+    private static boolean validateFixedOffsets(ByteBuffer h, int n) {
+        long off = HEADER_SIZE;
+        if (h.getLong() != off) return false; off += pad4(n);
+        if (h.getLong() != off) return false; off += pad4(n);
+        if (h.getLong() != off) return false; off += (long) n * 4;
+        if (h.getLong() != off) return false; off += (long) n * 4;
+        if (h.getLong() != off) return false; off += (long) n * 4;
+        if (h.getLong() != off) return false; off += (long) n * 4;
+        if (h.getLong() != off) return false; off += (long) n * 4;
+        return h.getLong() == off;
+    }
+
+    /** Reads string and handle length tables; returns false if any length is negative or the sums
+     *  don't exactly account for the space between the sections and end-of-file. */
+    private static boolean validateLengthTables(FileChannel ch, long stringsOff, int sc,
+            long handlesOff, int hc, long fileSize) throws IOException {
+        long stringSum = lengthSum(ch, stringsOff, sc);
+        if (stringSum < 0 || stringsOff + (long) sc * 4 + stringSum != handlesOff) return false;
+        long handleSum = lengthSum(ch, handlesOff, hc);
+        return handleSum >= 0 && handlesOff + (long) hc * 4 + handleSum == fileSize;
+    }
+
+    /** Reads {@code count} big-endian int lengths from {@code ch} starting at {@code offset};
+     *  returns their sum, or -1 if any length is negative or an I/O error occurs. */
+    private static long lengthSum(FileChannel ch, long offset, int count) throws IOException {
+        if (count == 0) return 0;
+        ByteBuffer lens = ByteBuffer.allocate((int) ((long) count * 4));
+        lens.order(ByteOrder.BIG_ENDIAN);
+        long pos = offset;
+        while (lens.hasRemaining()) {
+            int r = ch.read(lens, pos);
+            if (r <= 0) return -1;
+            pos += r;
+        }
+        lens.flip();
+        long sum = 0;
+        for (int i = 0; i < count; i++) {
+            int len = lens.getInt();
+            if (len < 0) return -1;
+            sum += len;
+        }
+        return sum;
+    }
+
+    /** Streams body bytes from {@code HEADER_SIZE} to EOF and compares CRC32 to {@code stored}. */
+    private static boolean verifyBodyCrc(FileChannel ch, int stored) throws IOException {
+        CRC32 crc = new CRC32();
+        ByteBuffer chunk = ByteBuffer.allocate(65536);
+        ch.position(HEADER_SIZE);
+        while (ch.read(chunk) > 0) {
+            chunk.flip();
+            crc.update(chunk);
+            chunk.clear();
+        }
+        return (int) crc.getValue() == stored;
     }
 
     private static int fingerprintEntries(List<BytecodeSearchEntry> entries, int[] counts) {
@@ -339,7 +330,7 @@ final class MappedEntryStore implements EntryStore {
 
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
         String hash = sha256Hex(rootHandle + "|" + jar.getAbsolutePath()).substring(0, 32); //$NON-NLS-1$
-        return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + SEGMENT_EXT); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     }
 
     // -------------------------------------------------------------------------
@@ -448,8 +439,7 @@ final class MappedEntryStore implements EntryStore {
             CRC32 crc = new CRC32();
             ByteBuffer chunk = ByteBuffer.allocate(65536);
             fc.position(HEADER_SIZE);
-            int r;
-            while ((r = fc.read(chunk)) > 0) {
+            while (fc.read(chunk) > 0) {
                 chunk.flip();
                 crc.update(chunk);
                 chunk.clear();
@@ -685,7 +675,7 @@ final class MappedEntryStore implements EntryStore {
         try (Stream<Path> stream = Files.list(cacheDir)) {
             stream.filter(p -> {
                 String n = p.getFileName().toString();
-                return n.startsWith(prefix) && n.endsWith(".bsix") && !p.equals(newFile); //$NON-NLS-1$
+                return n.startsWith(prefix) && n.endsWith(SEGMENT_EXT) && !p.equals(newFile);
             }).forEach(MappedEntryStore::deleteQuietly);
         } catch (IOException e) {
             Logger.debug(e);
