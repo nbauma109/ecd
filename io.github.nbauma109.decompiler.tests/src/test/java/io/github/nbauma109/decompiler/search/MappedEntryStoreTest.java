@@ -339,6 +339,26 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void obsoleteSegmentsArePrunedOnWrite() throws Exception {
+        // Compute the hash prefix of the current segment path and create a fake stale sibling
+        Path currentSeg = segmentPath();
+        String segName = currentSeg.getFileName().toString();
+        // "bsi-{hash32}-" is the first 37 chars; append a distinct fake timestamp/length
+        Path staleSeg = cacheDir.resolve(segName.substring(0, 37) + "0-0.bsix"); //$NON-NLS-1$
+        Files.write(staleSeg, new byte[0]);
+
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("New", "com.New", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        Object store = openOrCreate(entries, counts);
+        storeClose(store);
+
+        assertFalse("Stale segment must be pruned after new write", Files.exists(staleSeg)); //$NON-NLS-1$
+        assertTrue("New segment must exist", Files.exists(currentSeg)); //$NON-NLS-1$
+    }
+
+    @Test
     public void badMagicInExistingFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Qux", "com.Qux", "com", Kind.TYPE, Access.NONE, TypeCategory.ENUM));

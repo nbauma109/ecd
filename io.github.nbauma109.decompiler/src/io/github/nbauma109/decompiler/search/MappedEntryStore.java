@@ -25,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.stream.Stream;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -147,6 +148,7 @@ final class MappedEntryStore implements EntryStore {
             }
         }
         write(file, jar, entries, counts);
+        pruneOldSegments(file, cacheDir);
         return map(file, jar);
     }
 
@@ -498,6 +500,27 @@ final class MappedEntryStore implements EntryStore {
             return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new AssertionError(e); // SHA-256 is always available
+        }
+    }
+
+    /**
+     * Deletes any sibling {@code .bsix} files that share the same root/jar hash prefix as
+     * {@code newFile} but have a different (stale) timestamp/length suffix. Called after
+     * writing a new segment so disk usage does not grow without bound when JARs are rebuilt.
+     */
+    private static void pruneOldSegments(Path newFile, Path cacheDir) {
+        String name = newFile.getFileName().toString();
+        if (name.length() < 37) { // "bsi-" (4) + hash32 (32) + "-" (1)
+            return;
+        }
+        String prefix = name.substring(0, 37); // "bsi-" + 32-char hash + "-"
+        try (Stream<Path> stream = Files.list(cacheDir)) {
+            stream.filter(p -> {
+                String n = p.getFileName().toString();
+                return n.startsWith(prefix) && n.endsWith(".bsix") && !p.equals(newFile); //$NON-NLS-1$
+            }).forEach(MappedEntryStore::deleteQuietly);
+        } catch (IOException e) {
+            Logger.debug(e);
         }
     }
 
