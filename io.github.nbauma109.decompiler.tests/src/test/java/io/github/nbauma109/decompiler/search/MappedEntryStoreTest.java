@@ -366,6 +366,29 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void obsoleteSegmentsArePrunedOnReuse() throws Exception {
+        // Write the segment once so the valid file exists
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("Cached", "com.Cached", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+        Object first = openOrCreate(entries, counts);
+        storeClose(first);
+
+        // Simulate a stale sibling that survived a previous failed prune (e.g. Windows lock)
+        Path currentSeg = segmentPath();
+        String segName = currentSeg.getFileName().toString();
+        Path staleSeg = cacheDir.resolve(segName.substring(0, 37) + "0-0.bsix"); //$NON-NLS-1$
+        Files.write(staleSeg, new byte[0]);
+
+        // Second openOrCreate hits the cache-hit (reuse) path and should prune the stale sibling
+        Object second = openOrCreate(entries, counts);
+        storeClose(second);
+
+        assertFalse("Stale sibling must be pruned on cache reuse", Files.exists(staleSeg)); //$NON-NLS-1$
+        assertTrue("Current segment must still exist", Files.exists(currentSeg)); //$NON-NLS-1$
+    }
+
+    @Test
     public void badMagicInExistingFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Qux", "com.Qux", "com", Kind.TYPE, Access.NONE, TypeCategory.ENUM));

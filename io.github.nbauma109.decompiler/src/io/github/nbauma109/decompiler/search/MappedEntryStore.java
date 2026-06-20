@@ -137,7 +137,11 @@ final class MappedEntryStore implements EntryStore {
         if (Files.exists(file)) {
             if (headerOk(file, jar, entries.size())) {
                 try {
-                    return map(file, jar);
+                    MappedEntryStore store = map(file, jar);
+                    // Retry pruning stale siblings on reuse: by this point any previously
+                    // published mapping for an older version may have been GC'd on Windows.
+                    pruneOldSegments(file, cacheDir);
+                    return store;
                 } catch (IOException | RuntimeException e) {
                     Logger.debug(e);
                     deleteQuietly(file);
