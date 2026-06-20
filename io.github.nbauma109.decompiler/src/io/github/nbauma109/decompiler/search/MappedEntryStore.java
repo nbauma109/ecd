@@ -38,9 +38,9 @@ import io.github.nbauma109.decompiler.util.Logger;
  *
  * <h3>File format</h3>
  * <pre>
- * Header (120 bytes, big-endian):
+ * Header (124 bytes, big-endian):
  *   [0]   int  magic            = 0x42534558
- *   [4]   int  version          = 3
+ *   [4]   int  version          = 4
  *   [8]   long jarLastModified
  *   [16]  long jarLength
  *   [24]  int  entryCount
@@ -57,6 +57,7 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   [96]  long occurrenceCountsOff
  *   [104] long stringsOff   -- int[stringCount] byte-lengths, then concatenated UTF-8
  *   [112] long handlesOff   -- int[handleCount] byte-lengths, then concatenated UTF-8
+ *   [120] int  bodyCrc32    -- CRC32 over all bytes from offset 124 to end of file
  *
  * Fixed-width sections (layout computed at write time):
  *   byte[entryCount]   kindAndFlags        (padded to 4-byte boundary)
@@ -82,8 +83,8 @@ import io.github.nbauma109.decompiler.util.Logger;
 final class MappedEntryStore implements EntryStore {
 
     private static final int MAGIC = 0x42534558;
-    private static final int VERSION = 3;
-    private static final int HEADER_SIZE = 120;
+    private static final int VERSION = 4;
+    private static final int HEADER_SIZE = 124;
     private static final int NULL_ID = HeapEntryStore.NULL_ID;
 
     private final FileChannel channel;
@@ -240,6 +241,7 @@ final class MappedEntryStore implements EntryStore {
             if (h.getLong() != expectedOccurrenceCountsOff) return false;
             long stringsOff = h.getLong();
             long handlesOff = h.getLong();
+            int storedBodyCrc = h.getInt(); // CRC32 over bytes [HEADER_SIZE..EOF)
             // Validate variable-width section offsets: each must lie within the file and
             // leave room for its length-index array.
             if (stringsOff < minStringsOff || stringsOff > fileSize) return false;
@@ -286,7 +288,19 @@ final class MappedEntryStore implements EntryStore {
                     handleSum += len;
                 }
             }
-            return hDataStart + handleSum == fileSize;
+            if (hDataStart + handleSum != fileSize) return false;
+            // Final: verify CRC32 of the serialized body so any bit-level corruption in
+            // column arrays or UTF-8 data is detected even when the header is intact.
+            CRC32 crc = new CRC32();
+            ByteBuffer bodyChunk = ByteBuffer.allocate(65536);
+            ch.position(HEADER_SIZE);
+            int r;
+            while ((r = ch.read(bodyChunk)) > 0) {
+                bodyChunk.flip();
+                crc.update(bodyChunk);
+                bodyChunk.clear();
+            }
+            return (int) crc.getValue() == storedBodyCrc;
         } catch (IOException e) {
             return false;
         }
@@ -401,6 +415,7 @@ final class MappedEntryStore implements EntryStore {
             writeLong(os, occurrenceCountsOff);
             writeLong(os, stringsOff);
             writeLong(os, handlesOff);
+            writeInt(os, 0); // bodyCrc32 placeholder — patched below after body is written
 
             // kindAndFlags (padded)
             os.write(kindAndFlags);
@@ -429,6 +444,21 @@ final class MappedEntryStore implements EntryStore {
             for (byte[] h : handleBytes) {
                 os.write(h);
             }
+        }
+        // Compute CRC32 over the body (bytes from HEADER_SIZE to EOF) and patch into the header.
+        try (FileChannel fc = FileChannel.open(tmp, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+            CRC32 crc = new CRC32();
+            ByteBuffer chunk = ByteBuffer.allocate(65536);
+            fc.position(HEADER_SIZE);
+            int r;
+            while ((r = fc.read(chunk)) > 0) {
+                chunk.flip();
+                crc.update(chunk);
+                chunk.clear();
+            }
+            ByteBuffer crcBuf = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN);
+            crcBuf.putInt((int) crc.getValue()).flip();
+            fc.write(crcBuf, 120);
         }
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

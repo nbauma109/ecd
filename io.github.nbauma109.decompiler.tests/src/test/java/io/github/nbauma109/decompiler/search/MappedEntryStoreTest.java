@@ -254,9 +254,9 @@ public class MappedEntryStoreTest {
         return (long) STRING_ESTIMATE.invoke(null, s);
     }
 
-    /** Builds a 120-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
+    /** Builds a 124-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
     private static byte[] buildFakeHeader(int magic, int version, long lastModified, long jarLength) {
-        byte[] h = new byte[120];
+        byte[] h = new byte[124];
         putInt(h, 0, magic);
         putInt(h, 4, version);
         putLong(h, 8, lastModified);
@@ -684,6 +684,33 @@ public class MappedEntryStoreTest {
             }
         } finally {
             MAPPED_THRESHOLD_FIELD.setLong(null, old);
+        }
+    }
+
+    @Test
+    public void corruptedBodyCrcTriggersRebuild() throws Exception {
+        // Build a valid segment, then flip one byte in the body (not the header).
+        // The header fingerprint at offset 36 covers per-entry logical data, not the
+        // serialized bytes, so only the new body CRC check at offset 120 catches this.
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("BodyCorrupt", "com.BodyCorrupt", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        Object first = openOrCreate(entries, counts);
+        storeClose(first);
+
+        Path seg = segmentPath();
+        byte[] raw = java.nio.file.Files.readAllBytes(seg);
+        // Flip one bit in the body (first byte after the 124-byte header)
+        raw[124] ^= 0x01;
+        java.nio.file.Files.write(seg, raw);
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("BodyCorrupt", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
         }
     }
 
