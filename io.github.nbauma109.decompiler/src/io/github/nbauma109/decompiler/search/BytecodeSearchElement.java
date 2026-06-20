@@ -48,15 +48,15 @@ public final class BytecodeSearchElement implements IAdaptable {
         }
         BytecodeSearchElement other = (BytecodeSearchElement) obj;
         return new EqualsBuilder()
-            .append(entry.getElementHandle(), other.entry.getElementHandle())
-            .isEquals();
+                .append(entry.getElementHandle(), other.entry.getElementHandle())
+                .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder()
-            .append(entry.getElementHandle())
-            .toHashCode();
+                .append(entry.getElementHandle())
+                .toHashCode();
     }
 
     @Override

@@ -260,12 +260,12 @@ public class JavaDecompilerClassFileEditorTest {
             throws Exception {
         JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
         IClassFile editorClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
-          case "getElementName" -> "Outer.class"; //$NON-NLS-1$ //$NON-NLS-2$
-          default -> defaultValue(method.getReturnType());
+            case "getElementName" -> "Outer.class"; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> defaultValue(method.getReturnType());
         });
         IClassFile localClassFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
-          case "getElementName" -> "Outer$1Helper.class"; //$NON-NLS-1$ //$NON-NLS-2$
-          default -> defaultValue(method.getReturnType());
+            case "getElementName" -> "Outer$1Helper.class"; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> defaultValue(method.getReturnType());
         });
         String source = "class Outer { static class Helper {} void method() { class Helper {} } }"; //$NON-NLS-1$
         java.lang.reflect.Method finder = JavaDecompilerClassFileEditor.class.getDeclaredMethod(
@@ -655,22 +655,22 @@ public class JavaDecompilerClassFileEditorTest {
         JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
         IType outerType = proxy(IType.class, (proxy, method, args) -> null);
         IType innerType = proxy(IType.class, (proxy, method, args) -> switch (method.getName()) {
-          case "getDeclaringType" -> outerType; //$NON-NLS-1$
-          case "getFlags" -> Integer.valueOf(0); //$NON-NLS-1$
-          case "isLocal", "isAnonymous" -> Boolean.FALSE; //$NON-NLS-1$ //$NON-NLS-2$
-          default -> defaultValue(method.getReturnType());
+            case "getDeclaringType" -> outerType; //$NON-NLS-1$
+            case "getFlags" -> Integer.valueOf(0); //$NON-NLS-1$
+            case "isLocal", "isAnonymous" -> Boolean.FALSE; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> defaultValue(method.getReturnType());
         });
         IMethod constructor = proxy(IMethod.class, (proxy, method, args) -> switch (method.getName()) {
-          case "isConstructor" -> Boolean.TRUE; //$NON-NLS-1$
-          case "getElementName" -> FIXTURE_INNER_TYPE; //$NON-NLS-1$
-          case "getNumberOfParameters" -> Integer.valueOf(2); //$NON-NLS-1$
-          case "getParameterTypes" -> new String[] { "Lfixture.Outer;", "QString;" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-          case "getDeclaringType" -> innerType; //$NON-NLS-1$
-          default -> defaultValue(method.getReturnType());
+            case "isConstructor" -> Boolean.TRUE; //$NON-NLS-1$
+            case "getElementName" -> FIXTURE_INNER_TYPE; //$NON-NLS-1$
+            case "getNumberOfParameters" -> Integer.valueOf(2); //$NON-NLS-1$
+            case "getParameterTypes" -> new String[] { "Lfixture.Outer;", "QString;" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            case "getDeclaringType" -> innerType; //$NON-NLS-1$
+            default -> defaultValue(method.getReturnType());
         });
         IClassFile classFile = proxy(IClassFile.class, (proxy, method, args) -> switch (method.getName()) {
-          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
-          default -> defaultValue(method.getReturnType());
+            case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+            default -> defaultValue(method.getReturnType());
         });
         String source = "class Outer { class Inner { Inner(String name) {} } }"; //$NON-NLS-1$
         int innerOffset = source.indexOf("class Inner"); //$NON-NLS-1$
@@ -688,14 +688,14 @@ public class JavaDecompilerClassFileEditorTest {
             throws Exception {
         JavaDecompilerClassFileEditor editor = new JavaDecompilerClassFileEditor();
         IMethod method = proxy(IMethod.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
-          case "isConstructor" -> Boolean.FALSE; //$NON-NLS-1$
-          case "getElementName" -> "use"; //$NON-NLS-1$ //$NON-NLS-2$
-          case "getParameterTypes" -> new String[] { "Ljava.util.Date;" }; //$NON-NLS-1$ //$NON-NLS-2$
-          default -> defaultValue(reflectedMethod.getReturnType());
+            case "isConstructor" -> Boolean.FALSE; //$NON-NLS-1$
+            case "getElementName" -> "use"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "getParameterTypes" -> new String[] { "Ljava.util.Date;" }; //$NON-NLS-1$ //$NON-NLS-2$
+            default -> defaultValue(reflectedMethod.getReturnType());
         });
         IClassFile classFile = proxy(IClassFile.class, (proxy, reflectedMethod, args) -> switch (reflectedMethod.getName()) {
-          case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
-          default -> defaultValue(reflectedMethod.getReturnType());
+            case "getElementName" -> FIXTURE_INNER_CLASS; //$NON-NLS-1$
+            default -> defaultValue(reflectedMethod.getReturnType());
         });
         String source =
                 "class Outer { class Inner { void use(java.sql.Date d) {} void use(java.util.Date d) {} } }"; //$NON-NLS-1$

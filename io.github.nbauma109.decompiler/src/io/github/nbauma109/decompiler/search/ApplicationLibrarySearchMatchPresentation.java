@@ -67,7 +67,7 @@ public class ApplicationLibrarySearchMatchPresentation implements IMatchPresenta
             protectExternalTextSelection(editor);
             List<BytecodeSourceRangeResolver.SourceRange> toHighlight = highlights == null || highlights.isEmpty()
                     ? List.of(new BytecodeSourceRangeResolver.SourceRange(currentOffset, currentLength))
-                    : highlights;
+                            : highlights;
             BytecodeSearchEditorHighlighter.highlight(textEditor, toHighlight);
             selectAndReveal(textEditor, currentOffset, currentLength);
         } else {

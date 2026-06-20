@@ -198,13 +198,13 @@ public class JavaSourceMemberParserTest {
         @Parameters(name = "{0}")
         public static List<Case> data() {
             return List.of(
-                new Case("field is direct member",               "class Foo { int x; }",                        "x",   true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("method header is direct member",       CLASS_FOO_VOID_BAR,                "bar", true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("call inside method body is not direct","class Foo { void bar() { foo(); } }",         "foo", false), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("abstract method header is direct",     "abstract class Foo { abstract void baz(); }", "baz", true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("second method after first is direct",  "class Foo { void m1() { } void m2() { } }",  "m2",  true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("interface method is direct member",    "interface Foo { void run(); }",               "run", true)   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            );
+                    new Case("field is direct member",               "class Foo { int x; }",                        "x",   true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("method header is direct member",       CLASS_FOO_VOID_BAR,                "bar", true),  //$NON-NLS-1$ //$NON-NLS-2$
+                    new Case("call inside method body is not direct","class Foo { void bar() { foo(); } }",         "foo", false), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("abstract method header is direct",     "abstract class Foo { abstract void baz(); }", "baz", true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("second method after first is direct",  "class Foo { void m1() { } void m2() { } }",  "m2",  true),  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("interface method is direct member",    "interface Foo { void run(); }",               "run", true)   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    );
         }
 
         private final Case testCase;
@@ -235,15 +235,15 @@ public class JavaSourceMemberParserTest {
         @Parameters(name = "{0}")
         public static List<Case> data() {
             return List.of(
-                new Case("concrete method",            CLASS_FOO_VOID_BAR,                                  "bar"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("concrete method with params","class Foo { int add(int a, int b) { return a + b; } }",         "add"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("abstract method",            "abstract class Foo { abstract void baz(); }",                   "baz"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("interface method",           "interface Foo { void run(); }",                                  "run"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("concrete with throws",              "class Foo { void bar() throws Exception { } }",                    "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("abstract with throws",             "abstract class Foo { abstract void bar() throws Exception; }",     "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("annotation member without default","@interface Ann { String value(); }",                               "value"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                new Case("annotation member with default",   "@interface Ann { String value() default \"x\"; }",                "value")  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            );
+                    new Case("concrete method",            CLASS_FOO_VOID_BAR,                                  "bar"), //$NON-NLS-1$ //$NON-NLS-2$
+                    new Case("concrete method with params","class Foo { int add(int a, int b) { return a + b; } }",         "add"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("abstract method",            "abstract class Foo { abstract void baz(); }",                   "baz"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("interface method",           "interface Foo { void run(); }",                                  "run"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("concrete with throws",              "class Foo { void bar() throws Exception { } }",                    "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("abstract with throws",             "abstract class Foo { abstract void bar() throws Exception; }",     "bar"),   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("annotation member without default","@interface Ann { String value(); }",                               "value"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    new Case("annotation member with default",   "@interface Ann { String value() default \"x\"; }",                "value")  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    );
         }
 
         private final Case testCase;
