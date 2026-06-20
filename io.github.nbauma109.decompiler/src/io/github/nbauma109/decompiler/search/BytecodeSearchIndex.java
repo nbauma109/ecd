@@ -396,7 +396,7 @@ public final class BytecodeSearchIndex {
     public static final class JarIndex {
 
         private static final int[] EMPTY_POSTINGS = new int[0];
-        private static final long MAPPED_THRESHOLD = 32L * 1024L * 1024L;
+        private static long MAPPED_THRESHOLD = 32L * 1024L * 1024L;
 
         private final long lastModified;
         private final long length;
