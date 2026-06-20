@@ -132,6 +132,10 @@ final class MappedEntryStore implements EntryStore {
      * <p>
      * The segment filename encodes the root handle, jar path, lastModified, and length so that
      * each jar version gets its own file and no active mapping is ever replaced.
+     * When a stale segment cannot be deleted (Windows: MappedByteBuffer keeps the file locked),
+     * the new segment is written under a fingerprint-suffixed sibling name so the caller always
+     * gets a fresh mapped store. The locked stale file becomes a sibling and is pruned by
+     * {@link #pruneOldSegments} once its mapping is released by GC.
      */
     static MappedEntryStore openOrCreate(File jar, Path cacheDir,
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
@@ -148,14 +152,37 @@ final class MappedEntryStore implements EntryStore {
                     Logger.debug(e);
                     deleteQuietly(file);
                 }
-            } else {
-                // Bad header detected via sequential read — safe to delete without mapping
-                deleteQuietly(file);
+            } else if (!deleteQuietly(file)) {
+                // Stale segment is locked (Windows MappedByteBuffer): fall through to a
+                // fingerprint-named sibling so the current caller gets a usable mapped store.
+                // pruneOldSegments will clean up the stale file once its mapping is released.
+                file = alternateSegmentPath(file, fingerprintEntries(entries, counts));
+                if (Files.exists(file) && headerOk(file, jar, entries, counts)) {
+                    try {
+                        MappedEntryStore store = map(file, jar);
+                        pruneOldSegments(file, cacheDir);
+                        return store;
+                    } catch (IOException | RuntimeException e) {
+                        Logger.debug(e);
+                        deleteQuietly(file);
+                    }
+                }
             }
         }
         write(file, jar, entries, counts);
         pruneOldSegments(file, cacheDir);
         return map(file, jar);
+    }
+
+    /**
+     * Returns an alternate segment path by appending the fingerprint as a hex suffix before
+     * {@code .bsix}. Used when the canonical segment path is locked on Windows so that the new
+     * segment can be written without touching the active mapping.
+     */
+    private static Path alternateSegmentPath(Path file, int fingerprint) {
+        String name = file.getFileName().toString();
+        String stem = name.substring(0, name.length() - ".bsix".length()); //$NON-NLS-1$
+        return file.resolveSibling(stem + "-" + Integer.toUnsignedString(fingerprint, 16) + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     /**
@@ -568,11 +595,12 @@ final class MappedEntryStore implements EntryStore {
         }
     }
 
-    static void deleteQuietly(Path file) {
+    static boolean deleteQuietly(Path file) {
         try {
-            Files.deleteIfExists(file);
+            return Files.deleteIfExists(file);
         } catch (IOException e) {
             Logger.debug(e);
+            return false;
         }
     }
 }
