@@ -87,7 +87,6 @@ final class MappedEntryStore implements EntryStore {
     private static final int HEADER_SIZE = 124;
     private static final int NULL_ID = HeapEntryStore.NULL_ID;
 
-    private final FileChannel channel;
     private final MappedByteBuffer buf;
     private final int entryCount;
     private final long kindAndFlagsOff;
@@ -107,9 +106,8 @@ final class MappedEntryStore implements EntryStore {
             long nameIdsOff, long qualifiedNameIdsOff, long declaringTypeNameIdsOff,
             long descriptorIdsOff, long occurrenceCountsOff) {}
 
-    private MappedEntryStore(FileChannel channel, MappedByteBuffer buf, int entryCount,
+    private MappedEntryStore(MappedByteBuffer buf, int entryCount,
             SectionLayout layout, int[] stringsDataOffsets, int[] handlesDataOffsets) {
-        this.channel = channel;
         this.buf = buf;
         this.entryCount = entryCount;
         this.kindAndFlagsOff = layout.kindAndFlagsOff();
@@ -472,48 +470,47 @@ final class MappedEntryStore implements EntryStore {
     // -------------------------------------------------------------------------
 
     private static MappedEntryStore map(Path file, File jar) throws IOException {
-        FileChannel ch = FileChannel.open(file, StandardOpenOption.READ);
-        try {
-            MappedByteBuffer b = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
-            b.order(ByteOrder.BIG_ENDIAN);
-
-            if (b.getInt(0) != MAGIC) {
-                throw new IOException("Bad magic in " + file); //$NON-NLS-1$
-            }
-            if (b.getInt(4) != VERSION) {
-                throw new IOException("Unsupported version in " + file); //$NON-NLS-1$
-            }
-            if (b.getLong(8) != jar.lastModified() || b.getLong(16) != jar.length()) {
-                throw new IOException("Jar metadata mismatch for " + file); //$NON-NLS-1$
-            }
-
-            int entryCount = b.getInt(24);
-            int stringCount = b.getInt(28);
-            int handleCount = b.getInt(32);
-
-            long kindAndFlagsOff       = b.getLong(40);
-            long typeCategoryIdsOff    = b.getLong(48);
-            long elementHandleIdsOff   = b.getLong(56);
-            long nameIdsOff            = b.getLong(64);
-            long qualifiedNameIdsOff   = b.getLong(72);
-            long declaringTypeNameIdsOff = b.getLong(80);
-            long descriptorIdsOff      = b.getLong(88);
-            long occurrenceCountsOff   = b.getLong(96);
-            long stringsOff            = b.getLong(104);
-            long handlesOff            = b.getLong(112);
-
-            int[] stringsDataOffsets = buildDataOffsets(b, stringsOff, stringCount);
-            int[] handlesDataOffsets = buildDataOffsets(b, handlesOff, handleCount);
-
-            return new MappedEntryStore(ch, b, entryCount,
-                    new SectionLayout(kindAndFlagsOff, typeCategoryIdsOff, elementHandleIdsOff,
-                            nameIdsOff, qualifiedNameIdsOff, declaringTypeNameIdsOff,
-                            descriptorIdsOff, occurrenceCountsOff),
-                    stringsDataOffsets, handlesDataOffsets);
-        } catch (Exception e) {
-            ch.close();
-            throw e;
+        // Close the channel immediately after mapping: MappedByteBuffer stays valid
+        // independently of the channel, so keeping the channel open wastes a file descriptor.
+        MappedByteBuffer b;
+        try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
+            b = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
         }
+        b.order(ByteOrder.BIG_ENDIAN);
+
+        if (b.getInt(0) != MAGIC) {
+            throw new IOException("Bad magic in " + file); //$NON-NLS-1$
+        }
+        if (b.getInt(4) != VERSION) {
+            throw new IOException("Unsupported version in " + file); //$NON-NLS-1$
+        }
+        if (b.getLong(8) != jar.lastModified() || b.getLong(16) != jar.length()) {
+            throw new IOException("Jar metadata mismatch for " + file); //$NON-NLS-1$
+        }
+
+        int entryCount = b.getInt(24);
+        int stringCount = b.getInt(28);
+        int handleCount = b.getInt(32);
+
+        long kindAndFlagsOff       = b.getLong(40);
+        long typeCategoryIdsOff    = b.getLong(48);
+        long elementHandleIdsOff   = b.getLong(56);
+        long nameIdsOff            = b.getLong(64);
+        long qualifiedNameIdsOff   = b.getLong(72);
+        long declaringTypeNameIdsOff = b.getLong(80);
+        long descriptorIdsOff      = b.getLong(88);
+        long occurrenceCountsOff   = b.getLong(96);
+        long stringsOff            = b.getLong(104);
+        long handlesOff            = b.getLong(112);
+
+        int[] stringsDataOffsets = buildDataOffsets(b, stringsOff, stringCount);
+        int[] handlesDataOffsets = buildDataOffsets(b, handlesOff, handleCount);
+
+        return new MappedEntryStore(b, entryCount,
+                new SectionLayout(kindAndFlagsOff, typeCategoryIdsOff, elementHandleIdsOff,
+                        nameIdsOff, qualifiedNameIdsOff, declaringTypeNameIdsOff,
+                        descriptorIdsOff, occurrenceCountsOff),
+                stringsDataOffsets, handlesDataOffsets);
     }
 
     /**
@@ -562,11 +559,7 @@ final class MappedEntryStore implements EntryStore {
 
     @Override
     public void close() {
-        try {
-            channel.close();
-        } catch (IOException e) {
-            Logger.debug(e);
-        }
+        // Channel is closed immediately after map(); MappedByteBuffer is reclaimed by GC.
     }
 
     // -------------------------------------------------------------------------
