@@ -240,13 +240,20 @@ final class MappedEntryStore implements EntryStore {
     /** Reads the 8 fixed-width section offsets from {@code h} and returns false if any mismatch. */
     private static boolean validateFixedOffsets(ByteBuffer h, int n) {
         long off = HEADER_SIZE;
-        if (h.getLong() != off) return false; off += pad4(n);
-        if (h.getLong() != off) return false; off += pad4(n);
-        if (h.getLong() != off) return false; off += (long) n * 4;
-        if (h.getLong() != off) return false; off += (long) n * 4;
-        if (h.getLong() != off) return false; off += (long) n * 4;
-        if (h.getLong() != off) return false; off += (long) n * 4;
-        if (h.getLong() != off) return false; off += (long) n * 4;
+        if (h.getLong() != off) return false;
+        off += pad4(n);
+        if (h.getLong() != off) return false;
+        off += pad4(n);
+        if (h.getLong() != off) return false;
+        off += (long) n * 4;
+        if (h.getLong() != off) return false;
+        off += (long) n * 4;
+        if (h.getLong() != off) return false;
+        off += (long) n * 4;
+        if (h.getLong() != off) return false;
+        off += (long) n * 4;
+        if (h.getLong() != off) return false;
+        off += (long) n * 4;
         return h.getLong() == off;
     }
 
