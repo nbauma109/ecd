@@ -332,6 +332,14 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void segmentPathIncludesJavaFeatureVersion() throws Exception {
+        int feature = Runtime.version().feature();
+        Path seg = segmentPath();
+        assertTrue("Segment path must include Java feature version as '-jv" + feature + ".bsix'", //$NON-NLS-1$ //$NON-NLS-2$
+                seg.getFileName().toString().contains("-jv" + feature + ".bsix")); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void differentRootsGetDifferentSegmentFiles() throws Exception {
         Path seg1 = (Path) SEGMENT_PATH.invoke(null, cacheDir, fakeJar, "=ProjectA/src"); //$NON-NLS-1$
         Path seg2 = (Path) SEGMENT_PATH.invoke(null, cacheDir, fakeJar, "=ProjectB/src"); //$NON-NLS-1$

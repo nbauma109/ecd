@@ -127,8 +127,10 @@ final class MappedEntryStore implements EntryStore {
      * file and maps it. Throws {@link IOException} on any I/O failure; the caller is responsible
      * for deleting the segment file and falling back to {@link HeapEntryStore}.
      * <p>
-     * The segment filename encodes the root handle, jar path, lastModified, and length so that
-     * each jar version gets its own file and no active mapping is ever replaced.
+     * The segment filename encodes the root handle, jar path, lastModified, length, and the
+     * current Java feature version so that each jar/JVM combination gets its own file and no
+     * active mapping is ever replaced. The feature version prevents MR-JAR caches from being
+     * reused when the effective class set changes across JVM versions.
      */
     static MappedEntryStore openOrCreate(File jar, Path cacheDir,
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
@@ -177,7 +179,8 @@ final class MappedEntryStore implements EntryStore {
 
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
         String hash = sha256Hex(rootHandle + "|" + jar.getAbsolutePath()).substring(0, 32); //$NON-NLS-1$
-        return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        int jv = Runtime.version().feature();
+        return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + "-jv" + jv + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     }
 
     // -------------------------------------------------------------------------
