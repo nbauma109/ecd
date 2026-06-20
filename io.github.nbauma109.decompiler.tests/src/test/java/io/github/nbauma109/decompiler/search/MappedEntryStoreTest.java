@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -322,12 +323,18 @@ public class MappedEntryStoreTest {
         Object first = openOrCreate(entries, counts);
         storeClose(first);
 
-        long bsixCount = Files.list(cacheDir).filter(p -> p.getFileName().toString().endsWith(".bsix")).count(); //$NON-NLS-1$
+        long bsixCount;
+        try (Stream<Path> s = Files.list(cacheDir)) {
+            bsixCount = s.filter(p -> p.getFileName().toString().endsWith(".bsix")).count(); //$NON-NLS-1$
+        }
 
         Object second = openOrCreate(entries, counts);
         storeClose(second);
 
-        long bsixCountAfter = Files.list(cacheDir).filter(p -> p.getFileName().toString().endsWith(".bsix")).count(); //$NON-NLS-1$
+        long bsixCountAfter;
+        try (Stream<Path> s = Files.list(cacheDir)) {
+            bsixCountAfter = s.filter(p -> p.getFileName().toString().endsWith(".bsix")).count(); //$NON-NLS-1$
+        }
         assertEquals("No new segment file should be written on second call", bsixCount, bsixCountAfter); //$NON-NLS-1$
     }
 
