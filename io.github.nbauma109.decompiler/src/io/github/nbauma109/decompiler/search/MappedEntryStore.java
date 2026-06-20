@@ -231,6 +231,24 @@ final class MappedEntryStore implements EntryStore {
         crc.update(bytes);
     }
 
+    /**
+     * Walks up the parent chain of {@code fallback} to find the nearest ancestor whose
+     * handle identifier does not contain {@code [~} and can therefore be recreated by
+     * {@code JavaCore.create()}. The fallback element itself often has a {@code [~} handle
+     * (anonymous/local class), so its own handle would also fail to reconstruct.
+     */
+    private static int resolvableFallbackHandleId(HeapEntryStore.ElementDictionary handles, IJavaElement fallback) {
+        IJavaElement elem = fallback;
+        while (elem != null) {
+            String h = elem.getHandleIdentifier();
+            if (h != null && !h.contains("[~")) { //$NON-NLS-1$
+                return handles.id(h, null);
+            }
+            elem = elem.getParent();
+        }
+        return NULL_ID;
+    }
+
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
         String hash = sha256Hex(rootHandle + "|" + jar.getAbsolutePath()).substring(0, 32); //$NON-NLS-1$
         return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
@@ -260,9 +278,7 @@ final class MappedEntryStore implements EntryStore {
             kindAndFlags[i] = HeapEntryStore.kindAndFlags(e);
             typeCategoryIds[i] = (byte) e.getTypeCategory().ordinal();
             handleIds[i] = handles.id(e.getElementHandle(), e.getAnonymousElementFallback());
-            IJavaElement fallback = e.getAnonymousElementFallback();
-            String fbHandle = fallback == null ? null : fallback.getHandleIdentifier();
-            fallbackHandleIds[i] = fbHandle == null ? NULL_ID : handles.id(fbHandle, null);
+            fallbackHandleIds[i] = resolvableFallbackHandleId(handles, e.getAnonymousElementFallback());
             nameIds[i] = strings.id(e.getName());
             qualifiedNameIds[i] = strings.id(e.getQualifiedName());
             declaringTypeNameIds[i] = strings.id(e.getDeclaringTypeName());
