@@ -53,6 +53,7 @@ public class MappedEntryStoreTest {
     private static final Method ENTRY;
     private static final Method CLOSE;
     private static final Method DELETE_QUIETLY;
+    private static final Method WRITE_SEGMENT;
 
     // BytecodeSearchEntry accessor handles
     private static final Method GET_NAME;
@@ -91,6 +92,8 @@ public class MappedEntryStoreTest {
             CLOSE.setAccessible(true);
             DELETE_QUIETLY = STORE_CLASS.getDeclaredMethod("deleteQuietly", Path.class); //$NON-NLS-1$
             DELETE_QUIETLY.setAccessible(true);
+            WRITE_SEGMENT = STORE_CLASS.getDeclaredMethod("write", Path.class, File.class, List.class, int[].class); //$NON-NLS-1$
+            WRITE_SEGMENT.setAccessible(true);
 
             GET_NAME = BytecodeSearchEntry.class.getDeclaredMethod("getName"); //$NON-NLS-1$
             GET_NAME.setAccessible(true);
@@ -171,6 +174,11 @@ public class MappedEntryStoreTest {
     private Object openOrCreate(List<BytecodeSearchEntry> entries, int[] counts)
             throws ReflectiveOperationException {
         return OPEN_OR_CREATE.invoke(null, fakeJar, cacheDir, entries, counts, ROOT_HANDLE);
+    }
+
+    private void writeSegment(List<BytecodeSearchEntry> entries, int[] counts)
+            throws ReflectiveOperationException {
+        WRITE_SEGMENT.invoke(null, segmentPath(), fakeJar, entries, counts);
     }
 
     private Path segmentPath() throws ReflectiveOperationException {
@@ -696,8 +704,7 @@ public class MappedEntryStoreTest {
                 makeEntry("BodyCorrupt", "com.BodyCorrupt", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        Object first = openOrCreate(entries, counts);
-        storeClose(first);
+        writeSegment(entries, counts);
 
         Path seg = segmentPath();
         byte[] raw = java.nio.file.Files.readAllBytes(seg);
@@ -723,12 +730,11 @@ public class MappedEntryStoreTest {
                 makeEntry("TruncPay", "com.TruncPay", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        Object first = openOrCreate(entries, counts);
-        storeClose(first);
+        writeSegment(entries, counts);
 
         // Truncate to just after the header + fixed sections — cut into the string payload.
-        // HEADER_SIZE (120) + pad4(1) + pad4(1) + 6 * 4 (int columns) = 120 + 4 + 4 + 24 = 152
-        // At 152 the string length-index array begins; truncating there removes string data.
+        // HEADER_SIZE (124) + pad4(1) + pad4(1) + 6 * 4 (int columns) = 124 + 4 + 4 + 24 = 156
+        // At 156 the string length-index array begins; truncating there removes string data.
         Path seg = segmentPath();
         byte[] raw = java.nio.file.Files.readAllBytes(seg);
         // Keep only the first 160 bytes: header + fixed sections + a few bytes of length array
@@ -754,8 +760,7 @@ public class MappedEntryStoreTest {
                 makeEntry("Corrupted", "com.Corrupted", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        Object first = openOrCreate(entries, counts);
-        storeClose(first);
+        writeSegment(entries, counts);
 
         Path seg = segmentPath();
         byte[] raw = java.nio.file.Files.readAllBytes(seg);
@@ -779,8 +784,7 @@ public class MappedEntryStoreTest {
                 makeEntry("OffCorrupt", "com.OffCorrupt", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        Object first = openOrCreate(entries, counts);
-        storeClose(first);
+        writeSegment(entries, counts);
 
         Path seg = segmentPath();
         byte[] raw = java.nio.file.Files.readAllBytes(seg);
