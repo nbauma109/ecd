@@ -386,6 +386,25 @@ public class MappedEntryStoreTest {
     // -------------------------------------------------------------------------
 
     @Test
+    public void truncatedExistingFileTriggersRebuild() throws Exception {
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("Tiny", "com.Tiny", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        // Pre-create a file smaller than HEADER_SIZE (120 bytes) → headerOk() size check
+        Path seg = segmentPath();
+        Files.write(seg, new byte[10]);
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("Tiny", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void badVersionInExistingFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Foo", "com.Foo", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));

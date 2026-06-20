@@ -12,6 +12,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -133,15 +134,45 @@ final class MappedEntryStore implements EntryStore {
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
         Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
-            try {
-                return map(file, jar);
-            } catch (IOException | RuntimeException e) {
-                Logger.debug(e);
+            if (headerOk(file, jar)) {
+                try {
+                    return map(file, jar);
+                } catch (IOException | RuntimeException e) {
+                    Logger.debug(e);
+                    deleteQuietly(file);
+                }
+            } else {
+                // Bad header detected via sequential read — safe to delete without mapping
                 deleteQuietly(file);
             }
         }
         write(file, jar, entries, counts);
         return map(file, jar);
+    }
+
+    /**
+     * Validates the header of an existing segment file via a sequential read, without creating
+     * a memory mapping. On Windows, an invalid mapped file cannot be deleted while the
+     * {@link java.nio.MappedByteBuffer} is alive; this pre-check avoids that situation.
+     */
+    private static boolean headerOk(Path file, File jar) {
+        try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
+            if (ch.size() < HEADER_SIZE) {
+                return false;
+            }
+            ByteBuffer h = ByteBuffer.allocate(24);
+            h.order(ByteOrder.BIG_ENDIAN);
+            while (h.hasRemaining()) {
+                if (ch.read(h) <= 0) {
+                    return false;
+                }
+            }
+            h.flip();
+            return h.getInt() == MAGIC && h.getInt() == VERSION
+                    && h.getLong() == jar.lastModified() && h.getLong() == jar.length();
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
