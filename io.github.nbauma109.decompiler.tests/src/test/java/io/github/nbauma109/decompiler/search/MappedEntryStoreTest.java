@@ -425,6 +425,25 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void staleEntryCountInSegmentFileTriggersRebuild() throws Exception {
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("Stale", "com.Stale", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        // Pre-create a file with correct magic + version + jar metadata but entryCount=0 (stale)
+        Path seg = segmentPath();
+        Files.write(seg, buildFakeHeader(0x42534558, 1, fakeJar.lastModified(), fakeJar.length()));
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("Stale", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void jarMetadataMismatchInExistingFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Bar", "com.Bar", "com", Kind.TYPE, Access.READ, TypeCategory.INTERFACE));

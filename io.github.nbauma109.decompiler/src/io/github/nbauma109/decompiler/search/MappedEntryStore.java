@@ -134,7 +134,7 @@ final class MappedEntryStore implements EntryStore {
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
         Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
-            if (headerOk(file, jar)) {
+            if (headerOk(file, jar, entries.size())) {
                 try {
                     return map(file, jar);
                 } catch (IOException | RuntimeException e) {
@@ -154,13 +154,15 @@ final class MappedEntryStore implements EntryStore {
      * Validates the header of an existing segment file via a sequential read, without creating
      * a memory mapping. On Windows, an invalid mapped file cannot be deleted while the
      * {@link java.nio.MappedByteBuffer} is alive; this pre-check avoids that situation.
+     * Also validates {@code entryCount} so a zeroed or stale table cannot silently return
+     * garbage data when the postings are looked up against the current entry list.
      */
-    private static boolean headerOk(Path file, File jar) {
+    private static boolean headerOk(Path file, File jar, int expectedEntryCount) {
         try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
             if (ch.size() < HEADER_SIZE) {
                 return false;
             }
-            ByteBuffer h = ByteBuffer.allocate(24);
+            ByteBuffer h = ByteBuffer.allocate(28); // magic + version + lastModified + length + entryCount
             h.order(ByteOrder.BIG_ENDIAN);
             while (h.hasRemaining()) {
                 if (ch.read(h) <= 0) {
@@ -169,7 +171,8 @@ final class MappedEntryStore implements EntryStore {
             }
             h.flip();
             return h.getInt() == MAGIC && h.getInt() == VERSION
-                    && h.getLong() == jar.lastModified() && h.getLong() == jar.length();
+                    && h.getLong() == jar.lastModified() && h.getLong() == jar.length()
+                    && h.getInt() == expectedEntryCount;
         } catch (IOException e) {
             return false;
         }
