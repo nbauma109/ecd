@@ -254,9 +254,9 @@ public class MappedEntryStoreTest {
         return (long) STRING_ESTIMATE.invoke(null, s);
     }
 
-    /** Builds a 120-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
+    /** Builds a 128-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
     private static byte[] buildFakeHeader(int magic, int version, long lastModified, long jarLength) {
-        byte[] h = new byte[120];
+        byte[] h = new byte[128];
         putInt(h, 0, magic);
         putInt(h, 4, version);
         putLong(h, 8, lastModified);
@@ -496,6 +496,27 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void occurrenceCountMismatchTriggersRebuild() throws Exception {
+        // Write initial segment with occurrenceCount=1
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("Same", "com.Same", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts1 = {1};
+        Object first = openOrCreate(entries, counts1);
+        storeClose(first);
+
+        // Same entry, same handle, but different occurrence count
+        int[] counts2 = {99};
+        Object rebuilt = openOrCreate(entries, counts2);
+        try {
+            // The rebuilt store must reflect the new occurrence count (fingerprint differs)
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("Same", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void staleEntryCountInSegmentFileTriggersRebuild() throws Exception {
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Stale", "com.Stale", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
@@ -503,7 +524,7 @@ public class MappedEntryStoreTest {
 
         // Pre-create a file with correct magic + version + jar metadata but entryCount=0 (stale)
         Path seg = segmentPath();
-        Files.write(seg, buildFakeHeader(0x42534558, 1, fakeJar.lastModified(), fakeJar.length()));
+        Files.write(seg, buildFakeHeader(0x42534558, 2, fakeJar.lastModified(), fakeJar.length()));
 
         Object rebuilt = openOrCreate(entries, counts);
         try {
@@ -522,7 +543,7 @@ public class MappedEntryStoreTest {
 
         // Pre-create a file with correct magic + version but wrong lastModified (999L)
         Path seg = segmentPath();
-        Files.write(seg, buildFakeHeader(0x42534558, 1, 999L, fakeJar.length()));
+        Files.write(seg, buildFakeHeader(0x42534558, 2, 999L, fakeJar.length()));
 
         Object rebuilt = openOrCreate(entries, counts);
         try {
