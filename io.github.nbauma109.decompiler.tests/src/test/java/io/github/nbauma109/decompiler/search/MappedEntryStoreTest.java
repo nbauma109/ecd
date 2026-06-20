@@ -9,6 +9,7 @@ package io.github.nbauma109.decompiler.search;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -334,7 +335,7 @@ public class MappedEntryStoreTest {
     public void differentRootsGetDifferentSegmentFiles() throws Exception {
         Path seg1 = (Path) SEGMENT_PATH.invoke(null, cacheDir, fakeJar, "=ProjectA/src"); //$NON-NLS-1$
         Path seg2 = (Path) SEGMENT_PATH.invoke(null, cacheDir, fakeJar, "=ProjectB/src"); //$NON-NLS-1$
-        assertFalse("Different roots for the same jar must produce different segment paths", seg1.equals(seg2)); //$NON-NLS-1$
+        assertNotEquals("Different roots for the same jar must produce different segment paths", seg1, seg2); //$NON-NLS-1$
     }
 
     @Test
@@ -429,8 +430,6 @@ public class MappedEntryStoreTest {
 
     @Test
     public void nullElementHandleEntry() throws Exception {
-        // Entry with null element handle exercises handle(NULL_ID) → returns null;
-        // isDeclaration=false exercises the declaration() false branch
         BytecodeSearchEntry entry = new BytecodeSearchEntry(Kind.METHOD, false,
                 BytecodeSearchEntry.elementReference(null, null),
                 BytecodeSearchEntry.symbolReference("doWork", "com.Svc.doWork", "com.Svc", null), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$

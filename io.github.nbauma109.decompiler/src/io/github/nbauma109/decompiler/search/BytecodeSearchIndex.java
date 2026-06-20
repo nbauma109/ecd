@@ -215,6 +215,9 @@ public final class BytecodeSearchIndex {
         for (JarPlan plan : plans) {
             JarIndex index = rebuild(plan, cacheDir, subMonitor);
             if (index == null) {
+                // Close newly-built indexes (not reused from current state) to release file channels
+                Set<JarIndex> current = new HashSet<>(indexes.get().values());
+                closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
                 return new RebuildResult(false, Map.of());
             }
             rebuilt.put(plan.key(), index);
