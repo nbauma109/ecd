@@ -249,6 +249,10 @@ public final class BytecodeSearchIndex {
             refreshCompleted.set(true);
             Set<JarIndex> reused = new HashSet<>(rebuilt.values());
             closeAll(old.values().stream().filter(idx -> !reused.contains(idx)).toList());
+        } else {
+            // stop() ran before publish() — close freshly-built indexes to release file channels
+            Set<JarIndex> current = new HashSet<>(indexes.get().values());
+            closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
         }
     }
 
