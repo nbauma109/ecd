@@ -240,12 +240,53 @@ final class MappedEntryStore implements EntryStore {
             if (h.getLong() != expectedOccurrenceCountsOff) return false;
             long stringsOff = h.getLong();
             long handlesOff = h.getLong();
-            // Validate variable-width section offsets against file bounds and sc/hc counts:
-            // handlesOff must leave room for sc length-ints in the strings section;
-            // file must leave room for hc length-ints in the handles section.
+            // Validate variable-width section offsets: each must lie within the file and
+            // leave room for its length-index array.
             if (stringsOff < minStringsOff || stringsOff > fileSize) return false;
             if (handlesOff < stringsOff + (long) sc * 4 || handlesOff > fileSize) return false;
-            return fileSize >= handlesOff + (long) hc * 4;
+            if (fileSize < handlesOff + (long) hc * 4) return false;
+            // Read string length-index and verify the UTF-8 payload exactly fills the gap
+            // between stringsOff and handlesOff (catches truncation after the index array).
+            long sDataStart = stringsOff + (long) sc * 4;
+            long stringSum = 0;
+            if (sc > 0) {
+                ByteBuffer sLens = ByteBuffer.allocate((int) ((long) sc * 4));
+                sLens.order(ByteOrder.BIG_ENDIAN);
+                long sPos = stringsOff;
+                while (sLens.hasRemaining()) {
+                    int r = ch.read(sLens, sPos);
+                    if (r <= 0) return false;
+                    sPos += r;
+                }
+                sLens.flip();
+                for (int i = 0; i < sc; i++) {
+                    int len = sLens.getInt();
+                    if (len < 0) return false;
+                    stringSum += len;
+                }
+            }
+            if (sDataStart + stringSum != handlesOff) return false;
+            // Read handle length-index and verify the UTF-8 payload exactly fills the gap
+            // between handlesOff and end-of-file.
+            long hDataStart = handlesOff + (long) hc * 4;
+            long handleSum = 0;
+            if (hc > 0) {
+                ByteBuffer hLens = ByteBuffer.allocate((int) ((long) hc * 4));
+                hLens.order(ByteOrder.BIG_ENDIAN);
+                long hPos = handlesOff;
+                while (hLens.hasRemaining()) {
+                    int r = ch.read(hLens, hPos);
+                    if (r <= 0) return false;
+                    hPos += r;
+                }
+                hLens.flip();
+                for (int i = 0; i < hc; i++) {
+                    int len = hLens.getInt();
+                    if (len < 0) return false;
+                    handleSum += len;
+                }
+            }
+            return hDataStart + handleSum == fileSize;
         } catch (IOException e) {
             return false;
         }

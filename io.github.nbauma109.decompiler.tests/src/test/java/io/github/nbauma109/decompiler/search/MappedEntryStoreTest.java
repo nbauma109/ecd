@@ -688,6 +688,37 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void truncatedPayloadAfterLengthTablesTriggersRebuild() throws Exception {
+        // Build a valid segment, then truncate it to remove UTF-8 string payload.
+        // The header and length-index arrays are intact, so only the new payload-sum
+        // check (sDataStart + stringSum == handlesOff) will detect the corruption.
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("TruncPay", "com.TruncPay", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        Object first = openOrCreate(entries, counts);
+        storeClose(first);
+
+        // Truncate to just after the header + fixed sections — cut into the string payload.
+        // HEADER_SIZE (120) + pad4(1) + pad4(1) + 6 * 4 (int columns) = 120 + 4 + 4 + 24 = 152
+        // At 152 the string length-index array begins; truncating there removes string data.
+        Path seg = segmentPath();
+        byte[] raw = java.nio.file.Files.readAllBytes(seg);
+        // Keep only the first 160 bytes: header + fixed sections + a few bytes of length array
+        // but not enough room for the actual string UTF-8 payload.
+        int truncSize = Math.min(160, raw.length - 1);
+        java.nio.file.Files.write(seg, java.util.Arrays.copyOf(raw, truncSize));
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("TruncPay", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void corruptedTableCountsInSegmentFileTriggersRebuild() throws Exception {
         // Build a valid segment, then corrupt stringCount at offset 28 to Integer.MAX_VALUE.
         // The fingerprint at offset 36 covers per-entry data (not the count field) so it still
