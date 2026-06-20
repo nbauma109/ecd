@@ -1568,7 +1568,7 @@ public class ApplicationLibrarySearchParticipantTest {
                 "Application library wildcard-star coverage"); //$NON-NLS-1$
 
         // runSearchInBackground drives waitForInitialRefresh(), then routes through
-        // JarIndex.collect() → collectWildcard() → CompactEntries.size() for each indexed jar.
+        // JarIndex.collect() → collectWildcard() → EntryStore.size() for each indexed jar.
         List<Match> matches = runSearchInBackground(participant, specification);
         assertFalse("Wildcard * must match all method references in the indexed test jar", matches.isEmpty()); //$NON-NLS-1$
 

@@ -120,7 +120,7 @@ public class BytecodeJarIndexerTest {
                 }
             };
 
-            assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), monitor));
+            assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), null, monitor));
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -154,7 +154,7 @@ public class BytecodeJarIndexerTest {
             IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
 
             BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
-                    new NullProgressMonitor());
+                    null, new NullProgressMonitor());
 
             assertNotNull(index);
             assertEquals(0, nonDeclarationTypeEntries(index, "Outer", "pkg.Outer").size()); //$NON-NLS-1$ //$NON-NLS-2$
@@ -192,7 +192,7 @@ public class BytecodeJarIndexerTest {
             IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
 
             BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
-                    new NullProgressMonitor());
+                    null, new NullProgressMonitor());
 
             assertNotNull(index);
             assertEquals(0, fieldDeclarationEntries(index, "this$0").size()); //$NON-NLS-1$
@@ -255,7 +255,7 @@ public class BytecodeJarIndexerTest {
             //     visitAnnotation on that visitor for each annotation element.
             BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
             BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
-                    new NullProgressMonitor());
+                    null, new NullProgressMonitor());
 
             assertNotNull(index);
         } finally {
@@ -310,7 +310,7 @@ public class BytecodeJarIndexerTest {
             //     receives all directive callbacks; flush() processes the module branch.
             BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
             BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
-                    new NullProgressMonitor());
+                    null, new NullProgressMonitor());
 
             assertNotNull(index);
         } finally {

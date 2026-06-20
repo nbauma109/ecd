@@ -166,7 +166,7 @@ public class BytecodeJarIndexer {
     }
 
     public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
-            IProgressMonitor monitor) {
+            java.nio.file.Path cacheDir, IProgressMonitor monitor) {
         List<BytecodeSearchEntry> entries = new ArrayList<>();
         List<Integer> counts = new ArrayList<>();
         Map<EntryKey, Integer> seen = new HashMap<>();
@@ -188,7 +188,7 @@ public class BytecodeJarIndexer {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
         int[] countsArray = counts.stream().mapToInt(Integer::intValue).toArray();
-        return new BytecodeSearchIndex.JarIndex(jar, entries, countsArray);
+        return new BytecodeSearchIndex.JarIndex(jar, cacheDir, entries, countsArray);
     }
 
     private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {

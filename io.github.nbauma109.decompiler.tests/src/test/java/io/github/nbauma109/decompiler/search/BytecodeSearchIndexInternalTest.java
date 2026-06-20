@@ -14,13 +14,12 @@ import static org.junit.Assert.assertTrue;
 import org.eclipse.jdt.core.IJavaElement;
 import org.junit.Test;
 
-import io.github.nbauma109.decompiler.search.BytecodeSearchIndex.JarIndex.CompactEntries.EntryColumns;
-import io.github.nbauma109.decompiler.search.BytecodeSearchIndex.JarIndex.CompactEntries.StringTables;
+import io.github.nbauma109.decompiler.search.HeapEntryStore.EntryColumns;
+import io.github.nbauma109.decompiler.search.HeapEntryStore.StringTables;
 
 /**
  * Tests the equals / hashCode / toString contracts on the public nested record
- * types {@code BytecodeSearchIndex.JarIndex.CompactEntries.StringTables} and
- * {@code BytecodeSearchIndex.JarIndex.CompactEntries.EntryColumns}.
+ * types {@code HeapEntryStore.StringTables} and {@code HeapEntryStore.EntryColumns}.
  *
  * Both records customise equals/hashCode/toString via Apache Commons Builders
  * because their components are arrays.  Normal record equality (which uses
