@@ -212,17 +212,27 @@ public final class BytecodeSearchIndex {
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
-        for (JarPlan plan : plans) {
-            JarIndex index = rebuild(plan, cacheDir, subMonitor);
-            if (index == null) {
-                // Close newly-built indexes (not reused from current state) to release file channels
-                Set<JarIndex> current = new HashSet<>(indexes.get().values());
-                closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
-                return new RebuildResult(false, Map.of());
+        try {
+            for (JarPlan plan : plans) {
+                JarIndex index = rebuild(plan, cacheDir, subMonitor);
+                if (index == null) {
+                    closeNewlyBuilt(rebuilt);
+                    return new RebuildResult(false, Map.of());
+                }
+                rebuilt.put(plan.key(), index);
             }
-            rebuilt.put(plan.key(), index);
+        } catch (RuntimeException e) {
+            // OperationCanceledException (from SubMonitor.split) or unexpected error:
+            // close any newly-built indexes accumulated so far to release file channels.
+            closeNewlyBuilt(rebuilt);
+            throw e;
         }
         return new RebuildResult(true, rebuilt);
+    }
+
+    private void closeNewlyBuilt(Map<RootKey, JarIndex> rebuilt) {
+        Set<JarIndex> current = new HashSet<>(indexes.get().values());
+        closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
     }
 
     private JarIndex rebuild(JarPlan plan, Path cacheDir, SubMonitor subMonitor) {
