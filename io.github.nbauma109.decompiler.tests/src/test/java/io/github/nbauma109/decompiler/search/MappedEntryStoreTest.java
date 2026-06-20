@@ -688,6 +688,60 @@ public class MappedEntryStoreTest {
     }
 
     @Test
+    public void corruptedTableCountsInSegmentFileTriggersRebuild() throws Exception {
+        // Build a valid segment, then corrupt stringCount at offset 28 to Integer.MAX_VALUE.
+        // The fingerprint at offset 36 covers per-entry data (not the count field) so it still
+        // matches; only the new section-bounds validation catches the corrupt count.
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("Corrupted", "com.Corrupted", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        Object first = openOrCreate(entries, counts);
+        storeClose(first);
+
+        Path seg = segmentPath();
+        byte[] raw = java.nio.file.Files.readAllBytes(seg);
+        putInt(raw, 28, Integer.MAX_VALUE); // corrupt stringCount
+        java.nio.file.Files.write(seg, raw);
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("Corrupted", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
+    public void corruptedSectionOffsetInSegmentFileTriggersRebuild() throws Exception {
+        // Build a valid segment, then corrupt kindAndFlagsOff at offset 40 to 0.
+        // The fingerprint still matches; only the deterministic-offset validation catches it.
+        List<BytecodeSearchEntry> entries = List.of(
+                makeEntry("OffCorrupt", "com.OffCorrupt", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+        int[] counts = {1};
+
+        Object first = openOrCreate(entries, counts);
+        storeClose(first);
+
+        Path seg = segmentPath();
+        byte[] raw = java.nio.file.Files.readAllBytes(seg);
+        // kindAndFlagsOff is a long at bytes [40..47]; zero it out
+        for (int i = 40; i < 48; i++) {
+            raw[i] = 0;
+        }
+        java.nio.file.Files.write(seg, raw);
+
+        Object rebuilt = openOrCreate(entries, counts);
+        try {
+            assertEquals(1, storeSize(rebuilt));
+            assertEquals("OffCorrupt", name(storeEntry(rebuilt, 0))); //$NON-NLS-1$
+        } finally {
+            storeClose(rebuilt);
+        }
+    }
+
+    @Test
     public void anonymousHandleEntryFallsBackToHeapStore() throws Exception {
         // An entry whose element handle contains [~ cannot have its live IJavaElement fallback
         // serialized; openOrCreate() should throw so the caller uses HeapEntryStore.

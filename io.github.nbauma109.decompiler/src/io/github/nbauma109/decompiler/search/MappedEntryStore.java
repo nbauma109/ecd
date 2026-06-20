@@ -189,15 +189,19 @@ final class MappedEntryStore implements EntryStore {
      * Validates the header of an existing segment file via a sequential read, without creating
      * a memory mapping. On Windows, an invalid mapped file cannot be deleted while the
      * {@link java.nio.MappedByteBuffer} is alive; this pre-check avoids that situation.
-     * Validates magic, version, jar metadata, entry count, and a CRC32 fingerprint of all
-     * element handles so a stale or replaced-same-metadata segment is never reused.
+     * Validates magic, version, jar metadata, entry count, a CRC32 fingerprint of all
+     * persisted entry fields, and the section layout: all 8 fixed-width section offsets must
+     * exactly match the values computed from entryCount, {@code stringCount} and
+     * {@code handleCount} must be non-negative and within bounds derivable from the section
+     * offsets, and the file must be large enough to hold both variable-length index arrays.
      */
     private static boolean headerOk(Path file, File jar, List<BytecodeSearchEntry> entries, int[] counts) {
         try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
-            if (ch.size() < HEADER_SIZE) {
+            long fileSize = ch.size();
+            if (fileSize < HEADER_SIZE) {
                 return false;
             }
-            ByteBuffer h = ByteBuffer.allocate(40); // magic(4)+version(4)+lastMod(8)+len(8)+count(4)+sc(4)+hc(4)+fp(4)
+            ByteBuffer h = ByteBuffer.allocate(HEADER_SIZE);
             h.order(ByteOrder.BIG_ENDIAN);
             while (h.hasRemaining()) {
                 if (ch.read(h) <= 0) {
@@ -209,10 +213,39 @@ final class MappedEntryStore implements EntryStore {
             if (h.getInt() != VERSION) return false;
             if (h.getLong() != jar.lastModified()) return false;
             if (h.getLong() != jar.length()) return false;
-            if (h.getInt() != entries.size()) return false; // entryCount
-            h.getInt(); // stringCount — skip
-            h.getInt(); // handleCount — skip
-            return h.getInt() == fingerprintEntries(entries, counts);
+            int n = entries.size();
+            if (h.getInt() != n) return false; // entryCount
+            int sc = h.getInt(); // stringCount
+            int hc = h.getInt(); // handleCount
+            if (sc < 0 || hc < 0 || hc > n) return false;
+            if (h.getInt() != fingerprintEntries(entries, counts)) return false;
+            // Compute expected fixed-width section offsets (deterministic from entryCount)
+            long off = HEADER_SIZE;
+            long expectedKindAndFlagsOff      = off; off += pad4(n);
+            long expectedTypeCategoryIdsOff   = off; off += pad4(n);
+            long expectedElementHandleIdsOff  = off; off += (long) n * 4;
+            long expectedNameIdsOff           = off; off += (long) n * 4;
+            long expectedQualifiedNameIdsOff  = off; off += (long) n * 4;
+            long expectedDeclaringTypeNameOff = off; off += (long) n * 4;
+            long expectedDescriptorIdsOff     = off; off += (long) n * 4;
+            long expectedOccurrenceCountsOff  = off; off += (long) n * 4;
+            long minStringsOff = off;
+            if (h.getLong() != expectedKindAndFlagsOff) return false;
+            if (h.getLong() != expectedTypeCategoryIdsOff) return false;
+            if (h.getLong() != expectedElementHandleIdsOff) return false;
+            if (h.getLong() != expectedNameIdsOff) return false;
+            if (h.getLong() != expectedQualifiedNameIdsOff) return false;
+            if (h.getLong() != expectedDeclaringTypeNameOff) return false;
+            if (h.getLong() != expectedDescriptorIdsOff) return false;
+            if (h.getLong() != expectedOccurrenceCountsOff) return false;
+            long stringsOff = h.getLong();
+            long handlesOff = h.getLong();
+            // Validate variable-width section offsets against file bounds and sc/hc counts:
+            // handlesOff must leave room for sc length-ints in the strings section;
+            // file must leave room for hc length-ints in the handles section.
+            if (stringsOff < minStringsOff || stringsOff > fileSize) return false;
+            if (handlesOff < stringsOff + (long) sc * 4 || handlesOff > fileSize) return false;
+            return fileSize >= handlesOff + (long) hc * 4;
         } catch (IOException e) {
             return false;
         }
