@@ -236,7 +236,11 @@ public final class BytecodeSearchIndex {
             return plan.existing();
         }
         JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(), cacheDir, subMonitor.split(plan.ticks()));
-        return index == null || subMonitor.isCanceled() ? null : index;
+        if (index != null && subMonitor.isCanceled()) {
+            index.close();
+            return null;
+        }
+        return index;
     }
 
     private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
