@@ -542,7 +542,8 @@ public final class BytecodeSearchIndex {
 
         private static EntryStore createEntryStore(File jar, Path cacheDir,
                 List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) {
-            if (cacheDir != null && rootHandle != null && estimateBytes(entries) > MAPPED_THRESHOLD) {
+            if (cacheDir != null && rootHandle != null && estimateBytes(entries) > MAPPED_THRESHOLD
+                    && !hasAnonymousHandles(entries)) {
                 Path segmentFile = MappedEntryStore.segmentPath(cacheDir, jar, rootHandle);
                 try {
                     return MappedEntryStore.openOrCreate(jar, cacheDir, entries, counts, rootHandle);
@@ -553,6 +554,16 @@ public final class BytecodeSearchIndex {
                 }
             }
             return HeapEntryStore.from(entries, counts);
+        }
+
+        private static boolean hasAnonymousHandles(List<BytecodeSearchEntry> entries) {
+            for (BytecodeSearchEntry e : entries) {
+                String h = e.getElementHandle();
+                if (h != null && h.contains("[~")) { //$NON-NLS-1$
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static long estimateBytes(List<BytecodeSearchEntry> entries) {

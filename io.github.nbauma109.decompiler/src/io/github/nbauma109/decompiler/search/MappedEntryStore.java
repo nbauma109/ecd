@@ -76,8 +76,8 @@ import io.github.nbauma109.decompiler.util.Logger;
  * </pre>
  *
  * JARs whose entries contain {@code [~} anonymous element handles are not cached here;
- * {@link BytecodeSearchIndex.JarIndex} falls back to {@link HeapEntryStore} for those
- * so that live {@link org.eclipse.jdt.core.IJavaElement} fallbacks are preserved.
+ * {@link BytecodeSearchIndex.JarIndex#createEntryStore} skips the mapped path for those
+ * so that live {@link org.eclipse.jdt.core.IJavaElement} fallbacks are preserved in {@link HeapEntryStore}.
  */
 final class MappedEntryStore implements EntryStore {
 
@@ -128,24 +128,13 @@ final class MappedEntryStore implements EntryStore {
     /**
      * Returns a cached MappedEntryStore for {@code jar} if one exists, or writes a new segment
      * file and maps it. Throws {@link IOException} on any I/O failure; the caller is responsible
-     * for deleting the segment file and falling back to {@link HeapEntryStore}.
+     * for falling back to {@link HeapEntryStore}.
      * <p>
      * The segment filename encodes the root handle, jar path, lastModified, and length so that
      * each jar version gets its own file and no active mapping is ever replaced.
      */
     static MappedEntryStore openOrCreate(File jar, Path cacheDir,
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
-        // Entries with [~ handles have live IJavaElement fallbacks that cannot be serialized.
-        // JavaCore.create() cannot reconstruct them, and returning a wrong ancestor element
-        // would open the wrong source location for declaration searches. Bail out so the caller
-        // uses HeapEntryStore, which preserves the fallbacks in memory.
-        for (BytecodeSearchEntry e : entries) {
-            String h = e.getElementHandle();
-            if (h != null && h.contains("[~")) { //$NON-NLS-1$
-                deleteQuietly(segmentPath(cacheDir, jar, rootHandle));
-                throw new IOException("entry has anonymous element handle; heap store required"); //$NON-NLS-1$
-            }
-        }
         Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
             if (headerOk(file, jar, entries, counts)) {
