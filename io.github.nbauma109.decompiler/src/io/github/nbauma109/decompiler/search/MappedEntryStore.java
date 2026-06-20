@@ -25,8 +25,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Stream;
+import java.util.zip.CRC32;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -46,7 +46,7 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   [24]  int  entryCount
  *   [28]  int  stringCount
  *   [32]  int  handleCount
- *   [36]  int  reserved         = 0
+ *   [36]  int  fingerprint       -- CRC32 of all element-handle UTF-8 bytes
  *   [40]  long kindAndFlagsOff
  *   [48]  long typeCategoryIdsOff
  *   [56]  long elementHandleIdsOff
@@ -136,18 +136,13 @@ final class MappedEntryStore implements EntryStore {
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
         Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
-            if (headerOk(file, jar, entries.size())) {
+            if (headerOk(file, jar, entries)) {
                 try {
                     MappedEntryStore store = map(file, jar);
-                    if (store.matchesSample(entries)) {
-                        // Retry pruning stale siblings on reuse: by this point any previously
-                        // published mapping for an older version may have been GC'd on Windows.
-                        pruneOldSegments(file, cacheDir);
-                        return store;
-                    }
-                    // Content fingerprint mismatch (e.g. same-metadata JAR replacement)
-                    store.close();
-                    deleteQuietly(file);
+                    // Retry pruning stale siblings on reuse: by this point any previously
+                    // published mapping for an older version may have been GC'd on Windows.
+                    pruneOldSegments(file, cacheDir);
+                    return store;
                 } catch (IOException | RuntimeException e) {
                     Logger.debug(e);
                     deleteQuietly(file);
@@ -166,15 +161,15 @@ final class MappedEntryStore implements EntryStore {
      * Validates the header of an existing segment file via a sequential read, without creating
      * a memory mapping. On Windows, an invalid mapped file cannot be deleted while the
      * {@link java.nio.MappedByteBuffer} is alive; this pre-check avoids that situation.
-     * Also validates {@code entryCount} so a zeroed or stale table cannot silently return
-     * garbage data when the postings are looked up against the current entry list.
+     * Validates magic, version, jar metadata, entry count, and a CRC32 fingerprint of all
+     * element handles so a stale or replaced-same-metadata segment is never reused.
      */
-    private static boolean headerOk(Path file, File jar, int expectedEntryCount) {
+    private static boolean headerOk(Path file, File jar, List<BytecodeSearchEntry> entries) {
         try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
             if (ch.size() < HEADER_SIZE) {
                 return false;
             }
-            ByteBuffer h = ByteBuffer.allocate(28); // magic + version + lastModified + length + entryCount
+            ByteBuffer h = ByteBuffer.allocate(40); // magic(4)+version(4)+lastMod(8)+len(8)+count(4)+sc(4)+hc(4)+fp(4)
             h.order(ByteOrder.BIG_ENDIAN);
             while (h.hasRemaining()) {
                 if (ch.read(h) <= 0) {
@@ -182,12 +177,28 @@ final class MappedEntryStore implements EntryStore {
                 }
             }
             h.flip();
-            return h.getInt() == MAGIC && h.getInt() == VERSION
-                    && h.getLong() == jar.lastModified() && h.getLong() == jar.length()
-                    && h.getInt() == expectedEntryCount;
+            if (h.getInt() != MAGIC) return false;
+            if (h.getInt() != VERSION) return false;
+            if (h.getLong() != jar.lastModified()) return false;
+            if (h.getLong() != jar.length()) return false;
+            if (h.getInt() != entries.size()) return false; // entryCount
+            h.getInt(); // stringCount — skip
+            h.getInt(); // handleCount — skip
+            return h.getInt() == fingerprintEntries(entries);
         } catch (IOException e) {
             return false;
         }
+    }
+
+    private static int fingerprintEntries(List<BytecodeSearchEntry> entries) {
+        CRC32 crc = new CRC32();
+        for (BytecodeSearchEntry e : entries) {
+            String handle = e.getElementHandle();
+            if (handle != null) {
+                crc.update(handle.getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        return (int) crc.getValue();
     }
 
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
@@ -255,7 +266,7 @@ final class MappedEntryStore implements EntryStore {
             writeInt(os, n);
             writeInt(os, sc);
             writeInt(os, hc);
-            writeInt(os, 0); // reserved
+            writeInt(os, fingerprintEntries(entries));
             writeLong(os, kindAndFlagsOff);
             writeLong(os, typeCategoryIdsOff);
             writeLong(os, elementHandleIdsOff);
@@ -393,23 +404,6 @@ final class MappedEntryStore implements EntryStore {
                 access(id),
                 typeCategory(id),
                 buf.getInt((int) (occurrenceCountsOff + (long) id * 4)));
-    }
-
-    /**
-     * Compares up to 4 element handles from the mapped segment against the freshly-parsed
-     * {@code expected} list. Returns {@code false} when any handle differs, indicating that the
-     * JAR content changed despite identical metadata (mtime/size/entryCount), so the segment
-     * must be rebuilt rather than reused.
-     */
-    private boolean matchesSample(List<BytecodeSearchEntry> expected) {
-        int samples = Math.min(4, entryCount);
-        for (int i = 0; i < samples; i++) {
-            int handleId = buf.getInt((int) (elementHandleIdsOff + (long) i * 4));
-            if (!Objects.equals(handle(handleId), expected.get(i).getElementHandle())) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
