@@ -188,7 +188,7 @@ public class BytecodeJarIndexer {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
         int[] countsArray = counts.stream().mapToInt(Integer::intValue).toArray();
-        return new BytecodeSearchIndex.JarIndex(jar, cacheDir, entries, countsArray);
+        return new BytecodeSearchIndex.JarIndex(jar, cacheDir, root != null ? root.getHandleIdentifier() : null, entries, countsArray);
     }
 
     private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {

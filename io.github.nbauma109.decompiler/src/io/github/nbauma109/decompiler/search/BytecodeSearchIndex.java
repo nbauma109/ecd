@@ -403,11 +403,11 @@ public final class BytecodeSearchIndex {
         private final EntryStore entries;
         private final Map<Kind, Map<String, int[]>> byKindAndName;
 
-        JarIndex(File jar, Path cacheDir, List<BytecodeSearchEntry> entries, int[] counts) {
+        JarIndex(File jar, Path cacheDir, String rootHandle, List<BytecodeSearchEntry> entries, int[] counts) {
             this.lastModified = jar.lastModified();
             this.length = jar.length();
             this.byKindAndName = buildNameIndex(entries);
-            this.entries = createEntryStore(jar, cacheDir, entries, counts);
+            this.entries = createEntryStore(jar, cacheDir, entries, counts, rootHandle);
         }
 
         void close() {
@@ -530,11 +530,11 @@ public final class BytecodeSearchIndex {
         }
 
         private static EntryStore createEntryStore(File jar, Path cacheDir,
-                List<BytecodeSearchEntry> entries, int[] counts) {
-            if (cacheDir != null && estimateBytes(entries) > MAPPED_THRESHOLD) {
-                Path segmentFile = MappedEntryStore.segmentPath(cacheDir, jar);
+                List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) {
+            if (cacheDir != null && rootHandle != null && estimateBytes(entries) > MAPPED_THRESHOLD) {
+                Path segmentFile = MappedEntryStore.segmentPath(cacheDir, jar, rootHandle);
                 try {
-                    return MappedEntryStore.openOrCreate(jar, cacheDir, entries, counts);
+                    return MappedEntryStore.openOrCreate(jar, cacheDir, entries, counts, rootHandle);
                 } catch (IOException | RuntimeException e) {
                     JavaDecompilerPlugin.logError(e, "Mapped entry store failed; rebuilding as heap for " //$NON-NLS-1$
                             + jar.getName());
@@ -545,7 +545,7 @@ public final class BytecodeSearchIndex {
         }
 
         private static long estimateBytes(List<BytecodeSearchEntry> entries) {
-            long total = (long) entries.size() * 26L; // column bytes per entry
+            long total = entries.size() * 26L; // column bytes per entry
             for (BytecodeSearchEntry e : entries) {
                 total += stringEstimate(e.getName());
                 total += stringEstimate(e.getQualifiedName());
@@ -557,7 +557,7 @@ public final class BytecodeSearchIndex {
         }
 
         private static long stringEstimate(String s) {
-            return s == null ? 0L : 48L + (long) s.length() * 2L;
+            return s == null ? 0L : 48L + s.length() * 2L;
         }
 
         private static final class IntPostings {

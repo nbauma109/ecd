@@ -98,22 +98,23 @@ final class MappedEntryStore implements EntryStore {
     private final String[] stringCache;
     private final String[] handleCache;
 
-    private MappedEntryStore(FileChannel channel, MappedByteBuffer buf, int entryCount,
-            long kindAndFlagsOff, long typeCategoryIdsOff, long elementHandleIdsOff,
+    private record SectionLayout(long kindAndFlagsOff, long typeCategoryIdsOff, long elementHandleIdsOff,
             long nameIdsOff, long qualifiedNameIdsOff, long declaringTypeNameIdsOff,
-            long descriptorIdsOff, long occurrenceCountsOff,
-            int[] stringsDataOffsets, int[] handlesDataOffsets) {
+            long descriptorIdsOff, long occurrenceCountsOff) {}
+
+    private MappedEntryStore(FileChannel channel, MappedByteBuffer buf, int entryCount,
+            SectionLayout layout, int[] stringsDataOffsets, int[] handlesDataOffsets) {
         this.channel = channel;
         this.buf = buf;
         this.entryCount = entryCount;
-        this.kindAndFlagsOff = kindAndFlagsOff;
-        this.typeCategoryIdsOff = typeCategoryIdsOff;
-        this.elementHandleIdsOff = elementHandleIdsOff;
-        this.nameIdsOff = nameIdsOff;
-        this.qualifiedNameIdsOff = qualifiedNameIdsOff;
-        this.declaringTypeNameIdsOff = declaringTypeNameIdsOff;
-        this.descriptorIdsOff = descriptorIdsOff;
-        this.occurrenceCountsOff = occurrenceCountsOff;
+        this.kindAndFlagsOff = layout.kindAndFlagsOff();
+        this.typeCategoryIdsOff = layout.typeCategoryIdsOff();
+        this.elementHandleIdsOff = layout.elementHandleIdsOff();
+        this.nameIdsOff = layout.nameIdsOff();
+        this.qualifiedNameIdsOff = layout.qualifiedNameIdsOff();
+        this.declaringTypeNameIdsOff = layout.declaringTypeNameIdsOff();
+        this.descriptorIdsOff = layout.descriptorIdsOff();
+        this.occurrenceCountsOff = layout.occurrenceCountsOff();
         this.stringsDataOffsets = stringsDataOffsets;
         this.handlesDataOffsets = handlesDataOffsets;
         this.stringCache = new String[stringsDataOffsets.length - 1];
@@ -124,10 +125,13 @@ final class MappedEntryStore implements EntryStore {
      * Returns a cached MappedEntryStore for {@code jar} if one exists, or writes a new segment
      * file and maps it. Throws {@link IOException} on any I/O failure; the caller is responsible
      * for deleting the segment file and falling back to {@link HeapEntryStore}.
+     * <p>
+     * The segment filename encodes the root handle, jar path, lastModified, and length so that
+     * each jar version gets its own file and no active mapping is ever replaced.
      */
     static MappedEntryStore openOrCreate(File jar, Path cacheDir,
-            List<BytecodeSearchEntry> entries, int[] counts) throws IOException {
-        Path file = segmentPath(cacheDir, jar);
+            List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
+        Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
             try {
                 return map(file, jar);
@@ -140,9 +144,9 @@ final class MappedEntryStore implements EntryStore {
         return map(file, jar);
     }
 
-    static Path segmentPath(Path cacheDir, File jar) {
-        String hash = sha256Hex(jar.getAbsolutePath()).substring(0, 32);
-        return cacheDir.resolve("bsi-" + hash + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$
+    static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
+        String hash = sha256Hex(rootHandle + "|" + jar.getAbsolutePath()).substring(0, 32); //$NON-NLS-1$
+        return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     }
 
     // -------------------------------------------------------------------------
@@ -291,9 +295,9 @@ final class MappedEntryStore implements EntryStore {
             int[] handlesDataOffsets = buildDataOffsets(b, handlesOff, handleCount);
 
             return new MappedEntryStore(ch, b, entryCount,
-                    kindAndFlagsOff, typeCategoryIdsOff, elementHandleIdsOff,
-                    nameIdsOff, qualifiedNameIdsOff, declaringTypeNameIdsOff,
-                    descriptorIdsOff, occurrenceCountsOff,
+                    new SectionLayout(kindAndFlagsOff, typeCategoryIdsOff, elementHandleIdsOff,
+                            nameIdsOff, qualifiedNameIdsOff, declaringTypeNameIdsOff,
+                            descriptorIdsOff, occurrenceCountsOff),
                     stringsDataOffsets, handlesDataOffsets);
         } catch (Exception e) {
             ch.close();
@@ -426,7 +430,7 @@ final class MappedEntryStore implements EntryStore {
 
     /** Rounds {@code n} up to the next multiple of 4. */
     private static long pad4(int n) {
-        return ((long) n + 3L) & ~3L;
+        return (n + 3L) & ~3L;
     }
 
     private static void writePad(OutputStream os, long count) throws IOException {

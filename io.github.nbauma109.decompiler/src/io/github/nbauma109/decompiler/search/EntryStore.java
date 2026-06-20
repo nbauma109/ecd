@@ -8,10 +8,11 @@
 
 package io.github.nbauma109.decompiler.search;
 
-interface EntryStore {
+interface EntryStore extends AutoCloseable {
     int size();
 
     BytecodeSearchEntry entry(int entryId);
 
+    @Override
     void close();
 }
