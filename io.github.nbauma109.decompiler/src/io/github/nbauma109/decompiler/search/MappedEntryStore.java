@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.JavaCore;
-
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
@@ -43,7 +40,7 @@ import io.github.nbauma109.decompiler.util.Logger;
  * <pre>
  * Header (120 bytes, big-endian):
  *   [0]   int  magic            = 0x42534558
- *   [4]   int  version          = 1
+ *   [4]   int  version          = 3
  *   [8]   long jarLastModified
  *   [16]  long jarLength
  *   [24]  int  entryCount
@@ -58,9 +55,8 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   [80]  long declaringTypeNameIdsOff
  *   [88]  long descriptorIdsOff
  *   [96]  long occurrenceCountsOff
- *   [104] long stringsOff           -- int[stringCount] byte-lengths, then concatenated UTF-8
- *   [112] long handlesOff           -- int[handleCount] byte-lengths, then concatenated UTF-8
- *   [120] long fallbackHandleIdsOff -- int[entryCount] handle IDs for {@code [~} anonymous fallbacks
+ *   [104] long stringsOff   -- int[stringCount] byte-lengths, then concatenated UTF-8
+ *   [112] long handlesOff   -- int[handleCount] byte-lengths, then concatenated UTF-8
  *
  * Fixed-width sections (layout computed at write time):
  *   byte[entryCount]   kindAndFlags        (padded to 4-byte boundary)
@@ -71,7 +67,6 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   int[entryCount]    declaringTypeNameIds
  *   int[entryCount]    descriptorIds
  *   int[entryCount]    occurrenceCounts
- *   int[entryCount]    fallbackHandleIds (NULL_ID when no fallback)
  *
  * Variable-width sections:
  *   int[stringCount]   string byte-lengths
@@ -80,15 +75,15 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   byte[]             handle UTF-8 data (all handles concatenated)
  * </pre>
  *
- * The fallback handle identifier for {@code [~} anonymous elements is persisted so that
- * {@link BytecodeSearchEntry#getElement()} can return a non-null element even when
- * {@code JavaCore.create(handle)} returns {@code null} for anonymous handles.
+ * JARs whose entries contain {@code [~} anonymous element handles are not cached here;
+ * {@link BytecodeSearchIndex.JarIndex} falls back to {@link HeapEntryStore} for those
+ * so that live {@link org.eclipse.jdt.core.IJavaElement} fallbacks are preserved.
  */
 final class MappedEntryStore implements EntryStore {
 
     private static final int MAGIC = 0x42534558;
-    private static final int VERSION = 2;
-    private static final int HEADER_SIZE = 128;
+    private static final int VERSION = 3;
+    private static final int HEADER_SIZE = 120;
     private static final int NULL_ID = HeapEntryStore.NULL_ID;
 
     private final FileChannel channel;
@@ -102,7 +97,6 @@ final class MappedEntryStore implements EntryStore {
     private final long declaringTypeNameIdsOff;
     private final long descriptorIdsOff;
     private final long occurrenceCountsOff;
-    private final long fallbackHandleIdsOff;
     private final int[] stringsDataOffsets; // [i]=start, [count]=end (sentinel), no buf read needed
     private final int[] handlesDataOffsets;
     private final String[] stringCache;
@@ -110,7 +104,7 @@ final class MappedEntryStore implements EntryStore {
 
     private record SectionLayout(long kindAndFlagsOff, long typeCategoryIdsOff, long elementHandleIdsOff,
             long nameIdsOff, long qualifiedNameIdsOff, long declaringTypeNameIdsOff,
-            long descriptorIdsOff, long occurrenceCountsOff, long fallbackHandleIdsOff) {}
+            long descriptorIdsOff, long occurrenceCountsOff) {}
 
     private MappedEntryStore(FileChannel channel, MappedByteBuffer buf, int entryCount,
             SectionLayout layout, int[] stringsDataOffsets, int[] handlesDataOffsets) {
@@ -125,7 +119,6 @@ final class MappedEntryStore implements EntryStore {
         this.declaringTypeNameIdsOff = layout.declaringTypeNameIdsOff();
         this.descriptorIdsOff = layout.descriptorIdsOff();
         this.occurrenceCountsOff = layout.occurrenceCountsOff();
-        this.fallbackHandleIdsOff = layout.fallbackHandleIdsOff();
         this.stringsDataOffsets = stringsDataOffsets;
         this.handlesDataOffsets = handlesDataOffsets;
         this.stringCache = new String[stringsDataOffsets.length - 1];
@@ -142,6 +135,17 @@ final class MappedEntryStore implements EntryStore {
      */
     static MappedEntryStore openOrCreate(File jar, Path cacheDir,
             List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) throws IOException {
+        // Entries with [~ handles have live IJavaElement fallbacks that cannot be serialized.
+        // JavaCore.create() cannot reconstruct them, and returning a wrong ancestor element
+        // would open the wrong source location for declaration searches. Bail out so the caller
+        // uses HeapEntryStore, which preserves the fallbacks in memory.
+        for (BytecodeSearchEntry e : entries) {
+            String h = e.getElementHandle();
+            if (h != null && h.contains("[~")) { //$NON-NLS-1$
+                deleteQuietly(segmentPath(cacheDir, jar, rootHandle));
+                throw new IOException("entry has anonymous element handle; heap store required"); //$NON-NLS-1$
+            }
+        }
         Path file = segmentPath(cacheDir, jar, rootHandle);
         if (Files.exists(file)) {
             if (headerOk(file, jar, entries, counts)) {
@@ -231,24 +235,6 @@ final class MappedEntryStore implements EntryStore {
         crc.update(bytes);
     }
 
-    /**
-     * Walks up the parent chain of {@code fallback} to find the nearest ancestor whose
-     * handle identifier does not contain {@code [~} and can therefore be recreated by
-     * {@code JavaCore.create()}. The fallback element itself often has a {@code [~} handle
-     * (anonymous/local class), so its own handle would also fail to reconstruct.
-     */
-    private static int resolvableFallbackHandleId(HeapEntryStore.ElementDictionary handles, IJavaElement fallback) {
-        IJavaElement elem = fallback;
-        while (elem != null) {
-            String h = elem.getHandleIdentifier();
-            if (h != null && !h.contains("[~")) { //$NON-NLS-1$
-                return handles.id(h, null);
-            }
-            elem = elem.getParent();
-        }
-        return NULL_ID;
-    }
-
     static Path segmentPath(Path cacheDir, File jar, String rootHandle) {
         String hash = sha256Hex(rootHandle + "|" + jar.getAbsolutePath()).substring(0, 32); //$NON-NLS-1$
         return cacheDir.resolve("bsi-" + hash + "-" + jar.lastModified() + "-" + jar.length() + ".bsix"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
@@ -267,7 +253,6 @@ final class MappedEntryStore implements EntryStore {
         byte[] kindAndFlags = new byte[n];
         byte[] typeCategoryIds = new byte[n];
         int[] handleIds = new int[n];
-        int[] fallbackHandleIds = new int[n];
         int[] nameIds = new int[n];
         int[] qualifiedNameIds = new int[n];
         int[] declaringTypeNameIds = new int[n];
@@ -278,7 +263,6 @@ final class MappedEntryStore implements EntryStore {
             kindAndFlags[i] = HeapEntryStore.kindAndFlags(e);
             typeCategoryIds[i] = (byte) e.getTypeCategory().ordinal();
             handleIds[i] = handles.id(e.getElementHandle(), e.getAnonymousElementFallback());
-            fallbackHandleIds[i] = resolvableFallbackHandleId(handles, e.getAnonymousElementFallback());
             nameIds[i] = strings.id(e.getName());
             qualifiedNameIds[i] = strings.id(e.getQualifiedName());
             declaringTypeNameIds[i] = strings.id(e.getDeclaringTypeName());
@@ -301,7 +285,6 @@ final class MappedEntryStore implements EntryStore {
         long declaringTypeNameIdsOff = off; off += (long) n * 4;
         long descriptorIdsOff = off; off += (long) n * 4;
         long occurrenceCountsOff = off; off += (long) n * 4;
-        long fallbackHandleIdsOff = off; off += (long) n * 4;
         long stringsOff = off; off += (long) sc * 4 + totalBytes(stringBytes);
         long handlesOff = off; // remaining = hc*4 + totalBytes(handleBytes)
 
@@ -328,7 +311,6 @@ final class MappedEntryStore implements EntryStore {
             writeLong(os, occurrenceCountsOff);
             writeLong(os, stringsOff);
             writeLong(os, handlesOff);
-            writeLong(os, fallbackHandleIdsOff);
 
             // kindAndFlags (padded)
             os.write(kindAndFlags);
@@ -343,7 +325,6 @@ final class MappedEntryStore implements EntryStore {
             writeIntArray(os, declaringTypeNameIds);
             writeIntArray(os, descriptorIds);
             writeIntArray(os, counts);
-            writeIntArray(os, fallbackHandleIds);
             // strings section: lengths then data
             for (byte[] s : stringBytes) {
                 writeInt(os, s.length);
@@ -400,7 +381,6 @@ final class MappedEntryStore implements EntryStore {
             long occurrenceCountsOff   = b.getLong(96);
             long stringsOff            = b.getLong(104);
             long handlesOff            = b.getLong(112);
-            long fallbackHandleIdsOff  = b.getLong(120);
 
             int[] stringsDataOffsets = buildDataOffsets(b, stringsOff, stringCount);
             int[] handlesDataOffsets = buildDataOffsets(b, handlesOff, handleCount);
@@ -408,7 +388,7 @@ final class MappedEntryStore implements EntryStore {
             return new MappedEntryStore(ch, b, entryCount,
                     new SectionLayout(kindAndFlagsOff, typeCategoryIdsOff, elementHandleIdsOff,
                             nameIdsOff, qualifiedNameIdsOff, declaringTypeNameIdsOff,
-                            descriptorIdsOff, occurrenceCountsOff, fallbackHandleIdsOff),
+                            descriptorIdsOff, occurrenceCountsOff),
                     stringsDataOffsets, handlesDataOffsets);
         } catch (Exception e) {
             ch.close();
@@ -446,18 +426,10 @@ final class MappedEntryStore implements EntryStore {
     @Override
     public BytecodeSearchEntry entry(int id) {
         int handleId = buf.getInt((int) (elementHandleIdsOff + (long) id * 4));
-        int fbHandleId = buf.getInt((int) (fallbackHandleIdsOff + (long) id * 4));
-        IJavaElement fallback = null;
-        if (fbHandleId != NULL_ID) {
-            String fbHandle = handle(fbHandleId);
-            if (fbHandle != null) {
-                fallback = JavaCore.create(fbHandle);
-            }
-        }
         return new BytecodeSearchEntry(
                 kind(id),
                 declaration(id),
-                BytecodeSearchEntry.elementReference(handle(handleId), fallback),
+                BytecodeSearchEntry.elementReference(handle(handleId), null),
                 BytecodeSearchEntry.symbolReference(
                         str(buf.getInt((int) (nameIdsOff + (long) id * 4))),
                         str(buf.getInt((int) (qualifiedNameIdsOff + (long) id * 4))),

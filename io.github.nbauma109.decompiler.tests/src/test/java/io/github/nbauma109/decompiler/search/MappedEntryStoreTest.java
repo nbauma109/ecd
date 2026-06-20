@@ -254,9 +254,9 @@ public class MappedEntryStoreTest {
         return (long) STRING_ESTIMATE.invoke(null, s);
     }
 
-    /** Builds a 128-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
+    /** Builds a 120-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
     private static byte[] buildFakeHeader(int magic, int version, long lastModified, long jarLength) {
-        byte[] h = new byte[128];
+        byte[] h = new byte[120];
         putInt(h, 0, magic);
         putInt(h, 4, version);
         putLong(h, 8, lastModified);
@@ -524,7 +524,7 @@ public class MappedEntryStoreTest {
 
         // Pre-create a file with correct magic + version + jar metadata but entryCount=0 (stale)
         Path seg = segmentPath();
-        Files.write(seg, buildFakeHeader(0x42534558, 2, fakeJar.lastModified(), fakeJar.length()));
+        Files.write(seg, buildFakeHeader(0x42534558, 3, fakeJar.lastModified(), fakeJar.length()));
 
         Object rebuilt = openOrCreate(entries, counts);
         try {
@@ -677,6 +677,32 @@ public class MappedEntryStoreTest {
             Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, entries, counts);
             try {
                 assertTrue("Above threshold: should use MappedEntryStore", //$NON-NLS-1$
+                        STORE_CLASS.isInstance(jarIndexEntries(jarIndex)));
+                assertEquals(1, jarIndexEntryCount(jarIndex));
+            } finally {
+                jarIndexClose(jarIndex);
+            }
+        } finally {
+            MAPPED_THRESHOLD_FIELD.setLong(null, old);
+        }
+    }
+
+    @Test
+    public void anonymousHandleEntryFallsBackToHeapStore() throws Exception {
+        // An entry whose element handle contains [~ cannot have its live IJavaElement fallback
+        // serialized; openOrCreate() should throw so the caller uses HeapEntryStore.
+        BytecodeSearchEntry anonEntry = new BytecodeSearchEntry(Kind.TYPE, true,
+                BytecodeSearchEntry.elementReference("=Proj/rt.jar<com.example{Foo.java[Foo[~Foo$1", null), //$NON-NLS-1$
+                BytecodeSearchEntry.symbolReference("Foo$1", "com.example.Foo$1", "com.example", null), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                Access.NONE, TypeCategory.CLASS);
+        int[] counts = {1};
+
+        long old = MAPPED_THRESHOLD_FIELD.getLong(null);
+        MAPPED_THRESHOLD_FIELD.setLong(null, 0L);
+        try {
+            Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, List.of(anonEntry), counts);
+            try {
+                assertFalse("Entry with [~ handle must fall back to HeapEntryStore", //$NON-NLS-1$
                         STORE_CLASS.isInstance(jarIndexEntries(jarIndex)));
                 assertEquals(1, jarIndexEntryCount(jarIndex));
             } finally {
