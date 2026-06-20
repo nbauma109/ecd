@@ -173,7 +173,8 @@ public class BytecodeJarIndexer {
         Map<String, String> strings = new HashMap<>();
 
         try (ZipFile zip = new ZipFile(jar)) {
-            IndexContext context = new IndexContext(root, jar, zip, entries, counts, seen, strings);
+            Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
+            IndexContext context = new IndexContext(root, jar, zip, entries, counts, seen, strings, typeCategoryCache);
             SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
             for (JarEntryWork entryWork : work.entries()) {
                 if (subMonitor.isCanceled()) {
@@ -205,7 +206,8 @@ public class BytecodeJarIndexer {
 
     private static void indexZipEntry(IndexContext context, ZipEntry entry) {
         try (InputStream input = context.zip().getInputStream(entry)) {
-            indexClass(context.root(), input, context.entries(), context.counts(), context.seen(), context.strings());
+            indexClass(context.root(), input, context.entries(), context.counts(), context.seen(), context.strings(),
+                    context.typeCategoryCache());
         } catch (IOException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
         }
@@ -230,9 +232,10 @@ public class BytecodeJarIndexer {
     }
 
     private static void indexClass(IPackageFragmentRoot root, InputStream input, List<BytecodeSearchEntry> entries,
-            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) throws IOException {
+            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings,
+            Map<String, TypeCategory> typeCategoryCache) throws IOException {
         ClassReader reader = new ClassReader(input);
-        ClassIndex classIndex = new ClassIndex(root, entries, counts, seen, strings);
+        ClassIndex classIndex = new ClassIndex(root, entries, counts, seen, strings, typeCategoryCache);
         reader.accept(classIndex.visitor, ClassReader.SKIP_FRAMES);
 
         if (classIndex.type == null && classIndex.moduleElement == null) {
@@ -250,6 +253,7 @@ public class BytecodeJarIndexer {
         private final List<Integer> counts;
         private final Map<EntryKey, Integer> seen;
         private final Map<String, String> strings;
+        private final Map<String, TypeCategory> typeCategoryCache;
         private final Map<String, String> elementHandles = new HashMap<>();
         private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
         private final List<String> typeReferences = new ArrayList<>();
@@ -271,12 +275,14 @@ public class BytecodeJarIndexer {
         private String enclosingClassName;
 
         private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, List<Integer> counts,
-                Map<EntryKey, Integer> seen, Map<String, String> strings) {
+                Map<EntryKey, Integer> seen, Map<String, String> strings,
+                Map<String, TypeCategory> typeCategoryCache) {
             this.root = root;
             this.entries = entries;
             this.counts = counts;
             this.seen = seen;
             this.strings = strings;
+            this.typeCategoryCache = typeCategoryCache;
         }
 
         private void indexDescriptors() {
@@ -765,6 +771,8 @@ public class BytecodeJarIndexer {
                     String[] interfaces) {
                 className = name;
                 typeCategory = typeCategory(access);
+                // Seed the cache with what we already know from ASM — free, no JDT call needed.
+                typeCategoryCache.put(name, typeCategory);
                 if (!MODULE_INFO.equals(name)) {
                     type = typeForInternalName(root, name);
                 }
@@ -1002,7 +1010,13 @@ public class BytecodeJarIndexer {
         }
 
         private TypeCategory typeCategory(String internalName) {
-            return typeCategory(typeForInternalName(root, internalName));
+            TypeCategory cached = typeCategoryCache.get(internalName);
+            if (cached != null) {
+                return cached;
+            }
+            TypeCategory result = typeCategory(typeForInternalName(root, internalName));
+            typeCategoryCache.put(internalName, result);
+            return result;
         }
 
         private static TypeCategory typeCategory(IType type) {
@@ -1716,7 +1730,8 @@ public class BytecodeJarIndexer {
     }
 
     private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,
-            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) {
+            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings,
+            Map<String, TypeCategory> typeCategoryCache) {
     }
 
     private record VersionedClassName(String logicalName, int version) {
