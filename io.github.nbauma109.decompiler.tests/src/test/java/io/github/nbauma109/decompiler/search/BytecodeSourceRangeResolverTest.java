@@ -11,8 +11,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +43,8 @@ import org.junit.Test;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
+import io.github.nbauma109.decompiler.testutil.PrintlnFixtureJarBuilder;
 
 @SuppressWarnings("restriction")
 public class BytecodeSourceRangeResolverTest {
@@ -130,6 +134,7 @@ public class BytecodeSourceRangeResolverTest {
 
                 void target() {}
                 static void staticTarget() {}
+                void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {}
             }
 
             class Prims {
@@ -155,6 +160,7 @@ public class BytecodeSourceRangeResolverTest {
     private IType primsType;
     private IPackageFragment packageFragment;
     private IMethod takesMethod;
+    private IMethod printLinesMethod;
     private IMethod defaultConstructor;
     private IMethod intConstructor;
     private IMethod targetMethod;
@@ -191,6 +197,7 @@ public class BytecodeSourceRangeResolverTest {
         ownerType = unit.getType(OWNER); //$NON-NLS-1$
         primsType = unit.getType("Prims"); //$NON-NLS-1$
         takesMethod = method(ownerType, "takes", 2); //$NON-NLS-1$
+        printLinesMethod = method(ownerType, "printLines", 2); //$NON-NLS-1$
         defaultConstructor = constructor(ownerType, 0);
         intConstructor = constructor(ownerType, 1);
         targetMethod = method(ownerType, TARGET, 0); //$NON-NLS-1$
@@ -251,11 +258,13 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry fromB = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.B", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(fromA, fromB), src);
+        BytecodeSearchMatch fromAMatch = new BytecodeSearchMatch(fromA);
+        BytecodeSearchMatch fromBMatch = new BytecodeSearchMatch(fromB);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(fromAMatch, fromBMatch), src);
 
-        assertEquals(src.indexOf("reset", src.indexOf("A.")), ranges.get(fromA).offset()); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(src.indexOf("reset", src.indexOf("B.")), ranges.get(fromB).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("A.")), ranges.get(fromAMatch).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("B.")), ranges.get(fromBMatch).offset()); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
@@ -287,16 +296,22 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry reference2 = reference(Kind.METHOD, takesMethod, "run", "run", //$NON-NLS-1$ //$NON-NLS-2$
                 "pkg2.Util", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
+        BytecodeSearchMatch method1Match = new BytecodeSearchMatch(method1);
+        BytecodeSearchMatch method2Match = new BytecodeSearchMatch(method2);
+        BytecodeSearchMatch field1Match = new BytecodeSearchMatch(field1);
+        BytecodeSearchMatch field2Match = new BytecodeSearchMatch(field2);
+        BytecodeSearchMatch reference1Match = new BytecodeSearchMatch(reference1);
+        BytecodeSearchMatch reference2Match = new BytecodeSearchMatch(reference2);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
                 new BytecodeSourceRangeResolver().rangesFor(
-                        List.of(method1, method2, field1, field2, reference1, reference2), src);
+                        List.of(method1Match, method2Match, field1Match, field2Match, reference1Match, reference2Match), src);
 
-        assertEquals(src.indexOf("reset", src.indexOf("pkg1.Util.reset")), ranges.get(method1).offset()); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(src.indexOf("reset", src.indexOf("pkg2.Util.reset")), ranges.get(method2).offset()); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(src.indexOf(FIELD, src.indexOf("pkg1.Util.field")), ranges.get(field1).offset()); //$NON-NLS-1$
-        assertEquals(src.indexOf(FIELD, src.indexOf("pkg2.Util.field")), ranges.get(field2).offset()); //$NON-NLS-1$
-        assertEquals(src.indexOf("run", src.indexOf("pkg1.Util::")), ranges.get(reference1).offset()); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(src.indexOf("run", src.indexOf("pkg2.Util::")), ranges.get(reference2).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("pkg1.Util.reset")), ranges.get(method1Match).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("pkg2.Util.reset")), ranges.get(method2Match).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf(FIELD, src.indexOf("pkg1.Util.field")), ranges.get(field1Match).offset()); //$NON-NLS-1$
+        assertEquals(src.indexOf(FIELD, src.indexOf("pkg2.Util.field")), ranges.get(field2Match).offset()); //$NON-NLS-1$
+        assertEquals(src.indexOf("run", src.indexOf("pkg1.Util::")), ranges.get(reference1Match).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("run", src.indexOf("pkg2.Util::")), ranges.get(reference2Match).offset()); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Test
@@ -330,15 +345,19 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry fromLinkedList = reference(Kind.METHOD, takesMethod, "clear", "clear", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.util.LinkedList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(fromA, fromB, fromArrayList, fromLinkedList), src);
+        BytecodeSearchMatch fromAMatch = new BytecodeSearchMatch(fromA);
+        BytecodeSearchMatch fromBMatch = new BytecodeSearchMatch(fromB);
+        BytecodeSearchMatch fromArrayListMatch = new BytecodeSearchMatch(fromArrayList);
+        BytecodeSearchMatch fromLinkedListMatch = new BytecodeSearchMatch(fromLinkedList);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(fromAMatch, fromBMatch, fromArrayListMatch, fromLinkedListMatch), src);
 
-        assertEquals(src.indexOf("reset", src.indexOf("A::")), ranges.get(fromA).offset()); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(src.indexOf("reset", src.indexOf("B::")), ranges.get(fromB).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("A::")), ranges.get(fromAMatch).offset()); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(src.indexOf("reset", src.indexOf("B::")), ranges.get(fromBMatch).offset()); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(src.indexOf("clear", src.indexOf("ArrayList<String>::")), //$NON-NLS-1$ //$NON-NLS-2$
-                ranges.get(fromArrayList).offset());
+                ranges.get(fromArrayListMatch).offset());
         assertEquals(src.indexOf("clear", src.indexOf("LinkedList<String>::")), //$NON-NLS-1$ //$NON-NLS-2$
-                ranges.get(fromLinkedList).offset());
+                ranges.get(fromLinkedListMatch).offset());
     }
 
     @Test
@@ -364,13 +383,15 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry other = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Other", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(base, other), src);
+        BytecodeSearchMatch baseMatch = new BytecodeSearchMatch(base);
+        BytecodeSearchMatch otherMatch = new BytecodeSearchMatch(other);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(baseMatch, otherMatch), src);
 
         int superOffset = src.indexOf("reset", src.indexOf("super.")); //$NON-NLS-1$ //$NON-NLS-2$
         int otherOffset = src.indexOf("reset", src.indexOf("Other.")); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(superOffset, ranges.get(base).offset());
-        assertEquals(otherOffset, ranges.get(other).offset());
+        assertEquals(superOffset, ranges.get(baseMatch).offset());
+        assertEquals(otherOffset, ranges.get(otherMatch).offset());
     }
 
     @Test
@@ -396,10 +417,12 @@ public class BytecodeSourceRangeResolverTest {
                 JAVA_IO_PRINT_STREAM, LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V); //$NON-NLS-1$
         BytecodeSearchEntry e2 = reference(Kind.METHOD, takesMethod, PRINTF, PRINTF, //$NON-NLS-1$ //$NON-NLS-2$
                 JAVA_IO_PRINT_STREAM, LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V); //$NON-NLS-1$
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(e1, e2), SOURCE);
-        assertRangeText(ranges.get(e1), "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
-        assertRangeText(ranges.get(e2), "printf(\"%d\")"); //$NON-NLS-1$
+        BytecodeSearchMatch m1 = new BytecodeSearchMatch(e1, 0);
+        BytecodeSearchMatch m2 = new BytecodeSearchMatch(e2, 1);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(m1, m2), SOURCE);
+        assertRangeText(ranges.get(m1), "printf(\"%d %s\", count, names.length)"); //$NON-NLS-1$
+        assertRangeText(ranges.get(m2), "printf(\"%d\")"); //$NON-NLS-1$
     }
 
     @Test
@@ -417,8 +440,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "arrayOnly", "arrayOnly", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_PRIMS, "([Ljava/lang/Object;)V"); //$NON-NLS-1$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int expectedOffset = src.indexOf("arrayOnly", src.indexOf("arrayOnly") + 1); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(expectedOffset, range.offset());
@@ -446,8 +470,9 @@ public class BytecodeSourceRangeResolverTest {
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         assertNotNull("Type qualifier in static field access must be resolved as a type reference", range); //$NON-NLS-1$
         assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
@@ -474,8 +499,9 @@ public class BytecodeSourceRangeResolverTest {
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         assertNotNull("package-qualified static field type qualifier must be resolved as a type reference", range); //$NON-NLS-1$
         assertEquals("System", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
@@ -494,8 +520,9 @@ public class BytecodeSourceRangeResolverTest {
 
         BytecodeSearchEntry entry = reference(Kind.PACKAGE, takesMethod, "pkg", "pkg", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int packageOffset = src.indexOf("pkg.Foo"); //$NON-NLS-1$
         assertNotNull("single-segment package qualifier must resolve to the visible package token", range); //$NON-NLS-1$
@@ -534,8 +561,9 @@ public class BytecodeSourceRangeResolverTest {
                 }
                 """; //$NON-NLS-1$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         // addLastName resolves to the type name ("Inner") within the new-expression, not the full expression
         assertNotNull("constructor with synthetic outer-ref must be resolved to the source call site", range); //$NON-NLS-1$
@@ -561,8 +589,9 @@ public class BytecodeSourceRangeResolverTest {
                 }
                 """; //$NON-NLS-1$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         assertNotNull("varargs constructor with synthetic outer-ref must resolve to the source call site", range); //$NON-NLS-1$
         assertEquals("Inner", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
@@ -573,8 +602,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod,
                 OWNER, FIXTURE_OWNER, FIXTURE_OWNER, "(ILjava/lang/String;)V"); //$NON-NLS-1$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), SOURCE).get(entry);
+                .rangesFor(List.of(match), SOURCE).get(match);
 
         assertEquals(SOURCE.indexOf(OWNER, SOURCE.indexOf("new Owner(count, names[0])")), range.offset()); //$NON-NLS-1$
     }
@@ -594,8 +624,9 @@ public class BytecodeSourceRangeResolverTest {
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "Foo", "fixture.Foo", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         assertEquals(src.indexOf("Foo", src.indexOf("new Foo")), range.offset()); //$NON-NLS-1$ //$NON-NLS-2$
     }
@@ -637,11 +668,13 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry other = reference(Kind.CONSTRUCTOR, intConstructor, "Other", "fixture.Other", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Other", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(base, other), src);
+        BytecodeSearchMatch baseMatch = new BytecodeSearchMatch(base);
+        BytecodeSearchMatch otherMatch = new BytecodeSearchMatch(other);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(baseMatch, otherMatch), src);
 
-        BytecodeSourceRangeResolver.SourceRange baseRange = ranges.get(base);
-        BytecodeSourceRangeResolver.SourceRange otherRange = ranges.get(other);
+        BytecodeSourceRangeResolver.SourceRange baseRange = ranges.get(baseMatch);
+        BytecodeSourceRangeResolver.SourceRange otherRange = ranges.get(otherMatch);
         assertEquals("super", src.substring(baseRange.offset(), baseRange.offset() + baseRange.length())); //$NON-NLS-1$
         assertEquals("Other", src.substring(otherRange.offset(), otherRange.offset() + otherRange.length())); //$NON-NLS-1$
     }
@@ -664,13 +697,15 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry methodReference = reference(Kind.CONSTRUCTOR, takesMethod, "ArrayList", "java.util.ArrayList", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.util.ArrayList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(invocation, methodReference), src);
+        BytecodeSearchMatch invocationMatch = new BytecodeSearchMatch(invocation, 0);
+        BytecodeSearchMatch methodReferenceMatch = new BytecodeSearchMatch(methodReference, 1);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(invocationMatch, methodReferenceMatch), src);
 
         int invocationOffset = src.indexOf("ArrayList", src.indexOf("new java.util.")); //$NON-NLS-1$ //$NON-NLS-2$
         int referenceOffset = src.indexOf("ArrayList", src.indexOf("java.util.ArrayList<String>::new")); //$NON-NLS-1$ //$NON-NLS-2$
-        assertEquals(invocationOffset, ranges.get(invocation).offset());
-        assertEquals(referenceOffset, ranges.get(methodReference).offset());
+        assertEquals(invocationOffset, ranges.get(invocationMatch).offset());
+        assertEquals(referenceOffset, ranges.get(methodReferenceMatch).offset());
     }
 
     @Test
@@ -690,8 +725,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod, "Foo", "fixture.Foo", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int referenceOffset = src.indexOf("Foo", src.indexOf("Foo::new")); //$NON-NLS-1$ //$NON-NLS-2$
         assertNotNull("parameterized constructor reference must resolve", range); //$NON-NLS-1$
@@ -716,11 +752,13 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry second = reference(Kind.CONSTRUCTOR, takesMethod, "Widget", "p2.Widget", //$NON-NLS-1$ //$NON-NLS-2$
                 "p2.Widget", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                new BytecodeSourceRangeResolver().rangesFor(List.of(first, second), src);
+        BytecodeSearchMatch firstMatch = new BytecodeSearchMatch(first);
+        BytecodeSearchMatch secondMatch = new BytecodeSearchMatch(second);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(firstMatch, secondMatch), src);
 
-        assertEquals(src.indexOf("Widget"), ranges.get(first).offset()); //$NON-NLS-1$
-        assertEquals(src.lastIndexOf("Widget"), ranges.get(second).offset()); //$NON-NLS-1$
+        assertEquals(src.indexOf("Widget"), ranges.get(firstMatch).offset()); //$NON-NLS-1$
+        assertEquals(src.lastIndexOf("Widget"), ranges.get(secondMatch).offset()); //$NON-NLS-1$
     }
 
     @Test
@@ -770,10 +808,11 @@ public class BytecodeSourceRangeResolverTest {
                 "x", "x", FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(entry), src);
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(match), src);
 
-        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         // The resolver must find the "x" identifier inside target(), not fall back to
         // a broad enclosing-method range.
@@ -802,13 +841,15 @@ public class BytecodeSourceRangeResolverTest {
                 FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(ownerField, baseField), src);
+        BytecodeSearchMatch ownerMatch = new BytecodeSearchMatch(ownerField);
+        BytecodeSearchMatch baseMatch = new BytecodeSearchMatch(baseField);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(ownerMatch, baseMatch), src);
 
         int thisFieldOffset = src.indexOf(FIELD, src.indexOf("this.")); //$NON-NLS-1$
         int superFieldOffset = src.indexOf(FIELD, src.indexOf("super.")); //$NON-NLS-1$
-        assertEquals(thisFieldOffset, ranges.get(ownerField).offset());
-        assertEquals(superFieldOffset, ranges.get(baseField).offset());
+        assertEquals(thisFieldOffset, ranges.get(ownerMatch).offset());
+        assertEquals(superFieldOffset, ranges.get(baseMatch).offset());
     }
 
     @Test
@@ -830,8 +871,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry wrongOwner = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
                 FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$
 
+        BytecodeSearchMatch wrongOwnerMatch = new BytecodeSearchMatch(wrongOwner);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(wrongOwner), src).get(wrongOwner);
+                .rangesFor(List.of(wrongOwnerMatch), src).get(wrongOwnerMatch);
         int explicitAccessOffset = src.indexOf(FIELD, src.indexOf("receiver().")); //$NON-NLS-1$
         assertTrue("Expression-based access must not be assigned to an owner without receiver bindings", //$NON-NLS-1$
                 range.offset() != explicitAccessOffset || range.length() != FIELD.length());
@@ -858,12 +900,98 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry secondSize = reference(Kind.METHOD, takesMethod, "size", "size", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Second", "()I"); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch secondSizeMatch = new BytecodeSearchMatch(secondSize);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(secondSize), src).get(secondSize);
+                .rangesFor(List.of(secondSizeMatch), src).get(secondSizeMatch);
         int firstSizeOffset = src.indexOf("size", src.indexOf("first.")); //$NON-NLS-1$ //$NON-NLS-2$
         int secondSizeOffset = src.indexOf("size", src.indexOf("second.")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("Expression-based invocation must not be assigned to an owner without receiver bindings", //$NON-NLS-1$
                 range.offset() != firstSizeOffset && range.offset() != secondSizeOffset);
+    }
+
+    @Test
+    public void singleLocalVariableReceiverCallResolvesToTheOnlyCandidate() {
+        String src = """
+                package fixture;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        java.io.PrintWriter pw = null;
+                        pw.println(count);
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
+                .rangesFor(List.of(match), src).get(match);
+
+        int printlnOffset = src.indexOf("println"); //$NON-NLS-1$
+        assertNotNull("local-variable receiver with single call must resolve to the call site", range); //$NON-NLS-1$
+        assertEquals("println(count)", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
+        assertEquals(printlnOffset, range.offset());
+    }
+
+    @Test
+    public void multipleLocalVariableReceiverCallsWithImportResolveInOrder() {
+        String src = """
+                package fixture;
+                import java.io.PrintWriter;
+                class Owner {
+                    void takes(int count, java.lang.String... names) {
+                        PrintWriter pw = null;
+                        pw.println("first");
+                        pw.println("second");
+                        pw.println("third");
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry e = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchMatch m0 = new BytecodeSearchMatch(e, 0);
+        BytecodeSearchMatch m1 = new BytecodeSearchMatch(e, 1);
+        BytecodeSearchMatch m2 = new BytecodeSearchMatch(e, 2);
+
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(m0, m1, m2), src);
+
+        assertEquals("println(\"first\")", rangeText(ranges.get(m0), src)); //$NON-NLS-1$
+        assertEquals("println(\"second\")", rangeText(ranges.get(m1), src)); //$NON-NLS-1$
+        assertEquals("println(\"third\")", rangeText(ranges.get(m2), src)); //$NON-NLS-1$
+    }
+
+    @Test
+    public void multipleParameterReceiverCallsResolveInOrder() {
+        // Mirrors ComponentHelper.class: PrintWriter out is a method parameter (not a local var).
+        // Two receivers 'out' and 'err' (both PrintWriter) are disambiguated by the type-scope
+        // which maps each variable name to its declared type and filters against the declaring owner.
+        String src = """
+                package fixture;
+                import java.io.PrintWriter;
+                class Owner {
+                    void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {
+                        out.println("alpha");
+                        err.println("beta");
+                        out.println("gamma");
+                    }
+                }
+                """; //$NON-NLS-1$
+
+        BytecodeSearchEntry e = reference(Kind.METHOD, printLinesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+        BytecodeSearchMatch m0 = new BytecodeSearchMatch(e, 0);
+        BytecodeSearchMatch m1 = new BytecodeSearchMatch(e, 1);
+        BytecodeSearchMatch m2 = new BytecodeSearchMatch(e, 2);
+
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                new BytecodeSourceRangeResolver().rangesFor(List.of(m0, m1, m2), src);
+
+        assertEquals("println(\"alpha\")", rangeText(ranges.get(m0), src)); //$NON-NLS-1$
+        assertEquals("println(\"beta\")", rangeText(ranges.get(m1), src)); //$NON-NLS-1$
+        assertEquals("println(\"gamma\")", rangeText(ranges.get(m2), src)); //$NON-NLS-1$
     }
 
     @Test
@@ -881,8 +1009,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry helper = reference(Kind.METHOD, takesMethod, "helper", "helper", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"); //$NON-NLS-1$
 
+        BytecodeSearchMatch helperMatch = new BytecodeSearchMatch(helper);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(helper), src).get(helper);
+                .rangesFor(List.of(helperMatch), src).get(helperMatch);
         int helperOffset = src.indexOf("helper", src.indexOf("this.")); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(helperOffset, range.offset());
         assertEquals("helper()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
@@ -908,8 +1037,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry helper = reference(Kind.METHOD, innerTakes, "helper", "helper", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.QualifiedThisOwner", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch helperMatch = new BytecodeSearchMatch(helper);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(helper), src).get(helper);
+                .rangesFor(List.of(helperMatch), src).get(helperMatch);
         int helperOffset = src.indexOf("helper", src.indexOf("QualifiedThisOwner.this.")); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(helperOffset, range.offset());
         assertEquals("helper()", src.substring(range.offset(), range.offset() + range.length())); //$NON-NLS-1$
@@ -934,8 +1064,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         assertNotNull("qualified field reference must still resolve", range); //$NON-NLS-1$
         assertEquals(src.indexOf("value", src.indexOf("Foo.value")), range.offset()); //$NON-NLS-1$ //$NON-NLS-2$
@@ -961,8 +1092,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int afterLoopValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
         assertNotNull("field reference after loop must still resolve", range); //$NON-NLS-1$
@@ -991,8 +1123,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int afterLoopValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
         assertNotNull("field reference after enhanced loop must still resolve", range); //$NON-NLS-1$
@@ -1022,8 +1155,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int afterCatchValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
         assertNotNull("field reference after catch must still resolve", range); //$NON-NLS-1$
@@ -1050,8 +1184,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "Ljava/lang/String;", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int afterLambdaValueOffset = src.indexOf("value", src.lastIndexOf("consume(value);")); //$NON-NLS-1$ //$NON-NLS-2$
         assertNotNull("field reference after lambda must still resolve", range); //$NON-NLS-1$
@@ -1090,10 +1225,11 @@ public class BytecodeSourceRangeResolverTest {
                 "hashCode", "hashCode", JAVA_LANG_OBJECT, "()I"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(entry), src);
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(match), src);
 
-        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         // AstDeclarationWindow must use "int field = hashCode();" (the FieldDeclaration)
         // as the search window — not "int field = 0;" (the local-variable statement in
@@ -1119,8 +1255,9 @@ public class BytecodeSourceRangeResolverTest {
         BytecodeSearchEntry entry = reference(Kind.FIELD, doubledMethod,
                 "value", "value", "fixture.Rec", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int referenceOffset = src.indexOf("value", src.indexOf("return ")); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(referenceOffset, range.offset());
@@ -1155,8 +1292,9 @@ public class BytecodeSourceRangeResolverTest {
                 BytecodeSearchEntry.elementReference(null, marker),
                 BytecodeSearchEntry.symbolReference("hit", "hit", FIXTURE_OWNER, "()I")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
-                .rangesFor(List.of(entry), src).get(entry);
+                .rangesFor(List.of(match), src).get(match);
 
         int secondLocalHit = src.indexOf("hit()", src.indexOf("void second")); //$NON-NLS-1$ //$NON-NLS-2$
         assertEquals(secondLocalHit, range.offset());
@@ -1242,10 +1380,11 @@ public class BytecodeSourceRangeResolverTest {
                 TARGET, TARGET, FIXTURE_PRIMS, "()V"); //$NON-NLS-1$ //$NON-NLS-2$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(entry), SOURCE);
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(match), SOURCE);
 
-        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         assertRangeStartsWith(range, TARGET);
     }
@@ -1283,10 +1422,11 @@ public class BytecodeSourceRangeResolverTest {
                 """; //$NON-NLS-1$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(entry), customSrc);
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(match), customSrc);
 
-        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         assertTrue("range text must start with 'target'", //$NON-NLS-1$
                 customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
@@ -1319,13 +1459,133 @@ public class BytecodeSourceRangeResolverTest {
                 """; //$NON-NLS-1$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
-        Map<BytecodeSearchEntry, BytecodeSourceRangeResolver.SourceRange> ranges =
-                resolver.rangesFor(List.of(entry), customSrc);
+        BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
+        Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                resolver.rangesFor(List.of(match), customSrc);
 
-        BytecodeSourceRangeResolver.SourceRange range = ranges.get(entry);
+        BytecodeSourceRangeResolver.SourceRange range = ranges.get(match);
         assertNotNull("range must not be null", range); //$NON-NLS-1$
         assertTrue("range text must start with 'target'", //$NON-NLS-1$
                 customSrc.substring(range.offset(), range.offset() + range.length()).startsWith(TARGET));
+    }
+
+    /**
+     * Regression test for {@code generateFile(PrintWriter)} with 21 {@code println(String)} and
+     * 15 {@code println()} call sites (36 total). The resolver must navigate to each distinct
+     * occurrence in source order using the type-scope heuristic that resolves
+     * {@code writer} → {@code PrintWriter}.
+     */
+    @Test
+    public void destinationDotFileInterceptorGenerateFilePrintWriterResolvesAllOccurrencesInOrder() throws Exception {
+        File jar = PrintlnFixtureJarBuilder.buildJar(DecompilerTestSupport.createTargetTempDir("println-fixture")); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "destination-dot-file-test"); //$NON-NLS-1$
+        try {
+            IType type = setup.javaProject().findType(PrintlnFixtureJarBuilder.DESTINATION_CLASS);
+            assertNotNull("DestinationDotFileFixture must be resolvable from fixture JAR", type); //$NON-NLS-1$
+
+            IMethod generateFile = method(type, "generateFile", 1); //$NON-NLS-1$
+
+            BytecodeSearchEntry printlnStr = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchEntry println = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+            int printlnStrCount = 21;
+            int printlnCount = 15;
+            List<BytecodeSearchMatch> matches = new ArrayList<>();
+            for (int i = 0; i < printlnStrCount; i++) {
+                matches.add(new BytecodeSearchMatch(printlnStr, i));
+            }
+            for (int i = 0; i < printlnCount; i++) {
+                matches.add(new BytecodeSearchMatch(println, i));
+            }
+
+            Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                    new BytecodeSourceRangeResolver().rangesFor(matches, PrintlnFixtureJarBuilder.destinationSource());
+
+            // All 21 println(String) ordinals must navigate to distinct, in-order positions.
+            int prevOffset = -1;
+            for (int i = 0; i < printlnStrCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(i));
+                assertNotNull("println(String) ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println(String) ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+            // All 15 println() ordinals must navigate to distinct, in-order positions.
+            prevOffset = -1;
+            for (int i = 0; i < printlnCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(printlnStrCount + i));
+                assertNotNull("println() ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println() ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+        } finally {
+            if (setup.project().exists()) {
+                setup.project().delete(true, true, new NullProgressMonitor());
+            }
+        }
+    }
+
+    /**
+     * Regression test for {@code generateFile(PrintWriter)} with 4 {@code println(String)} and
+     * 7 {@code println()} call sites (11 total). The resolver must navigate to each distinct
+     * occurrence in source order using the type-scope heuristic.
+     */
+    @Test
+    public void connectionDotFileInterceptorGenerateFilePrintWriterResolvesAllOccurrencesInOrder() throws Exception {
+        File jar = PrintlnFixtureJarBuilder.buildJar(DecompilerTestSupport.createTargetTempDir("println-fixture")); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithJar(jar,
+                "connection-dot-file-test"); //$NON-NLS-1$
+        try {
+            IType type = setup.javaProject().findType(PrintlnFixtureJarBuilder.CONNECTION_CLASS);
+            assertNotNull("ConnectionDotFileFixture must be resolvable from fixture JAR", type); //$NON-NLS-1$
+
+            IMethod generateFile = method(type, "generateFile", 1); //$NON-NLS-1$
+
+            BytecodeSearchEntry printlnStr = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchEntry println = reference(Kind.METHOD, generateFile, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
+                    "java.io.PrintWriter", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
+
+            int printlnStrCount = 4;
+            int printlnCount = 7;
+            List<BytecodeSearchMatch> matches = new ArrayList<>();
+            for (int i = 0; i < printlnStrCount; i++) {
+                matches.add(new BytecodeSearchMatch(printlnStr, i));
+            }
+            for (int i = 0; i < printlnCount; i++) {
+                matches.add(new BytecodeSearchMatch(println, i));
+            }
+
+            Map<BytecodeSearchMatch, BytecodeSourceRangeResolver.SourceRange> ranges =
+                    new BytecodeSourceRangeResolver().rangesFor(matches, PrintlnFixtureJarBuilder.connectionSource());
+
+            // All 4 println(String) ordinals must navigate to distinct, in-order positions.
+            int prevOffset = -1;
+            for (int i = 0; i < printlnStrCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(i));
+                assertNotNull("println(String) ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println(String) ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+            // All 7 println() ordinals must navigate to distinct, in-order positions.
+            prevOffset = -1;
+            for (int i = 0; i < printlnCount; i++) {
+                BytecodeSourceRangeResolver.SourceRange r = ranges.get(matches.get(printlnStrCount + i));
+                assertNotNull("println() ordinal " + i + " must resolve", r); //$NON-NLS-1$ //$NON-NLS-2$
+                assertTrue("println() ordinal " + i + " offset (" + r.offset() + ") must exceed prior (" + prevOffset + ")", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+                        r.offset() > prevOffset);
+                prevOffset = r.offset();
+            }
+        } finally {
+            if (setup.project().exists()) {
+                setup.project().delete(true, true, new NullProgressMonitor());
+            }
+        }
     }
 
     private static IField binaryLocalClassField(String classFileName, String fieldName) {
@@ -1424,6 +1684,10 @@ public class BytecodeSourceRangeResolverTest {
             }
         }
         throw new AssertionError("Missing constructor with " + parameterCount + " parameters"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    private static String rangeText(BytecodeSourceRangeResolver.SourceRange range, String src) {
+        return src.substring(range.offset(), range.offset() + range.length());
     }
 
     private static void assertRangeText(BytecodeSourceRangeResolver.SourceRange range, String expected) {

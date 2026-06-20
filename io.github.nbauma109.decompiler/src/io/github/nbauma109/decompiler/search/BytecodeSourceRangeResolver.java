@@ -8,6 +8,7 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,11 +24,17 @@ import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
@@ -56,6 +63,8 @@ import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.LambdaExpression;
@@ -89,6 +98,15 @@ import io.github.nbauma109.decompiler.util.Logger;
 public class BytecodeSourceRangeResolver {
 
     private static final int MAX_PARSED_CLASS_FILES = 8;
+    private static final String CLASS_SUFFIX = ".class"; //$NON-NLS-1$
+    private static final String TYPE_BOOLEAN = "boolean"; //$NON-NLS-1$
+    private static final String TYPE_BYTE = "byte"; //$NON-NLS-1$
+    private static final String TYPE_CHAR = "char"; //$NON-NLS-1$
+    private static final String TYPE_DOUBLE = "double"; //$NON-NLS-1$
+    private static final String TYPE_FLOAT = "float"; //$NON-NLS-1$
+    private static final String TYPE_INT = "int"; //$NON-NLS-1$
+    private static final String TYPE_LONG = "long"; //$NON-NLS-1$
+    private static final String TYPE_SHORT = "short"; //$NON-NLS-1$
 
     private final Map<String, ParsedClassFile> classFiles = new LinkedHashMap<>(MAX_PARSED_CLASS_FILES, 0.75f, true) {
         private static final long serialVersionUID = 1L;
@@ -108,16 +126,28 @@ public class BytecodeSourceRangeResolver {
         return selectRange(entry, ranges);
     }
 
-    public Map<BytecodeSearchEntry, SourceRange> rangesFor(List<BytecodeSearchEntry> entries, String source) {
-        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source);
-        Map<BytecodeSearchEntry, SourceRange> ranges = new IdentityHashMap<>(entries.size());
-        Map<ReferenceKey, Integer> ordinals = new HashMap<>();
-        for (BytecodeSearchEntry entry : entries) {
-            ReferenceKey key = ReferenceKey.from(entry);
-            int ordinal = ordinals.merge(key, Integer.valueOf(1), Integer::sum).intValue() - 1;
-            ranges.put(entry, selectRange(entry, rangesFor(entry, source, parsed), ordinal));
+    public Map<BytecodeSearchMatch, SourceRange> rangesFor(List<BytecodeSearchMatch> matches, String source) {
+        IJavaProject project = projectFrom(matches);
+        String unitName = unitNameFrom(matches);
+        ParsedClassFile parsed = StringUtils.isBlank(source) ? null : parse(source, project, unitName);
+        Map<BytecodeSearchMatch, SourceRange> ranges = new IdentityHashMap<>(matches.size());
+        for (BytecodeSearchMatch match : matches) {
+            ranges.put(match, selectRange(match.getEntry(), rangesFor(match.getEntry(), source, parsed), match.getOrdinal()));
         }
         return ranges;
+    }
+
+    private static IJavaProject projectFrom(List<BytecodeSearchMatch> matches) {
+        for (BytecodeSearchMatch match : matches) {
+            IJavaElement element = match.getEntry().getElement();
+            if (element != null) {
+                IJavaProject project = element.getJavaProject();
+                if (project != null) {
+                    return project;
+                }
+            }
+        }
+        return null;
     }
 
     private static SourceRange selectRange(BytecodeSearchEntry entry, List<SourceRange> ranges) {
@@ -139,7 +169,9 @@ public class BytecodeSourceRangeResolver {
 
         ParsedClassFile parsed = parsedSource;
         if (parsed == null) {
-            parsed = StringUtils.isBlank(source) ? parsedClassFile(entry.getElement()) : parse(source);
+            IJavaElement el = entry.getElement();
+            IJavaProject project = el == null ? null : el.getJavaProject();
+            parsed = StringUtils.isBlank(source) ? parsedClassFile(el) : parse(source, project, unitName(el));
         }
         if (parsed == null) {
             SourceRange fallback = enclosingRange(entry);
@@ -154,11 +186,19 @@ public class BytecodeSourceRangeResolver {
         return List.of(fallback);
     }
 
-    private ParsedClassFile parse(String source) {
+    private ParsedClassFile parse(String source, IJavaProject project, String unitName) {
         try {
             ASTParser parser = ASTParser.newParser(AST.getJLSLatest());
             parser.setKind(ASTParser.K_COMPILATION_UNIT);
             parser.setSource(source.toCharArray());
+            if (project != null) {
+                parser.setEnvironment(classpathOf(project), null, null, true);
+                parser.setResolveBindings(true);
+                parser.setBindingsRecovery(true);
+                if (unitName != null) {
+                    parser.setUnitName(unitName);
+                }
+            }
             CompilationUnit unit = (CompilationUnit) parser.createAST(null);
             return new ParsedClassFile(source, unit);
         } catch (RuntimeException e) {
@@ -167,25 +207,123 @@ public class BytecodeSourceRangeResolver {
         }
     }
 
+    private static String[] classpathOf(IJavaProject project) {
+        try {
+            IClasspathEntry[] entries = project.getResolvedClasspath(true);
+            List<String> paths = new ArrayList<>();
+            addWorkspaceOutputFolder(project.getOutputLocation(), paths);
+            for (IClasspathEntry entry : entries) {
+                if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
+                    File file = resolveLibraryFile(entry);
+                    if (file.exists()) {
+                        paths.add(file.getAbsolutePath());
+                    }
+                } else if (entry.getEntryKind() == IClasspathEntry.CPE_SOURCE) {
+                    addWorkspaceOutputFolder(entry.getOutputLocation(), paths);
+                } else if (entry.getEntryKind() == IClasspathEntry.CPE_PROJECT) {
+                    addProjectOutputToClasspath(entry, paths);
+                }
+            }
+            return paths.toArray(String[]::new);
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+            return new String[0];
+        }
+    }
+
+    private static File resolveLibraryFile(IClasspathEntry entry) {
+        IPath path = entry.getPath();
+        if (path.segmentCount() < 2) {
+            return path.toFile();
+        }
+        var wsFile = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+        if (!wsFile.exists()) {
+            return path.toFile();
+        }
+        var loc = wsFile.getLocation();
+        return loc != null ? loc.toFile() : path.toFile();
+    }
+
+    private static void addProjectOutputToClasspath(IClasspathEntry entry, List<String> paths) {
+        try {
+            IProject requiredProject = ResourcesPlugin.getWorkspace().getRoot()
+                    .getProject(entry.getPath().lastSegment());
+            if (!requiredProject.isOpen()) {
+                return;
+            }
+            IJavaProject requiredJavaProject = JavaCore.create(requiredProject);
+            if (!requiredJavaProject.exists()) {
+                return;
+            }
+            addWorkspaceOutputFolder(requiredJavaProject.getOutputLocation(), paths);
+            for (IClasspathEntry sourceEntry : requiredJavaProject.getResolvedClasspath(true)) {
+                if (sourceEntry.getEntryKind() == IClasspathEntry.CPE_SOURCE) {
+                    addWorkspaceOutputFolder(sourceEntry.getOutputLocation(), paths);
+                }
+            }
+        } catch (JavaModelException e) {
+            Logger.debug(e);
+        }
+    }
+
+    private static void addWorkspaceOutputFolder(IPath outputPath, List<String> paths) {
+        if (outputPath == null) {
+            return;
+        }
+        var location = ResourcesPlugin.getWorkspace().getRoot().getFolder(outputPath).getLocation();
+        if (location == null) {
+            return;
+        }
+        File outputDir = location.toFile();
+        if (outputDir.exists()) {
+            paths.add(outputDir.getAbsolutePath());
+        }
+    }
+
+    private static String unitName(IJavaElement element) {
+        IJavaElement ancestor = element == null ? null : element.getAncestor(IJavaElement.CLASS_FILE);
+        return ancestor instanceof IClassFile cf ? unitName(cf) : null;
+    }
+
+    private static String unitName(IClassFile classFile) {
+        if (classFile.getParent() instanceof IPackageFragment pkg) {
+            String packagePath = pkg.getElementName().replace('.', '/');
+            String className = classFile.getElementName().replace(CLASS_SUFFIX, ".java"); //$NON-NLS-1$
+            return packagePath.isEmpty() ? className : packagePath + "/" + className; //$NON-NLS-1$
+        }
+        return classFile.getElementName().replace(CLASS_SUFFIX, ".java"); //$NON-NLS-1$
+    }
+
     private ParsedClassFile parsedClassFile(IJavaElement element) {
         IClassFile classFile = classFile(element);
         if (classFile == null) {
             return null;
         }
-        return classFiles.computeIfAbsent(classFile.getHandleIdentifier(), ignored -> parse(classFile));
+        IJavaProject project = classFile.getJavaProject();
+        return classFiles.computeIfAbsent(classFile.getHandleIdentifier(), ignored -> parse(classFile, project));
     }
 
-    private ParsedClassFile parse(IClassFile classFile) {
+    private ParsedClassFile parse(IClassFile classFile, IJavaProject project) {
         try {
             String source = classFile.getSource();
             if (StringUtils.isBlank(source)) {
                 return null;
             }
-            return parse(source);
+            return parse(source, project, unitName(classFile));
         } catch (JavaModelException | RuntimeException e) {
             Logger.debug(e);
             return null;
         }
+    }
+
+    private static String unitNameFrom(List<BytecodeSearchMatch> matches) {
+        for (BytecodeSearchMatch match : matches) {
+            String unitName = unitName(match.getEntry().getElement());
+            if (unitName != null) {
+                return unitName;
+            }
+        }
+        return null;
     }
 
     private static IClassFile classFile(IJavaElement element) {
@@ -263,7 +401,7 @@ public class BytecodeSourceRangeResolver {
             List<SourceRange> ranges = new ArrayList<>();
             unit.accept(new ReferenceVisitor(source, entry, window, ranges));
             ranges.sort(Comparator.comparingInt(SourceRange::offset));
-            return List.copyOf(ranges);
+            return ranges.isEmpty() ? List.of() : List.copyOf(ranges);
         }
 
         private static SourceRange enclosingSourceRange(IJavaElement element, CompilationUnit unit) {
@@ -458,14 +596,14 @@ public class BytecodeSourceRangeResolver {
 
         private static String primitiveName(String signature) {
             return switch (signature) {
-            case "Z" -> "boolean"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "B" -> "byte"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "C" -> "char"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "D" -> "double"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "F" -> "float"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "I" -> "int"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "J" -> "long"; //$NON-NLS-1$ //$NON-NLS-2$
-            case "S" -> "short"; //$NON-NLS-1$ //$NON-NLS-2$
+            case "Z" -> TYPE_BOOLEAN; //$NON-NLS-1$
+            case "B" -> TYPE_BYTE; //$NON-NLS-1$
+            case "C" -> TYPE_CHAR; //$NON-NLS-1$
+            case "D" -> TYPE_DOUBLE; //$NON-NLS-1$
+            case "F" -> TYPE_FLOAT; //$NON-NLS-1$
+            case "I" -> TYPE_INT; //$NON-NLS-1$
+            case "J" -> TYPE_LONG; //$NON-NLS-1$
+            case "S" -> TYPE_SHORT; //$NON-NLS-1$
             default -> signature;
             };
         }
@@ -525,8 +663,8 @@ public class BytecodeSourceRangeResolver {
             IClassFile classFile = classFile(element);
             if (classFile != null) {
                 String classFileName = classFile.getElementName();
-                if (Strings.CS.endsWith(classFileName, ".class")) { //$NON-NLS-1$
-                    classFileName = classFileName.substring(0, classFileName.length() - ".class".length()); //$NON-NLS-1$
+                if (Strings.CS.endsWith(classFileName, CLASS_SUFFIX)) {
+                    classFileName = classFileName.substring(0, classFileName.length() - CLASS_SUFFIX.length());
                 }
                 List<String> names = Arrays.asList(classFileName.split("\\$")); //$NON-NLS-1$
                 return new TypePath(names);
@@ -582,11 +720,35 @@ public class BytecodeSourceRangeResolver {
 
     private static final class ReferenceVisitor extends ASTVisitor {
 
+        private static final Set<String> PRIMITIVE_TYPE_NAMES = Set.of(
+                TYPE_BOOLEAN, TYPE_BYTE, TYPE_CHAR, TYPE_SHORT, TYPE_INT, TYPE_LONG, TYPE_FLOAT, TYPE_DOUBLE);
+
+        private static final Map<String, String> PRIMITIVE_TO_WRAPPER_INTERNAL = Map.of(
+                TYPE_BOOLEAN, "java/lang/Boolean", //$NON-NLS-1$
+                TYPE_BYTE, "java/lang/Byte", //$NON-NLS-1$
+                TYPE_CHAR, "java/lang/Character", //$NON-NLS-1$
+                TYPE_SHORT, "java/lang/Short", //$NON-NLS-1$
+                TYPE_INT, "java/lang/Integer", //$NON-NLS-1$
+                TYPE_LONG, "java/lang/Long", //$NON-NLS-1$
+                TYPE_FLOAT, "java/lang/Float", //$NON-NLS-1$
+                TYPE_DOUBLE, "java/lang/Double"); //$NON-NLS-1$
+
+        private static final Map<String, String> WRAPPER_TO_PRIMITIVE = Map.ofEntries(
+                Map.entry("Boolean", TYPE_BOOLEAN), Map.entry("java.lang.Boolean", TYPE_BOOLEAN), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Byte", TYPE_BYTE), Map.entry("java.lang.Byte", TYPE_BYTE), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Character", TYPE_CHAR), Map.entry("java.lang.Character", TYPE_CHAR), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Short", TYPE_SHORT), Map.entry("java.lang.Short", TYPE_SHORT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Integer", TYPE_INT), Map.entry("java.lang.Integer", TYPE_INT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Long", TYPE_LONG), Map.entry("java.lang.Long", TYPE_LONG), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Float", TYPE_FLOAT), Map.entry("java.lang.Float", TYPE_FLOAT), //$NON-NLS-1$ //$NON-NLS-2$
+                Map.entry("Double", TYPE_DOUBLE), Map.entry("java.lang.Double", TYPE_DOUBLE)); //$NON-NLS-1$ //$NON-NLS-2$
+
         private final String source;
         private final BytecodeSearchEntry entry;
         private final SourceWindow window;
         private final List<SourceRange> ranges;
         private final Deque<Set<String>> localNameScopes = new ArrayDeque<>();
+        private final Deque<Map<String, String>> localTypeScopes = new ArrayDeque<>();
 
         private ReferenceVisitor(String source, BytecodeSearchEntry entry, SourceWindow window,
                 List<SourceRange> ranges) {
@@ -599,9 +761,12 @@ public class BytecodeSourceRangeResolver {
         @Override
         public boolean visit(MethodDeclaration node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             for (Object parameter : node.parameters()) {
                 if (parameter instanceof SingleVariableDeclaration variable) {
-                    localNameScopes.peek().add(variable.getName().getIdentifier());
+                    String name = variable.getName().getIdentifier();
+                    localNameScopes.peek().add(name);
+                    localTypeScopes.peek().put(name, typeSourceName(variable.getType()));
                 }
             }
             return true;
@@ -610,66 +775,79 @@ public class BytecodeSourceRangeResolver {
         @Override
         public void endVisit(MethodDeclaration node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(Block node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(Block node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(ForStatement node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(ForStatement node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(EnhancedForStatement node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(EnhancedForStatement node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(CatchClause node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(CatchClause node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(LambdaExpression node) {
             localNameScopes.push(new HashSet<>());
+            localTypeScopes.push(new HashMap<>());
             return true;
         }
 
         @Override
         public void endVisit(LambdaExpression node) {
             localNameScopes.pop();
+            localTypeScopes.pop();
         }
 
         @Override
         public boolean visit(SingleVariableDeclaration node) {
             addLocalName(node.getName());
+            int extraDims = node.extraDimensions().size() + (node.isVarargs() ? 1 : 0);
+            addLocalType(node.getName().getIdentifier(), node.getType(), extraDims);
             return true;
         }
 
@@ -677,6 +855,10 @@ public class BytecodeSourceRangeResolver {
         public boolean visit(VariableDeclarationFragment node) {
             if (!(node.getParent() instanceof FieldDeclaration)) {
                 addLocalName(node.getName());
+                Type declType = localDeclarationType(node.getParent());
+                if (declType != null) {
+                    addLocalType(node.getName().getIdentifier(), declType, node.extraDimensions().size());
+                }
             }
             return true;
         }
@@ -908,6 +1090,46 @@ public class BytecodeSourceRangeResolver {
             return false;
         }
 
+        private static Type localDeclarationType(ASTNode parent) {
+            if (parent instanceof VariableDeclarationStatement stmt) {
+                return stmt.getType();
+            }
+            if (parent instanceof VariableDeclarationExpression expr) {
+                return expr.getType();
+            }
+            return null;
+        }
+
+        private void addLocalType(String name, Type type, int extraDimensions) {
+            if (type != null && !localTypeScopes.isEmpty()) {
+                String typeName = typeSourceName(type);
+                if (typeName != null && !typeName.isEmpty()) {
+                    String resolved = extraDimensions > 0 ? typeName + "[]".repeat(extraDimensions) : typeName; //$NON-NLS-1$
+                    localTypeScopes.peek().put(name, resolved);
+                }
+            }
+        }
+
+        private static String typeSourceName(Type type) {
+            if (type == null) {
+                return null;
+            }
+            if (type instanceof ParameterizedType parameterized) {
+                type = parameterized.getType();
+            }
+            return type.toString();
+        }
+
+        private String lookupLocalType(String name) {
+            for (Map<String, String> scope : localTypeScopes) {
+                String type = scope.get(name);
+                if (type != null) {
+                    return type;
+                }
+            }
+            return null;
+        }
+
         private void addLocalName(SimpleName node) {
             if (!localNameScopes.isEmpty()) {
                 localNameScopes.peek().add(node.getIdentifier());
@@ -949,6 +1171,17 @@ public class BytecodeSourceRangeResolver {
             if (!matches(node.getName(), node.arguments().size())) {
                 return false;
             }
+            IMethodBinding binding = node.resolveMethodBinding();
+            if (binding != null) {
+                ITypeBinding declaringClass = binding.getDeclaringClass();
+                if (declaringClass != null
+                        && matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
+                    return true;
+                }
+                // Binding incomplete or declaring class didn't match — fall through to heuristics.
+                // Recovery bindings (insufficient classpath) can have non-null but empty declaring class.
+            }
+            // Fallback heuristic for when binding is unavailable (e.g. decompiled source)
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
                 return matchesDeclaringOwner(receiver.getFullyQualifiedName());
             }
@@ -958,14 +1191,66 @@ public class BytecodeSourceRangeResolver {
             if (node.getExpression() instanceof ThisExpression receiver) {
                 return matchesThisReceiverMethod(receiver, node.arguments());
             }
+            if (node.getExpression() instanceof SimpleName sn && !isTypeLikeQualifier(sn)) {
+                return matchesLocalReceiverMethod(sn, node.arguments());
+            }
             if (node.getExpression() != null) {
-                // Receiver expression types are unavailable because decompiled text is parsed
-                // without bindings. Only retain static-field-style receivers such as System.out,
-                // where the root qualifier is type-like; reject local/expression receivers.
                 return node.getExpression() instanceof Name receiver && isTypeRootQualifiedName(receiver)
                         && matchesArgumentTypeSyntax(node.arguments());
             }
             return matchesArgumentTypeSyntax(node.arguments());
+        }
+
+        private boolean matchesLocalReceiverMethod(SimpleName receiver, List<?> arguments) {
+            String localType = lookupLocalType(receiver.getIdentifier());
+            if (localType == null) {
+                return false;
+            }
+            return matchesDeclaringOwner(localType) && matchesArgumentTypeSyntax(arguments);
+        }
+
+        private boolean matchesDeclaringClass(ITypeBinding declaring) {
+            if (declaring == null) {
+                return false;
+            }
+            String qualifiedName = declaring.getQualifiedName();
+            if (!qualifiedName.isEmpty()) {
+                return matchesDeclaringOwner(qualifiedName);
+            }
+            // Recovery binding with no qualified name — fall back to simple name.
+            return matchesDeclaringOwner(declaring.getName());
+        }
+
+        private boolean matchesMethodBindingDescriptor(IMethodBinding binding) {
+            String descriptor = entry.getDescriptor();
+            if (StringUtils.isBlank(descriptor)) {
+                return true;
+            }
+            try {
+                org.objectweb.asm.Type[] descriptorParams = org.objectweb.asm.Type.getArgumentTypes(descriptor);
+                ITypeBinding[] bindingParams = binding.getParameterTypes();
+                if (descriptorParams.length != bindingParams.length) {
+                    return false;
+                }
+                // Declaration-level params carry type variables (e.g. E in List<E>.add(E)); their
+                // erasure matches the bytecode descriptor. Substituted params (e.g. String from
+                // List<String>) do not — comparing them directly would reject generic call sites.
+                ITypeBinding[] declParams = binding.getMethodDeclaration().getParameterTypes();
+                for (int i = 0; i < descriptorParams.length; i++) {
+                    ITypeBinding bindingParam = bindingParams[i];
+                    if (bindingParam != null) {
+                        // ASM uses '$' for nested classes (pkg.Outer$Inner); JDT uses '.' (pkg.Outer.Inner).
+                        String descriptorClassName = descriptorParams[i].getClassName().replace('$', '.');
+                        ITypeBinding declParam = i < declParams.length ? declParams[i] : bindingParam;
+                        if (!declParam.getErasure().getQualifiedName().equals(descriptorClassName)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            } catch (IllegalArgumentException e) {
+                return true;
+            }
         }
 
         private boolean matchesThisReceiverMethod(ThisExpression receiver, List<?> arguments) {
@@ -985,7 +1270,9 @@ public class BytecodeSourceRangeResolver {
                     return true;
                 }
                 for (int i = 0; i < argTypes.length; i++) {
-                    if (!compatibleArgumentSyntax(arguments.get(i), argTypes[i])) {
+                    Object arg = arguments.get(i);
+                    if (!compatibleArgumentSyntax(arg, argTypes[i])
+                            || !compatibleLocalVariableType(arg, argTypes[i])) {
                         return false;
                     }
                 }
@@ -1004,24 +1291,120 @@ public class BytecodeSourceRangeResolver {
                 return expectedType.getSort() == org.objectweb.asm.Type.BOOLEAN;
             }
             if (arg instanceof NumberLiteral nl) {
-                String token = nl.getToken();
-                if (token.endsWith("L") || token.endsWith("l")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.LONG;
-                }
-                if (token.endsWith("F") || token.endsWith("f")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.FLOAT;
-                }
-                if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
-                    return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
-                }
+                return compatibleNumberLiteralSyntax(nl, expectedType);
             }
             return true;
+        }
+
+        private static boolean compatibleNumberLiteralSyntax(NumberLiteral nl, org.objectweb.asm.Type expectedType) {
+            String token = nl.getToken();
+            if (token.endsWith("L") || token.endsWith("l")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.LONG;
+            }
+            if (token.endsWith("F") || token.endsWith("f")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.FLOAT;
+            }
+            if (token.endsWith("D") || token.endsWith("d")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return expectedType.getSort() == org.objectweb.asm.Type.DOUBLE;
+            }
+            int sort = expectedType.getSort();
+            // Distinguish unsuffixed floating-point (e.g. 1.0, 1e5) from bare integer literals.
+            if (isFloatingPointLiteral(token)) {
+                // Unsuffixed double literal: only double params, or autoboxable reference
+                if (sort == org.objectweb.asm.Type.DOUBLE) return true;
+                return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_DOUBLE, expectedType);
+            }
+            // Bare integer literal: accepts numeric widening targets and autoboxable references
+            if (sort > org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE) return true;
+            return sort == org.objectweb.asm.Type.OBJECT && canAutobox(TYPE_INT, expectedType);
+        }
+
+        private static boolean isFloatingPointLiteral(String token) {
+            if (token.contains(".")) return true; //$NON-NLS-1$
+            if (token.contains("p") || token.contains("P")) return true; //$NON-NLS-1$ //$NON-NLS-2$
+            if (token.startsWith("0x") || token.startsWith("0X")) return false; //$NON-NLS-1$ //$NON-NLS-2$
+            return token.contains("e") || token.contains("E"); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+
+        private boolean compatibleLocalVariableType(Object arg, org.objectweb.asm.Type expectedType) {
+            if (!(arg instanceof SimpleName sn)) {
+                return true;
+            }
+            String localType = lookupLocalType(sn.getIdentifier());
+            if (localType == null || "var".equals(localType)) { //$NON-NLS-1$
+                return true;
+            }
+            int sort = expectedType.getSort();
+            boolean expectPrimitive = sort >= org.objectweb.asm.Type.BOOLEAN && sort <= org.objectweb.asm.Type.DOUBLE;
+            boolean localPrimitive = PRIMITIVE_TYPE_NAMES.contains(localType);
+            if (expectPrimitive != localPrimitive) {
+                if (localPrimitive) {
+                    // Primitive local → reference parameter: only if the reference type can hold
+                    // the boxed value (e.g. int → Integer/Number/Object is ok, int → String is not).
+                    return canAutobox(localType, expectedType);
+                }
+                // Reference local → primitive parameter: allowed only for known wrapper types
+                // that unbox (and optionally widen) to the expected primitive.
+                String unboxed = WRAPPER_TO_PRIMITIVE.get(localType);
+                return unboxed != null && widensPrimitiveTo(unboxed, expectedType.getClassName());
+            }
+            if (expectPrimitive) {
+                return widensPrimitiveTo(localType, expectedType.getClassName());
+            }
+            // Both are reference types: subtype relationships are unknown without type hierarchy.
+            return true;
+        }
+
+        private static boolean widensPrimitiveTo(String from, String to) {
+            if (from.equals(to)) {
+                return true;
+            }
+            return switch (from) {
+                case TYPE_BYTE ->
+                    TYPE_SHORT.equals(to) || TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_SHORT, TYPE_CHAR ->
+                    TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_INT ->
+                    TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_LONG ->
+                    TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                case TYPE_FLOAT ->
+                    TYPE_DOUBLE.equals(to);
+                default -> false;
+            };
+        }
+
+        private static boolean canAutobox(String localPrimitiveType, org.objectweb.asm.Type expectedRefType) {
+            if (expectedRefType.getSort() != org.objectweb.asm.Type.OBJECT) {
+                return false;
+            }
+            String expected = expectedRefType.getInternalName();
+            if ("java/lang/Object".equals(expected) //$NON-NLS-1$
+                    || "java/io/Serializable".equals(expected) //$NON-NLS-1$
+                    || "java/lang/Comparable".equals(expected)) { //$NON-NLS-1$
+                return true;
+            }
+            if ("java/lang/Number".equals(expected)) { //$NON-NLS-1$
+                return !TYPE_BOOLEAN.equals(localPrimitiveType) && !TYPE_CHAR.equals(localPrimitiveType);
+            }
+            String wrapperInternal = PRIMITIVE_TO_WRAPPER_INTERNAL.get(localPrimitiveType);
+            return wrapperInternal != null && wrapperInternal.equals(expected);
         }
 
         private boolean matchesExpressionMethodReference(ExpressionMethodReference node) {
             if (!matches(node.getName())) {
                 return false;
             }
+            IMethodBinding binding = node.resolveMethodBinding();
+            if (binding != null) {
+                ITypeBinding declaringClass = binding.getDeclaringClass();
+                if (declaringClass != null
+                        && matchesDeclaringClass(declaringClass) && matchesMethodBindingDescriptor(binding)) {
+                    return true;
+                }
+                // Binding incomplete or declaring class didn't match — fall through to heuristics.
+            }
+            // Fallback heuristic
             if (node.getExpression() instanceof Name receiver && isTypeLikeQualifier(receiver)) {
                 return matchesDeclaringOwner(receiver.getFullyQualifiedName());
             }

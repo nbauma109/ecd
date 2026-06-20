@@ -90,11 +90,12 @@ public class BytecodeSearchIndexInternalTest {
         int[] ds = {7};
         byte[] tc = {8};
 
-        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc);
+        int[] oc = {1, 1};
+        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc, oc);
         EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
-                tc.clone());
+                tc.clone(), oc.clone());
         EntryColumns c = new EntryColumns(new byte[]{9}, eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
-                tc.clone());
+                tc.clone(), oc.clone());
 
         assertEquals("reflexive", a, a); //$NON-NLS-1$
         assertNotEquals("null check", a, null); //$NON-NLS-1$
@@ -113,9 +114,10 @@ public class BytecodeSearchIndexInternalTest {
         int[] ds = {6};
         byte[] tc = {7};
 
-        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc);
+        int[] oc = {1};
+        EntryColumns a = new EntryColumns(kf, eh, ni, qi, di, ds, tc, oc);
         EntryColumns b = new EntryColumns(kf.clone(), eh.clone(), ni.clone(), qi.clone(), di.clone(), ds.clone(),
-                tc.clone());
+                tc.clone(), oc.clone());
 
         assertEquals("equal objects must share hashCode", a.hashCode(), b.hashCode()); //$NON-NLS-1$
     }
@@ -123,7 +125,7 @@ public class BytecodeSearchIndexInternalTest {
     @Test
     public void entryColumnToStringContainsAllFieldNames() {
         EntryColumns e = new EntryColumns(new byte[]{1}, new int[]{2}, new int[]{3},
-                new int[]{4}, new int[]{5}, new int[]{6}, new byte[]{7});
+                new int[]{4}, new int[]{5}, new int[]{6}, new byte[]{7}, new int[]{1});
         String s = e.toString();
 
         assertTrue("toString must include 'kindAndFlags'", s.contains("kindAndFlags")); //$NON-NLS-1$ //$NON-NLS-2$
@@ -133,5 +135,6 @@ public class BytecodeSearchIndexInternalTest {
         assertTrue("toString must include 'declaringTypeNameIds'", s.contains("declaringTypeNameIds")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("toString must include 'descriptorIds'", s.contains("descriptorIds")); //$NON-NLS-1$ //$NON-NLS-2$
         assertTrue("toString must include 'typeCategoryIds'", s.contains("typeCategoryIds")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue("toString must include 'occurrenceCounts'", s.contains("occurrenceCounts")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 }

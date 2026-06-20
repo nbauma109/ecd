@@ -168,11 +168,12 @@ public class BytecodeJarIndexer {
     public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
             IProgressMonitor monitor) {
         List<BytecodeSearchEntry> entries = new ArrayList<>();
-        Set<EntryKey> seen = new HashSet<>();
+        List<Integer> counts = new ArrayList<>();
+        Map<EntryKey, Integer> seen = new HashMap<>();
         Map<String, String> strings = new HashMap<>();
 
         try (ZipFile zip = new ZipFile(jar)) {
-            IndexContext context = new IndexContext(root, jar, zip, entries, seen, strings);
+            IndexContext context = new IndexContext(root, jar, zip, entries, counts, seen, strings);
             SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
             for (JarEntryWork entryWork : work.entries()) {
                 if (subMonitor.isCanceled()) {
@@ -186,7 +187,8 @@ public class BytecodeJarIndexer {
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
         }
-        return new BytecodeSearchIndex.JarIndex(jar, entries);
+        int[] countsArray = counts.stream().mapToInt(Integer::intValue).toArray();
+        return new BytecodeSearchIndex.JarIndex(jar, entries, countsArray);
     }
 
     private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {
@@ -203,7 +205,7 @@ public class BytecodeJarIndexer {
 
     private static void indexZipEntry(IndexContext context, ZipEntry entry) {
         try (InputStream input = context.zip().getInputStream(entry)) {
-            indexClass(context.root(), input, context.entries(), context.seen(), context.strings());
+            indexClass(context.root(), input, context.entries(), context.counts(), context.seen(), context.strings());
         } catch (IOException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
         }
@@ -228,9 +230,9 @@ public class BytecodeJarIndexer {
     }
 
     private static void indexClass(IPackageFragmentRoot root, InputStream input, List<BytecodeSearchEntry> entries,
-            Set<EntryKey> seen, Map<String, String> strings) throws IOException {
+            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) throws IOException {
         ClassReader reader = new ClassReader(input);
-        ClassIndex classIndex = new ClassIndex(root, entries, seen, strings);
+        ClassIndex classIndex = new ClassIndex(root, entries, counts, seen, strings);
         reader.accept(classIndex.visitor, ClassReader.SKIP_FRAMES);
 
         if (classIndex.type == null && classIndex.moduleElement == null) {
@@ -245,7 +247,8 @@ public class BytecodeJarIndexer {
 
         private final IPackageFragmentRoot root;
         private final List<BytecodeSearchEntry> entries;
-        private final Set<EntryKey> seen;
+        private final List<Integer> counts;
+        private final Map<EntryKey, Integer> seen;
         private final Map<String, String> strings;
         private final Map<String, String> elementHandles = new HashMap<>();
         private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
@@ -267,10 +270,11 @@ public class BytecodeJarIndexer {
         private IJavaElement moduleElement;
         private String enclosingClassName;
 
-        private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, Set<EntryKey> seen,
-                Map<String, String> strings) {
+        private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, List<Integer> counts,
+                Map<EntryKey, Integer> seen, Map<String, String> strings) {
             this.root = root;
             this.entries = entries;
+            this.counts = counts;
             this.seen = seen;
             this.strings = strings;
         }
@@ -529,8 +533,13 @@ public class BytecodeJarIndexer {
 
         private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
                 IJavaElement element) {
+            return addReference(kind, name, qualifiedName, owner, descriptor, element, true);
+        }
+
+        private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
+                IJavaElement element, boolean countable) {
             return addReference(new ReferenceSpec(kind, name, qualifiedName, owner, descriptor, Access.NONE, false),
-                    element);
+                    element, countable);
         }
 
         private MemberReference addReference(Kind kind, String name, String qualifiedName, String owner, String descriptor,
@@ -539,9 +548,13 @@ public class BytecodeJarIndexer {
         }
 
         private MemberReference addReference(ReferenceSpec reference, IJavaElement element) {
+            return addReference(reference, element, true);
+        }
+
+        private MemberReference addReference(ReferenceSpec reference, IJavaElement element, boolean countable) {
             IJavaElement enclosingElement = element == null ? type : element;
             MemberReference member = new MemberReference(reference.name(), reference.owner(), reference.descriptor(),
-                    reference.access(), reference.compoundCandidate());
+                    reference.access(), reference.compoundCandidate(), countable);
             switch (reference.kind()) {
               case FIELD -> fieldReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
               case METHOD -> methodReferencesByElement.computeIfAbsent(enclosingElement, key -> new ArrayList<>()).add(member);
@@ -552,14 +565,12 @@ public class BytecodeJarIndexer {
             return member;
         }
 
-        private void addReferenceEntry(Kind kind, String name, String qualifiedName, String owner, String descriptor,
-                IJavaElement element, Access access) {
-            addReferenceEntry(new EntrySpec(kind, false, pool(name), pool(qualifiedName), pool(owner),
-                    pool(descriptor), access, TypeCategory.UNKNOWN), element);
+        private void addReferenceEntry(EntrySpec spec, IJavaElement element) {
+            addReferenceEntry(spec, element, true);
         }
 
-        private void addReferenceEntry(EntrySpec spec, IJavaElement element) {
-            add(newEntry(element, spec), true);
+        private void addReferenceEntry(EntrySpec spec, IJavaElement element, boolean countable) {
+            add(newEntry(element, spec), countable);
         }
 
         private void addTypeReferenceEntry(String internalName, IJavaElement element) {
@@ -602,8 +613,9 @@ public class BytecodeJarIndexer {
                     if (kind == Kind.CONSTRUCTOR || kind == Kind.METHOD && CONSTRUCTOR.equals(member.name())) {
                         qualifiedName = member.owner();
                     }
-                    addReferenceEntry(kind, member.name(), qualifiedName, member.owner(), member.descriptor(),
-                            entry.getKey(), member.access());
+                    addReferenceEntry(new EntrySpec(kind, false, pool(member.name()), pool(qualifiedName),
+                            pool(member.owner()), pool(member.descriptor()), member.access(), TypeCategory.UNKNOWN),
+                            entry.getKey(), member.countable());
                 }
             }
         }
@@ -654,7 +666,7 @@ public class BytecodeJarIndexer {
                             && lookahead.owner().equals(candidate.owner())
                             && lookahead.descriptor().equals(candidate.descriptor())) {
                         result.add(new MemberReference(candidate.name(), candidate.owner(), candidate.descriptor(),
-                                Access.READ_WRITE, false));
+                                Access.READ_WRITE, false, candidate.countable() && lookahead.countable()));
                         result.addAll(skipped);
                         return true;
                     }
@@ -685,16 +697,23 @@ public class BytecodeJarIndexer {
                             spec.descriptor()), spec.access(), spec.typeCategory());
         }
 
-        private void add(BytecodeSearchEntry entry, boolean preserveDuplicate) {
+        private void add(BytecodeSearchEntry entry, boolean countOccurrences) {
             if (entry.getElementHandle() == null) {
                 return;
             }
             EntryKey key = new EntryKey(entry.getKind(), entry.isDeclaration(), entry.getElementHandle(),
                     entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor(),
                     entry.getAccess(), entry.getTypeCategory());
-            if (preserveDuplicate || seen.add(key)) {
-                entries.add(entry);
+            Integer existingIndex = seen.get(key);
+            if (existingIndex != null) {
+                if (countOccurrences) {
+                    counts.set(existingIndex, counts.get(existingIndex) + 1);
+                }
+                return;
             }
+            seen.put(key, entries.size());
+            counts.add(countOccurrences ? 1 : 0);
+            entries.add(entry);
         }
 
         private static Access fieldAccess(int opcode) {
@@ -1124,6 +1143,14 @@ public class BytecodeJarIndexer {
             private final IJavaElement method;
             private final Map<String, Integer> pendingNewTypes = new HashMap<>();
             private final Map<Label, Set<String>> catchHandlerTypes = new HashMap<>();
+            private final Set<Label> finallyHandlerLabels = new HashSet<>();
+            private final Map<Label, Integer> finallyTryStartCounts = new HashMap<>();
+            private final Map<Label, Integer> finallyTryEndCounts = new HashMap<>();
+            private final Map<Label, Label[]> pendingFinallyStarts = new HashMap<>();
+            private final Map<String, List<Runnable>> inlineFinallySuppressions = new HashMap<>();
+            private final Set<String> handlerCallKeys = new HashSet<>();
+            private final Map<Label, Set<Label>> endToHandlers = new HashMap<>();
+            private final Set<Label> inlineFinallyActiveHandlers = new HashSet<>();
             private final int firstLocalSlot;
             private Label prevHandlerLabel = null;
             private MemberReference pendingStaticCompoundRead;
@@ -1131,6 +1158,10 @@ public class BytecodeJarIndexer {
             private int pendingStaticCompoundStackDepth = -1;
             private int stackDepth = 0;
             private int previousOpcode = -1;
+            private int currentLine = -1;
+            private int finallyTryDepth = 0;
+            private int pendingMonitorEnterCount = 0;
+            private boolean inFinallyHandler = false;
 
             private MethodIndexer(IJavaElement method, int firstLocalSlot) {
                 super(Opcodes.ASM9);
@@ -1218,6 +1249,7 @@ public class BytecodeJarIndexer {
                     pendingStaticCompoundStackDepth = -1;
                 }
                 updateFieldStackDepth(opcode, descriptor);
+                trackFieldFinallySuppression(name, owner, descriptor);
                 previousOpcode = opcode;
             }
 
@@ -1237,9 +1269,22 @@ public class BytecodeJarIndexer {
                 // a call site — skip it here; it is stored in the member reference for matching.
                 if (CONSTRUCTOR.equals(name)) {
                     addReference(Kind.CONSTRUCTOR, simpleTypeName(owner), qualifiedTypeName(owner),
-                            qualifiedTypeName(owner), descriptor, method);
+                            qualifiedTypeName(owner), descriptor, method, true);
                 } else {
-                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method);
+                    addReference(Kind.METHOD, name, name, qualifiedTypeName(owner), descriptor, method, true);
+                }
+                // Only track finally suppression when line numbers are available; without them
+                // all calls collapse to the same key and would suppress legitimate call sites.
+                if (currentLine >= 0) {
+                    String callKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    if (inFinallyHandler) {
+                        handlerCallKeys.add(callKey);
+                    } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                        // Register inline copies only — not try-body calls — as suppression candidates.
+                        // A try-body call sharing the same line as the finally body would otherwise
+                        // get the same key and be incorrectly marked uncountable.
+                        registerInlineFinallyCandidate(callKey, name);
+                    }
                 }
                 updateMethodStackDepth(consumedSlots, descriptor);
                 previousOpcode = opcode;
@@ -1288,7 +1333,18 @@ public class BytecodeJarIndexer {
             @Override
             public void visitInsn(int opcode) {
                 stackDepth = Math.max(0, stackDepth + stackDelta(opcode));
+                if (opcode == Opcodes.MONITORENTER) {
+                    pendingMonitorEnterCount++;
+                }
+                if (inFinallyHandler && isFinallyExitInsn(opcode)) {
+                    inFinallyHandler = false;
+                }
                 previousOpcode = opcode;
+            }
+
+            private static boolean isFinallyExitInsn(int opcode) {
+                return opcode == Opcodes.ATHROW
+                    || (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN);
             }
 
             @Override
@@ -1329,7 +1385,7 @@ public class BytecodeJarIndexer {
                         && references.get(references.size() - 1) == pendingStaticCompoundRead) {
                     references.set(references.size() - 1, new MemberReference(pendingStaticCompoundRead.name(),
                             pendingStaticCompoundRead.owner(), pendingStaticCompoundRead.descriptor(),
-                            pendingStaticCompoundRead.access(), false));
+                            pendingStaticCompoundRead.access(), false, pendingStaticCompoundRead.countable()));
                 }
                 pendingStaticCompoundRead = null;
                 pendingStaticCompoundElement = null;
@@ -1451,7 +1507,40 @@ public class BytecodeJarIndexer {
             }
 
             @Override
+            public void visitLineNumber(int line, Label start) {
+                currentLine = line;
+            }
+
+            @Override
             public void visitLabel(Label label) {
+                // Classify any pending type==null try region whose start label we just reached.
+                // A MONITORENTER immediately before this label means it is a synchronized
+                // monitor-exit cleanup region, not a source finally block.
+                Label[] pending = pendingFinallyStarts.remove(label);
+                if (pending != null) {
+                    if (pendingMonitorEnterCount > 0) {
+                        pendingMonitorEnterCount--;
+                        finallyHandlerLabels.remove(pending[1]);
+                    } else {
+                        finallyTryStartCounts.merge(label, 1, Integer::sum);
+                        finallyTryEndCounts.merge(pending[0], 1, Integer::sum);
+                        endToHandlers.computeIfAbsent(pending[0], k -> new HashSet<>()).add(pending[1]);
+                    }
+                }
+                // Process ends before starts so a label shared between an ending region and a
+                // starting region doesn't transiently drop to zero and miscount.
+                Integer endCount = finallyTryEndCounts.get(label);
+                if (endCount != null) {
+                    finallyTryDepth = Math.max(0, finallyTryDepth - endCount);
+                    Set<Label> handlers = endToHandlers.get(label);
+                    if (handlers != null) {
+                        inlineFinallyActiveHandlers.addAll(handlers);
+                    }
+                }
+                Integer startCount = finallyTryStartCounts.get(label);
+                if (startCount != null) {
+                    finallyTryDepth += startCount;
+                }
                 if (prevHandlerLabel != null) {
                     Set<String> types = catchHandlerTypes.get(prevHandlerLabel);
                     if (types != null) {
@@ -1461,6 +1550,10 @@ public class BytecodeJarIndexer {
                 }
                 if (catchHandlerTypes.containsKey(label)) {
                     prevHandlerLabel = label;
+                }
+                if (finallyHandlerLabels.contains(label)) {
+                    inlineFinallyActiveHandlers.remove(label);
+                    inFinallyHandler = true;
                 }
             }
 
@@ -1485,8 +1578,68 @@ public class BytecodeJarIndexer {
                     Label handler, String type) {
                 if (type != null) {
                     catchHandlerTypes.computeIfAbsent(handler, k -> new HashSet<>()).add(type);
+                } else {
+                    // type == null can mean either a source finally block OR a javac-generated
+                    // synchronized monitor-exit cleanup region. Defer classification until
+                    // visitLabel sees the try-start: a MONITORENTER immediately before the start
+                    // label identifies the synchronized case; otherwise it is a true finally block.
+                    finallyHandlerLabels.add(handler);
+                    pendingFinallyStarts.put(start, new Label[]{end, handler});
                 }
                 addTypeReference(type, method);
+            }
+
+            private void registerInlineFinallyCandidate(String callKey, String name) {
+                IJavaElement enclosingElement = method == null ? type : method;
+                List<MemberReference> refs = CONSTRUCTOR.equals(name)
+                        ? constructorReferencesByElement.get(enclosingElement)
+                        : methodReferencesByElement.get(enclosingElement);
+                if (refs != null && !refs.isEmpty()) {
+                    int idx = refs.size() - 1;
+                    inlineFinallySuppressions.computeIfAbsent(callKey, k -> new ArrayList<>())
+                            .add(() -> {
+                                MemberReference old = refs.get(idx);
+                                refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
+                                        old.access(), old.compoundCandidate(), false));
+                            });
+                }
+            }
+
+            private void trackFieldFinallySuppression(String name, String owner, String descriptor) {
+                if (currentLine < 0) {
+                    return;
+                }
+                String fieldKey = currentLine + "|" + name + "|" + owner + "|" + descriptor; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                if (inFinallyHandler) {
+                    handlerCallKeys.add(fieldKey);
+                } else if (!inlineFinallyActiveHandlers.isEmpty()) {
+                    registerInlineFinallyFieldCandidate(fieldKey);
+                }
+            }
+
+            private void registerInlineFinallyFieldCandidate(String fieldKey) {
+                IJavaElement enclosingElement = method == null ? type : method;
+                List<MemberReference> refs = fieldReferencesByElement.get(enclosingElement);
+                if (refs != null && !refs.isEmpty()) {
+                    int idx = refs.size() - 1;
+                    inlineFinallySuppressions.computeIfAbsent(fieldKey, k -> new ArrayList<>())
+                            .add(() -> {
+                                MemberReference old = refs.get(idx);
+                                refs.set(idx, new MemberReference(old.name(), old.owner(), old.descriptor(),
+                                        old.access(), old.compoundCandidate(), false));
+                            });
+                }
+            }
+
+            @Override
+            public void visitEnd() {
+                for (String callKey : handlerCallKeys) {
+                    List<Runnable> suppressors = inlineFinallySuppressions.remove(callKey);
+                    if (suppressors != null) {
+                        suppressors.forEach(Runnable::run);
+                    }
+                }
+                super.visitEnd();
             }
         }
 
@@ -1541,7 +1694,7 @@ public class BytecodeJarIndexer {
     }
 
     private record MemberReference(String name, String owner, String descriptor, Access access,
-            boolean compoundCandidate) {
+            boolean compoundCandidate, boolean countable) {
     }
 
     private record ReferenceSpec(Kind kind, String name, String qualifiedName, String owner, String descriptor,
@@ -1563,7 +1716,7 @@ public class BytecodeJarIndexer {
     }
 
     private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,
-            Set<EntryKey> seen, Map<String, String> strings) {
+            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) {
     }
 
     private record VersionedClassName(String logicalName, int version) {

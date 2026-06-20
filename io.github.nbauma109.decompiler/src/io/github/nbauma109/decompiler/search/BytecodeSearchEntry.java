@@ -9,6 +9,8 @@
 package io.github.nbauma109.decompiler.search;
 
 import org.apache.commons.lang3.Strings;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 
@@ -48,6 +50,7 @@ public class BytecodeSearchEntry {
     private final String descriptor;
     private final Access access;
     private final TypeCategory typeCategory;
+    private final int occurrenceCount;
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference) {
@@ -61,6 +64,11 @@ public class BytecodeSearchEntry {
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
             SymbolReference symbolReference, Access access, TypeCategory typeCategory) {
+        this(kind, declaration, elementReference, symbolReference, access, typeCategory, 1);
+    }
+
+    BytecodeSearchEntry(Kind kind, boolean declaration, ElementReference elementReference,
+            SymbolReference symbolReference, Access access, TypeCategory typeCategory, int occurrenceCount) {
         this.kind = kind;
         this.declaration = declaration;
         this.elementHandle = elementReference.handle();
@@ -71,6 +79,7 @@ public class BytecodeSearchEntry {
         this.descriptor = symbolReference.descriptor();
         this.access = access == null ? Access.NONE : access;
         this.typeCategory = typeCategory == null ? TypeCategory.UNKNOWN : typeCategory;
+        this.occurrenceCount = occurrenceCount < 1 ? 1 : occurrenceCount;
     }
 
     public BytecodeSearchEntry(Kind kind, boolean declaration, IJavaElement element, String name, String qualifiedName,
@@ -149,6 +158,47 @@ public class BytecodeSearchEntry {
 
     TypeCategory getTypeCategory() {
         return typeCategory;
+    }
+
+    int getOccurrenceCount() {
+        return occurrenceCount;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        BytecodeSearchEntry other = (BytecodeSearchEntry) obj;
+        return new EqualsBuilder()
+            .append(kind, other.kind)
+            .append(declaration, other.declaration)
+            .append(elementHandle, other.elementHandle)
+            .append(name, other.name)
+            .append(qualifiedName, other.qualifiedName)
+            .append(declaringTypeName, other.declaringTypeName)
+            .append(descriptor, other.descriptor)
+            .append(access, other.access)
+            .append(typeCategory, other.typeCategory)
+            .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+            .append(kind)
+            .append(declaration)
+            .append(elementHandle)
+            .append(name)
+            .append(qualifiedName)
+            .append(declaringTypeName)
+            .append(descriptor)
+            .append(access)
+            .append(typeCategory)
+            .toHashCode();
     }
 
 }

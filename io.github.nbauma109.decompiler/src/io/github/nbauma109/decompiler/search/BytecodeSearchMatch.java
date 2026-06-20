@@ -8,6 +8,8 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ISourceReference;
@@ -18,15 +20,27 @@ import io.github.nbauma109.decompiler.util.Logger;
 
 public final class BytecodeSearchMatch extends Match {
 
+    private static final AtomicInteger SEQUENCE = new AtomicInteger();
+
     private final BytecodeSearchEntry entry;
+    private final int ordinal;
 
     public BytecodeSearchMatch(BytecodeSearchEntry entry) {
-        super(new BytecodeSearchElement(entry), initialOffset(entry), initialLength(entry));
+        this(entry, 0);
+    }
+
+    public BytecodeSearchMatch(BytecodeSearchEntry entry, int ordinal) {
+        super(new BytecodeSearchElement(entry), initialOffset(), initialLength(entry));
         this.entry = entry;
+        this.ordinal = ordinal;
     }
 
     public BytecodeSearchEntry getEntry() {
         return entry;
+    }
+
+    public int getOrdinal() {
+        return ordinal;
     }
 
     void update(BytecodeSourceRangeResolver.SourceRange range) {
@@ -34,9 +48,13 @@ public final class BytecodeSearchMatch extends Match {
         setLength(range.length());
     }
 
-    private static int initialOffset(BytecodeSearchEntry entry) {
-        ISourceRange range = initialRange(entry);
-        return range == null || range.getOffset() < 0 ? 0 : range.getOffset();
+    private static int initialOffset() {
+        // Eclipse deduplicates matches whose (element, offset, length) tuple is identical.
+        // With handle-only element equality every entry for the same enclosing element shares
+        // the same element key, so initial offsets must be globally unique — a bounded hash
+        // slot cannot guarantee that for wildcard searches. A monotonically increasing counter
+        // is collision-free. The real offset is written by update() before any navigation.
+        return SEQUENCE.getAndIncrement();
     }
 
     private static int initialLength(BytecodeSearchEntry entry) {

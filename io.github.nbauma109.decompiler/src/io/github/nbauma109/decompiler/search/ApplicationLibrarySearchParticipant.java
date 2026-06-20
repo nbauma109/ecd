@@ -8,10 +8,13 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +42,7 @@ import org.eclipse.jdt.ui.search.IQueryParticipant;
 import org.eclipse.jdt.ui.search.ISearchRequestor;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jdt.ui.search.QuerySpecification;
+import org.eclipse.search.ui.text.AbstractTextSearchResult;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -55,6 +59,15 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         if (matcher == null) {
             return;
         }
+        AbstractTextSearchResult searchResult = searchResultFrom(requestor);
+        Set<String> registeredHandles = new HashSet<>();
+        if (searchResult != null) {
+            for (Object obj : searchResult.getElements()) {
+                if (obj instanceof BytecodeSearchElement bse) {
+                    registeredHandles.add(bse.getEntry().getElementHandle());
+                }
+            }
+        }
         BytecodeSearchIndex.getDefault().forEachEntry(matcher.kind(), matcher.name(), matcher.qualifiedName(),
                 matcher.isWildcard(), monitor, entry -> {
             if (monitor != null && monitor.isCanceled()) {
@@ -62,10 +75,52 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
             }
             IJavaElement element = entry.getElement();
             if (element != null && querySpecification.getScope().encloses(element) && matcher.matches(entry)) {
-                BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
-                requestor.reportMatch(match);
+                reportMatches(requestor, searchResult, registeredHandles, entry);
             }
         });
+    }
+
+    private static void reportMatches(ISearchRequestor requestor, AbstractTextSearchResult searchResult,
+            Set<String> registeredHandles, BytecodeSearchEntry entry) {
+        int count = entry.getOccurrenceCount();
+        if (searchResult == null) {
+            // Reflection unavailable — report all ordinals directly; no grouping
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+            return;
+        }
+        String handle = entry.getElementHandle();
+        if (registeredHandles.add(handle)) {
+            // Register the element with the participant for all ordinals so the IMatchPresentation
+            // is correctly associated with every match, not just the first one.
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                requestor.reportMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+        } else {
+            // Same element handle already registered — add all ordinals directly
+            for (int ordinal = 0; ordinal < count; ordinal++) {
+                searchResult.addMatch(new BytecodeSearchMatch(entry, ordinal));
+            }
+        }
+    }
+
+    private static AbstractTextSearchResult searchResultFrom(ISearchRequestor requestor) {
+        for (Field f : requestor.getClass().getDeclaredFields()) {
+            if (!AbstractTextSearchResult.class.isAssignableFrom(f.getType())) {
+                continue;
+            }
+            try {
+                f.setAccessible(true);
+                Object value = f.get(requestor);
+                if (value instanceof AbstractTextSearchResult r) {
+                    return r;
+                }
+            } catch (Exception e) {
+                Logger.debug(e);
+            }
+        }
+        return null;
     }
 
     @Override
