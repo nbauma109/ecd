@@ -231,7 +231,7 @@ public class BytecodeJarIndexer {
                 activeConn.commit();
                 activeConn.setAutoCommit(true);
             }
-            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn), reg.oldJarId());
+            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
         } catch (IOException | SQLException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);

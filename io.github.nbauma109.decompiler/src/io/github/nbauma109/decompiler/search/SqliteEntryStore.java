@@ -14,7 +14,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -126,15 +130,30 @@ final class SqliteEntryStore implements EntryStore {
     static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
-            try (PreparedStatement sel = conn.prepareStatement("SELECT id, root_handle, path FROM jars"); //$NON-NLS-1$
-                    PreparedStatement del = conn.prepareStatement("DELETE FROM jars WHERE id = ?")) { //$NON-NLS-1$
+            // Collect all rows and track the highest id per path-key (to detect superseded rows)
+            List<int[]> ids = new ArrayList<>();
+            List<String> keys = new ArrayList<>();
+            Map<String, Integer> maxIdByKey = new HashMap<>();
+            try (PreparedStatement sel = conn.prepareStatement("SELECT id, root_handle, path FROM jars")) { //$NON-NLS-1$
                 try (ResultSet rs = sel.executeQuery()) {
                     while (rs.next()) {
+                        int id = rs.getInt(1);
                         String key = rs.getString(2) + '\0' + rs.getString(3);
-                        if (!keepKeys.contains(key)) {
-                            del.setInt(1, rs.getInt(1));
-                            del.addBatch();
-                        }
+                        ids.add(new int[]{id});
+                        keys.add(key);
+                        maxIdByKey.merge(key, id, Math::max);
+                    }
+                }
+            }
+            try (PreparedStatement del = conn.prepareStatement("DELETE FROM jars WHERE id = ?")) { //$NON-NLS-1$
+                for (int i = 0; i < ids.size(); i++) {
+                    int id = ids.get(i)[0];
+                    String key = keys.get(i);
+                    // Delete if path is no longer in the current plan, or if a newer row for the
+                    // same path exists (superseded during a previous rebuild cycle).
+                    if (!keepKeys.contains(key) || maxIdByKey.get(key) != id) {
+                        del.setInt(1, id);
+                        del.addBatch();
                     }
                 }
                 del.executeBatch();
@@ -153,7 +172,7 @@ final class SqliteEntryStore implements EntryStore {
     record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc) {
     }
 
-    record JarRegistration(int jarId, int oldJarId) {
+    record JarRegistration(int jarId) {
     }
 
     /**
@@ -179,25 +198,15 @@ final class SqliteEntryStore implements EntryStore {
     }
 
     /**
-     * Inserts a new jar row and returns the new id together with the id of any pre-existing
-     * row for the same (root_handle, path).  The old row is intentionally left in place so
-     * searches against the still-published SqliteEntryStore continue to see valid data; the
-     * caller must delete it (via {@link #deleteJarById}) after the new index is live.
+     * Inserts a new jar row and returns the new id.  Any pre-existing row for the same
+     * (root_handle, path) is intentionally left in place so searches against the currently
+     * published SqliteEntryStore continue to see valid data.  The superseded row is cleaned
+     * up by {@link #pruneOrphanJarRows} on the next refresh cycle, by which time all
+     * in-flight searches using the old snapshot have completed.
      * Must be called inside a write transaction.
      */
     static JarRegistration registerJar(Connection conn, String rootHandle, String path,
             long lastModified, long fileLength, int runtimeVersion, long fileCrc) throws SQLException {
-        int oldJarId = -1;
-        try (PreparedStatement sel = conn.prepareStatement(
-                "SELECT id FROM jars WHERE root_handle = ? AND path = ?")) { //$NON-NLS-1$
-            sel.setString(1, rootHandle);
-            sel.setString(2, path);
-            try (ResultSet rs = sel.executeQuery()) {
-                if (rs.next()) {
-                    oldJarId = rs.getInt(1);
-                }
-            }
-        }
         try (PreparedStatement ins = conn.prepareStatement(
                 "INSERT INTO jars(root_handle, path, last_modified, file_length, runtime_version, file_crc) VALUES(?, ?, ?, ?, ?, ?)", //$NON-NLS-1$
                 Statement.RETURN_GENERATED_KEYS)) {
@@ -212,17 +221,7 @@ final class SqliteEntryStore implements EntryStore {
                 if (!keys.next()) {
                     throw new SQLException("No generated key for jar row"); //$NON-NLS-1$
                 }
-                return new JarRegistration(keys.getInt(1), oldJarId);
-            }
-        }
-    }
-
-    static void deleteJarById(Connection conn, Object dbLock, int jarId) throws SQLException {
-        final Object lock = dbLock;
-        synchronized (lock) {
-            try (PreparedStatement del = conn.prepareStatement("DELETE FROM jars WHERE id = ?")) { //$NON-NLS-1$
-                del.setInt(1, jarId);
-                del.executeUpdate();
+                return new JarRegistration(keys.getInt(1));
             }
         }
     }
