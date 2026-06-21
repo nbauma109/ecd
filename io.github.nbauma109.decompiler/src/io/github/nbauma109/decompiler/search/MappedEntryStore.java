@@ -368,11 +368,13 @@ final class MappedEntryStore implements EntryStore {
             descriptorIds[i] = strings.id(e.getDescriptor());
         }
 
-        byte[][] stringBytes = encodeAll(strings.values());
-        byte[][] handleBytes = encodeAll(handles.handles());
-
-        int sc = stringBytes.length;
-        int hc = handleBytes.length;
+        String[] stringValues = strings.values();
+        String[] handleValues = handles.handles();
+        int sc = stringValues.length;
+        int hc = handleValues.length;
+        // Compute byte-lengths one string at a time so no large byte[][] lives on the heap.
+        int[] stringLens = utf8Lengths(stringValues);
+        int[] handleLens = utf8Lengths(handleValues);
 
         // Layout
         long off = HEADER_SIZE;
@@ -384,8 +386,8 @@ final class MappedEntryStore implements EntryStore {
         long declaringTypeNameIdsOff = off; off += (long) n * 4;
         long descriptorIdsOff = off; off += (long) n * 4;
         long occurrenceCountsOff = off; off += (long) n * 4;
-        long stringsOff = off; off += (long) sc * 4 + totalBytes(stringBytes);
-        long handlesOff = off; // remaining = hc*4 + totalBytes(handleBytes)
+        long stringsOff = off; off += (long) sc * 4 + sum(stringLens);
+        long handlesOff = off; // remaining = hc*4 + sum(handleLens)
 
         Path tmp = file.resolveSibling(file.getFileName() + ".tmp"); //$NON-NLS-1$
         try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp,
@@ -425,19 +427,19 @@ final class MappedEntryStore implements EntryStore {
             writeIntArray(os, declaringTypeNameIds);
             writeIntArray(os, descriptorIds);
             writeIntArray(os, counts);
-            // strings section: lengths then data
-            for (byte[] s : stringBytes) {
-                writeInt(os, s.length);
+            // strings section: lengths then data (streamed one at a time to bound heap)
+            for (int len : stringLens) {
+                writeInt(os, len);
             }
-            for (byte[] s : stringBytes) {
-                os.write(s);
+            for (String s : stringValues) {
+                os.write(s.getBytes(StandardCharsets.UTF_8));
             }
             // handles section: lengths then data
-            for (byte[] h : handleBytes) {
-                writeInt(os, h.length);
+            for (int len : handleLens) {
+                writeInt(os, len);
             }
-            for (byte[] h : handleBytes) {
-                os.write(h);
+            for (String h : handleValues) {
+                os.write(h.getBytes(StandardCharsets.UTF_8));
             }
         }
         // Compute CRC32 over the body (bytes from HEADER_SIZE to EOF) and patch into the header.
@@ -612,18 +614,19 @@ final class MappedEntryStore implements EntryStore {
     // Utilities
     // -------------------------------------------------------------------------
 
-    private static byte[][] encodeAll(String[] values) {
-        byte[][] result = new byte[values.length][];
+    /** Returns the UTF-8 byte length of each string; each byte[] is discarded after measurement. */
+    private static int[] utf8Lengths(String[] values) {
+        int[] lens = new int[values.length];
         for (int i = 0; i < values.length; i++) {
-            result[i] = values[i] == null ? new byte[0] : values[i].getBytes(StandardCharsets.UTF_8);
+            lens[i] = values[i] == null ? 0 : values[i].getBytes(StandardCharsets.UTF_8).length;
         }
-        return result;
+        return lens;
     }
 
-    private static long totalBytes(byte[][] arrays) {
+    private static long sum(int[] lens) {
         long total = 0L;
-        for (byte[] a : arrays) {
-            total += a.length;
+        for (int l : lens) {
+            total += l;
         }
         return total;
     }
