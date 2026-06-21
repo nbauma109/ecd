@@ -222,8 +222,19 @@ public final class BytecodeSearchIndex {
             if (!rebuilt.completed()) {
                 return;
             }
-            if (publish(rebuilt.indexes(), myGeneration)) {
-                pruneOrphanJarRows(plans);
+            Map<RootKey, JarIndex> oldMap = publishAndGetOld(rebuilt.indexes(), myGeneration);
+            if (oldMap != null) {
+                Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+                kept.addAll(rebuilt.indexes().values());
+                searchLock.writeLock().lock();
+                try {
+                    oldMap.values().stream()
+                            .filter(idx -> !kept.contains(idx))
+                            .forEach(JarIndex::close);
+                    pruneOrphanJarRows(plans, rebuilt.indexes());
+                } finally {
+                    searchLock.writeLock().unlock();
+                }
             }
         } catch (OperationCanceledException e) {
             // normal job cancellation; nothing to log
@@ -295,7 +306,8 @@ public final class BytecodeSearchIndex {
         return index;
     }
 
-    private void pruneOrphanJarRows(List<JarPlan> plans) {
+    // Called while searchLock.writeLock() is held by the caller.
+    private void pruneOrphanJarRows(List<JarPlan> plans, Map<RootKey, JarIndex> publishedIndexes) {
         Connection activeConn = getConn();
         if (activeConn == null) {
             return;
@@ -304,13 +316,18 @@ public final class BytecodeSearchIndex {
         for (JarPlan plan : plans) {
             keepKeys.add(plan.key().rootHandle() + '\0' + plan.jar().getAbsolutePath());
         }
-        searchLock.writeLock().lock();
+        // Collect only shared-connection jar_ids; in-memory stores have ids in a separate
+        // database and must not be confused with shared-DB row ids.
+        Set<Integer> liveJarIds = new HashSet<>();
+        for (JarIndex idx : publishedIndexes.values()) {
+            if (idx.entries instanceof SqliteEntryStore ses && !ses.ownsConnection()) {
+                liveJarIds.add(ses.jarId());
+            }
+        }
         try {
-            SqliteEntryStore.pruneOrphanJarRows(activeConn, dbLock, keepKeys);
+            SqliteEntryStore.pruneOrphanJarRows(activeConn, dbLock, keepKeys, liveJarIds);
         } catch (SQLException e) {
             Logger.debug(e);
-        } finally {
-            searchLock.writeLock().unlock();
         }
     }
 
@@ -318,21 +335,17 @@ public final class BytecodeSearchIndex {
         return conn;
     }
 
-    private synchronized boolean publish(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
+    // Returns the old indexes map if the publish succeeded (same generation), or null if rejected.
+    // Old stores are NOT closed here; the caller closes them under searchLock.writeLock() so that
+    // in-flight searches finish before any owned (in-memory) connection is torn down.
+    private synchronized Map<RootKey, JarIndex> publishAndGetOld(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
         if (started.get() && generation == myGeneration) {
-            Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
-            kept.addAll(rebuilt.values());
-            indexes.getAndSet(Collections.unmodifiableMap(rebuilt)).values().stream()
-                    .filter(idx -> !kept.contains(idx))
-                    .forEach(JarIndex::close);
+            Map<RootKey, JarIndex> oldMap = indexes.getAndSet(Collections.unmodifiableMap(rebuilt));
             refreshCompleted.set(true);
-            // Superseded jar rows (old id for same path) are cleaned up by
-            // pruneOrphanJarRows() after this method returns, once all in-flight
-            // searches using the old snapshot have completed.
-            return true;
+            return oldMap;
         } else {
             rebuilt.values().forEach(JarIndex::close);
-            return false;
+            return null;
         }
     }
 

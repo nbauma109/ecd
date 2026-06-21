@@ -15,10 +15,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -127,21 +125,17 @@ final class SqliteEntryStore implements EntryStore {
         migrate(conn, "CREATE INDEX IF NOT EXISTS idx_jars ON jars(root_handle, path)"); //$NON-NLS-1$
     }
 
-    static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys) throws SQLException {
+    static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys,
+            Set<Integer> liveJarIds) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
-            // Collect all rows and track the highest id per path-key (to detect superseded rows)
             List<int[]> ids = new ArrayList<>();
             List<String> keys = new ArrayList<>();
-            Map<String, Integer> maxIdByKey = new HashMap<>();
             try (PreparedStatement sel = conn.prepareStatement("SELECT id, root_handle, path FROM jars")) { //$NON-NLS-1$
                 try (ResultSet rs = sel.executeQuery()) {
                     while (rs.next()) {
-                        int id = rs.getInt(1);
-                        String key = rs.getString(2) + '\0' + rs.getString(3);
-                        ids.add(new int[]{id});
-                        keys.add(key);
-                        maxIdByKey.merge(key, id, Math::max);
+                        ids.add(new int[]{rs.getInt(1)});
+                        keys.add(rs.getString(2) + '\0' + rs.getString(3));
                     }
                 }
             }
@@ -149,9 +143,9 @@ final class SqliteEntryStore implements EntryStore {
                 for (int i = 0; i < ids.size(); i++) {
                     int id = ids.get(i)[0];
                     String key = keys.get(i);
-                    // Delete if path is no longer in the current plan, or if a newer row for the
-                    // same path exists (superseded during a previous rebuild cycle).
-                    if (!keepKeys.contains(key) || maxIdByKey.get(key) != id) {
+                    // Delete if path is no longer in the current plan, or if this specific row
+                    // is not the one actually used by the newly published SqliteEntryStore.
+                    if (!keepKeys.contains(key) || !liveJarIds.contains(id)) {
                         del.setInt(1, id);
                         del.addBatch();
                     }
@@ -224,6 +218,14 @@ final class SqliteEntryStore implements EntryStore {
                 return new JarRegistration(keys.getInt(1));
             }
         }
+    }
+
+    int jarId() {
+        return jarId;
+    }
+
+    boolean ownsConnection() {
+        return ownsConnection;
     }
 
     private int querySize() throws SQLException {
