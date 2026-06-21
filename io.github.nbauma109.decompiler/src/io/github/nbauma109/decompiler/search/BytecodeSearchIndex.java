@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -230,17 +231,21 @@ public final class BytecodeSearchIndex {
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
+        Set<JarIndex> reused = Collections.newSetFromMap(new IdentityHashMap<>());
         try {
             for (JarPlan plan : plans) {
                 JarIndex index = rebuild(plan, activeConn, subMonitor);
                 if (index == null) {
-                    rebuilt.values().forEach(JarIndex::close);
+                    rebuilt.values().stream().filter(idx -> !reused.contains(idx)).forEach(JarIndex::close);
                     return new RebuildResult(false, Map.of());
+                }
+                if (index == plan.existing()) {
+                    reused.add(index);
                 }
                 rebuilt.put(plan.key(), index);
             }
         } catch (RuntimeException e) {
-            rebuilt.values().forEach(JarIndex::close);
+            rebuilt.values().stream().filter(idx -> !reused.contains(idx)).forEach(JarIndex::close);
             throw e;
         }
         return new RebuildResult(true, rebuilt);
@@ -296,7 +301,11 @@ public final class BytecodeSearchIndex {
 
     private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
         if (started.get()) {
-            indexes.getAndSet(Collections.unmodifiableMap(rebuilt)).values().forEach(JarIndex::close);
+            Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
+            kept.addAll(rebuilt.values());
+            indexes.getAndSet(Collections.unmodifiableMap(rebuilt)).values().stream()
+                    .filter(idx -> !kept.contains(idx))
+                    .forEach(JarIndex::close);
             refreshCompleted.set(true);
         } else {
             rebuilt.values().forEach(JarIndex::close);

@@ -235,6 +235,11 @@ public class BytecodeJarIndexer {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);
             return null;
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause();
+            JavaDecompilerPlugin.logError(cause != null ? cause : e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            abortConn(activeConn, lock, ownsConn);
+            return null;
         }
     }
 
@@ -773,7 +778,7 @@ public class BytecodeJarIndexer {
                     try {
                         writer.incrementCount(existingRowId);
                     } catch (SQLException e) {
-                        JavaDecompilerPlugin.logError(e, "Failed to update occurrence count"); //$NON-NLS-1$
+                        throw new RuntimeException(e);
                     }
                 }
                 return;
@@ -784,7 +789,7 @@ public class BytecodeJarIndexer {
                     writer.seen.put(key, rowId);
                 }
             } catch (SQLException e) {
-                JavaDecompilerPlugin.logError(e, "Failed to insert search entry"); //$NON-NLS-1$
+                throw new RuntimeException(e);
             }
         }
 
