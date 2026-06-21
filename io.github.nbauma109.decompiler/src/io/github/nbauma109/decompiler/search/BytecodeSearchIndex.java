@@ -213,8 +213,8 @@ public final class BytecodeSearchIndex {
             if (!rebuilt.completed()) {
                 return;
             }
-            pruneOrphanJarRows(plans);
             publish(rebuilt.indexes(), myGeneration);
+            pruneOrphanJarRows(plans);
         } catch (OperationCanceledException e) {
             // normal job cancellation; nothing to log
         } catch (CoreException | RuntimeException e) {

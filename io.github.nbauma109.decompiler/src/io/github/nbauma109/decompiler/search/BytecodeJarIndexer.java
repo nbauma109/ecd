@@ -292,10 +292,16 @@ public class BytecodeJarIndexer {
     private static void indexZipEntry(IndexContext context, ZipEntry entry) {
         try (InputStream input = context.zip().getInputStream(entry)) {
             indexClass(context.root(), input, context.writer(), context.strings(), context.typeCategoryCache());
-        } catch (IOException e) {
-            // RuntimeException (wrapping a failed DB write) is intentionally not caught here
-            // so it propagates to index() and aborts the transaction.
+        } catch (DbWriteException e) {
+            throw e; // propagate to abort the whole JAR transaction
+        } catch (IOException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
+        }
+    }
+
+    private static final class DbWriteException extends RuntimeException {
+        DbWriteException(SQLException cause) {
+            super(cause);
         }
     }
 
@@ -796,7 +802,7 @@ public class BytecodeJarIndexer {
                     try {
                         writer.incrementCount(existingRowId);
                     } catch (SQLException e) {
-                        throw new RuntimeException(e);
+                        throw new DbWriteException(e);
                     }
                 }
                 return;
