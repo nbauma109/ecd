@@ -337,9 +337,9 @@ public final class BytecodeSearchIndex {
                 if (activeConn != null) {
                     try {
                         dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
-                                key.rootHandle(), jar.getAbsolutePath(),
-                                jar.lastModified(), jar.length(),
-                                Runtime.version().feature(), work.fileCrc());
+                                new SqliteEntryStore.JarKey(key.rootHandle(), jar.getAbsolutePath(),
+                                        jar.lastModified(), jar.length(),
+                                        Runtime.version().feature(), work.fileCrc()));
                     } catch (SQLException e) {
                         Logger.debug(e);
                     }

@@ -147,22 +147,24 @@ final class SqliteEntryStore implements EntryStore {
         }
     }
 
+    record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc) {
+    }
+
     /**
      * Returns the jar id if the jar is already in the database with matching metadata,
      * or -1 if it needs (re-)indexing.
      */
-    static int findJar(Connection conn, Object dbLock, String rootHandle, String path,
-            long lastModified, long fileLength, int runtimeVersion, long fileCrc) throws SQLException {
+    static int findJar(Connection conn, Object dbLock, JarKey key) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ? AND runtime_version = ? AND file_crc = ?")) { //$NON-NLS-1$
-                ps.setString(1, rootHandle);
-                ps.setString(2, path);
-                ps.setLong(3, lastModified);
-                ps.setLong(4, fileLength);
-                ps.setInt(5, runtimeVersion);
-                ps.setLong(6, fileCrc);
+                ps.setString(1, key.rootHandle());
+                ps.setString(2, key.path());
+                ps.setLong(3, key.lastModified());
+                ps.setLong(4, key.fileLength());
+                ps.setInt(5, key.runtimeVersion());
+                ps.setLong(6, key.fileCrc());
                 try (ResultSet rs = ps.executeQuery()) {
                     return rs.next() ? rs.getInt(1) : -1;
                 }
