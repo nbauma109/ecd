@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.apache.commons.lang3.concurrent.LazyInitializer;
@@ -80,6 +81,9 @@ public final class BytecodeSearchIndex {
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean refreshCompleted = new AtomicBoolean();
     private final Object dbLock = new Object();
+    // Coordinates forEachEntry() reads against pruneOrphanJarRows() writes so that
+    // in-flight searches always complete before superseded jar rows are deleted.
+    private final ReentrantReadWriteLock searchLock = new ReentrantReadWriteLock();
     private boolean refreshRequested;
     private Job indexJob;
     private Connection conn;
@@ -139,11 +143,16 @@ public final class BytecodeSearchIndex {
     void forEachEntry(Kind kind, String name, String qualifiedName, boolean wildcard, IProgressMonitor monitor,
             EntryStore.EntryConsumer consumer) throws CoreException {
         waitForInitialRefresh(monitor);
-        for (JarIndex index : indexes.get().values()) {
-            if (monitor != null && monitor.isCanceled()) {
-                return;
+        searchLock.readLock().lock();
+        try {
+            for (JarIndex index : indexes.get().values()) {
+                if (monitor != null && monitor.isCanceled()) {
+                    return;
+                }
+                index.collect(kind, name, qualifiedName, wildcard, consumer);
             }
-            index.collect(kind, name, qualifiedName, wildcard, consumer);
+        } finally {
+            searchLock.readLock().unlock();
         }
     }
 
@@ -295,10 +304,13 @@ public final class BytecodeSearchIndex {
         for (JarPlan plan : plans) {
             keepKeys.add(plan.key().rootHandle() + '\0' + plan.jar().getAbsolutePath());
         }
+        searchLock.writeLock().lock();
         try {
             SqliteEntryStore.pruneOrphanJarRows(activeConn, dbLock, keepKeys);
         } catch (SQLException e) {
             Logger.debug(e);
+        } finally {
+            searchLock.writeLock().unlock();
         }
     }
 

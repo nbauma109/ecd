@@ -813,7 +813,7 @@ public class BytecodeJarIndexer {
                     writer.seen.put(key, rowId);
                 }
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                throw new DbWriteException(e);
             }
         }
 
