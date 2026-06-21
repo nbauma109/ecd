@@ -1,6 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ActivationPolicy: lazy
-Bundle-ClassPath: target/lib/java-decompiler-engine.jar,
+Bundle-ClassPath: target/lib/sqlite-jdbc.jar,
+ target/lib/java-decompiler-engine.jar,
  target/lib/minimal-json.jar,
  target/lib/slf4j-api.jar,
  target/lib/asm.jar,

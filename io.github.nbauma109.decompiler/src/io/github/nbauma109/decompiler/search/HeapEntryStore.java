@@ -11,11 +11,14 @@ package io.github.nbauma109.decompiler.search;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
@@ -181,8 +184,7 @@ final class HeapEntryStore implements EntryStore {
         return kindAndFlags.length;
     }
 
-    @Override
-    public BytecodeSearchEntry entry(int entryId) {
+    BytecodeSearchEntry entry(int entryId) {
         int elementHandleId = elementHandleIds[entryId];
         return new BytecodeSearchEntry(kind(entryId), declaration(entryId),
                 BytecodeSearchEntry.elementReference(elementHandle(elementHandleId),
@@ -191,6 +193,33 @@ final class HeapEntryStore implements EntryStore {
                         string(qualifiedNameIds[entryId]), string(declaringTypeNameIds[entryId]),
                         string(descriptorIds[entryId])),
                 access(entryId), typeCategory(entryId), occurrenceCounts[entryId]);
+    }
+
+    @Override
+    public void collect(Kind kind, String name, String qualifiedName, boolean wildcard,
+            EntryStore.EntryConsumer consumer) throws CoreException {
+        String normName = normalize(name);
+        String normQName = normalize(qualifiedName);
+        for (int i = 0; i < kindAndFlags.length; i++) {
+            Kind k = Kind.values()[kindAndFlags[i] & 0x0F];
+            if (k != kind) {
+                continue;
+            }
+            if (!wildcard) {
+                boolean matches = !normName.isEmpty() && normName.equals(normalize(string(nameIds[i])));
+                if (!matches && !normQName.isEmpty() && !normQName.equals(normName)) {
+                    matches = normQName.equals(normalize(string(qualifiedNameIds[i])));
+                }
+                if (!matches) {
+                    continue;
+                }
+            }
+            consumer.accept(entry(i));
+        }
+    }
+
+    private static String normalize(String s) {
+        return StringUtils.lowerCase(s, Locale.ROOT);
     }
 
     @Override

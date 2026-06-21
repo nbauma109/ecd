@@ -12,21 +12,17 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -80,8 +76,10 @@ public final class BytecodeSearchIndex {
             new AtomicReference<>(Collections.emptyMap());
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean refreshCompleted = new AtomicBoolean();
+    private final Object dbLock = new Object();
     private boolean refreshRequested;
     private Job indexJob;
+    private Connection conn;
 
     private BytecodeSearchIndex() {
     }
@@ -99,6 +97,11 @@ public final class BytecodeSearchIndex {
             return;
         }
         started.set(true);
+        try {
+            conn = openDatabase();
+        } catch (SQLException | IOException e) {
+            JavaDecompilerPlugin.logError(e, "Failed to open search index database"); //$NON-NLS-1$
+        }
         JavaCore.addElementChangedListener(classpathListener, ElementChangedEvent.POST_CHANGE);
         scheduleRefresh(STARTUP_DELAY);
     }
@@ -113,13 +116,23 @@ public final class BytecodeSearchIndex {
             indexJob.cancel();
             indexJob = null;
         }
-        closeAll(indexes.getAndSet(Collections.emptyMap()).values());
+        indexes.getAndSet(Collections.emptyMap());
         refreshCompleted.set(false);
         refreshRequested = false;
+        synchronized (dbLock) {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    Logger.debug(e);
+                }
+                conn = null;
+            }
+        }
     }
 
     void forEachEntry(Kind kind, String name, String qualifiedName, boolean wildcard, IProgressMonitor monitor,
-            EntryConsumer consumer) throws CoreException {
+            EntryStore.EntryConsumer consumer) throws CoreException {
         waitForInitialRefresh(monitor);
         for (JarIndex index : indexes.get().values()) {
             if (monitor != null && monitor.isCanceled()) {
@@ -208,34 +221,25 @@ public final class BytecodeSearchIndex {
     }
 
     private RebuildResult rebuild(List<JarPlan> plans, IProgressMonitor monitor) {
-        Path cacheDir = getCacheDirectory();
+        Connection activeConn = getConn();
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
         try {
             for (JarPlan plan : plans) {
-                JarIndex index = rebuild(plan, cacheDir, subMonitor);
+                JarIndex index = rebuild(plan, activeConn, subMonitor);
                 if (index == null) {
-                    closeNewlyBuilt(rebuilt);
                     return new RebuildResult(false, Map.of());
                 }
                 rebuilt.put(plan.key(), index);
             }
         } catch (RuntimeException e) {
-            // OperationCanceledException (from SubMonitor.split) or unexpected error:
-            // close any newly-built indexes accumulated so far to release file channels.
-            closeNewlyBuilt(rebuilt);
             throw e;
         }
         return new RebuildResult(true, rebuilt);
     }
 
-    private void closeNewlyBuilt(Map<RootKey, JarIndex> rebuilt) {
-        Set<JarIndex> current = new HashSet<>(indexes.get().values());
-        closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
-    }
-
-    private JarIndex rebuild(JarPlan plan, Path cacheDir, SubMonitor subMonitor) {
+    private JarIndex rebuild(JarPlan plan, Connection activeConn, SubMonitor subMonitor) {
         if (subMonitor.isCanceled()) {
             return null;
         }
@@ -245,34 +249,36 @@ public final class BytecodeSearchIndex {
             subMonitor.worked(1);
             return plan.existing();
         }
-        JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(), cacheDir, subMonitor.split(plan.ticks()));
+        if (plan.dbJarId() >= 0) {
+            subMonitor.worked(1);
+            try {
+                return new JarIndex(jar, new SqliteEntryStore(activeConn, dbLock, plan.dbJarId()));
+            } catch (SQLException e) {
+                JavaDecompilerPlugin.logError(e, "Failed to open cached index for " + jar.getName()); //$NON-NLS-1$
+                return null;
+            }
+        }
+        JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(), activeConn, dbLock,
+                subMonitor.split(plan.ticks()));
         if (index != null && subMonitor.isCanceled()) {
-            index.close();
             return null;
         }
         return index;
     }
 
-    private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
-        if (started.get()) {
-            Map<RootKey, JarIndex> old = indexes.getAndSet(Collections.unmodifiableMap(rebuilt));
-            refreshCompleted.set(true);
-            Set<JarIndex> reused = new HashSet<>(rebuilt.values());
-            closeAll(old.values().stream().filter(idx -> !reused.contains(idx)).toList());
-        } else {
-            // stop() ran before publish() — close freshly-built indexes to release file channels
-            Set<JarIndex> current = new HashSet<>(indexes.get().values());
-            closeAll(rebuilt.values().stream().filter(idx -> !current.contains(idx)).toList());
-        }
+    private synchronized Connection getConn() {
+        return conn;
     }
 
-    private static void closeAll(Iterable<JarIndex> toClose) {
-        for (JarIndex idx : toClose) {
-            idx.close();
+    private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
+        if (started.get()) {
+            indexes.getAndSet(Collections.unmodifiableMap(rebuilt));
+            refreshCompleted.set(true);
         }
     }
 
     private List<JarPlan> plan(Map<RootKey, IPackageFragmentRoot> roots) {
+        Connection activeConn = getConn();
         List<JarPlan> plans = new ArrayList<>(roots.size());
         for (Map.Entry<RootKey, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
             RootKey key = rootEntry.getKey();
@@ -280,13 +286,23 @@ public final class BytecodeSearchIndex {
             File jar = path.toFile();
             JarIndex existing = indexes.get().get(key);
             if (existing != null && existing.matches(jar)) {
-                plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, 1));
+                plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, -1, 1));
             } else {
                 BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
                 if (work == null) {
-                    continue; // corrupt/unreadable JAR — already logged; skip and index the rest
+                    continue;
                 }
-                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, work.totalTicks()));
+                int dbJarId = -1;
+                if (activeConn != null) {
+                    try {
+                        dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
+                                key.rootHandle(), jar.getAbsolutePath(),
+                                jar.lastModified(), jar.length());
+                    } catch (SQLException e) {
+                        Logger.debug(e);
+                    }
+                }
+                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
             }
         }
         return plans;
@@ -399,6 +415,22 @@ public final class BytecodeSearchIndex {
         }
     }
 
+    private Connection openDatabase() throws SQLException, IOException {
+        Path dir = getCacheDirectory();
+        if (dir == null) {
+            throw new IOException("No cache directory available"); //$NON-NLS-1$
+        }
+        Path dbFile = dir.resolve("search-index.db"); //$NON-NLS-1$
+        try {
+            Class.forName("org.sqlite.JDBC"); //$NON-NLS-1$
+        } catch (ClassNotFoundException e) {
+            throw new IOException("SQLite JDBC driver not found", e); //$NON-NLS-1$
+        }
+        Connection c = DriverManager.getConnection("jdbc:sqlite:" + dbFile.toAbsolutePath()); //$NON-NLS-1$
+        SqliteEntryStore.initSchema(c);
+        return c;
+    }
+
     private static Path getCacheDirectory() {
         JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
         if (plugin == null) {
@@ -416,18 +448,14 @@ public final class BytecodeSearchIndex {
 
     public static final class JarIndex {
 
-        private static final int[] EMPTY_POSTINGS = new int[0];
-
         private final long lastModified;
         private final long length;
         private final EntryStore entries;
-        private final Map<Kind, Map<String, int[]>> byKindAndName;
 
-        JarIndex(File jar, Path cacheDir, String rootHandle, List<BytecodeSearchEntry> entries, int[] counts) {
+        JarIndex(File jar, EntryStore entries) {
             this.lastModified = jar.lastModified();
             this.length = jar.length();
-            this.byKindAndName = buildNameIndex(entries);
-            this.entries = createEntryStore(jar, cacheDir, entries, counts, rootHandle);
+            this.entries = entries;
         }
 
         void close() {
@@ -442,150 +470,10 @@ public final class BytecodeSearchIndex {
             return entries.size();
         }
 
-        void collect(Kind kind, String name, String qualifiedName, boolean wildcard, EntryConsumer consumer)
+        void collect(Kind kind, String name, String qualifiedName, boolean wildcard, EntryStore.EntryConsumer consumer)
                 throws CoreException {
-            if (wildcard) {
-                collectWildcard(kind, consumer);
-                return;
-            }
-            Map<String, int[]> nameIndex = byKindAndName.get(kind);
-            if (nameIndex == null) {
-                return;
-            }
-            int[] firstPostings = postings(nameIndex, name);
-            collectPostings(firstPostings, consumer);
-            if (!sameKey(name, qualifiedName)) {
-                collectPostingsSkipping(postings(nameIndex, qualifiedName), firstPostings, consumer);
-            }
+            entries.collect(kind, name, qualifiedName, wildcard, consumer);
         }
-
-        private static int[] postings(Map<String, int[]> nameIndex, String name) {
-            if (StringUtils.isBlank(name)) {
-                return EMPTY_POSTINGS;
-            }
-            return nameIndex.getOrDefault(normalizeKey(name), EMPTY_POSTINGS);
-        }
-
-        private void collectPostings(int[] postings, EntryConsumer consumer) throws CoreException {
-            if (postings == null || postings.length == 0) {
-                return;
-            }
-            for (int entryId : postings) {
-                consumer.accept(entries.entry(entryId));
-            }
-        }
-
-        private void collectPostingsSkipping(int[] postings, int[] skip, EntryConsumer consumer) throws CoreException {
-            if (postings == null || postings.length == 0) {
-                return;
-            }
-            for (int entryId : postings) {
-                if (skip.length == 0 || java.util.Arrays.binarySearch(skip, entryId) < 0) {
-                    consumer.accept(entries.entry(entryId));
-                }
-            }
-        }
-
-        private void collectWildcard(Kind kind, EntryConsumer consumer) throws CoreException {
-            Map<String, int[]> nameIndex = byKindAndName.get(kind);
-            if (nameIndex == null) {
-                return;
-            }
-            BitSet emitted = new BitSet(entries.size());
-            for (int[] postings : nameIndex.values()) {
-                for (int entryId : postings) {
-                    if (!emitted.get(entryId)) {
-                        emitted.set(entryId);
-                        consumer.accept(entries.entry(entryId));
-                    }
-                }
-            }
-        }
-
-        private static Map<Kind, Map<String, int[]>> buildNameIndex(
-                List<BytecodeSearchEntry> entries) {
-            Map<Kind, Map<String, IntPostings>> builders = new EnumMap<>(Kind.class);
-            for (int entryId = 0; entryId < entries.size(); entryId++) {
-                BytecodeSearchEntry entry = entries.get(entryId);
-                Map<String, IntPostings> nameIndex = builders.computeIfAbsent(entry.getKind(),
-                        key -> new HashMap<>());
-                addToNameIndex(nameIndex, entry.getName(), entryId);
-                if (indexesQualifiedName(entry.getKind())
-                        && !Strings.CS.equals(normalizeKey(entry.getName()), normalizeKey(entry.getQualifiedName()))) {
-                    addToNameIndex(nameIndex, entry.getQualifiedName(), entryId);
-                }
-            }
-            return freeze(builders);
-        }
-
-        private static void addToNameIndex(Map<String, IntPostings> nameIndex, String name, int entryId) {
-            if (StringUtils.isBlank(name)) {
-                return;
-            }
-            nameIndex.computeIfAbsent(normalizeKey(name), key -> new IntPostings()).add(entryId);
-        }
-
-        private static Map<Kind, Map<String, int[]>> freeze(Map<Kind, Map<String, IntPostings>> builders) {
-            Map<Kind, Map<String, int[]>> frozen = new EnumMap<>(Kind.class);
-            for (Map.Entry<Kind, Map<String, IntPostings>> kindEntry : builders.entrySet()) {
-                Map<String, int[]> nameIndex = new HashMap<>();
-                for (Map.Entry<String, IntPostings> entry : kindEntry.getValue().entrySet()) {
-                    nameIndex.put(entry.getKey(), entry.getValue().toArray());
-                }
-                frozen.put(kindEntry.getKey(), Collections.unmodifiableMap(nameIndex));
-            }
-            return Collections.unmodifiableMap(frozen);
-        }
-
-        private static String normalizeKey(String name) {
-            return StringUtils.lowerCase(name, java.util.Locale.ROOT);
-        }
-
-        private static boolean sameKey(String left, String right) {
-            return Strings.CS.equals(normalizeKey(left), normalizeKey(right));
-        }
-
-        private static boolean indexesQualifiedName(Kind kind) {
-            return kind == Kind.TYPE || kind == Kind.PACKAGE || kind == Kind.MODULE;
-        }
-
-        private static EntryStore createEntryStore(File jar, Path cacheDir,
-                List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) {
-            if (cacheDir != null && rootHandle != null) {
-                Path segmentFile = MappedEntryStore.segmentPath(cacheDir, jar, rootHandle);
-                try {
-                    return MappedEntryStore.openOrCreate(jar, cacheDir, entries, counts, rootHandle);
-                } catch (IOException | RuntimeException e) {
-                    JavaDecompilerPlugin.logError(e, "Mapped entry store failed; rebuilding as heap for " //$NON-NLS-1$
-                            + jar.getName());
-                    MappedEntryStore.deleteQuietly(segmentFile);
-                }
-            }
-            return HeapEntryStore.from(entries, counts);
-        }
-
-
-        private static final class IntPostings {
-
-            private int[] values = new int[4];
-            private int size;
-
-            private void add(int value) {
-                if (size == values.length) {
-                    values = java.util.Arrays.copyOf(values, values.length * 2);
-                }
-                values[size++] = value;
-            }
-
-            private int[] toArray() {
-                return java.util.Arrays.copyOf(values, size);
-            }
-        }
-    }
-
-    @FunctionalInterface
-    interface EntryConsumer {
-        void accept(BytecodeSearchEntry entry) throws CoreException;
     }
 
     private record RootKey(String rootHandle, IPath path) {
@@ -595,6 +483,6 @@ public final class BytecodeSearchIndex {
     }
 
     private record JarPlan(RootKey key, IPackageFragmentRoot root, File jar, JarIndex existing,
-            BytecodeJarIndexer.JarWork work, int ticks) {
+            BytecodeJarIndexer.JarWork work, int dbJarId, int ticks) {
     }
 }

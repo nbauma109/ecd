@@ -8,10 +8,21 @@
 
 package io.github.nbauma109.decompiler.search;
 
+import org.eclipse.core.runtime.CoreException;
+
+import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
+
 interface EntryStore extends AutoCloseable {
+
+    @FunctionalInterface
+    interface EntryConsumer {
+        void accept(BytecodeSearchEntry entry) throws CoreException;
+    }
+
     int size();
 
-    BytecodeSearchEntry entry(int entryId);
+    void collect(Kind kind, String name, String qualifiedName, boolean wildcard,
+            EntryConsumer consumer) throws CoreException;
 
     @Override
     void close();

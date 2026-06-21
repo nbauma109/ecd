@@ -14,8 +14,9 @@ import static org.junit.Assert.assertNull;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -120,7 +121,9 @@ public class BytecodeJarIndexerTest {
                 }
             };
 
-            assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), null, monitor));
+            try (Connection conn = openTestDatabase()) {
+                assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), conn, new Object(), monitor));
+            }
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -153,12 +156,14 @@ public class BytecodeJarIndexerTest {
             DecompilerTestSupport.configureClasspathWithJre(javaProject);
             IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
 
-            BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
-                    null, new NullProgressMonitor());
-
-            assertNotNull(index);
-            assertEquals(0, nonDeclarationTypeEntries(index, "Outer", "pkg.Outer").size()); //$NON-NLS-1$ //$NON-NLS-2$
-            assertEquals(1, nonDeclarationTypeEntries(index, "Visible", "pkg.Visible").size()); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchIndex.JarIndex index;
+            try (Connection conn = openTestDatabase()) {
+                index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
+                        conn, new Object(), new NullProgressMonitor());
+                assertNotNull(index);
+                assertEquals(0, nonDeclarationTypeEntries(index, "Outer", "pkg.Outer").size()); //$NON-NLS-1$ //$NON-NLS-2$
+                assertEquals(1, nonDeclarationTypeEntries(index, "Visible", "pkg.Visible").size()); //$NON-NLS-1$ //$NON-NLS-2$
+            }
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -191,14 +196,16 @@ public class BytecodeJarIndexerTest {
             DecompilerTestSupport.configureClasspathWithJre(javaProject);
             IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
 
-            BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
-                    null, new NullProgressMonitor());
-
-            assertNotNull(index);
-            assertEquals(0, fieldDeclarationEntries(index, "this$0").size()); //$NON-NLS-1$
-            assertEquals(1, fieldDeclarationEntries(index, "visible").size()); //$NON-NLS-1$
-            assertEquals(0, nonDeclarationTypeEntries(index, "Hidden", "pkg.Hidden").size()); //$NON-NLS-1$ //$NON-NLS-2$
-            assertEquals(1, nonDeclarationTypeEntries(index, "Visible", "pkg.Visible").size()); //$NON-NLS-1$ //$NON-NLS-2$
+            BytecodeSearchIndex.JarIndex index;
+            try (Connection conn = openTestDatabase()) {
+                index = BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar),
+                        conn, new Object(), new NullProgressMonitor());
+                assertNotNull(index);
+                assertEquals(0, fieldDeclarationEntries(index, "this$0").size()); //$NON-NLS-1$
+                assertEquals(1, fieldDeclarationEntries(index, "visible").size()); //$NON-NLS-1$
+                assertEquals(0, nonDeclarationTypeEntries(index, "Hidden", "pkg.Hidden").size()); //$NON-NLS-1$ //$NON-NLS-2$
+                assertEquals(1, nonDeclarationTypeEntries(index, "Visible", "pkg.Visible").size()); //$NON-NLS-1$ //$NON-NLS-2$
+            }
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -254,10 +261,11 @@ public class BytecodeJarIndexerTest {
             //     returns annotationVisitor(type); ASM then calls visit/visitEnum/visitArray/
             //     visitAnnotation on that visitor for each annotation element.
             BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
-            BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
-                    null, new NullProgressMonitor());
-
-            assertNotNull(index);
+            try (Connection conn = openTestDatabase()) {
+                BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
+                        conn, new Object(), new NullProgressMonitor());
+                assertNotNull(index);
+            }
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -309,10 +317,11 @@ public class BytecodeJarIndexerTest {
             // 4 — Index: visitModule() sets moduleElement; the returned ModuleIndexer
             //     receives all directive callbacks; flush() processes the module branch.
             BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
-            BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
-                    null, new NullProgressMonitor());
-
-            assertNotNull(index);
+            try (Connection conn = openTestDatabase()) {
+                BytecodeSearchIndex.JarIndex index = BytecodeJarIndexer.index(root, jar, work,
+                        conn, new Object(), new NullProgressMonitor());
+                assertNotNull(index);
+            }
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
@@ -441,19 +450,33 @@ public class BytecodeJarIndexerTest {
     }
 
     private static List<BytecodeSearchEntry> entries(BytecodeSearchIndex.JarIndex index) throws Exception {
-        List<BytecodeSearchEntry> entries = new ArrayList<>();
-        Field entriesField = BytecodeSearchIndex.JarIndex.class.getDeclaredField("entries"); //$NON-NLS-1$
-        entriesField.setAccessible(true);
-        Object compactEntries = entriesField.get(index);
-        Method size = compactEntries.getClass().getDeclaredMethod("size"); //$NON-NLS-1$
-        Method entryAt = compactEntries.getClass().getDeclaredMethod("entry", int.class); //$NON-NLS-1$
-        size.setAccessible(true);
-        entryAt.setAccessible(true);
-        int count = (int) size.invoke(compactEntries);
-        for (int i = 0; i < count; i++) {
-            entries.add((BytecodeSearchEntry) entryAt.invoke(compactEntries, Integer.valueOf(i)));
+        ClassLoader cl = BytecodeSearchIndex.class.getClassLoader();
+        Class<?> kindClass = Class.forName("io.github.nbauma109.decompiler.search.BytecodeSearchEntry$Kind", true, cl); //$NON-NLS-1$
+        Object[] kinds = (Object[]) kindClass.getMethod("values").invoke(null); //$NON-NLS-1$
+        Class<?> consumerIface = Class.forName("io.github.nbauma109.decompiler.search.EntryStore$EntryConsumer", true, cl); //$NON-NLS-1$
+        List<BytecodeSearchEntry> result = new ArrayList<>();
+        Object consumer = Proxy.newProxyInstance(cl, new Class[]{consumerIface},
+                (proxy, method, args) -> {
+                    if ("accept".equals(method.getName())) { //$NON-NLS-1$
+                        result.add((BytecodeSearchEntry) args[0]);
+                    }
+                    return null;
+                });
+        Method collectMethod = BytecodeSearchIndex.JarIndex.class.getDeclaredMethod("collect", //$NON-NLS-1$
+                kindClass, String.class, String.class, boolean.class, consumerIface);
+        collectMethod.setAccessible(true);
+        for (Object kind : kinds) {
+            collectMethod.invoke(index, kind, null, null, Boolean.TRUE, consumer);
         }
-        return entries;
+        return result;
+    }
+
+    private static Connection openTestDatabase() throws Exception {
+        ClassLoader cl = BytecodeSearchIndex.class.getClassLoader();
+        Class<?> sqliteStore = Class.forName("io.github.nbauma109.decompiler.search.SqliteEntryStore", true, cl); //$NON-NLS-1$
+        Method m = sqliteStore.getDeclaredMethod("openInMemoryDatabase"); //$NON-NLS-1$
+        m.setAccessible(true);
+        return (Connection) m.invoke(null);
     }
 
     /**
