@@ -304,7 +304,8 @@ public final class BytecodeSearchIndex {
                     try {
                         dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
                                 key.rootHandle(), jar.getAbsolutePath(),
-                                jar.lastModified(), jar.length());
+                                jar.lastModified(), jar.length(),
+                                Runtime.version().feature());
                     } catch (SQLException e) {
                         Logger.debug(e);
                     }
@@ -434,7 +435,12 @@ public final class BytecodeSearchIndex {
             throw new IOException("SQLite JDBC driver not found", e); //$NON-NLS-1$
         }
         Connection c = DriverManager.getConnection("jdbc:sqlite:" + dbFile.toAbsolutePath()); //$NON-NLS-1$
-        SqliteEntryStore.initSchema(c);
+        try {
+            SqliteEntryStore.initSchema(c);
+        } catch (SQLException e) {
+            try { c.close(); } catch (SQLException ex) { Logger.debug(ex); }
+            throw e;
+        }
         return c;
     }
 

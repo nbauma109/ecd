@@ -182,7 +182,7 @@ public class BytecodeJarIndexer {
         String insertSql =
                 "INSERT INTO entries(jar_id,kind,declaration,access_flags,type_category," + //$NON-NLS-1$
                 "element_handle,name,normalized_name,qualified_name,normalized_qualified_name," + //$NON-NLS-1$
-                "declaring_type_name,descriptor,occurrence_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
+                "declaring_type_name,descriptor,occurrence_count,fallback_handle) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
         String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
         try {
             synchronized (lock) {
@@ -191,7 +191,8 @@ public class BytecodeJarIndexer {
             int jarId;
             synchronized (lock) {
                 jarId = SqliteEntryStore.registerJar(conn, rootHandle,
-                        jar.getAbsolutePath(), jar.lastModified(), jar.length());
+                        jar.getAbsolutePath(), jar.lastModified(), jar.length(),
+                        Runtime.version().feature());
             }
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
@@ -1798,6 +1799,7 @@ public class BytecodeJarIndexer {
             insertPs.setString(11, nullToEmpty(entry.getDeclaringTypeName()));
             insertPs.setString(12, nullToEmpty(entry.getDescriptor()));
             insertPs.setInt(13, count);
+            insertPs.setString(14, fallbackHandle(entry));
             insertPs.executeUpdate();
             try (ResultSet keys = insertPs.getGeneratedKeys()) {
                 return keys.next() ? keys.getLong(1) : -1L;
@@ -1807,6 +1809,22 @@ public class BytecodeJarIndexer {
         void incrementCount(long rowId) throws SQLException {
             updatePs.setLong(1, rowId);
             updatePs.executeUpdate();
+        }
+
+        private static String fallbackHandle(BytecodeSearchEntry entry) {
+            IJavaElement fallback = entry.getAnonymousElementFallback();
+            if (fallback == null) {
+                return ""; //$NON-NLS-1$
+            }
+            IJavaElement ancestor = fallback.getParent();
+            while (ancestor != null) {
+                String handle = ancestor.getHandleIdentifier();
+                if (handle != null && !handle.contains("[~")) { //$NON-NLS-1$
+                    return handle;
+                }
+                ancestor = ancestor.getParent();
+            }
+            return ""; //$NON-NLS-1$
         }
 
         private static String nullToEmpty(String s) {

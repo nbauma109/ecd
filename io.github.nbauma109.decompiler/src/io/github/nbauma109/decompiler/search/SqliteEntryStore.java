@@ -20,6 +20,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.JavaCore;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
@@ -36,7 +38,7 @@ final class SqliteEntryStore implements EntryStore {
 
     private static final String SELECT_COLS =
             "kind, declaration, access_flags, type_category, element_handle, name, " + //$NON-NLS-1$
-            "qualified_name, declaring_type_name, descriptor, occurrence_count"; //$NON-NLS-1$
+            "qualified_name, declaring_type_name, descriptor, occurrence_count, fallback_handle"; //$NON-NLS-1$
     private static final String SELECT_ENTRIES_WHERE = "SELECT " + SELECT_COLS + " FROM entries WHERE "; //$NON-NLS-1$
 
     private final Connection conn;
@@ -73,7 +75,8 @@ final class SqliteEntryStore implements EntryStore {
                         root_handle TEXT NOT NULL DEFAULT '',
                         path TEXT NOT NULL,
                         last_modified INTEGER NOT NULL,
-                        file_length INTEGER NOT NULL
+                        file_length INTEGER NOT NULL,
+                        runtime_version INTEGER NOT NULL DEFAULT 0
                     )"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_jars
@@ -93,7 +96,8 @@ final class SqliteEntryStore implements EntryStore {
                         normalized_qualified_name TEXT NOT NULL DEFAULT '',
                         declaring_type_name TEXT NOT NULL DEFAULT '',
                         descriptor TEXT NOT NULL DEFAULT '',
-                        occurrence_count INTEGER NOT NULL DEFAULT 1
+                        occurrence_count INTEGER NOT NULL DEFAULT 1,
+                        fallback_handle TEXT NOT NULL DEFAULT ''
                     )"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_entries_name
@@ -102,6 +106,17 @@ final class SqliteEntryStore implements EntryStore {
                     CREATE INDEX IF NOT EXISTS idx_entries_qname
                         ON entries(jar_id, kind, normalized_qualified_name)"""); //$NON-NLS-1$
         }
+        // Migrate existing databases that predate these columns
+        migrate(conn, "ALTER TABLE jars ADD COLUMN runtime_version INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
+        migrate(conn, "ALTER TABLE entries ADD COLUMN fallback_handle TEXT NOT NULL DEFAULT ''"); //$NON-NLS-1$
+    }
+
+    private static void migrate(Connection conn, String ddl) throws SQLException {
+        try (var s = conn.createStatement()) {
+            s.execute(ddl);
+        } catch (SQLException ignored) {
+            // column already exists in databases created after the schema update
+        }
     }
 
     /**
@@ -109,15 +124,16 @@ final class SqliteEntryStore implements EntryStore {
      * or -1 if it needs (re-)indexing.
      */
     static int findJar(Connection conn, Object dbLock, String rootHandle, String path,
-            long lastModified, long fileLength) throws SQLException {
+            long lastModified, long fileLength, int runtimeVersion) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ?")) { //$NON-NLS-1$
+                    "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ? AND runtime_version = ?")) { //$NON-NLS-1$
                 ps.setString(1, rootHandle);
                 ps.setString(2, path);
                 ps.setLong(3, lastModified);
                 ps.setLong(4, fileLength);
+                ps.setInt(5, runtimeVersion);
                 try (ResultSet rs = ps.executeQuery()) {
                     return rs.next() ? rs.getInt(1) : -1;
                 }
@@ -130,7 +146,7 @@ final class SqliteEntryStore implements EntryStore {
      * Must be called inside a write transaction.
      */
     static int registerJar(Connection conn, String rootHandle, String path,
-            long lastModified, long fileLength) throws SQLException {
+            long lastModified, long fileLength, int runtimeVersion) throws SQLException {
         try (PreparedStatement del = conn.prepareStatement(
                 "DELETE FROM jars WHERE root_handle = ? AND path = ?")) { //$NON-NLS-1$
             del.setString(1, rootHandle);
@@ -138,12 +154,13 @@ final class SqliteEntryStore implements EntryStore {
             del.executeUpdate();
         }
         try (PreparedStatement ins = conn.prepareStatement(
-                "INSERT INTO jars(root_handle, path, last_modified, file_length) VALUES(?, ?, ?, ?)", //$NON-NLS-1$
+                "INSERT INTO jars(root_handle, path, last_modified, file_length, runtime_version) VALUES(?, ?, ?, ?, ?)", //$NON-NLS-1$
                 Statement.RETURN_GENERATED_KEYS)) {
             ins.setString(1, rootHandle);
             ins.setString(2, path);
             ins.setLong(3, lastModified);
             ins.setLong(4, fileLength);
+            ins.setInt(5, runtimeVersion);
             ins.executeUpdate();
             try (ResultSet keys = ins.getGeneratedKeys()) {
                 if (!keys.next()) {
@@ -278,8 +295,10 @@ final class SqliteEntryStore implements EntryStore {
         String declaringTypeName = emptyToNull(rs.getString(8));
         String descriptor = emptyToNull(rs.getString(9));
         int occurrenceCount = rs.getInt(10);
+        String fallbackHandle = emptyToNull(rs.getString(11));
+        IJavaElement fallback = fallbackHandle == null ? null : JavaCore.create(fallbackHandle);
         return new BytecodeSearchEntry(kind, declaration,
-                BytecodeSearchEntry.elementReference(elementHandle, null),
+                BytecodeSearchEntry.elementReference(elementHandle, fallback),
                 BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor),
                 access, typeCategory, occurrenceCount);
     }
