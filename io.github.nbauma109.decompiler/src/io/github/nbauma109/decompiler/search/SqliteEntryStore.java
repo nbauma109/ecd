@@ -46,11 +46,17 @@ final class SqliteEntryStore implements EntryStore {
     private final Object dbLock;
     private final int jarId;
     private final int size;
+    private final boolean ownsConnection;
 
     SqliteEntryStore(Connection conn, Object dbLock, int jarId) throws SQLException {
+        this(conn, dbLock, jarId, false);
+    }
+
+    SqliteEntryStore(Connection conn, Object dbLock, int jarId, boolean ownsConnection) throws SQLException {
         this.conn = conn;
         this.dbLock = dbLock;
         this.jarId = jarId;
+        this.ownsConnection = ownsConnection;
         this.size = querySize();
     }
 
@@ -337,6 +343,14 @@ final class SqliteEntryStore implements EntryStore {
 
     @Override
     public void close() {
-        // Connection is owned by BytecodeSearchIndex; do not close here.
+        if (ownsConnection) {
+            synchronized (dbLock) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    // in-memory connection cleanup is non-fatal
+                }
+            }
+        }
     }
 }

@@ -175,10 +175,21 @@ public class BytecodeJarIndexer {
 
     public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
             Connection conn, Object dbLock, IProgressMonitor monitor) {
-        if (conn == null) {
-            return null;
+        final boolean ownsConn = conn == null;
+        final Connection activeConn;
+        final Object lock;
+        if (ownsConn) {
+            try {
+                activeConn = SqliteEntryStore.openInMemoryDatabase();
+            } catch (SQLException e) {
+                JavaDecompilerPlugin.logError(e, "Failed to create in-memory index for " + jar.getAbsolutePath()); //$NON-NLS-1$
+                return null;
+            }
+            lock = new Object();
+        } else {
+            activeConn = conn;
+            lock = dbLock;
         }
-        final Object lock = dbLock;
         String rootHandle = root != null ? root.getHandleIdentifier() : ""; //$NON-NLS-1$
         Map<String, String> strings = new HashMap<>();
         String insertSql =
@@ -188,46 +199,60 @@ public class BytecodeJarIndexer {
         String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
         try {
             synchronized (lock) {
-                conn.setAutoCommit(false);
+                activeConn.setAutoCommit(false);
             }
             int jarId;
             synchronized (lock) {
-                jarId = SqliteEntryStore.registerJar(conn, rootHandle,
+                jarId = SqliteEntryStore.registerJar(activeConn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
                         Runtime.version().feature(), work.fileCrc());
             }
             try (ZipFile zip = new ZipFile(jar);
-                    PreparedStatement insertPs = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
-                    PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
+                    PreparedStatement insertPs = activeConn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
+                    PreparedStatement updatePs = activeConn.prepareStatement(updateSql)) {
                 EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs);
                 Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
                 IndexContext context = new IndexContext(root, jar, zip, writer, strings, typeCategoryCache);
                 SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
                 for (JarEntryWork entryWork : work.entries()) {
                     if (subMonitor.isCanceled()) {
-                        synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
+                        abortConn(activeConn, lock, ownsConn);
                         return null;
                     }
                     indexEntry(context, entryWork, subMonitor);
                 }
                 if (subMonitor.isCanceled()) {
-                    synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
+                    abortConn(activeConn, lock, ownsConn);
                     return null;
                 }
             }
             synchronized (lock) {
-                conn.commit();
-                conn.setAutoCommit(true);
+                activeConn.commit();
+                activeConn.setAutoCommit(true);
             }
-            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(conn, lock, jarId));
+            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
         } catch (IOException | SQLException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            abortConn(activeConn, lock, ownsConn);
+            return null;
+        }
+    }
+
+    private static void abortConn(Connection activeConn, Object lock, boolean ownsConn) {
+        try {
+            synchronized (lock) {
+                activeConn.rollback();
+                activeConn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            Logger.debug(ex);
+        }
+        if (ownsConn) {
             try {
-                synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
+                activeConn.close();
             } catch (SQLException ex) {
                 Logger.debug(ex);
             }
-            return null;
         }
     }
 
