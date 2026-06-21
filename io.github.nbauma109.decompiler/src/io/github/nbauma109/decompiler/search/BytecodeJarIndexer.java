@@ -91,22 +91,24 @@ public class BytecodeJarIndexer {
             Map<String, EffectiveClassEntry> effectiveEntries = new LinkedHashMap<>();
             boolean multiRelease = isMultiReleaseJar(zip);
             int runtimeFeatureVersion = Runtime.version().feature();
+            long fileCrc = 0L;
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
+                fileCrc += entry.getCrc();
                 EffectiveClassEntry candidate = effectiveClassEntry(entry, multiRelease, runtimeFeatureVersion);
                 if (candidate != null) {
                     effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
-            return jarWork(effectiveEntries.values());
+            return jarWork(effectiveEntries.values(), fileCrc);
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }
     }
 
-    private static JarWork jarWork(Iterable<EffectiveClassEntry> effectiveEntries) {
+    private static JarWork jarWork(Iterable<EffectiveClassEntry> effectiveEntries, long fileCrc) {
         List<JarEntryWork> entries = new ArrayList<>();
         long totalImpact = 0L;
         long totalTicks = 0L;
@@ -115,7 +117,7 @@ public class BytecodeJarIndexer {
             totalTicks = Math.clamp(totalTicks + entry.ticks(), 0L, Integer.MAX_VALUE);
             entries.add(new JarEntryWork(entry.entryName(), entry.impactBytes(), entry.ticks()));
         }
-        return new JarWork(entries, totalImpact, (int) totalTicks);
+        return new JarWork(entries, totalImpact, (int) totalTicks, fileCrc);
     }
 
     private static boolean isMultiReleaseJar(ZipFile zip) throws IOException {
@@ -192,7 +194,7 @@ public class BytecodeJarIndexer {
             synchronized (lock) {
                 jarId = SqliteEntryStore.registerJar(conn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
-                        Runtime.version().feature());
+                        Runtime.version().feature(), work.fileCrc());
             }
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
@@ -1842,7 +1844,7 @@ public class BytecodeJarIndexer {
         }
     }
 
-    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
+    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks, long fileCrc) {
     }
 
     public record JarEntryWork(String name, long impactBytes, int ticks) {

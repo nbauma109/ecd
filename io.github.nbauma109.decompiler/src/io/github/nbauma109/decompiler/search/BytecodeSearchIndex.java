@@ -17,9 +17,11 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -204,6 +206,7 @@ public final class BytecodeSearchIndex {
             if (!rebuilt.completed()) {
                 return;
             }
+            pruneOrphanJarRows(plans);
             publish(rebuilt.indexes());
         } catch (OperationCanceledException e) {
             // normal job cancellation; nothing to log
@@ -271,6 +274,22 @@ public final class BytecodeSearchIndex {
         return index;
     }
 
+    private void pruneOrphanJarRows(List<JarPlan> plans) {
+        Connection activeConn = getConn();
+        if (activeConn == null) {
+            return;
+        }
+        Set<String> keepKeys = new HashSet<>();
+        for (JarPlan plan : plans) {
+            keepKeys.add(plan.key().rootHandle() + '\0' + plan.jar().getAbsolutePath());
+        }
+        try {
+            SqliteEntryStore.pruneOrphanJarRows(activeConn, dbLock, keepKeys);
+        } catch (SQLException e) {
+            Logger.debug(e);
+        }
+    }
+
     private synchronized Connection getConn() {
         return conn;
     }
@@ -305,7 +324,7 @@ public final class BytecodeSearchIndex {
                         dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
                                 key.rootHandle(), jar.getAbsolutePath(),
                                 jar.lastModified(), jar.length(),
-                                Runtime.version().feature());
+                                Runtime.version().feature(), work.fileCrc());
                     } catch (SQLException e) {
                         Logger.debug(e);
                     }

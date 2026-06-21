@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.runtime.CoreException;
@@ -76,7 +77,8 @@ final class SqliteEntryStore implements EntryStore {
                         path TEXT NOT NULL,
                         last_modified INTEGER NOT NULL,
                         file_length INTEGER NOT NULL,
-                        runtime_version INTEGER NOT NULL DEFAULT 0
+                        runtime_version INTEGER NOT NULL DEFAULT 0,
+                        file_crc INTEGER NOT NULL DEFAULT 0
                     )"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_jars
@@ -108,7 +110,27 @@ final class SqliteEntryStore implements EntryStore {
         }
         // Migrate existing databases that predate these columns
         migrate(conn, "ALTER TABLE jars ADD COLUMN runtime_version INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
+        migrate(conn, "ALTER TABLE jars ADD COLUMN file_crc INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
         migrate(conn, "ALTER TABLE entries ADD COLUMN fallback_handle TEXT NOT NULL DEFAULT ''"); //$NON-NLS-1$
+    }
+
+    static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys) throws SQLException {
+        final Object lock = dbLock;
+        synchronized (lock) {
+            try (PreparedStatement sel = conn.prepareStatement("SELECT id, root_handle, path FROM jars"); //$NON-NLS-1$
+                    PreparedStatement del = conn.prepareStatement("DELETE FROM jars WHERE id = ?")) { //$NON-NLS-1$
+                try (ResultSet rs = sel.executeQuery()) {
+                    while (rs.next()) {
+                        String key = rs.getString(2) + '\0' + rs.getString(3);
+                        if (!keepKeys.contains(key)) {
+                            del.setInt(1, rs.getInt(1));
+                            del.addBatch();
+                        }
+                    }
+                }
+                del.executeBatch();
+            }
+        }
     }
 
     private static void migrate(Connection conn, String ddl) throws SQLException {
@@ -124,16 +146,17 @@ final class SqliteEntryStore implements EntryStore {
      * or -1 if it needs (re-)indexing.
      */
     static int findJar(Connection conn, Object dbLock, String rootHandle, String path,
-            long lastModified, long fileLength, int runtimeVersion) throws SQLException {
+            long lastModified, long fileLength, int runtimeVersion, long fileCrc) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ? AND runtime_version = ?")) { //$NON-NLS-1$
+                    "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ? AND runtime_version = ? AND file_crc = ?")) { //$NON-NLS-1$
                 ps.setString(1, rootHandle);
                 ps.setString(2, path);
                 ps.setLong(3, lastModified);
                 ps.setLong(4, fileLength);
                 ps.setInt(5, runtimeVersion);
+                ps.setLong(6, fileCrc);
                 try (ResultSet rs = ps.executeQuery()) {
                     return rs.next() ? rs.getInt(1) : -1;
                 }
@@ -146,7 +169,7 @@ final class SqliteEntryStore implements EntryStore {
      * Must be called inside a write transaction.
      */
     static int registerJar(Connection conn, String rootHandle, String path,
-            long lastModified, long fileLength, int runtimeVersion) throws SQLException {
+            long lastModified, long fileLength, int runtimeVersion, long fileCrc) throws SQLException {
         try (PreparedStatement del = conn.prepareStatement(
                 "DELETE FROM jars WHERE root_handle = ? AND path = ?")) { //$NON-NLS-1$
             del.setString(1, rootHandle);
@@ -154,13 +177,14 @@ final class SqliteEntryStore implements EntryStore {
             del.executeUpdate();
         }
         try (PreparedStatement ins = conn.prepareStatement(
-                "INSERT INTO jars(root_handle, path, last_modified, file_length, runtime_version) VALUES(?, ?, ?, ?, ?)", //$NON-NLS-1$
+                "INSERT INTO jars(root_handle, path, last_modified, file_length, runtime_version, file_crc) VALUES(?, ?, ?, ?, ?, ?)", //$NON-NLS-1$
                 Statement.RETURN_GENERATED_KEYS)) {
             ins.setString(1, rootHandle);
             ins.setString(2, path);
             ins.setLong(3, lastModified);
             ins.setLong(4, fileLength);
             ins.setInt(5, runtimeVersion);
+            ins.setLong(6, fileCrc);
             ins.executeUpdate();
             try (ResultSet keys = ins.getGeneratedKeys()) {
                 if (!keys.next()) {
