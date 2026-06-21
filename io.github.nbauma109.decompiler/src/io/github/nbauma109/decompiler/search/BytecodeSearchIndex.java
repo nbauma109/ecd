@@ -313,6 +313,19 @@ public final class BytecodeSearchIndex {
                     .filter(idx -> !kept.contains(idx))
                     .forEach(JarIndex::close);
             refreshCompleted.set(true);
+            // Old jar rows are now safe to delete: the new map is live and the old
+            // SqliteEntryStore instances that referenced them have just been closed.
+            if (conn != null) {
+                for (JarIndex idx : rebuilt.values()) {
+                    if (idx.oldJarId >= 0) {
+                        try {
+                            SqliteEntryStore.deleteJarById(conn, dbLock, idx.oldJarId);
+                        } catch (SQLException e) {
+                            Logger.debug(e);
+                        }
+                    }
+                }
+            }
         } else {
             rebuilt.values().forEach(JarIndex::close);
         }
@@ -498,11 +511,17 @@ public final class BytecodeSearchIndex {
         private final long lastModified;
         private final long length;
         private final EntryStore entries;
+        final int oldJarId;
 
         JarIndex(File jar, EntryStore entries) {
+            this(jar, entries, -1);
+        }
+
+        JarIndex(File jar, EntryStore entries, int oldJarId) {
             this.lastModified = jar.lastModified();
             this.length = jar.length();
             this.entries = entries;
+            this.oldJarId = oldJarId;
         }
 
         void close() {

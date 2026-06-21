@@ -201,12 +201,13 @@ public class BytecodeJarIndexer {
             synchronized (lock) {
                 activeConn.setAutoCommit(false);
             }
-            int jarId;
+            SqliteEntryStore.JarRegistration reg;
             synchronized (lock) {
-                jarId = SqliteEntryStore.registerJar(activeConn, rootHandle,
+                reg = SqliteEntryStore.registerJar(activeConn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
                         Runtime.version().feature(), work.fileCrc());
             }
+            int jarId = reg.jarId();
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = prepareLocked(activeConn, lock, insertSql, Statement.RETURN_GENERATED_KEYS);
                     PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql)) {
@@ -230,7 +231,7 @@ public class BytecodeJarIndexer {
                 activeConn.commit();
                 activeConn.setAutoCommit(true);
             }
-            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
+            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn), reg.oldJarId());
         } catch (IOException | SQLException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);
@@ -291,7 +292,9 @@ public class BytecodeJarIndexer {
     private static void indexZipEntry(IndexContext context, ZipEntry entry) {
         try (InputStream input = context.zip().getInputStream(entry)) {
             indexClass(context.root(), input, context.writer(), context.strings(), context.typeCategoryCache());
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException e) {
+            // RuntimeException (wrapping a failed DB write) is intentionally not caught here
+            // so it propagates to index() and aborts the transaction.
             JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
         }
     }

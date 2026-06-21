@@ -87,7 +87,7 @@ final class SqliteEntryStore implements EntryStore {
                         file_crc INTEGER NOT NULL DEFAULT 0
                     )"""); //$NON-NLS-1$
             stmt.execute("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS idx_jars
+                    CREATE INDEX IF NOT EXISTS idx_jars
                         ON jars(root_handle, path)"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS entries (
@@ -118,6 +118,9 @@ final class SqliteEntryStore implements EntryStore {
         migrate(conn, "ALTER TABLE jars ADD COLUMN runtime_version INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
         migrate(conn, "ALTER TABLE jars ADD COLUMN file_crc INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
         migrate(conn, "ALTER TABLE entries ADD COLUMN fallback_handle TEXT NOT NULL DEFAULT ''"); //$NON-NLS-1$
+        // Replace old unique index with non-unique so two rows per jar can coexist briefly during rebuild
+        migrate(conn, "DROP INDEX IF EXISTS idx_jars"); //$NON-NLS-1$
+        migrate(conn, "CREATE INDEX IF NOT EXISTS idx_jars ON jars(root_handle, path)"); //$NON-NLS-1$
     }
 
     static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys) throws SQLException {
@@ -150,6 +153,9 @@ final class SqliteEntryStore implements EntryStore {
     record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc) {
     }
 
+    record JarRegistration(int jarId, int oldJarId) {
+    }
+
     /**
      * Returns the jar id if the jar is already in the database with matching metadata,
      * or -1 if it needs (re-)indexing.
@@ -173,16 +179,24 @@ final class SqliteEntryStore implements EntryStore {
     }
 
     /**
-     * Deletes any existing record for the jar (cascades to entries) and inserts a new one.
+     * Inserts a new jar row and returns the new id together with the id of any pre-existing
+     * row for the same (root_handle, path).  The old row is intentionally left in place so
+     * searches against the still-published SqliteEntryStore continue to see valid data; the
+     * caller must delete it (via {@link #deleteJarById}) after the new index is live.
      * Must be called inside a write transaction.
      */
-    static int registerJar(Connection conn, String rootHandle, String path,
+    static JarRegistration registerJar(Connection conn, String rootHandle, String path,
             long lastModified, long fileLength, int runtimeVersion, long fileCrc) throws SQLException {
-        try (PreparedStatement del = conn.prepareStatement(
-                "DELETE FROM jars WHERE root_handle = ? AND path = ?")) { //$NON-NLS-1$
-            del.setString(1, rootHandle);
-            del.setString(2, path);
-            del.executeUpdate();
+        int oldJarId = -1;
+        try (PreparedStatement sel = conn.prepareStatement(
+                "SELECT id FROM jars WHERE root_handle = ? AND path = ?")) { //$NON-NLS-1$
+            sel.setString(1, rootHandle);
+            sel.setString(2, path);
+            try (ResultSet rs = sel.executeQuery()) {
+                if (rs.next()) {
+                    oldJarId = rs.getInt(1);
+                }
+            }
         }
         try (PreparedStatement ins = conn.prepareStatement(
                 "INSERT INTO jars(root_handle, path, last_modified, file_length, runtime_version, file_crc) VALUES(?, ?, ?, ?, ?, ?)", //$NON-NLS-1$
@@ -198,7 +212,17 @@ final class SqliteEntryStore implements EntryStore {
                 if (!keys.next()) {
                     throw new SQLException("No generated key for jar row"); //$NON-NLS-1$
                 }
-                return keys.getInt(1);
+                return new JarRegistration(keys.getInt(1), oldJarId);
+            }
+        }
+    }
+
+    static void deleteJarById(Connection conn, Object dbLock, int jarId) throws SQLException {
+        final Object lock = dbLock;
+        synchronized (lock) {
+            try (PreparedStatement del = conn.prepareStatement("DELETE FROM jars WHERE id = ?")) { //$NON-NLS-1$
+                del.setInt(1, jarId);
+                del.executeUpdate();
             }
         }
     }
