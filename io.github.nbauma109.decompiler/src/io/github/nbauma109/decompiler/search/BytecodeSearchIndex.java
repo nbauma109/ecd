@@ -225,16 +225,12 @@ public final class BytecodeSearchIndex {
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
-        try {
-            for (JarPlan plan : plans) {
-                JarIndex index = rebuild(plan, activeConn, subMonitor);
-                if (index == null) {
-                    return new RebuildResult(false, Map.of());
-                }
-                rebuilt.put(plan.key(), index);
+        for (JarPlan plan : plans) {
+            JarIndex index = rebuild(plan, activeConn, subMonitor);
+            if (index == null) {
+                return new RebuildResult(false, Map.of());
             }
-        } catch (RuntimeException e) {
-            throw e;
+            rebuilt.put(plan.key(), index);
         }
         return new RebuildResult(true, rebuilt);
     }

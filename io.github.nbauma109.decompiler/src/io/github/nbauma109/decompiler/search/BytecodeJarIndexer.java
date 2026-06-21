@@ -176,6 +176,7 @@ public class BytecodeJarIndexer {
         if (conn == null) {
             return null;
         }
+        final Object lock = dbLock;
         String rootHandle = root != null ? root.getHandleIdentifier() : ""; //$NON-NLS-1$
         Map<String, String> strings = new HashMap<>();
         String insertSql =
@@ -184,11 +185,11 @@ public class BytecodeJarIndexer {
                 "declaring_type_name,descriptor,occurrence_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
         String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
         try {
-            synchronized (dbLock) {
+            synchronized (lock) {
                 conn.setAutoCommit(false);
             }
             int jarId;
-            synchronized (dbLock) {
+            synchronized (lock) {
                 jarId = SqliteEntryStore.registerJar(conn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length());
             }
@@ -201,25 +202,25 @@ public class BytecodeJarIndexer {
                 SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
                 for (JarEntryWork entryWork : work.entries()) {
                     if (subMonitor.isCanceled()) {
-                        synchronized (dbLock) { conn.rollback(); conn.setAutoCommit(true); }
+                        synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
                         return null;
                     }
                     indexEntry(context, entryWork, subMonitor);
                 }
                 if (subMonitor.isCanceled()) {
-                    synchronized (dbLock) { conn.rollback(); conn.setAutoCommit(true); }
+                    synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
                     return null;
                 }
             }
-            synchronized (dbLock) {
+            synchronized (lock) {
                 conn.commit();
                 conn.setAutoCommit(true);
             }
-            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(conn, dbLock, jarId));
+            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(conn, lock, jarId));
         } catch (IOException | SQLException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             try {
-                synchronized (dbLock) { conn.rollback(); conn.setAutoCommit(true); }
+                synchronized (lock) { conn.rollback(); conn.setAutoCommit(true); }
             } catch (SQLException ex) {
                 Logger.debug(ex);
             }

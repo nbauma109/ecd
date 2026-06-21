@@ -36,6 +36,7 @@ final class SqliteEntryStore implements EntryStore {
     private static final String SELECT_COLS =
             "kind, declaration, access_flags, type_category, element_handle, name, " + //$NON-NLS-1$
             "qualified_name, declaring_type_name, descriptor, occurrence_count"; //$NON-NLS-1$
+    private static final String SELECT_ENTRIES_WHERE = "SELECT " + SELECT_COLS + " FROM entries WHERE "; //$NON-NLS-1$
 
     private final Connection conn;
     private final Object dbLock;
@@ -108,7 +109,8 @@ final class SqliteEntryStore implements EntryStore {
      */
     static int findJar(Connection conn, Object dbLock, String rootHandle, String path,
             long lastModified, long fileLength) throws SQLException {
-        synchronized (dbLock) {
+        final Object lock = dbLock;
+        synchronized (lock) {
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT id FROM jars WHERE root_handle = ? AND path = ? AND last_modified = ? AND file_length = ?")) { //$NON-NLS-1$
                 ps.setString(1, rootHandle);
@@ -188,7 +190,7 @@ final class SqliteEntryStore implements EntryStore {
     }
 
     private void collectAll(Kind kind, EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
-        String sql = "SELECT " + SELECT_COLS + " FROM entries WHERE jar_id = ? AND kind = ?"; //$NON-NLS-1$ //$NON-NLS-2$
+        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ?"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -203,7 +205,7 @@ final class SqliteEntryStore implements EntryStore {
         if (StringUtils.isBlank(normName)) {
             return;
         }
-        String sql = "SELECT " + SELECT_COLS + " FROM entries WHERE jar_id = ? AND kind = ? AND normalized_name = ?"; //$NON-NLS-1$ //$NON-NLS-2$
+        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND normalized_name = ?"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -229,8 +231,7 @@ final class SqliteEntryStore implements EntryStore {
             collectByName(kind, normName, consumer);
             return;
         }
-        String sql = "SELECT " + SELECT_COLS + //$NON-NLS-1$
-                " FROM entries WHERE jar_id = ? AND kind = ? AND (normalized_name = ? OR normalized_qualified_name = ?)"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND (normalized_name = ? OR normalized_qualified_name = ?)"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -244,8 +245,7 @@ final class SqliteEntryStore implements EntryStore {
 
     private void collectByQName(Kind kind, String normQName, EntryStore.EntryConsumer consumer)
             throws SQLException, CoreException {
-        String sql = "SELECT " + SELECT_COLS + //$NON-NLS-1$
-                " FROM entries WHERE jar_id = ? AND kind = ? AND normalized_qualified_name = ?"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND normalized_qualified_name = ?"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);

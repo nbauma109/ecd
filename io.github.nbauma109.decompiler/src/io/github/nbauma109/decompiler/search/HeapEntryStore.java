@@ -201,21 +201,18 @@ final class HeapEntryStore implements EntryStore {
         String normName = normalize(name);
         String normQName = normalize(qualifiedName);
         for (int i = 0; i < kindAndFlags.length; i++) {
-            Kind k = Kind.values()[kindAndFlags[i] & 0x0F];
-            if (k != kind) {
-                continue;
+            if (Kind.values()[kindAndFlags[i] & 0x0F] == kind && (wildcard || matchesEntry(i, normName, normQName))) {
+                consumer.accept(entry(i));
             }
-            if (!wildcard) {
-                boolean matches = !normName.isEmpty() && normName.equals(normalize(string(nameIds[i])));
-                if (!matches && !normQName.isEmpty() && !normQName.equals(normName)) {
-                    matches = normQName.equals(normalize(string(qualifiedNameIds[i])));
-                }
-                if (!matches) {
-                    continue;
-                }
-            }
-            consumer.accept(entry(i));
         }
+    }
+
+    private boolean matchesEntry(int i, String normName, String normQName) {
+        if (!normName.isEmpty() && normName.equals(normalize(string(nameIds[i])))) {
+            return true;
+        }
+        return !normQName.isEmpty() && !normQName.equals(normName)
+                && normQName.equals(normalize(string(qualifiedNameIds[i])));
     }
 
     private static String normalize(String s) {
