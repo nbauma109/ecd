@@ -13,6 +13,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
@@ -137,7 +138,8 @@ final class SqliteEntryStore implements EntryStore {
             del.executeUpdate();
         }
         try (PreparedStatement ins = conn.prepareStatement(
-                "INSERT INTO jars(root_handle, path, last_modified, file_length) VALUES(?, ?, ?, ?)")) { //$NON-NLS-1$
+                "INSERT INTO jars(root_handle, path, last_modified, file_length) VALUES(?, ?, ?, ?)", //$NON-NLS-1$
+                Statement.RETURN_GENERATED_KEYS)) {
             ins.setString(1, rootHandle);
             ins.setString(2, path);
             ins.setLong(3, lastModified);

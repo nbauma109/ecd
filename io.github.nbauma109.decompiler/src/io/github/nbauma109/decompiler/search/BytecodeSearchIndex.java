@@ -116,7 +116,7 @@ public final class BytecodeSearchIndex {
             indexJob.cancel();
             indexJob = null;
         }
-        indexes.getAndSet(Collections.emptyMap());
+        indexes.getAndSet(Collections.emptyMap()).values().forEach(JarIndex::close);
         refreshCompleted.set(false);
         refreshRequested = false;
         synchronized (dbLock) {
@@ -205,6 +205,8 @@ public final class BytecodeSearchIndex {
                 return;
             }
             publish(rebuilt.indexes());
+        } catch (OperationCanceledException e) {
+            // normal job cancellation; nothing to log
         } catch (CoreException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index application library bytecode"); //$NON-NLS-1$
         } finally {
@@ -225,12 +227,18 @@ public final class BytecodeSearchIndex {
         SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
                 totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
-        for (JarPlan plan : plans) {
-            JarIndex index = rebuild(plan, activeConn, subMonitor);
-            if (index == null) {
-                return new RebuildResult(false, Map.of());
+        try {
+            for (JarPlan plan : plans) {
+                JarIndex index = rebuild(plan, activeConn, subMonitor);
+                if (index == null) {
+                    rebuilt.values().forEach(JarIndex::close);
+                    return new RebuildResult(false, Map.of());
+                }
+                rebuilt.put(plan.key(), index);
             }
-            rebuilt.put(plan.key(), index);
+        } catch (RuntimeException e) {
+            rebuilt.values().forEach(JarIndex::close);
+            throw e;
         }
         return new RebuildResult(true, rebuilt);
     }
@@ -257,6 +265,7 @@ public final class BytecodeSearchIndex {
         JarIndex index = BytecodeJarIndexer.index(plan.root(), jar, plan.work(), activeConn, dbLock,
                 subMonitor.split(plan.ticks()));
         if (index != null && subMonitor.isCanceled()) {
+            index.close();
             return null;
         }
         return index;
@@ -268,8 +277,10 @@ public final class BytecodeSearchIndex {
 
     private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
         if (started.get()) {
-            indexes.getAndSet(Collections.unmodifiableMap(rebuilt));
+            indexes.getAndSet(Collections.unmodifiableMap(rebuilt)).values().forEach(JarIndex::close);
             refreshCompleted.set(true);
+        } else {
+            rebuilt.values().forEach(JarIndex::close);
         }
     }
 
