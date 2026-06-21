@@ -83,6 +83,7 @@ public final class BytecodeSearchIndex {
     private boolean refreshRequested;
     private Job indexJob;
     private Connection conn;
+    private int generation = 0;
 
     private BytecodeSearchIndex() {
     }
@@ -115,6 +116,7 @@ public final class BytecodeSearchIndex {
         }
         JavaCore.removeElementChangedListener(classpathListener);
         started.set(false);
+        generation++;
         if (indexJob != null) {
             indexJob.cancel();
             indexJob = null;
@@ -199,6 +201,10 @@ public final class BytecodeSearchIndex {
     }
 
     private void refresh(IProgressMonitor monitor) {
+        int myGeneration;
+        synchronized (this) {
+            myGeneration = generation;
+        }
         boolean scheduleAgain;
         try {
             Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
@@ -208,7 +214,7 @@ public final class BytecodeSearchIndex {
                 return;
             }
             pruneOrphanJarRows(plans);
-            publish(rebuilt.indexes());
+            publish(rebuilt.indexes(), myGeneration);
         } catch (OperationCanceledException e) {
             // normal job cancellation; nothing to log
         } catch (CoreException | RuntimeException e) {
@@ -299,8 +305,8 @@ public final class BytecodeSearchIndex {
         return conn;
     }
 
-    private synchronized void publish(Map<RootKey, JarIndex> rebuilt) {
-        if (started.get()) {
+    private synchronized void publish(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
+        if (started.get() && generation == myGeneration) {
             Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
             kept.addAll(rebuilt.values());
             indexes.getAndSet(Collections.unmodifiableMap(rebuilt)).values().stream()

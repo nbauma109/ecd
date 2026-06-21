@@ -207,10 +207,14 @@ public class BytecodeJarIndexer {
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
                         Runtime.version().feature(), work.fileCrc());
             }
-            try (ZipFile zip = new ZipFile(jar);
-                    PreparedStatement insertPs = activeConn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
-                    PreparedStatement updatePs = activeConn.prepareStatement(updateSql)) {
-                EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs);
+            final PreparedStatement insertPs;
+            final PreparedStatement updatePs;
+            synchronized (lock) {
+                insertPs = activeConn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
+                updatePs = activeConn.prepareStatement(updateSql);
+            }
+            try (ZipFile zip = new ZipFile(jar); insertPs; updatePs) {
+                EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs, lock);
                 Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
                 IndexContext context = new IndexContext(root, jar, zip, writer, strings, typeCategoryCache);
                 SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
@@ -1809,12 +1813,14 @@ public class BytecodeJarIndexer {
         private final int jarId;
         private final PreparedStatement insertPs;
         private final PreparedStatement updatePs;
+        private final Object lock;
         final Map<EntryKey, Long> seen = new HashMap<>();
 
-        EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs) {
+        EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs, Object lock) {
             this.jarId = jarId;
             this.insertPs = insertPs;
             this.updatePs = updatePs;
+            this.lock = lock;
         }
 
         long insert(BytecodeSearchEntry entry, int count) throws SQLException {
@@ -1832,15 +1838,19 @@ public class BytecodeJarIndexer {
             insertPs.setString(12, nullToEmpty(entry.getDescriptor()));
             insertPs.setInt(13, count);
             insertPs.setString(14, fallbackHandle(entry));
-            insertPs.executeUpdate();
-            try (ResultSet keys = insertPs.getGeneratedKeys()) {
-                return keys.next() ? keys.getLong(1) : -1L;
+            synchronized (lock) {
+                insertPs.executeUpdate();
+                try (ResultSet keys = insertPs.getGeneratedKeys()) {
+                    return keys.next() ? keys.getLong(1) : -1L;
+                }
             }
         }
 
         void incrementCount(long rowId) throws SQLException {
             updatePs.setLong(1, rowId);
-            updatePs.executeUpdate();
+            synchronized (lock) {
+                updatePs.executeUpdate();
+            }
         }
 
         private static String fallbackHandle(BytecodeSearchEntry entry) {
