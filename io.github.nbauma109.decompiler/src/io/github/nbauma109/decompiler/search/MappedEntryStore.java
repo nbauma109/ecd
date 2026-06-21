@@ -76,9 +76,8 @@ import io.github.nbauma109.decompiler.util.Logger;
  *   byte[]             handle UTF-8 data (all handles concatenated)
  * </pre>
  *
- * JARs whose entries contain {@code [~} anonymous element handles are not cached here;
- * {@link BytecodeSearchIndex.JarIndex#createEntryStore} skips the mapped path for those
- * so that live {@link org.eclipse.jdt.core.IJavaElement} fallbacks are preserved in {@link HeapEntryStore}.
+ * All JARs are indexed here. Entries with {@code [~} anonymous element handles are stored
+ * with a {@code null} {@link org.eclipse.jdt.core.IJavaElement} fallback.
  */
 final class MappedEntryStore implements EntryStore {
 

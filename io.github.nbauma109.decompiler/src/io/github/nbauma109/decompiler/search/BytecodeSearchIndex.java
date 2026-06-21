@@ -417,7 +417,6 @@ public final class BytecodeSearchIndex {
     public static final class JarIndex {
 
         private static final int[] EMPTY_POSTINGS = new int[0];
-        private static long MAPPED_THRESHOLD = 32L * 1024L * 1024L;
 
         private final long lastModified;
         private final long length;
@@ -552,8 +551,7 @@ public final class BytecodeSearchIndex {
 
         private static EntryStore createEntryStore(File jar, Path cacheDir,
                 List<BytecodeSearchEntry> entries, int[] counts, String rootHandle) {
-            if (cacheDir != null && rootHandle != null && estimateBytes(entries) > MAPPED_THRESHOLD
-                    && !hasAnonymousHandles(entries)) {
+            if (cacheDir != null && rootHandle != null) {
                 Path segmentFile = MappedEntryStore.segmentPath(cacheDir, jar, rootHandle);
                 try {
                     return MappedEntryStore.openOrCreate(jar, cacheDir, entries, counts, rootHandle);
@@ -566,31 +564,6 @@ public final class BytecodeSearchIndex {
             return HeapEntryStore.from(entries, counts);
         }
 
-        private static boolean hasAnonymousHandles(List<BytecodeSearchEntry> entries) {
-            for (BytecodeSearchEntry e : entries) {
-                String h = e.getElementHandle();
-                if (h != null && h.contains("[~")) { //$NON-NLS-1$
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static long estimateBytes(List<BytecodeSearchEntry> entries) {
-            long total = entries.size() * 26L; // column bytes per entry
-            for (BytecodeSearchEntry e : entries) {
-                total += stringEstimate(e.getName());
-                total += stringEstimate(e.getQualifiedName());
-                total += stringEstimate(e.getDeclaringTypeName());
-                total += stringEstimate(e.getDescriptor());
-                total += stringEstimate(e.getElementHandle());
-            }
-            return total;
-        }
-
-        private static long stringEstimate(String s) {
-            return s == null ? 0L : 48L + s.length() * 2L;
-        }
 
         private static final class IntPostings {
 

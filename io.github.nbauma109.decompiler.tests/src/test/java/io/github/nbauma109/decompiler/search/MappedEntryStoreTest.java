@@ -67,13 +67,10 @@ public class MappedEntryStoreTest {
 
     // BytecodeSearchIndex.JarIndex reflection handles
     private static final Constructor<?> JAR_INDEX_CTOR;
-    private static final Field MAPPED_THRESHOLD_FIELD;
     private static final Method JAR_INDEX_CLOSE;
     private static final Method JAR_INDEX_MATCHES;
     private static final Method JAR_INDEX_ENTRY_COUNT;
     private static final Field JAR_INDEX_ENTRIES;
-    private static final Method ESTIMATE_BYTES;
-    private static final Method STRING_ESTIMATE;
 
     static {
         try {
@@ -116,8 +113,6 @@ public class MappedEntryStoreTest {
             JAR_INDEX_CTOR = jarIndexClass.getDeclaredConstructor(
                     File.class, Path.class, String.class, List.class, int[].class);
             JAR_INDEX_CTOR.setAccessible(true);
-            MAPPED_THRESHOLD_FIELD = jarIndexClass.getDeclaredField("MAPPED_THRESHOLD"); //$NON-NLS-1$
-            MAPPED_THRESHOLD_FIELD.setAccessible(true);
             JAR_INDEX_CLOSE = jarIndexClass.getDeclaredMethod("close"); //$NON-NLS-1$
             JAR_INDEX_CLOSE.setAccessible(true);
             JAR_INDEX_MATCHES = jarIndexClass.getDeclaredMethod("matches", File.class); //$NON-NLS-1$
@@ -126,10 +121,6 @@ public class MappedEntryStoreTest {
             JAR_INDEX_ENTRY_COUNT.setAccessible(true);
             JAR_INDEX_ENTRIES = jarIndexClass.getDeclaredField("entries"); //$NON-NLS-1$
             JAR_INDEX_ENTRIES.setAccessible(true);
-            ESTIMATE_BYTES = jarIndexClass.getDeclaredMethod("estimateBytes", List.class); //$NON-NLS-1$
-            ESTIMATE_BYTES.setAccessible(true);
-            STRING_ESTIMATE = jarIndexClass.getDeclaredMethod("stringEstimate", String.class); //$NON-NLS-1$
-            STRING_ESTIMATE.setAccessible(true);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -254,13 +245,6 @@ public class MappedEntryStoreTest {
         return JAR_INDEX_ENTRIES.get(index);
     }
 
-    private long estimateBytes(List<BytecodeSearchEntry> entries) throws ReflectiveOperationException {
-        return (long) ESTIMATE_BYTES.invoke(null, entries);
-    }
-
-    private long stringEstimate(String s) throws ReflectiveOperationException {
-        return (long) STRING_ESTIMATE.invoke(null, s);
-    }
 
     /** Builds a 124-byte (HEADER_SIZE) big-endian header for pre-creating test segment files. */
     private static byte[] buildFakeHeader(int magic, int version, long lastModified, long jarLength) {
@@ -643,29 +627,16 @@ public class MappedEntryStoreTest {
     // -------------------------------------------------------------------------
 
     @Test
-    public void stringEstimateReturnsZeroForNull() throws Exception {
-        assertEquals(0L, stringEstimate(null));
-        assertEquals(48L + (long) "hello".length() * 2L, stringEstimate("hello")); //$NON-NLS-1$
-    }
-
-    @Test
-    public void estimateBytesReturnsPositiveValue() throws Exception {
-        List<BytecodeSearchEntry> entries = List.of(
-                makeEntry("Foo", "com.Foo", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
-        assertTrue(estimateBytes(entries) > 0);
-    }
-
-    @Test
-    public void jarIndexWithSmallJarUsesHeapStore() throws Exception {
-        // Estimate is small → createEntryStore picks HeapEntryStore; covers estimateBytes() call path
+    public void jarIndexWithCacheDirUsesMappedStore() throws Exception {
+        // Any jar with a cacheDir goes file-based, regardless of size.
         List<BytecodeSearchEntry> entries = List.of(
                 makeEntry("Small", "com.Small", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
         Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, entries, counts);
         try {
+            assertTrue("With cacheDir: must use MappedEntryStore", STORE_CLASS.isInstance(jarIndexEntries(jarIndex))); //$NON-NLS-1$
             assertEquals(1, jarIndexEntryCount(jarIndex));
-            assertFalse("Small jar should use HeapEntryStore", STORE_CLASS.isInstance(jarIndexEntries(jarIndex))); //$NON-NLS-1$
             assertTrue(jarIndexMatches(jarIndex, fakeJar));
         } finally {
             jarIndexClose(jarIndex);
@@ -673,25 +644,18 @@ public class MappedEntryStoreTest {
     }
 
     @Test
-    public void jarIndexUsesMappedStoreWhenAboveThreshold() throws Exception {
-        // Temporarily lower MAPPED_THRESHOLD to 0 so any estimate triggers the mapped path
+    public void jarIndexWithNoCacheDirUsesHeapStore() throws Exception {
+        // Without a cacheDir the mapped path is unavailable; fall back to heap.
         List<BytecodeSearchEntry> entries = List.of(
-                makeEntry("BigClass", "com.BigClass", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
+                makeEntry("NoCacheDir", "com.NoCacheDir", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        long old = MAPPED_THRESHOLD_FIELD.getLong(null);
-        MAPPED_THRESHOLD_FIELD.setLong(null, 0L);
+        Object jarIndex = newJarIndex(fakeJar, null, ROOT_HANDLE, entries, counts);
         try {
-            Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, entries, counts);
-            try {
-                assertTrue("Above threshold: should use MappedEntryStore", //$NON-NLS-1$
-                        STORE_CLASS.isInstance(jarIndexEntries(jarIndex)));
-                assertEquals(1, jarIndexEntryCount(jarIndex));
-            } finally {
-                jarIndexClose(jarIndex);
-            }
+            assertFalse("Without cacheDir: must use HeapEntryStore", STORE_CLASS.isInstance(jarIndexEntries(jarIndex))); //$NON-NLS-1$
+            assertEquals(1, jarIndexEntryCount(jarIndex));
         } finally {
-            MAPPED_THRESHOLD_FIELD.setLong(null, old);
+            jarIndexClose(jarIndex);
         }
     }
 
@@ -804,35 +768,29 @@ public class MappedEntryStoreTest {
     }
 
     @Test
-    public void anonymousHandleEntryFallsBackToHeapStore() throws Exception {
-        // An entry whose element handle contains [~ cannot have its live IJavaElement fallback
-        // serialized; openOrCreate() should throw so the caller uses HeapEntryStore.
+    public void anonymousHandleEntryUsesMappedStore() throws Exception {
+        // [~ anonymous handles are stored in MappedEntryStore with a null IJavaElement fallback;
+        // this prevents OOM when large JARs contain anonymous class members.
         BytecodeSearchEntry anonEntry = new BytecodeSearchEntry(Kind.TYPE, true,
                 BytecodeSearchEntry.elementReference("=Proj/rt.jar<com.example{Foo.java[Foo[~Foo$1", null), //$NON-NLS-1$
                 BytecodeSearchEntry.symbolReference("Foo$1", "com.example.Foo$1", "com.example", null), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                 Access.NONE, TypeCategory.CLASS);
         int[] counts = {1};
 
-        long old = MAPPED_THRESHOLD_FIELD.getLong(null);
-        MAPPED_THRESHOLD_FIELD.setLong(null, 0L);
+        Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, List.of(anonEntry), counts);
         try {
-            Object jarIndex = newJarIndex(fakeJar, cacheDir, ROOT_HANDLE, List.of(anonEntry), counts);
-            try {
-                assertFalse("Entry with [~ handle must fall back to HeapEntryStore", //$NON-NLS-1$
-                        STORE_CLASS.isInstance(jarIndexEntries(jarIndex)));
-                assertEquals(1, jarIndexEntryCount(jarIndex));
-            } finally {
-                jarIndexClose(jarIndex);
-            }
+            assertTrue("Entry with [~ handle must use MappedEntryStore", //$NON-NLS-1$
+                    STORE_CLASS.isInstance(jarIndexEntries(jarIndex)));
+            assertEquals(1, jarIndexEntryCount(jarIndex));
         } finally {
-            MAPPED_THRESHOLD_FIELD.setLong(null, old);
+            jarIndexClose(jarIndex);
         }
     }
 
     @Test
     public void jarIndexFallsBackToHeapOnMappedStoreFailure() throws Exception {
-        // Non-existent parent dir → openOrCreate() throws NoSuchFileException →
-        // createEntryStore() catches it and falls back to HeapEntryStore
+        // Non-existent cache sub-directory → openOrCreate() throws NoSuchFileException →
+        // createEntryStore() catches it and falls back to HeapEntryStore.
         Path parentDir = Files.createTempDirectory("bsix-parent"); //$NON-NLS-1$
         Path badCacheDir = parentDir.resolve("sub"); // sub directory does not exist //$NON-NLS-1$
 
@@ -840,8 +798,6 @@ public class MappedEntryStoreTest {
                 makeEntry("Fallback", "com.Fallback", "com", Kind.TYPE, Access.NONE, TypeCategory.CLASS));
         int[] counts = {1};
 
-        long old = MAPPED_THRESHOLD_FIELD.getLong(null);
-        MAPPED_THRESHOLD_FIELD.setLong(null, 0L);
         try {
             Object jarIndex = newJarIndex(fakeJar, badCacheDir, ROOT_HANDLE, entries, counts);
             try {
@@ -852,7 +808,6 @@ public class MappedEntryStoreTest {
                 jarIndexClose(jarIndex);
             }
         } finally {
-            MAPPED_THRESHOLD_FIELD.setLong(null, old);
             Files.deleteIfExists(parentDir);
         }
     }
