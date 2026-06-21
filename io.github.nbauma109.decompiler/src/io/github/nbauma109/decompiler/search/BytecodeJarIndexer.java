@@ -11,6 +11,7 @@ package io.github.nbauma109.decompiler.search;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,7 +19,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -91,25 +95,23 @@ public class BytecodeJarIndexer {
             Map<String, EffectiveClassEntry> effectiveEntries = new LinkedHashMap<>();
             boolean multiRelease = isMultiReleaseJar(zip);
             int runtimeFeatureVersion = Runtime.version().feature();
-            long fileCrc = 0L;
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
-                fileCrc += entry.getCrc();
                 EffectiveClassEntry candidate = effectiveClassEntry(entry, multiRelease, runtimeFeatureVersion);
                 if (candidate != null) {
                     effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
-            return jarWork(effectiveEntries.values(), fileCrc);
+            return jarWork(effectiveEntries.values());
         } catch (IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }
     }
 
-    private static JarWork jarWork(Iterable<EffectiveClassEntry> effectiveEntries, long fileCrc) {
-        List<JarEntryWork> entries = new ArrayList<>();
+    private static JarWork jarWork(Collection<EffectiveClassEntry> effectiveEntries) {
+        List<JarEntryWork> entries = new ArrayList<>(effectiveEntries.size());
         long totalImpact = 0L;
         long totalTicks = 0L;
         for (EffectiveClassEntry entry : effectiveEntries) {
@@ -117,7 +119,19 @@ public class BytecodeJarIndexer {
             totalTicks = Math.clamp(totalTicks + entry.ticks(), 0L, Integer.MAX_VALUE);
             entries.add(new JarEntryWork(entry.entryName(), entry.impactBytes(), entry.ticks()));
         }
-        return new JarWork(entries, totalImpact, (int) totalTicks, fileCrc);
+        // Ordered fingerprint: sorted by logicalName so swapped or renamed entries produce a different hash
+        List<EffectiveClassEntry> sorted = new ArrayList<>(effectiveEntries);
+        sorted.sort(Comparator.comparing(EffectiveClassEntry::logicalName));
+        CRC32 fingerprint = new CRC32();
+        ByteBuffer buf = ByteBuffer.allocate(16);
+        for (EffectiveClassEntry entry : sorted) {
+            fingerprint.update(entry.logicalName().getBytes(StandardCharsets.UTF_8));
+            buf.clear();
+            buf.putLong(entry.impactBytes());
+            buf.putLong(entry.entryCrc());
+            fingerprint.update(buf.array());
+        }
+        return new JarWork(entries, totalImpact, (int) totalTicks, fingerprint.getValue());
     }
 
     private static boolean isMultiReleaseJar(ZipFile zip) throws IOException {
@@ -150,7 +164,7 @@ public class BytecodeJarIndexer {
     private static EffectiveClassEntry newEffectiveClassEntry(String logicalName, String entryName, int version,
             ZipEntry entry) {
         long impact = entryImpactBytes(entry);
-        return new EffectiveClassEntry(logicalName, entryName, version, impact, impactTicks(impact));
+        return new EffectiveClassEntry(logicalName, entryName, version, impact, impactTicks(impact), entry.getCrc());
     }
 
     private static VersionedClassName versionedClassName(String entryName) {
@@ -173,6 +187,27 @@ public class BytecodeJarIndexer {
         }
     }
 
+    private static BytecodeSearchIndex.JarIndex indexToHeap(IPackageFragmentRoot root, File jar, JarWork work,
+            IProgressMonitor monitor) {
+        SubMonitor subMonitor = SubMonitor.convert(monitor, jar.getName(), work.totalTicks());
+        EntryWriter heapWriter = new EntryWriter();
+        try (ZipFile zip = new ZipFile(jar)) {
+            Map<String, String> strings = new HashMap<>();
+            IndexContext context = new IndexContext(root, jar, zip, heapWriter, strings, new HashMap<>());
+            for (JarEntryWork entryWork : work.entries()) {
+                if (subMonitor.isCanceled()) {
+                    return null;
+                }
+                indexEntry(context, entryWork, subMonitor);
+            }
+        } catch (IOException | RuntimeException e) {
+            JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            return null;
+        }
+        HeapEntryStore store = heapWriter.buildHeapStore();
+        return new BytecodeSearchIndex.JarIndex(jar, store);
+    }
+
     public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
             Connection conn, Object dbLock, IProgressMonitor monitor) {
         final boolean ownsConn = conn == null;
@@ -182,8 +217,8 @@ public class BytecodeJarIndexer {
             try {
                 activeConn = SqliteEntryStore.openInMemoryDatabase();
             } catch (SQLException e) {
-                JavaDecompilerPlugin.logError(e, "Failed to create in-memory index for " + jar.getAbsolutePath()); //$NON-NLS-1$
-                return null;
+                Logger.debug(e);
+                return indexToHeap(root, jar, work, monitor); // SQLite driver unavailable; fall back to heap
             }
             lock = new Object();
         } else {
@@ -1835,15 +1870,43 @@ public class BytecodeJarIndexer {
         private final PreparedStatement updatePs;
         private final Object lock;
         final Map<EntryKey, Long> seen = new HashMap<>();
+        // heap mode — non-null only when SQLite is unavailable
+        private final List<BytecodeSearchEntry> heapEntries;
+        private final List<Integer> heapCounts;
 
         EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs, Object lock) {
             this.jarId = jarId;
             this.insertPs = insertPs;
             this.updatePs = updatePs;
             this.lock = lock;
+            this.heapEntries = null;
+            this.heapCounts = null;
+        }
+
+        EntryWriter() {
+            this.jarId = -1;
+            this.insertPs = null;
+            this.updatePs = null;
+            this.lock = null;
+            this.heapEntries = new ArrayList<>();
+            this.heapCounts = new ArrayList<>();
+        }
+
+        HeapEntryStore buildHeapStore() {
+            if (heapEntries == null) {
+                return null;
+            }
+            int[] counts = heapCounts.stream().mapToInt(Integer::intValue).toArray();
+            return HeapEntryStore.from(heapEntries, counts);
         }
 
         long insert(BytecodeSearchEntry entry, int count) throws SQLException {
+            if (heapEntries != null) {
+                int idx = heapEntries.size();
+                heapEntries.add(entry);
+                heapCounts.add(count);
+                return idx;
+            }
             insertPs.setInt(1, jarId);
             insertPs.setInt(2, entry.getKind().ordinal());
             insertPs.setInt(3, entry.isDeclaration() ? 1 : 0);
@@ -1867,6 +1930,11 @@ public class BytecodeJarIndexer {
         }
 
         void incrementCount(long rowId) throws SQLException {
+            if (heapCounts != null) {
+                int idx = (int) rowId;
+                heapCounts.set(idx, heapCounts.get(idx) + 1);
+                return;
+            }
             updatePs.setLong(1, rowId);
             synchronized (lock) {
                 updatePs.executeUpdate();
@@ -1897,7 +1965,8 @@ public class BytecodeJarIndexer {
     private record VersionedClassName(String logicalName, int version) {
     }
 
-    private record EffectiveClassEntry(String logicalName, String entryName, int version, long impactBytes, int ticks) {
+    private record EffectiveClassEntry(String logicalName, String entryName, int version, long impactBytes, int ticks,
+            long entryCrc) {
 
         private static EffectiveClassEntry newer(EffectiveClassEntry left, EffectiveClassEntry right) {
             return left.version() >= right.version() ? left : right;
