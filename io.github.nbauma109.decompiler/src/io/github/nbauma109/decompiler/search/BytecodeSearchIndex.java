@@ -114,29 +114,42 @@ public final class BytecodeSearchIndex {
         scheduleRefresh(STARTUP_DELAY);
     }
 
-    public synchronized void stop() {
-        if (!started.get()) {
-            return;
-        }
-        JavaCore.removeElementChangedListener(classpathListener);
-        started.set(false);
-        generation++;
-        if (indexJob != null) {
-            indexJob.cancel();
-            indexJob = null;
-        }
-        indexes.getAndSet(Collections.emptyMap()).values().forEach(JarIndex::close);
-        refreshCompleted.set(false);
-        refreshRequested = false;
-        synchronized (dbLock) {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    Logger.debug(e);
-                }
-                conn = null;
+    public void stop() {
+        Map<RootKey, JarIndex> oldMap;
+        Connection connToClose;
+        synchronized (this) {
+            if (!started.get()) {
+                return;
             }
+            JavaCore.removeElementChangedListener(classpathListener);
+            started.set(false);
+            generation++;
+            if (indexJob != null) {
+                indexJob.cancel();
+                indexJob = null;
+            }
+            oldMap = indexes.getAndSet(Collections.emptyMap());
+            refreshCompleted.set(false);
+            refreshRequested = false;
+            connToClose = conn;
+            conn = null;
+        }
+        // Close stores and connection under write lock so any in-flight forEachEntry()
+        // search finishes before its SqliteEntryStore (or owned connection) is torn down.
+        searchLock.writeLock().lock();
+        try {
+            oldMap.values().forEach(JarIndex::close);
+            if (connToClose != null) {
+                synchronized (dbLock) {
+                    try {
+                        connToClose.close();
+                    } catch (SQLException e) {
+                        Logger.debug(e);
+                    }
+                }
+            }
+        } finally {
+            searchLock.writeLock().unlock();
         }
     }
 
