@@ -213,8 +213,9 @@ public final class BytecodeSearchIndex {
             if (!rebuilt.completed()) {
                 return;
             }
-            publish(rebuilt.indexes(), myGeneration);
-            pruneOrphanJarRows(plans);
+            if (publish(rebuilt.indexes(), myGeneration)) {
+                pruneOrphanJarRows(plans);
+            }
         } catch (OperationCanceledException e) {
             // normal job cancellation; nothing to log
         } catch (CoreException | RuntimeException e) {
@@ -305,7 +306,7 @@ public final class BytecodeSearchIndex {
         return conn;
     }
 
-    private synchronized void publish(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
+    private synchronized boolean publish(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
         if (started.get() && generation == myGeneration) {
             Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
             kept.addAll(rebuilt.values());
@@ -316,8 +317,10 @@ public final class BytecodeSearchIndex {
             // Superseded jar rows (old id for same path) are cleaned up by
             // pruneOrphanJarRows() after this method returns, once all in-flight
             // searches using the old snapshot have completed.
+            return true;
         } else {
             rebuilt.values().forEach(JarIndex::close);
+            return false;
         }
     }
 
