@@ -63,8 +63,8 @@ public class ApplicationLibrarySearchParticipant implements IQueryParticipant {
         Set<String> registeredHandles = new HashSet<>();
         if (searchResult != null) {
             for (Object obj : searchResult.getElements()) {
-                if (obj instanceof BytecodeSearchElement bse) {
-                    registeredHandles.add(bse.getEntry().getElementHandle());
+                if (obj instanceof BytecodeSearchElement base) {
+                    registeredHandles.add(base.getEntry().getElementHandle());
                 }
             }
         }
