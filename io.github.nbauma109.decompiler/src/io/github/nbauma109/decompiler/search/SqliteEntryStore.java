@@ -34,15 +34,32 @@ import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
  * Entry store backed by a shared SQLite database.
  * All data (rows and indexes) live on disk; RAM usage is limited to JDBC query results.
  * The connection is owned by {@link BytecodeSearchIndex} and must not be closed here.
+ *
+ * <p>All repeated strings (names, descriptors, element handles, etc.) are stored once in
+ * the {@code strings} table and referenced by integer id in {@code entries}, which keeps
+ * the entries table compact even when the same string appears in millions of rows.
  */
 final class SqliteEntryStore implements EntryStore {
 
     static final String PLUGIN_ID = "io.github.nbauma109.decompiler"; //$NON-NLS-1$
 
+    // Columns returned by every SELECT on entries (table alias e, strings aliases s_*).
+    // Order must match rowToEntry() column positions 1..11.
     private static final String SELECT_COLS =
-            "kind, declaration, access_flags, type_category, element_handle, name, " + //$NON-NLS-1$
-            "qualified_name, declaring_type_name, descriptor, occurrence_count, fallback_handle"; //$NON-NLS-1$
-    private static final String SELECT_ENTRIES_WHERE = "SELECT " + SELECT_COLS + " FROM entries WHERE "; //$NON-NLS-1$
+            "e.kind, e.declaration, e.access_flags, e.type_category, " + //$NON-NLS-1$
+            "s_eh.value, s_nm.value, s_qn.value, s_dt.value, s_ds.value, e.occurrence_count, s_fb.value"; //$NON-NLS-1$
+
+    private static final String SELECT_FROM =
+            "FROM entries e " + //$NON-NLS-1$
+            "LEFT JOIN strings s_eh ON s_eh.id = e.element_handle_id " + //$NON-NLS-1$
+            "LEFT JOIN strings s_nm ON s_nm.id = e.name_id " + //$NON-NLS-1$
+            "LEFT JOIN strings s_qn ON s_qn.id = e.qualified_name_id " + //$NON-NLS-1$
+            "LEFT JOIN strings s_dt ON s_dt.id = e.declaring_type_name_id " + //$NON-NLS-1$
+            "LEFT JOIN strings s_ds ON s_ds.id = e.descriptor_id " + //$NON-NLS-1$
+            "LEFT JOIN strings s_fb ON s_fb.id = e.fallback_handle_id"; //$NON-NLS-1$
+
+    private static final String SELECT_ENTRIES_WHERE =
+            "SELECT " + SELECT_COLS + " " + SELECT_FROM + " WHERE "; //$NON-NLS-1$ //$NON-NLS-2$
 
     private final Connection conn;
     private final Object dbLock;
@@ -78,6 +95,32 @@ final class SqliteEntryStore implements EntryStore {
             stmt.execute("PRAGMA journal_mode=WAL"); //$NON-NLS-1$
             stmt.execute("PRAGMA synchronous=NORMAL"); //$NON-NLS-1$
             stmt.execute("PRAGMA foreign_keys=ON"); //$NON-NLS-1$
+            // New databases get full auto-vacuum so freed pages are returned to the OS
+            // automatically after each DELETE/prune. For existing databases VACUUM is
+            // needed to activate the mode (handled by BytecodeSearchIndex.vacuumIfNeeded).
+            stmt.execute("PRAGMA auto_vacuum = FULL"); //$NON-NLS-1$
+        }
+        // Detect old schema (text columns in entries) and drop everything so the
+        // normalised schema is created fresh. All jars are re-indexed automatically.
+        if (hasColumn(conn, "entries", "normalized_name")) { //$NON-NLS-1$ //$NON-NLS-2$
+            try (var s = conn.createStatement()) {
+                s.execute("DROP TABLE IF EXISTS entries"); //$NON-NLS-1$
+                s.execute("DROP TABLE IF EXISTS jars"); //$NON-NLS-1$
+                s.execute("DROP TABLE IF EXISTS strings"); //$NON-NLS-1$
+            }
+        }
+        try (var stmt = conn.createStatement()) {
+            // Deduplicated string pool: every repeated text value is stored exactly once.
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS strings (
+                        id INTEGER PRIMARY KEY,
+                        value TEXT NOT NULL UNIQUE
+                    )"""); //$NON-NLS-1$
+            // Expression index enables case-insensitive lookup without storing a
+            // separate normalised column.
+            stmt.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_strings_lower
+                        ON strings(LOWER(value))"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS jars (
                         id INTEGER PRIMARY KEY,
@@ -91,6 +134,8 @@ final class SqliteEntryStore implements EntryStore {
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_jars
                         ON jars(root_handle, path)"""); //$NON-NLS-1$
+            // entries uses integer ids into strings instead of storing text inline,
+            // cutting per-row size from ~280 bytes (7 text columns) to ~56 bytes (7 ints).
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS entries (
                         id INTEGER PRIMARY KEY,
@@ -99,30 +144,29 @@ final class SqliteEntryStore implements EntryStore {
                         declaration INTEGER NOT NULL,
                         access_flags INTEGER NOT NULL,
                         type_category INTEGER NOT NULL,
-                        element_handle TEXT NOT NULL DEFAULT '',
-                        name TEXT NOT NULL DEFAULT '',
-                        normalized_name TEXT NOT NULL DEFAULT '',
-                        qualified_name TEXT NOT NULL DEFAULT '',
-                        normalized_qualified_name TEXT NOT NULL DEFAULT '',
-                        declaring_type_name TEXT NOT NULL DEFAULT '',
-                        descriptor TEXT NOT NULL DEFAULT '',
+                        element_handle_id INTEGER NOT NULL DEFAULT 0,
+                        name_id INTEGER NOT NULL DEFAULT 0,
+                        qualified_name_id INTEGER NOT NULL DEFAULT 0,
+                        declaring_type_name_id INTEGER NOT NULL DEFAULT 0,
+                        descriptor_id INTEGER NOT NULL DEFAULT 0,
                         occurrence_count INTEGER NOT NULL DEFAULT 1,
-                        fallback_handle TEXT NOT NULL DEFAULT ''
+                        fallback_handle_id INTEGER NOT NULL DEFAULT 0
                     )"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_entries_name
-                        ON entries(jar_id, kind, normalized_name)"""); //$NON-NLS-1$
+                        ON entries(jar_id, kind, name_id)"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_entries_qname
-                        ON entries(jar_id, kind, normalized_qualified_name)"""); //$NON-NLS-1$
+                        ON entries(jar_id, kind, qualified_name_id)"""); //$NON-NLS-1$
         }
-        // Migrate existing databases that predate these columns
-        migrate(conn, "ALTER TABLE jars ADD COLUMN runtime_version INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
-        migrate(conn, "ALTER TABLE jars ADD COLUMN file_crc INTEGER NOT NULL DEFAULT 0"); //$NON-NLS-1$
-        migrate(conn, "ALTER TABLE entries ADD COLUMN fallback_handle TEXT NOT NULL DEFAULT ''"); //$NON-NLS-1$
-        // Replace old unique index with non-unique so two rows per jar can coexist briefly during rebuild
-        migrate(conn, "DROP INDEX IF EXISTS idx_jars"); //$NON-NLS-1$
-        migrate(conn, "CREATE INDEX IF NOT EXISTS idx_jars ON jars(root_handle, path)"); //$NON-NLS-1$
+    }
+
+    private static boolean hasColumn(Connection conn, String table, String column) throws SQLException {
+        try (var s = conn.createStatement();
+             ResultSet rs = s.executeQuery(
+                     "SELECT COUNT(*) FROM pragma_table_info('" + table + "') WHERE name = '" + column + "'")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            return rs.next() && rs.getInt(1) > 0;
+        }
     }
 
     static void pruneOrphanJarRows(Connection conn, Object dbLock, Set<String> keepKeys,
@@ -152,14 +196,6 @@ final class SqliteEntryStore implements EntryStore {
                 }
                 del.executeBatch();
             }
-        }
-    }
-
-    private static void migrate(Connection conn, String ddl) throws SQLException {
-        try (var s = conn.createStatement()) {
-            s.execute(ddl);
-        } catch (SQLException ignored) {
-            // column already exists in databases created after the schema update
         }
     }
 
@@ -266,7 +302,7 @@ final class SqliteEntryStore implements EntryStore {
     }
 
     private void collectAll(Kind kind, EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
-        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ?"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE + "e.jar_id = ? AND e.kind = ?"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -281,7 +317,8 @@ final class SqliteEntryStore implements EntryStore {
         if (StringUtils.isBlank(normName)) {
             return;
         }
-        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND normalized_name = ?"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE +
+                "e.jar_id = ? AND e.kind = ? AND e.name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?)"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -307,7 +344,10 @@ final class SqliteEntryStore implements EntryStore {
             collectByName(kind, normName, consumer);
             return;
         }
-        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND (normalized_name = ? OR normalized_qualified_name = ?)"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE +
+                "e.jar_id = ? AND e.kind = ? AND " + //$NON-NLS-1$
+                "(e.name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?) OR " + //$NON-NLS-1$
+                "e.qualified_name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?))"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -321,7 +361,8 @@ final class SqliteEntryStore implements EntryStore {
 
     private void collectByQName(Kind kind, String normQName, EntryStore.EntryConsumer consumer)
             throws SQLException, CoreException {
-        String sql = SELECT_ENTRIES_WHERE + "jar_id = ? AND kind = ? AND normalized_qualified_name = ?"; //$NON-NLS-1$
+        String sql = SELECT_ENTRIES_WHERE +
+                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?)"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);

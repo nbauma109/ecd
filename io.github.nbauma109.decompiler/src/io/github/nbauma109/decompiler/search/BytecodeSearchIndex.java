@@ -22,6 +22,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,6 +36,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.ElementChangedEvent;
@@ -107,6 +109,7 @@ public final class BytecodeSearchIndex {
         started.set(true);
         try {
             conn = openDatabase();
+            vacuumIfNeeded();
         } catch (SQLException | IOException e) {
             JavaDecompilerPlugin.logError(e, "Failed to open search index database"); //$NON-NLS-1$
         }
@@ -235,8 +238,9 @@ public final class BytecodeSearchIndex {
             if (!rebuilt.completed()) {
                 return;
             }
-            Map<RootKey, JarIndex> oldMap = publishAndGetOld(rebuilt.indexes(), myGeneration);
-            if (oldMap != null) {
+            Optional<Map<RootKey, JarIndex>> oldMapOpt = publishAndGetOld(rebuilt.indexes(), myGeneration);
+            if (oldMapOpt.isPresent()) {
+                Map<RootKey, JarIndex> oldMap = oldMapOpt.get();
                 Set<JarIndex> kept = Collections.newSetFromMap(new IdentityHashMap<>());
                 kept.addAll(rebuilt.indexes().values());
                 searchLock.writeLock().lock();
@@ -348,17 +352,17 @@ public final class BytecodeSearchIndex {
         return conn;
     }
 
-    // Returns the old indexes map if the publish succeeded (same generation), or null if rejected.
+    // Returns the old indexes map if the publish succeeded (same generation), or empty if rejected.
     // Old stores are NOT closed here; the caller closes them under searchLock.writeLock() so that
     // in-flight searches finish before any owned (in-memory) connection is torn down.
-    private synchronized Map<RootKey, JarIndex> publishAndGetOld(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
+    private synchronized Optional<Map<RootKey, JarIndex>> publishAndGetOld(Map<RootKey, JarIndex> rebuilt, int myGeneration) {
         if (started.get() && generation == myGeneration) {
             Map<RootKey, JarIndex> oldMap = indexes.getAndSet(Collections.unmodifiableMap(rebuilt));
             refreshCompleted.set(true);
-            return oldMap;
+            return Optional.of(oldMap);
         } else {
             rebuilt.values().forEach(JarIndex::close);
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -498,6 +502,53 @@ public final class BytecodeSearchIndex {
         } catch (JavaModelException e) {
             Logger.debug(e);
             return false;
+        }
+    }
+
+    // Schedule a background VACUUM when the freelist is large, which indicates that orphaned
+    // jar/entry rows from before the prune-on-refresh implementation have not been reclaimed
+    // yet.  PRAGMA auto_vacuum = FULL (set in initSchema) keeps new databases compact, but
+    // existing databases need a one-time VACUUM to activate the mode and compact the file.
+    private static final long VACUUM_FREE_BYTES_THRESHOLD = 10L * 1024 * 1024; // 10 MB
+
+    private void vacuumIfNeeded() {
+        if (conn == null || freeListBytes() <= VACUUM_FREE_BYTES_THRESHOLD) {
+            return;
+        }
+        Job job = Job.create("Compacting search index database", monitor -> { //$NON-NLS-1$
+            Connection c = getConn();
+            if (c == null) {
+                return Status.OK_STATUS;
+            }
+            synchronized (dbLock) {
+                try (java.sql.Statement stmt = c.createStatement()) {
+                    stmt.execute("VACUUM"); //$NON-NLS-1$
+                } catch (SQLException e) {
+                    Logger.debug(e);
+                }
+            }
+            return Status.OK_STATUS;
+        });
+        job.setSystem(true);
+        job.setPriority(Job.BUILD);
+        job.schedule();
+    }
+
+    private long freeListBytes() {
+        synchronized (dbLock) {
+            try (java.sql.Statement stmt = conn.createStatement()) {
+                long pageSize;
+                try (java.sql.ResultSet rs = stmt.executeQuery("PRAGMA page_size")) { //$NON-NLS-1$
+                    pageSize = rs.next() ? rs.getLong(1) : 4096L;
+                }
+                try (java.sql.ResultSet rs = stmt.executeQuery("PRAGMA freelist_count")) { //$NON-NLS-1$
+                    long freePages = rs.next() ? rs.getLong(1) : 0L;
+                    return freePages * pageSize;
+                }
+            } catch (SQLException e) {
+                Logger.debug(e);
+                return 0L;
+            }
         }
     }
 

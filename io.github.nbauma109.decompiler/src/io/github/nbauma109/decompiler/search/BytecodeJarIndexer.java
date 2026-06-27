@@ -82,6 +82,7 @@ public class BytecodeJarIndexer {
     private static final String ANNOTATION_INTERNAL_NAME = "java/lang/annotation/Annotation"; //$NON-NLS-1$
     private static final String ENUM_INTERNAL_NAME = "java/lang/Enum"; //$NON-NLS-1$
     private static final String OBJECT_INTERNAL_NAME = "java/lang/Object"; //$NON-NLS-1$
+    private static final String FAILED_TO_INDEX_JAR = "Failed to index jar "; //$NON-NLS-1$
     private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
     private static final Attributes.Name MULTI_RELEASE = new Attributes.Name("Multi-Release"); //$NON-NLS-1$
     private static final int ZIP_LOCAL_FILE_HEADER_SIZE = 30;
@@ -201,7 +202,7 @@ public class BytecodeJarIndexer {
                 indexEntry(context, entryWork, subMonitor);
             }
         } catch (IOException | RuntimeException e) {
-            JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            JavaDecompilerPlugin.logError(e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }
         HeapEntryStore store = heapWriter.buildHeapStore();
@@ -229,8 +230,8 @@ public class BytecodeJarIndexer {
         Map<String, String> strings = new HashMap<>();
         String insertSql =
                 "INSERT INTO entries(jar_id,kind,declaration,access_flags,type_category," + //$NON-NLS-1$
-                "element_handle,name,normalized_name,qualified_name,normalized_qualified_name," + //$NON-NLS-1$
-                "declaring_type_name,descriptor,occurrence_count,fallback_handle) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
+                "element_handle_id,name_id,qualified_name_id," + //$NON-NLS-1$
+                "declaring_type_name_id,descriptor_id,occurrence_count,fallback_handle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
         String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
         try {
             synchronized (lock) {
@@ -245,8 +246,10 @@ public class BytecodeJarIndexer {
             int jarId = reg.jarId();
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = prepareLocked(activeConn, lock, insertSql, Statement.RETURN_GENERATED_KEYS);
-                    PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql)) {
-                EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs, lock);
+                    PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql);
+                    PreparedStatement internInsPs = prepareLocked(activeConn, lock, "INSERT OR IGNORE INTO strings(value) VALUES(?)"); //$NON-NLS-1$
+                    PreparedStatement internSelPs = prepareLocked(activeConn, lock, "SELECT id FROM strings WHERE value = ?")) { //$NON-NLS-1$
+                EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs, internInsPs, internSelPs, lock);
                 Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
                 IndexContext context = new IndexContext(root, jar, zip, writer, strings, typeCategoryCache);
                 SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
@@ -268,12 +271,12 @@ public class BytecodeJarIndexer {
             }
             return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
         } catch (IOException | SQLException e) {
-            JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            JavaDecompilerPlugin.logError(e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);
             return null;
         } catch (RuntimeException e) {
             Throwable cause = e.getCause();
-            JavaDecompilerPlugin.logError(cause != null ? cause : e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            JavaDecompilerPlugin.logError(cause != null ? cause : e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);
             return null;
         }
@@ -1868,17 +1871,24 @@ public class BytecodeJarIndexer {
         private final int jarId;
         private final PreparedStatement insertPs;
         private final PreparedStatement updatePs;
+        private final PreparedStatement internInsPs;
+        private final PreparedStatement internSelPs;
+        private final Map<String, Integer> stringCache;
         private final Object lock;
         final Map<EntryKey, Long> seen = new HashMap<>();
         // heap mode — non-null only when SQLite is unavailable
         private final List<BytecodeSearchEntry> heapEntries;
         private final List<Integer> heapCounts;
 
-        EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs, Object lock) {
+        EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs,
+                PreparedStatement internInsPs, PreparedStatement internSelPs, Object lock) {
             this.jarId = jarId;
             this.insertPs = insertPs;
             this.updatePs = updatePs;
+            this.internInsPs = internInsPs;
+            this.internSelPs = internSelPs;
             this.lock = lock;
+            this.stringCache = new HashMap<>();
             this.heapEntries = null;
             this.heapCounts = null;
         }
@@ -1887,7 +1897,10 @@ public class BytecodeJarIndexer {
             this.jarId = -1;
             this.insertPs = null;
             this.updatePs = null;
+            this.internInsPs = null;
+            this.internSelPs = null;
             this.lock = null;
+            this.stringCache = null;
             this.heapEntries = new ArrayList<>();
             this.heapCounts = new ArrayList<>();
         }
@@ -1900,6 +1913,27 @@ public class BytecodeJarIndexer {
             return HeapEntryStore.from(heapEntries, counts);
         }
 
+        private int intern(String value) throws SQLException {
+            if (value == null || value.isEmpty()) {
+                return 0; // sentinel: id=0 means "no string" (SQLite ROWIDs start at 1)
+            }
+            Integer cached = stringCache.get(value);
+            if (cached != null) {
+                return cached;
+            }
+            int id;
+            synchronized (lock) {
+                internInsPs.setString(1, value);
+                internInsPs.executeUpdate();
+                internSelPs.setString(1, value);
+                try (ResultSet rs = internSelPs.executeQuery()) {
+                    id = rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+            stringCache.put(value, id);
+            return id;
+        }
+
         long insert(BytecodeSearchEntry entry, int count) throws SQLException {
             if (heapEntries != null) {
                 int idx = heapEntries.size();
@@ -1907,20 +1941,24 @@ public class BytecodeJarIndexer {
                 heapCounts.add(count);
                 return idx;
             }
+            int elementHandleId = intern(nullToEmpty(entry.getElementHandle()));
+            int nameId = intern(nullToEmpty(entry.getName()));
+            int qualNameId = intern(nullToEmpty(entry.getQualifiedName()));
+            int declTypeId = intern(nullToEmpty(entry.getDeclaringTypeName()));
+            int descId = intern(nullToEmpty(entry.getDescriptor()));
+            int fallbackId = intern(fallbackHandle(entry));
             insertPs.setInt(1, jarId);
             insertPs.setInt(2, entry.getKind().ordinal());
             insertPs.setInt(3, entry.isDeclaration() ? 1 : 0);
             insertPs.setInt(4, entry.getAccess().ordinal());
             insertPs.setInt(5, entry.getTypeCategory().ordinal());
-            insertPs.setString(6, nullToEmpty(entry.getElementHandle()));
-            insertPs.setString(7, nullToEmpty(entry.getName()));
-            insertPs.setString(8, SqliteEntryStore.normalize(entry.getName()));
-            insertPs.setString(9, nullToEmpty(entry.getQualifiedName()));
-            insertPs.setString(10, SqliteEntryStore.normalize(entry.getQualifiedName()));
-            insertPs.setString(11, nullToEmpty(entry.getDeclaringTypeName()));
-            insertPs.setString(12, nullToEmpty(entry.getDescriptor()));
-            insertPs.setInt(13, count);
-            insertPs.setString(14, fallbackHandle(entry));
+            insertPs.setInt(6, elementHandleId);
+            insertPs.setInt(7, nameId);
+            insertPs.setInt(8, qualNameId);
+            insertPs.setInt(9, declTypeId);
+            insertPs.setInt(10, descId);
+            insertPs.setInt(11, count);
+            insertPs.setInt(12, fallbackId);
             synchronized (lock) {
                 insertPs.executeUpdate();
                 try (ResultSet keys = insertPs.getGeneratedKeys()) {
