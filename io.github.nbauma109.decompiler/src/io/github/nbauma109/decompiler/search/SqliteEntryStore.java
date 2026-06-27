@@ -100,9 +100,12 @@ final class SqliteEntryStore implements EntryStore {
             // needed to activate the mode (handled by BytecodeSearchIndex.vacuumIfNeeded).
             stmt.execute("PRAGMA auto_vacuum = FULL"); //$NON-NLS-1$
         }
-        // Detect old schema (text columns in entries) and drop everything so the
-        // normalised schema is created fresh. All jars are re-indexed automatically.
-        if (hasColumn(conn, "entries", "normalized_name")) { //$NON-NLS-1$ //$NON-NLS-2$
+        // Detect old schema (text columns in entries, or strings table missing
+        // lower_value) and drop everything so the normalised schema is created
+        // fresh. All jars are re-indexed automatically.
+        boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$ //$NON-NLS-2$
+                || !hasColumn(conn, "strings", "lower_value"); //$NON-NLS-1$ //$NON-NLS-2$
+        if (needsReset) {
             try (var s = conn.createStatement()) {
                 s.execute("DROP TABLE IF EXISTS entries"); //$NON-NLS-1$
                 s.execute("DROP TABLE IF EXISTS jars"); //$NON-NLS-1$
@@ -110,17 +113,17 @@ final class SqliteEntryStore implements EntryStore {
             }
         }
         try (var stmt = conn.createStatement()) {
-            // Deduplicated string pool: every repeated text value is stored exactly once.
+            // Deduplicated string pool: lower_value stores Java-normalized lowercase
+            // so case-insensitive lookups use Java semantics (handles non-ASCII).
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS strings (
                         id INTEGER PRIMARY KEY,
-                        value TEXT NOT NULL UNIQUE
+                        value TEXT NOT NULL UNIQUE,
+                        lower_value TEXT NOT NULL DEFAULT ''
                     )"""); //$NON-NLS-1$
-            // Expression index enables case-insensitive lookup without storing a
-            // separate normalised column.
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_strings_lower
-                        ON strings(LOWER(value))"""); //$NON-NLS-1$
+                        ON strings(lower_value)"""); //$NON-NLS-1$
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS jars (
                         id INTEGER PRIMARY KEY,
@@ -321,7 +324,7 @@ final class SqliteEntryStore implements EntryStore {
             return;
         }
         String sql = SELECT_ENTRIES_WHERE +
-                "e.jar_id = ? AND e.kind = ? AND e.name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?)"; //$NON-NLS-1$
+                "e.jar_id = ? AND e.kind = ? AND e.name_id IN (SELECT id FROM strings WHERE lower_value = ?)"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -349,8 +352,8 @@ final class SqliteEntryStore implements EntryStore {
         }
         String sql = SELECT_ENTRIES_WHERE +
                 "e.jar_id = ? AND e.kind = ? AND " + //$NON-NLS-1$
-                "(e.name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?) OR " + //$NON-NLS-1$
-                "e.qualified_name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?))"; //$NON-NLS-1$
+                "(e.name_id IN (SELECT id FROM strings WHERE lower_value = ?) OR " + //$NON-NLS-1$
+                "e.qualified_name_id IN (SELECT id FROM strings WHERE lower_value = ?))"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);
@@ -365,7 +368,7 @@ final class SqliteEntryStore implements EntryStore {
     private void collectByQName(Kind kind, String normQName, EntryStore.EntryConsumer consumer)
             throws SQLException, CoreException {
         String sql = SELECT_ENTRIES_WHERE +
-                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id IN (SELECT id FROM strings WHERE LOWER(value) = ?)"; //$NON-NLS-1$
+                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id IN (SELECT id FROM strings WHERE lower_value = ?)"; //$NON-NLS-1$
         synchronized (dbLock) {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setInt(1, jarId);

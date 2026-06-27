@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
@@ -247,7 +248,7 @@ public class BytecodeJarIndexer {
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = prepareLocked(activeConn, lock, insertSql, Statement.RETURN_GENERATED_KEYS);
                     PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql);
-                    PreparedStatement internInsPs = prepareLocked(activeConn, lock, "INSERT OR IGNORE INTO strings(value) VALUES(?)"); //$NON-NLS-1$
+                    PreparedStatement internInsPs = prepareLocked(activeConn, lock, "INSERT OR IGNORE INTO strings(value, lower_value) VALUES(?, ?)"); //$NON-NLS-1$
                     PreparedStatement internSelPs = prepareLocked(activeConn, lock, "SELECT id FROM strings WHERE value = ?")) { //$NON-NLS-1$
                 EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs, internInsPs, internSelPs, lock);
                 Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
@@ -1924,6 +1925,7 @@ public class BytecodeJarIndexer {
             int id;
             synchronized (lock) {
                 internInsPs.setString(1, value);
+                internInsPs.setString(2, value.toLowerCase(Locale.ROOT));
                 internInsPs.executeUpdate();
                 internSelPs.setString(1, value);
                 try (ResultSet rs = internSelPs.executeQuery()) {
