@@ -162,10 +162,13 @@ final class SqliteEntryStore implements EntryStore {
     }
 
     private static boolean hasColumn(Connection conn, String table, String column) throws SQLException {
-        try (var s = conn.createStatement();
-             ResultSet rs = s.executeQuery(
-                     "SELECT COUNT(*) FROM pragma_table_info('" + table + "') WHERE name = '" + column + "'")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            return rs.next() && rs.getInt(1) > 0;
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?")) { //$NON-NLS-1$
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         }
     }
 
