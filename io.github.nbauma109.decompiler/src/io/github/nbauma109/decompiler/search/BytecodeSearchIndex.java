@@ -343,6 +343,7 @@ public final class BytecodeSearchIndex {
         }
         try {
             SqliteEntryStore.pruneOrphanJarRows(activeConn, dbLock, keepKeys, liveJarIds);
+            SqliteEntryStore.pruneOrphanStrings(activeConn, dbLock);
         } catch (SQLException e) {
             Logger.debug(e);
         }

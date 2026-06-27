@@ -205,6 +205,22 @@ final class SqliteEntryStore implements EntryStore {
         }
     }
 
+    static void pruneOrphanStrings(Connection conn, Object dbLock) throws SQLException {
+        synchronized (dbLock) {
+            try (var s = conn.createStatement()) {
+                s.execute("""
+                        DELETE FROM strings WHERE id NOT IN (
+                            SELECT element_handle_id FROM entries
+                            UNION SELECT name_id FROM entries
+                            UNION SELECT qualified_name_id FROM entries
+                            UNION SELECT declaring_type_name_id FROM entries
+                            UNION SELECT descriptor_id FROM entries
+                            UNION SELECT fallback_handle_id FROM entries
+                        )"""); //$NON-NLS-1$
+            }
+        }
+    }
+
     record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc) {
     }
 
