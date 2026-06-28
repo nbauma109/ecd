@@ -11,10 +11,8 @@ package io.github.nbauma109.decompiler.search;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -198,25 +196,21 @@ final class HeapEntryStore implements EntryStore {
     @Override
     public void collect(Kind kind, String name, String qualifiedName, boolean wildcard,
             EntryStore.EntryConsumer consumer) throws CoreException {
-        String normName = normalize(name);
-        String normQName = normalize(qualifiedName);
+        String searchName = name == null ? "" : name; //$NON-NLS-1$
+        String searchQName = qualifiedName == null ? "" : qualifiedName; //$NON-NLS-1$
         for (int i = 0; i < kindAndFlags.length; i++) {
-            if (Kind.values()[kindAndFlags[i] & 0x0F] == kind && (wildcard || matchesEntry(i, normName, normQName))) {
+            if (Kind.values()[kindAndFlags[i] & 0x0F] == kind && (wildcard || matchesEntry(i, searchName, searchQName))) {
                 consumer.accept(entry(i));
             }
         }
     }
 
-    private boolean matchesEntry(int i, String normName, String normQName) {
-        if (!normName.isEmpty() && normName.equals(normalize(string(nameIds[i])))) {
+    private boolean matchesEntry(int i, String searchName, String searchQName) {
+        if (!searchName.isEmpty() && searchName.equals(string(nameIds[i]))) {
             return true;
         }
-        return !normQName.isEmpty() && !normQName.equals(normName)
-                && normQName.equals(normalize(string(qualifiedNameIds[i])));
-    }
-
-    private static String normalize(String s) {
-        return StringUtils.lowerCase(s, Locale.ROOT);
+        return !searchQName.isEmpty() && !searchQName.equals(searchName)
+                && searchQName.equals(string(qualifiedNameIds[i]));
     }
 
     @Override
