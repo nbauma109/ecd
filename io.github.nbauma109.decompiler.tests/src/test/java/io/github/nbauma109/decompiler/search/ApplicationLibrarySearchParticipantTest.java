@@ -934,7 +934,7 @@ public class ApplicationLibrarySearchParticipantTest {
                 matches.isEmpty());
     }
 
-	@Test
+    @Test
     public void fieldReadAndWriteAccessLimitsAreHonored()
             throws Exception {
         BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(

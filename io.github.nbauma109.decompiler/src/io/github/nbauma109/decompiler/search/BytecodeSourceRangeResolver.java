@@ -367,7 +367,7 @@ public class BytecodeSourceRangeResolver {
     }
 
     public record SourceRange(int offset, int length) {
-    	public SourceRange {
+        public SourceRange {
             if (offset < 0) {
                 offset = 0;
             }

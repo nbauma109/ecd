@@ -51,29 +51,29 @@ public class BytecodeSourceRangeResolverTest {
 
     private static final String JAVA_LANG_OBJECT = "java.lang.Object";
 
-	private static final String PRINTF = "printf";
+    private static final String PRINTF = "printf";
 
-	private static final String LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V = "(Ljava/lang/String;[Ljava/lang/Object;)V";
+    private static final String LJAVA_LANG_STRING_LJAVA_LANG_OBJECT_V = "(Ljava/lang/String;[Ljava/lang/Object;)V";
 
-	private static final String FIXTURE_PRIMS = "fixture.Prims";
+    private static final String FIXTURE_PRIMS = "fixture.Prims";
 
-	private static final String FIXTURE_BASE = "fixture.Base";
+    private static final String FIXTURE_BASE = "fixture.Base";
 
-	private static final String JAVA_IO_PRINT_STREAM = "java.io.PrintStream";
+    private static final String JAVA_IO_PRINT_STREAM = "java.io.PrintStream";
 
-	private static final String FIELD = "field";
+    private static final String FIELD = "field";
 
-	private static final String FIXTURE_OWNER = "fixture.Owner";
+    private static final String FIXTURE_OWNER = "fixture.Owner";
 
-	private static final String STATIC_TARGET = "staticTarget";
+    private static final String STATIC_TARGET = "staticTarget";
 
-	private static final String INHERITED = "inherited";
+    private static final String INHERITED = "inherited";
 
-	private static final String OWNER = "Owner";
+    private static final String OWNER = "Owner";
 
-	private static final String TARGET = "target";
+    private static final String TARGET = "target";
 
-	private static final String PACKAGE_NAME = "fixture"; //$NON-NLS-1$
+    private static final String PACKAGE_NAME = "fixture"; //$NON-NLS-1$
 
     private static final String SOURCE = """
             package fixture;
