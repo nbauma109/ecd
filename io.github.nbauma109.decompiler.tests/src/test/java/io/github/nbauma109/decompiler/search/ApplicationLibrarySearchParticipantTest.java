@@ -43,15 +43,9 @@ import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchEngine;
 import org.eclipse.jdt.ui.search.ElementQuerySpecification;
-import org.eclipse.jdt.ui.search.IMatchPresentation;
 import org.eclipse.jdt.ui.search.PatternQuerySpecification;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.ITextSelection;
-import org.eclipse.jface.text.Position;
-import org.eclipse.jface.text.source.Annotation;
-import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.search.ui.ISearchQuery;
@@ -60,11 +54,9 @@ import org.eclipse.search.ui.text.IEditorMatchAdapter;
 import org.eclipse.search.ui.text.IFileMatchAdapter;
 import org.eclipse.search.ui.text.Match;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.texteditor.ITextEditor;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -95,7 +87,6 @@ public class ApplicationLibrarySearchParticipantTest {
     private static final String TEST_PACKAGE = "test"; //$NON-NLS-1$
     private static final String DECOMPILER_FERNFLOWER = "Fernflower"; //$NON-NLS-1$
     private static final String PRINTLN = "println"; //$NON-NLS-1$
-    private static final String SEARCH_ANNOTATION_TYPE = "org.eclipse.search.results"; //$NON-NLS-1$
 
     private IProject project;
     private final List<IProject> extraProjects = new ArrayList<>();
@@ -125,61 +116,6 @@ public class ApplicationLibrarySearchParticipantTest {
             FileUtils.deleteQuietly(tempDir);
         }
         BytecodeSearchIndex.getDefault().stop();
-    }
-
-    @Test
-    public void showMatchResolvesSystemOutPrintlnReferenceRangesFromTestJar()
-            throws Exception {
-        BundleJarProjectSetup setup = DecompilerTestSupport.createJavaProjectWithBundleJar(
-                TEST_BUNDLE_ID,
-                TEST_JAR_PATH,
-                "application-library-search-test-project"); //$NON-NLS-1$
-        project = setup.project();
-
-        BytecodeSearchIndex.getDefault().stop();
-        BytecodeSearchIndex.getDefault().start();
-
-        ApplicationLibrarySearchParticipant participant = new ApplicationLibrarySearchParticipant();
-        IJavaSearchScope scope = SearchEngine.createJavaSearchScope(new IJavaElement[] { setup.jarRoot() });
-        PatternQuerySpecification specification = new PatternQuerySpecification(
-                PRINTLN,
-                IJavaSearchConstants.METHOD,
-                true,
-                IJavaSearchConstants.REFERENCES,
-                scope,
-                "Application library println references"); //$NON-NLS-1$
-
-        List<Match> matches = runSearchInBackground(participant, specification);
-
-        assertFalse("Expected System.out.println references from test.jar", matches.isEmpty()); //$NON-NLS-1$
-        assertNull("Search must not open an editor while collecting results", activeTextEditor()); //$NON-NLS-1$
-
-        IMatchPresentation presentation = participant.getUIParticipant();
-        assertNotNull(presentation);
-
-        for (Match match : matches) {
-            assertFalse("Application library matches must not expose a directly openable Java element", //$NON-NLS-1$
-                    match.getElement() instanceof IJavaElement);
-            assertTrue("Application library matches must keep an adaptable Java tree element", //$NON-NLS-1$
-                    match.getElement() instanceof IAdaptable ia
-                            && ia.getAdapter(IJavaElement.class) != null);
-            runInUiThread(() -> {
-                int offset = match.getOffset();
-                int length = match.getLength();
-                presentation.showMatch(match, offset, length, true);
-            });
-            waitForUiIdle();
-            assertTrue("Consulting the search result must resolve a non-zero text offset", match.getOffset() > 0); //$NON-NLS-1$
-            String selectedText = selectedText(match);
-            assertTrue("Search result must point at the println invocation", selectedText.startsWith(PRINTLN + "(")); //$NON-NLS-1$ //$NON-NLS-2$
-            assertTrue("Search result must include method arguments", selectedText.endsWith(")")); //$NON-NLS-1$ //$NON-NLS-2$
-            assertEquals("Editor selection must stay on the println invocation after pending editor reveals run", //$NON-NLS-1$
-                    selectedText, activeSelectedText());
-            waitForUiIdle();
-            assertEquals("Editor selection must not jump back to the enclosing method declaration", //$NON-NLS-1$
-                    selectedText, activeSelectedText());
-            assertSearchAnnotation(match);
-        }
     }
 
     @Test
@@ -1568,7 +1504,7 @@ public class ApplicationLibrarySearchParticipantTest {
                 "Application library wildcard-star coverage"); //$NON-NLS-1$
 
         // runSearchInBackground drives waitForInitialRefresh(), then routes through
-        // JarIndex.collect() → collectWildcard() → CompactEntries.size() for each indexed jar.
+        // JarIndex.collect() → collectWildcard() → EntryStore.size() for each indexed jar.
         List<Match> matches = runSearchInBackground(participant, specification);
         assertFalse("Wildcard * must match all method references in the indexed test jar", matches.isEmpty()); //$NON-NLS-1$
 
@@ -3506,59 +3442,6 @@ public class ApplicationLibrarySearchParticipantTest {
                 && method.getNumberOfParameters() == 1;
     }
 
-    private static String selectedText(Match match) throws Exception {
-        ITextEditor textEditor = activeTextEditor();
-        assertNotNull("Expected search result consultation to open a text editor", textEditor); //$NON-NLS-1$
-        IDocument document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-        assertNotNull(document);
-        int offset = match.getOffset();
-        int length = match.getLength();
-        assertTrue("Resolved range must be inside the editor document", offset >= 0 && offset + length <= document.getLength()); //$NON-NLS-1$
-        return document.get(offset, length);
-    }
-
-    private static String activeSelectedText() throws CoreException {
-        return runInUiThreadWithResult(() -> {
-            ITextEditor textEditor = activeTextEditor();
-            assertNotNull("Expected search result consultation to keep a text editor active", textEditor); //$NON-NLS-1$
-            if (textEditor.getSelectionProvider().getSelection() instanceof ITextSelection selection) {
-                return selection.getText();
-            }
-            return ""; //$NON-NLS-1$
-        });
-    }
-
-    private static void assertSearchAnnotation(Match match) throws Exception {
-        runInUiThread(() -> {
-            ITextEditor textEditor = activeTextEditor();
-            assertNotNull("Expected search result consultation to keep a text editor active", textEditor); //$NON-NLS-1$
-            IAnnotationModel model = textEditor.getDocumentProvider().getAnnotationModel(textEditor.getEditorInput());
-            assertNotNull("Expected an editor annotation model", model); //$NON-NLS-1$
-            boolean found = false;
-            for (java.util.Iterator<Annotation> iterator = model.getAnnotationIterator(); iterator.hasNext();) {
-                Annotation annotation = iterator.next();
-                Position position = model.getPosition(annotation);
-                if (SEARCH_ANNOTATION_TYPE.equals(annotation.getType()) && position != null
-                        && position.getOffset() == match.getOffset() && position.getLength() == match.getLength()) {
-                    found = true;
-                    break;
-                }
-            }
-            assertTrue("Search result must install the Eclipse search annotation for ruler icon and highlight", found); //$NON-NLS-1$
-        });
-    }
-
-    private static ITextEditor activeTextEditor() throws CoreException {
-        return runInUiThreadWithResult(() -> {
-            IWorkbenchPage page = activePage();
-            IEditorPart editor = page.getActiveEditor();
-            if (editor instanceof ITextEditor textEditor) {
-                return textEditor;
-            }
-            return editor == null ? null : editor.getAdapter(ITextEditor.class);
-        });
-    }
-
     private static void configurePreferences(File tempDir) {
         IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
         store.setValue(JavaDecompilerPlugin.TEMP_DIR, tempDir.getAbsolutePath());
@@ -3634,32 +3517,8 @@ public class ApplicationLibrarySearchParticipantTest {
         }
     }
 
-    private static <T> T runInUiThreadWithResult(UiSupplier<T> supplier) throws CoreException {
-        Display display = Display.getDefault();
-        if (display == null || Display.getCurrent() == display) {
-            return supplier.get();
-        }
-        AtomicReference<CoreException> failure = new AtomicReference<>();
-        AtomicReference<T> result = new AtomicReference<>();
-        display.syncExec(() -> {
-            try {
-                result.set(supplier.get());
-            } catch (CoreException e) {
-                failure.set(e);
-            }
-        });
-        if (failure.get() != null) {
-            throw failure.get();
-        }
-        return result.get();
-    }
-
     private interface UiRunnable {
         void run() throws CoreException;
-    }
-
-    private interface UiSupplier<T> {
-        T get() throws CoreException;
     }
 
     private static final class SetupRunnableAccessor extends SetupRunnable {

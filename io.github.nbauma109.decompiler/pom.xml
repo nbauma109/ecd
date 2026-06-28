@@ -38,7 +38,7 @@
               <overWriteReleases>true</overWriteReleases>
               <overWriteSnapshots>true</overWriteSnapshots>
               <stripVersion>true</stripVersion>
-              <includeArtifactIds>transformer-api,jd-util,jd-core,jd-core-v0,cfr,procyon-decompiler,jadx-java-input,jadx-input-api,jadx-core,jadx-zip,vineflower,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm,asm-tree,slf4j-api</includeArtifactIds>
+              <includeArtifactIds>transformer-api,jd-util,jd-core,jd-core-v0,cfr,procyon-decompiler,jadx-java-input,jadx-input-api,jadx-core,jadx-zip,vineflower,bcel,commons-lang3,commons-io,commons-text,java-decompiler-engine,minimal-json,asm,asm-tree,slf4j-api,sqlite-jdbc</includeArtifactIds>
             </configuration>
           </execution>
         </executions>
@@ -54,6 +54,11 @@
     <dependency>
       <groupId>com.eclipsesource.minimal-json</groupId>
       <artifactId>minimal-json</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.47.1.0</version>
     </dependency>
   </dependencies>
 </project>

@@ -11,9 +11,17 @@ package io.github.nbauma109.decompiler.search;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -60,6 +69,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
+import io.github.nbauma109.decompiler.util.Logger;
 
 public class BytecodeJarIndexer {
 
@@ -72,6 +82,7 @@ public class BytecodeJarIndexer {
     private static final String ANNOTATION_INTERNAL_NAME = "java/lang/annotation/Annotation"; //$NON-NLS-1$
     private static final String ENUM_INTERNAL_NAME = "java/lang/Enum"; //$NON-NLS-1$
     private static final String OBJECT_INTERNAL_NAME = "java/lang/Object"; //$NON-NLS-1$
+    private static final String FAILED_TO_INDEX_JAR = "Failed to index jar "; //$NON-NLS-1$
     private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
     private static final Attributes.Name MULTI_RELEASE = new Attributes.Name("Multi-Release"); //$NON-NLS-1$
     private static final int ZIP_LOCAL_FILE_HEADER_SIZE = 30;
@@ -100,8 +111,8 @@ public class BytecodeJarIndexer {
         }
     }
 
-    private static JarWork jarWork(Iterable<EffectiveClassEntry> effectiveEntries) {
-        List<JarEntryWork> entries = new ArrayList<>();
+    private static JarWork jarWork(Collection<EffectiveClassEntry> effectiveEntries) {
+        List<JarEntryWork> entries = new ArrayList<>(effectiveEntries.size());
         long totalImpact = 0L;
         long totalTicks = 0L;
         for (EffectiveClassEntry entry : effectiveEntries) {
@@ -109,7 +120,19 @@ public class BytecodeJarIndexer {
             totalTicks = Math.clamp(totalTicks + entry.ticks(), 0L, Integer.MAX_VALUE);
             entries.add(new JarEntryWork(entry.entryName(), entry.impactBytes(), entry.ticks()));
         }
-        return new JarWork(entries, totalImpact, (int) totalTicks);
+        // Ordered fingerprint: sorted by logicalName so swapped or renamed entries produce a different hash
+        List<EffectiveClassEntry> sorted = new ArrayList<>(effectiveEntries);
+        sorted.sort(Comparator.comparing(EffectiveClassEntry::logicalName));
+        CRC32 fingerprint = new CRC32();
+        ByteBuffer buf = ByteBuffer.allocate(16);
+        for (EffectiveClassEntry entry : sorted) {
+            fingerprint.update(entry.logicalName().getBytes(StandardCharsets.UTF_8));
+            buf.clear();
+            buf.putLong(entry.impactBytes());
+            buf.putLong(entry.entryCrc());
+            fingerprint.update(buf.array());
+        }
+        return new JarWork(entries, totalImpact, (int) totalTicks, fingerprint.getValue());
     }
 
     private static boolean isMultiReleaseJar(ZipFile zip) throws IOException {
@@ -142,7 +165,7 @@ public class BytecodeJarIndexer {
     private static EffectiveClassEntry newEffectiveClassEntry(String logicalName, String entryName, int version,
             ZipEntry entry) {
         long impact = entryImpactBytes(entry);
-        return new EffectiveClassEntry(logicalName, entryName, version, impact, impactTicks(impact));
+        return new EffectiveClassEntry(logicalName, entryName, version, impact, impactTicks(impact), entry.getCrc());
     }
 
     private static VersionedClassName versionedClassName(String entryName) {
@@ -165,30 +188,131 @@ public class BytecodeJarIndexer {
         }
     }
 
-    public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
+    private static BytecodeSearchIndex.JarIndex indexToHeap(IPackageFragmentRoot root, File jar, JarWork work,
             IProgressMonitor monitor) {
-        List<BytecodeSearchEntry> entries = new ArrayList<>();
-        List<Integer> counts = new ArrayList<>();
-        Map<EntryKey, Integer> seen = new HashMap<>();
-        Map<String, String> strings = new HashMap<>();
-
+        SubMonitor subMonitor = SubMonitor.convert(monitor, jar.getName(), work.totalTicks());
+        EntryWriter heapWriter = new EntryWriter();
         try (ZipFile zip = new ZipFile(jar)) {
-            IndexContext context = new IndexContext(root, jar, zip, entries, counts, seen, strings);
-            SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
+            Map<String, String> strings = new HashMap<>();
+            IndexContext context = new IndexContext(root, jar, zip, heapWriter, strings, new HashMap<>());
             for (JarEntryWork entryWork : work.entries()) {
                 if (subMonitor.isCanceled()) {
                     return null;
                 }
                 indexEntry(context, entryWork, subMonitor);
             }
-            if (subMonitor.isCanceled()) {
-                return null;
-            }
-        } catch (IOException e) {
-            JavaDecompilerPlugin.logError(e, "Failed to index jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+        } catch (IOException | RuntimeException e) {
+            JavaDecompilerPlugin.logError(e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
+            return null;
         }
-        int[] countsArray = counts.stream().mapToInt(Integer::intValue).toArray();
-        return new BytecodeSearchIndex.JarIndex(jar, entries, countsArray);
+        HeapEntryStore store = heapWriter.buildHeapStore();
+        return new BytecodeSearchIndex.JarIndex(jar, store);
+    }
+
+    public static BytecodeSearchIndex.JarIndex index(IPackageFragmentRoot root, File jar, JarWork work,
+            Connection conn, Object dbLock, IProgressMonitor monitor) {
+        final boolean ownsConn = conn == null;
+        final Connection activeConn;
+        final Object lock;
+        if (ownsConn) {
+            try {
+                activeConn = SqliteEntryStore.openInMemoryDatabase();
+            } catch (SQLException e) {
+                Logger.debug(e);
+                return indexToHeap(root, jar, work, monitor); // SQLite driver unavailable; fall back to heap
+            }
+            lock = new Object();
+        } else {
+            activeConn = conn;
+            lock = dbLock;
+        }
+        String rootHandle = root != null ? root.getHandleIdentifier() : ""; //$NON-NLS-1$
+        Map<String, String> strings = new HashMap<>();
+        String insertSql =
+                "INSERT INTO entries(jar_id,kind,declaration,access_flags,type_category," + //$NON-NLS-1$
+                "element_handle_id,name_id,qualified_name_id," + //$NON-NLS-1$
+                "declaring_type_name_id,descriptor_id,occurrence_count,fallback_handle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
+        String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
+        try {
+            synchronized (lock) {
+                activeConn.setAutoCommit(false);
+            }
+            SqliteEntryStore.JarRegistration reg;
+            synchronized (lock) {
+                reg = SqliteEntryStore.registerJar(activeConn, rootHandle,
+                        jar.getAbsolutePath(), jar.lastModified(), jar.length(),
+                        Runtime.version().feature(), work.fileCrc());
+            }
+            int jarId = reg.jarId();
+            try (ZipFile zip = new ZipFile(jar);
+                    PreparedStatement insertPs = prepareLocked(activeConn, lock, insertSql, Statement.RETURN_GENERATED_KEYS);
+                    PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql);
+                    PreparedStatement internInsPs = prepareLocked(activeConn, lock, "INSERT OR IGNORE INTO strings(value) VALUES(?)"); //$NON-NLS-1$
+                    PreparedStatement internSelPs = prepareLocked(activeConn, lock, "SELECT id FROM strings WHERE value = ?")) { //$NON-NLS-1$
+                EntryWriter writer = new EntryWriter(jarId, insertPs, updatePs, internInsPs, internSelPs, lock);
+                Map<String, TypeCategory> typeCategoryCache = new HashMap<>();
+                IndexContext context = new IndexContext(root, jar, zip, writer, strings, typeCategoryCache);
+                SubMonitor subMonitor = SubMonitor.convert(monitor, work.totalTicks());
+                for (JarEntryWork entryWork : work.entries()) {
+                    if (subMonitor.isCanceled()) {
+                        abortConn(activeConn, lock, ownsConn);
+                        return null;
+                    }
+                    indexEntry(context, entryWork, subMonitor);
+                }
+                if (subMonitor.isCanceled()) {
+                    abortConn(activeConn, lock, ownsConn);
+                    return null;
+                }
+            }
+            synchronized (lock) {
+                activeConn.commit();
+                activeConn.setAutoCommit(true);
+            }
+            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
+        } catch (IOException | SQLException e) {
+            JavaDecompilerPlugin.logError(e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
+            abortConn(activeConn, lock, ownsConn);
+            return null;
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause();
+            JavaDecompilerPlugin.logError(cause != null ? cause : e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
+            abortConn(activeConn, lock, ownsConn);
+            return null;
+        }
+    }
+
+    private static PreparedStatement prepareLocked(Connection conn, Object dbLock, String sql) throws SQLException {
+        final Object lock = dbLock;
+        synchronized (lock) {
+            return conn.prepareStatement(sql);
+        }
+    }
+
+    private static PreparedStatement prepareLocked(Connection conn, Object dbLock, String sql, int autoGeneratedKeys) throws SQLException {
+        final Object lock = dbLock;
+        synchronized (lock) {
+            return conn.prepareStatement(sql, autoGeneratedKeys);
+        }
+    }
+
+    private static void abortConn(Connection activeConn, Object dbLock, boolean ownsConn) {
+        final Object lock = dbLock;
+        try {
+            synchronized (lock) {
+                activeConn.rollback();
+                activeConn.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            Logger.debug(ex);
+        }
+        if (ownsConn) {
+            try {
+                activeConn.close();
+            } catch (SQLException ex) {
+                Logger.debug(ex);
+            }
+        }
     }
 
     private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {
@@ -205,9 +329,17 @@ public class BytecodeJarIndexer {
 
     private static void indexZipEntry(IndexContext context, ZipEntry entry) {
         try (InputStream input = context.zip().getInputStream(entry)) {
-            indexClass(context.root(), input, context.entries(), context.counts(), context.seen(), context.strings());
+            indexClass(context.root(), input, context.writer(), context.strings(), context.typeCategoryCache());
+        } catch (DbWriteException e) {
+            throw e; // propagate to abort the whole JAR transaction
         } catch (IOException | RuntimeException e) {
             JavaDecompilerPlugin.logError(e, "Failed to index class file from " + context.jar().getAbsolutePath()); //$NON-NLS-1$
+        }
+    }
+
+    private static final class DbWriteException extends RuntimeException {
+        DbWriteException(SQLException cause) {
+            super(cause);
         }
     }
 
@@ -229,10 +361,10 @@ public class BytecodeJarIndexer {
                 + ZIP_CENTRAL_DIRECTORY_FILE_HEADER_SIZE + nameSize + extraSize + commentSize;
     }
 
-    private static void indexClass(IPackageFragmentRoot root, InputStream input, List<BytecodeSearchEntry> entries,
-            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) throws IOException {
+    private static void indexClass(IPackageFragmentRoot root, InputStream input, EntryWriter writer,
+            Map<String, String> strings, Map<String, TypeCategory> typeCategoryCache) throws IOException {
         ClassReader reader = new ClassReader(input);
-        ClassIndex classIndex = new ClassIndex(root, entries, counts, seen, strings);
+        ClassIndex classIndex = new ClassIndex(root, writer, strings, typeCategoryCache);
         reader.accept(classIndex.visitor, ClassReader.SKIP_FRAMES);
 
         if (classIndex.type == null && classIndex.moduleElement == null) {
@@ -246,10 +378,9 @@ public class BytecodeJarIndexer {
     private static final class ClassIndex {
 
         private final IPackageFragmentRoot root;
-        private final List<BytecodeSearchEntry> entries;
-        private final List<Integer> counts;
-        private final Map<EntryKey, Integer> seen;
+        private final EntryWriter writer;
         private final Map<String, String> strings;
+        private final Map<String, TypeCategory> typeCategoryCache;
         private final Map<String, String> elementHandles = new HashMap<>();
         private final Map<String, IJavaElement> anonymousElementFallbacks = new HashMap<>();
         private final List<String> typeReferences = new ArrayList<>();
@@ -270,13 +401,12 @@ public class BytecodeJarIndexer {
         private IJavaElement moduleElement;
         private String enclosingClassName;
 
-        private ClassIndex(IPackageFragmentRoot root, List<BytecodeSearchEntry> entries, List<Integer> counts,
-                Map<EntryKey, Integer> seen, Map<String, String> strings) {
+        private ClassIndex(IPackageFragmentRoot root, EntryWriter writer, Map<String, String> strings,
+                Map<String, TypeCategory> typeCategoryCache) {
             this.root = root;
-            this.entries = entries;
-            this.counts = counts;
-            this.seen = seen;
+            this.writer = writer;
             this.strings = strings;
+            this.typeCategoryCache = typeCategoryCache;
         }
 
         private void indexDescriptors() {
@@ -704,16 +834,25 @@ public class BytecodeJarIndexer {
             EntryKey key = new EntryKey(entry.getKind(), entry.isDeclaration(), entry.getElementHandle(),
                     entry.getName(), entry.getQualifiedName(), entry.getDeclaringTypeName(), entry.getDescriptor(),
                     entry.getAccess(), entry.getTypeCategory());
-            Integer existingIndex = seen.get(key);
-            if (existingIndex != null) {
+            Long existingRowId = writer.seen.get(key);
+            if (existingRowId != null) {
                 if (countOccurrences) {
-                    counts.set(existingIndex, counts.get(existingIndex) + 1);
+                    try {
+                        writer.incrementCount(existingRowId);
+                    } catch (SQLException e) {
+                        throw new DbWriteException(e);
+                    }
                 }
                 return;
             }
-            seen.put(key, entries.size());
-            counts.add(countOccurrences ? 1 : 0);
-            entries.add(entry);
+            try {
+                long rowId = writer.insert(entry, countOccurrences ? 1 : 0);
+                if (rowId >= 0) {
+                    writer.seen.put(key, rowId);
+                }
+            } catch (SQLException e) {
+                throw new DbWriteException(e);
+            }
         }
 
         private static Access fieldAccess(int opcode) {
@@ -765,6 +904,8 @@ public class BytecodeJarIndexer {
                     String[] interfaces) {
                 className = name;
                 typeCategory = typeCategory(access);
+                // Seed the cache with what we already know from ASM — free, no JDT call needed.
+                typeCategoryCache.put(name, typeCategory);
                 if (!MODULE_INFO.equals(name)) {
                     type = typeForInternalName(root, name);
                 }
@@ -1002,7 +1143,13 @@ public class BytecodeJarIndexer {
         }
 
         private TypeCategory typeCategory(String internalName) {
-            return typeCategory(typeForInternalName(root, internalName));
+            TypeCategory cached = typeCategoryCache.get(internalName);
+            if (cached != null) {
+                return cached;
+            }
+            TypeCategory result = typeCategory(typeForInternalName(root, internalName));
+            typeCategoryCache.put(internalName, result);
+            return result;
         }
 
         private static TypeCategory typeCategory(IType type) {
@@ -1715,21 +1862,156 @@ public class BytecodeJarIndexer {
             String declaringTypeName, String descriptor, Access access, TypeCategory typeCategory) {
     }
 
-    private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, List<BytecodeSearchEntry> entries,
-            List<Integer> counts, Map<EntryKey, Integer> seen, Map<String, String> strings) {
+    private record IndexContext(IPackageFragmentRoot root, File jar, ZipFile zip, EntryWriter writer,
+            Map<String, String> strings, Map<String, TypeCategory> typeCategoryCache) {
+    }
+
+    private static final class EntryWriter {
+
+        private final int jarId;
+        private final PreparedStatement insertPs;
+        private final PreparedStatement updatePs;
+        private final PreparedStatement internInsPs;
+        private final PreparedStatement internSelPs;
+        private final Map<String, Integer> stringCache;
+        private final Object lock;
+        final Map<EntryKey, Long> seen = new HashMap<>();
+        // heap mode — non-null only when SQLite is unavailable
+        private final List<BytecodeSearchEntry> heapEntries;
+        private final List<Integer> heapCounts;
+
+        EntryWriter(int jarId, PreparedStatement insertPs, PreparedStatement updatePs,
+                PreparedStatement internInsPs, PreparedStatement internSelPs, Object lock) {
+            this.jarId = jarId;
+            this.insertPs = insertPs;
+            this.updatePs = updatePs;
+            this.internInsPs = internInsPs;
+            this.internSelPs = internSelPs;
+            this.lock = lock;
+            this.stringCache = new HashMap<>();
+            this.heapEntries = null;
+            this.heapCounts = null;
+        }
+
+        EntryWriter() {
+            this.jarId = -1;
+            this.insertPs = null;
+            this.updatePs = null;
+            this.internInsPs = null;
+            this.internSelPs = null;
+            this.lock = null;
+            this.stringCache = null;
+            this.heapEntries = new ArrayList<>();
+            this.heapCounts = new ArrayList<>();
+        }
+
+        HeapEntryStore buildHeapStore() {
+            if (heapEntries == null) {
+                return null;
+            }
+            int[] counts = heapCounts.stream().mapToInt(Integer::intValue).toArray();
+            return HeapEntryStore.from(heapEntries, counts);
+        }
+
+        private int intern(String value) throws SQLException {
+            if (value == null || value.isEmpty()) {
+                return 0; // sentinel: id=0 means "no string" (SQLite ROWIDs start at 1)
+            }
+            Integer cached = stringCache.get(value);
+            if (cached != null) {
+                return cached;
+            }
+            int id;
+            synchronized (lock) {
+                internInsPs.setString(1, value);
+                internInsPs.executeUpdate();
+                internSelPs.setString(1, value);
+                try (ResultSet rs = internSelPs.executeQuery()) {
+                    id = rs.next() ? rs.getInt(1) : 0;
+                }
+            }
+            stringCache.put(value, id);
+            return id;
+        }
+
+        long insert(BytecodeSearchEntry entry, int count) throws SQLException {
+            if (heapEntries != null) {
+                int idx = heapEntries.size();
+                heapEntries.add(entry);
+                heapCounts.add(count);
+                return idx;
+            }
+            int elementHandleId = intern(nullToEmpty(entry.getElementHandle()));
+            int nameId = intern(nullToEmpty(entry.getName()));
+            int qualNameId = intern(nullToEmpty(entry.getQualifiedName()));
+            int declTypeId = intern(nullToEmpty(entry.getDeclaringTypeName()));
+            int descId = intern(nullToEmpty(entry.getDescriptor()));
+            int fallbackId = intern(fallbackHandle(entry));
+            insertPs.setInt(1, jarId);
+            insertPs.setInt(2, entry.getKind().ordinal());
+            insertPs.setInt(3, entry.isDeclaration() ? 1 : 0);
+            insertPs.setInt(4, entry.getAccess().ordinal());
+            insertPs.setInt(5, entry.getTypeCategory().ordinal());
+            insertPs.setInt(6, elementHandleId);
+            insertPs.setInt(7, nameId);
+            insertPs.setInt(8, qualNameId);
+            insertPs.setInt(9, declTypeId);
+            insertPs.setInt(10, descId);
+            insertPs.setInt(11, count);
+            insertPs.setInt(12, fallbackId);
+            synchronized (lock) {
+                insertPs.executeUpdate();
+                try (ResultSet keys = insertPs.getGeneratedKeys()) {
+                    return keys.next() ? keys.getLong(1) : -1L;
+                }
+            }
+        }
+
+        void incrementCount(long rowId) throws SQLException {
+            if (heapCounts != null) {
+                int idx = (int) rowId;
+                heapCounts.set(idx, heapCounts.get(idx) + 1);
+                return;
+            }
+            updatePs.setLong(1, rowId);
+            synchronized (lock) {
+                updatePs.executeUpdate();
+            }
+        }
+
+        private static String fallbackHandle(BytecodeSearchEntry entry) {
+            IJavaElement fallback = entry.getAnonymousElementFallback();
+            if (fallback == null) {
+                return ""; //$NON-NLS-1$
+            }
+            IJavaElement ancestor = fallback.getParent();
+            while (ancestor != null) {
+                String handle = ancestor.getHandleIdentifier();
+                if (handle != null && !handle.contains("[~")) { //$NON-NLS-1$
+                    return handle;
+                }
+                ancestor = ancestor.getParent();
+            }
+            return ""; //$NON-NLS-1$
+        }
+
+        private static String nullToEmpty(String s) {
+            return s == null ? "" : s; //$NON-NLS-1$
+        }
     }
 
     private record VersionedClassName(String logicalName, int version) {
     }
 
-    private record EffectiveClassEntry(String logicalName, String entryName, int version, long impactBytes, int ticks) {
+    private record EffectiveClassEntry(String logicalName, String entryName, int version, long impactBytes, int ticks,
+            long entryCrc) {
 
         private static EffectiveClassEntry newer(EffectiveClassEntry left, EffectiveClassEntry right) {
             return left.version() >= right.version() ? left : right;
         }
     }
 
-    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks) {
+    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks, long fileCrc) {
     }
 
     public record JarEntryWork(String name, long impactBytes, int ticks) {
