@@ -49,10 +49,14 @@ jobs:
               --pattern "enhanced-class-decompiler-*.zip" \
               --dir release-assets
 
-            zip_path="$(ls -1 release-assets/enhanced-class-decompiler-*.zip | head -n 1)"
+            zip_path="$(find release-assets -maxdepth 1 -type f -name 'enhanced-class-decompiler-*.zip' -print -quit)"
             if [ -z "${zip_path}" ]; then
-              echo "No enhanced-class-decompiler-*.zip asset found on release ${tag_name}."
-              exit 1
+              if [ "${tag_name}" = "${CURRENT_TAG}" ]; then
+                echo "No enhanced-class-decompiler-*.zip asset found on release ${tag_name}."
+                exit 1
+              fi
+              echo "Skipping ${tag_name}: no enhanced-class-decompiler-*.zip asset found."
+              continue
             fi
 
             unzip -q "${zip_path}" -d extracted
