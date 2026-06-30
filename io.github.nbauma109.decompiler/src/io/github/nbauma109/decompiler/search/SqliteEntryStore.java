@@ -46,16 +46,16 @@ final class SqliteEntryStore implements EntryStore {
     // Order must match rowToEntry() column positions 1..11.
     private static final String SELECT_COLS =
             "e.kind, e.declaration, e.access_flags, e.type_category, " + //$NON-NLS-1$
-            "s_eh.value, s_nm.value, s_qn.value, s_dt.value, s_ds.value, e.occurrence_count, s_fb.value"; //$NON-NLS-1$
+                    "s_eh.value, s_nm.value, s_qn.value, s_dt.value, s_ds.value, e.occurrence_count, s_fb.value"; //$NON-NLS-1$
 
     private static final String SELECT_FROM =
             "FROM entries e " + //$NON-NLS-1$
-            "LEFT JOIN strings s_eh ON s_eh.id = e.element_handle_id " + //$NON-NLS-1$
-            "LEFT JOIN strings s_nm ON s_nm.id = e.name_id " + //$NON-NLS-1$
-            "LEFT JOIN strings s_qn ON s_qn.id = e.qualified_name_id " + //$NON-NLS-1$
-            "LEFT JOIN strings s_dt ON s_dt.id = e.declaring_type_name_id " + //$NON-NLS-1$
-            "LEFT JOIN strings s_ds ON s_ds.id = e.descriptor_id " + //$NON-NLS-1$
-            "LEFT JOIN strings s_fb ON s_fb.id = e.fallback_handle_id"; //$NON-NLS-1$
+                    "LEFT JOIN strings s_eh ON s_eh.id = e.element_handle_id " + //$NON-NLS-1$
+                    "LEFT JOIN strings s_nm ON s_nm.id = e.name_id " + //$NON-NLS-1$
+                    "LEFT JOIN strings s_qn ON s_qn.id = e.qualified_name_id " + //$NON-NLS-1$
+                    "LEFT JOIN strings s_dt ON s_dt.id = e.declaring_type_name_id " + //$NON-NLS-1$
+                    "LEFT JOIN strings s_ds ON s_ds.id = e.descriptor_id " + //$NON-NLS-1$
+                    "LEFT JOIN strings s_fb ON s_fb.id = e.fallback_handle_id"; //$NON-NLS-1$
 
     private static final String SELECT_ENTRIES_WHERE =
             "SELECT " + SELECT_COLS + " " + SELECT_FROM + " WHERE "; //$NON-NLS-1$ //$NON-NLS-2$
@@ -110,46 +110,46 @@ final class SqliteEntryStore implements EntryStore {
         try (var stmt = conn.createStatement()) {
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS strings (
-                        id INTEGER PRIMARY KEY,
-                        value TEXT NOT NULL UNIQUE
-                    )"""); //$NON-NLS-1$
-            stmt.execute("""
-                    CREATE TABLE IF NOT EXISTS jars (
-                        id INTEGER PRIMARY KEY,
-                        root_handle TEXT NOT NULL DEFAULT '',
-                        path TEXT NOT NULL,
-                        last_modified INTEGER NOT NULL,
-                        file_length INTEGER NOT NULL,
-                        runtime_version INTEGER NOT NULL DEFAULT 0,
-                        file_crc INTEGER NOT NULL DEFAULT 0
-                    )"""); //$NON-NLS-1$
-            stmt.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_jars
-                        ON jars(root_handle, path)"""); //$NON-NLS-1$
-            // entries uses integer ids into strings instead of storing text inline,
-            // cutting per-row size from ~280 bytes (7 text columns) to ~56 bytes (7 ints).
-            stmt.execute("""
-                    CREATE TABLE IF NOT EXISTS entries (
-                        id INTEGER PRIMARY KEY,
-                        jar_id INTEGER NOT NULL REFERENCES jars(id) ON DELETE CASCADE,
-                        kind INTEGER NOT NULL,
-                        declaration INTEGER NOT NULL,
-                        access_flags INTEGER NOT NULL,
-                        type_category INTEGER NOT NULL,
-                        element_handle_id INTEGER NOT NULL DEFAULT 0,
-                        name_id INTEGER NOT NULL DEFAULT 0,
-                        qualified_name_id INTEGER NOT NULL DEFAULT 0,
-                        declaring_type_name_id INTEGER NOT NULL DEFAULT 0,
-                        descriptor_id INTEGER NOT NULL DEFAULT 0,
-                        occurrence_count INTEGER NOT NULL DEFAULT 1,
-                        fallback_handle_id INTEGER NOT NULL DEFAULT 0
-                    )"""); //$NON-NLS-1$
-            stmt.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_entries_name
-                        ON entries(jar_id, kind, name_id)"""); //$NON-NLS-1$
-            stmt.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_entries_qname
-                        ON entries(jar_id, kind, qualified_name_id)"""); //$NON-NLS-1$
+                            id INTEGER PRIMARY KEY,
+                            value TEXT NOT NULL UNIQUE
+                            )"""); //$NON-NLS-1$
+                    stmt.execute("""
+                            CREATE TABLE IF NOT EXISTS jars (
+                                    id INTEGER PRIMARY KEY,
+                                    root_handle TEXT NOT NULL DEFAULT '',
+                                    path TEXT NOT NULL,
+                                    last_modified INTEGER NOT NULL,
+                                    file_length INTEGER NOT NULL,
+                                    runtime_version INTEGER NOT NULL DEFAULT 0,
+                                    file_crc INTEGER NOT NULL DEFAULT 0
+                                    )"""); //$NON-NLS-1$
+                            stmt.execute("""
+                                    CREATE INDEX IF NOT EXISTS idx_jars
+                                    ON jars(root_handle, path)"""); //$NON-NLS-1$
+                                    // entries uses integer ids into strings instead of storing text inline,
+                                    // cutting per-row size from ~280 bytes (7 text columns) to ~56 bytes (7 ints).
+                                    stmt.execute("""
+                                            CREATE TABLE IF NOT EXISTS entries (
+                                                    id INTEGER PRIMARY KEY,
+                                                    jar_id INTEGER NOT NULL REFERENCES jars(id) ON DELETE CASCADE,
+                                                    kind INTEGER NOT NULL,
+                                                    declaration INTEGER NOT NULL,
+                                                    access_flags INTEGER NOT NULL,
+                                                    type_category INTEGER NOT NULL,
+                                                    element_handle_id INTEGER NOT NULL DEFAULT 0,
+                                                    name_id INTEGER NOT NULL DEFAULT 0,
+                                                    qualified_name_id INTEGER NOT NULL DEFAULT 0,
+                                                    declaring_type_name_id INTEGER NOT NULL DEFAULT 0,
+                                                    descriptor_id INTEGER NOT NULL DEFAULT 0,
+                                                    occurrence_count INTEGER NOT NULL DEFAULT 1,
+                                                    fallback_handle_id INTEGER NOT NULL DEFAULT 0
+                                                    )"""); //$NON-NLS-1$
+                                            stmt.execute("""
+                                                    CREATE INDEX IF NOT EXISTS idx_entries_name
+                                                    ON entries(jar_id, kind, name_id)"""); //$NON-NLS-1$
+                                                    stmt.execute("""
+                                                            CREATE INDEX IF NOT EXISTS idx_entries_qname
+                                                            ON entries(jar_id, kind, qualified_name_id)"""); //$NON-NLS-1$
         }
     }
 
@@ -195,13 +195,13 @@ final class SqliteEntryStore implements EntryStore {
         try (var s = conn.createStatement()) {
             s.execute("""
                     DELETE FROM strings WHERE id NOT IN (
-                        SELECT element_handle_id FROM entries
-                        UNION SELECT name_id FROM entries
-                        UNION SELECT qualified_name_id FROM entries
-                        UNION SELECT declaring_type_name_id FROM entries
-                        UNION SELECT descriptor_id FROM entries
-                        UNION SELECT fallback_handle_id FROM entries
-                    )"""); //$NON-NLS-1$
+                            SELECT element_handle_id FROM entries
+                            UNION SELECT name_id FROM entries
+                            UNION SELECT qualified_name_id FROM entries
+                            UNION SELECT declaring_type_name_id FROM entries
+                            UNION SELECT descriptor_id FROM entries
+                            UNION SELECT fallback_handle_id FROM entries
+                            )"""); //$NON-NLS-1$
         }
     }
 

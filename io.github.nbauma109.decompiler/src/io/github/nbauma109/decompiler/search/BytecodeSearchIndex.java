@@ -60,11 +60,11 @@ public final class BytecodeSearchIndex {
 
     private static final LazyInitializer<BytecodeSearchIndex> INSTANCE =
             new LazyInitializer<>() {
-                @Override
-                protected BytecodeSearchIndex initialize() {
-                    return new BytecodeSearchIndex();
-                }
-            };
+        @Override
+        protected BytecodeSearchIndex initialize() {
+            return new BytecodeSearchIndex();
+        }
+    };
     private static final long STARTUP_DELAY = 5000L;
     private static final long REFRESH_DELAY = 2000L;
     private static final int CLASSPATH_FLAGS = IJavaElementDelta.F_CLASSPATH_CHANGED
@@ -214,7 +214,7 @@ public final class BytecodeSearchIndex {
         if ((delta.getKind() == IJavaElementDelta.ADDED || delta.getKind() == IJavaElementDelta.REMOVED)
                 && element != null
                 && (element.getElementType() == IJavaElement.JAVA_PROJECT
-                        || element.getElementType() == IJavaElement.PACKAGE_FRAGMENT_ROOT)) {
+                || element.getElementType() == IJavaElement.PACKAGE_FRAGMENT_ROOT)) {
             return true;
         }
         for (IJavaElementDelta child : delta.getAffectedChildren()) {
@@ -246,8 +246,8 @@ public final class BytecodeSearchIndex {
                 searchLock.writeLock().lock();
                 try {
                     oldMap.values().stream()
-                            .filter(idx -> !kept.contains(idx))
-                            .forEach(JarIndex::close);
+                    .filter(idx -> !kept.contains(idx))
+                    .forEach(JarIndex::close);
                     pruneOrphanJarRows(plans, rebuilt.indexes());
                 } finally {
                     searchLock.writeLock().unlock();
