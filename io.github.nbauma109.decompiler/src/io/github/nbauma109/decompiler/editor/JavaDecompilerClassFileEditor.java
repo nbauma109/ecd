@@ -864,7 +864,7 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
             IType type = method.getDeclaringType();
             return type != null
                     && (type.getDeclaringType() != null && !Flags.isStatic(type.getFlags())
-                            || type.isLocal() || type.isAnonymous());
+                    || type.isLocal() || type.isAnonymous());
         } catch (JavaModelException e) {
             Logger.debug(e);
             return false;

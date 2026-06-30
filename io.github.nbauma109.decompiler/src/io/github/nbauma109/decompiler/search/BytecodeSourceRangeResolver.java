@@ -576,9 +576,9 @@ public class BytecodeSourceRangeResolver {
             int arrayDepth = Signature.getArrayCount(signature);
             String elementType = Signature.getElementType(signature);
             String normalized = switch (Signature.getTypeSignatureKind(elementType)) {
-            case Signature.BASE_TYPE_SIGNATURE -> primitiveName(elementType);
-            case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('$', '.');
-            default -> Signature.getSignatureSimpleName(elementType);
+                case Signature.BASE_TYPE_SIGNATURE -> primitiveName(elementType);
+                case Signature.CLASS_TYPE_SIGNATURE -> Signature.toString(elementType).replace('$', '.');
+                default -> Signature.getSignatureSimpleName(elementType);
             };
             return normalized.toLowerCase(java.util.Locale.ROOT) + "[]".repeat(arrayDepth); //$NON-NLS-1$
         }
@@ -596,15 +596,15 @@ public class BytecodeSourceRangeResolver {
 
         private static String primitiveName(String signature) {
             return switch (signature) {
-            case "Z" -> TYPE_BOOLEAN; //$NON-NLS-1$
-            case "B" -> TYPE_BYTE; //$NON-NLS-1$
-            case "C" -> TYPE_CHAR; //$NON-NLS-1$
-            case "D" -> TYPE_DOUBLE; //$NON-NLS-1$
-            case "F" -> TYPE_FLOAT; //$NON-NLS-1$
-            case "I" -> TYPE_INT; //$NON-NLS-1$
-            case "J" -> TYPE_LONG; //$NON-NLS-1$
-            case "S" -> TYPE_SHORT; //$NON-NLS-1$
-            default -> signature;
+                case "Z" -> TYPE_BOOLEAN; //$NON-NLS-1$
+                case "B" -> TYPE_BYTE; //$NON-NLS-1$
+                case "C" -> TYPE_CHAR; //$NON-NLS-1$
+                case "D" -> TYPE_DOUBLE; //$NON-NLS-1$
+                case "F" -> TYPE_FLOAT; //$NON-NLS-1$
+                case "I" -> TYPE_INT; //$NON-NLS-1$
+                case "J" -> TYPE_LONG; //$NON-NLS-1$
+                case "S" -> TYPE_SHORT; //$NON-NLS-1$
+                default -> signature;
             };
         }
 
@@ -1361,15 +1361,15 @@ public class BytecodeSourceRangeResolver {
             }
             return switch (from) {
                 case TYPE_BYTE ->
-                    TYPE_SHORT.equals(to) || TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                TYPE_SHORT.equals(to) || TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
                 case TYPE_SHORT, TYPE_CHAR ->
-                    TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                TYPE_INT.equals(to) || TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
                 case TYPE_INT ->
-                    TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                TYPE_LONG.equals(to) || TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
                 case TYPE_LONG ->
-                    TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
+                TYPE_FLOAT.equals(to) || TYPE_DOUBLE.equals(to);
                 case TYPE_FLOAT ->
-                    TYPE_DOUBLE.equals(to);
+                TYPE_DOUBLE.equals(to);
                 default -> false;
             };
         }
@@ -1485,10 +1485,10 @@ public class BytecodeSourceRangeResolver {
             String name = rawTypeName(targetType);
             String simpleName = simpleName(name);
             return switch (simpleName) {
-            case "Callable", "Supplier" -> 0; //$NON-NLS-1$ //$NON-NLS-2$
-            case "Function", "IntFunction", "LongFunction", "DoubleFunction", "UnaryOperator" -> 1; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-            case "BiFunction", "BinaryOperator" -> 2; //$NON-NLS-1$ //$NON-NLS-2$
-            default -> null;
+                case "Callable", "Supplier" -> 0; //$NON-NLS-1$ //$NON-NLS-2$
+                case "Function", "IntFunction", "LongFunction", "DoubleFunction", "UnaryOperator" -> 1; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+                case "BiFunction", "BinaryOperator" -> 2; //$NON-NLS-1$ //$NON-NLS-2$
+                default -> null;
             };
         }
 
@@ -1532,7 +1532,7 @@ public class BytecodeSourceRangeResolver {
                 IType type = findType(element, declaringTypeName);
                 return type != null
                         && (type.getDeclaringType() != null && !Flags.isStatic(type.getFlags())
-                                || type.isLocal() || type.isAnonymous());
+                        || type.isLocal() || type.isAnonymous());
             } catch (JavaModelException e) {
                 Logger.debug(e);
                 return false;

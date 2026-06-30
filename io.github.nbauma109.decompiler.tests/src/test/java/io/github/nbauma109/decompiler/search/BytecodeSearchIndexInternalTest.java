@@ -37,7 +37,7 @@ public class BytecodeSearchIndexInternalTest {
     public void stringTablesEqualsIsReflexiveNullSafeAndContentBased() {
         String[] strings = {"alpha", "beta"}; //$NON-NLS-1$ //$NON-NLS-2$
         String[] handles = {"h1", "h2"}; //$NON-NLS-1$ //$NON-NLS-2$
-        IJavaElement[] fallbacks = new IJavaElement[0];
+        IJavaElement[] fallbacks = {};
 
         StringTables a = new StringTables(strings, handles, fallbacks);
         StringTables b = new StringTables(strings.clone(), handles.clone(), new IJavaElement[0]);
@@ -54,7 +54,7 @@ public class BytecodeSearchIndexInternalTest {
     public void stringTablesHashCodeIsConsistentWithEquals() {
         String[] strings = {"x"}; //$NON-NLS-1$
         String[] handles = {"h"}; //$NON-NLS-1$
-        IJavaElement[] fallbacks = new IJavaElement[0];
+        IJavaElement[] fallbacks = {};
 
         StringTables a = new StringTables(strings, handles, fallbacks);
         StringTables b = new StringTables(strings.clone(), handles.clone(), new IJavaElement[0]);

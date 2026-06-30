@@ -174,31 +174,31 @@ public class BytecodeSearchEntry {
         }
         BytecodeSearchEntry other = (BytecodeSearchEntry) obj;
         return new EqualsBuilder()
-            .append(kind, other.kind)
-            .append(declaration, other.declaration)
-            .append(elementHandle, other.elementHandle)
-            .append(name, other.name)
-            .append(qualifiedName, other.qualifiedName)
-            .append(declaringTypeName, other.declaringTypeName)
-            .append(descriptor, other.descriptor)
-            .append(access, other.access)
-            .append(typeCategory, other.typeCategory)
-            .isEquals();
+                .append(kind, other.kind)
+                .append(declaration, other.declaration)
+                .append(elementHandle, other.elementHandle)
+                .append(name, other.name)
+                .append(qualifiedName, other.qualifiedName)
+                .append(declaringTypeName, other.declaringTypeName)
+                .append(descriptor, other.descriptor)
+                .append(access, other.access)
+                .append(typeCategory, other.typeCategory)
+                .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder()
-            .append(kind)
-            .append(declaration)
-            .append(elementHandle)
-            .append(name)
-            .append(qualifiedName)
-            .append(declaringTypeName)
-            .append(descriptor)
-            .append(access)
-            .append(typeCategory)
-            .toHashCode();
+                .append(kind)
+                .append(declaration)
+                .append(elementHandle)
+                .append(name)
+                .append(qualifiedName)
+                .append(declaringTypeName)
+                .append(descriptor)
+                .append(access)
+                .append(typeCategory)
+                .toHashCode();
     }
 
 }
