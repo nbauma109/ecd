@@ -18,7 +18,7 @@ jobs:
     if: ${{ github.event.release.prerelease == false }}
     runs-on: ubuntu-latest
     steps:
-      - name: Build Pages content from release assets
+      - name: Build Pages content from latest release assets
         env:
           GH_TOKEN: ${{ github.token }}
           CURRENT_TAG: ${{ github.event.release.tag_name }}
@@ -29,9 +29,15 @@ jobs:
           rm -rf release-assets extracted public
           mkdir -p release-assets public/updates
 
-          releases_json="$(gh api "repos/${REPOSITORY}/releases" --paginate)"
+          releases_json="$(gh api "repos/${REPOSITORY}/releases?per_page=30")"
 
-          echo "${releases_json}" | jq -r '[.[] | select(.draft == false and .prerelease == false)] | sort_by(.published_at) | reverse | .[:5] | .[].tag_name' | while read -r tag_name; do
+          echo "${releases_json}" | jq -r '
+            map(select(.draft == false and .prerelease == false))
+            | sort_by(.published_at)
+            | reverse
+            | .[:5]
+            | .[].tag_name
+          ' | while read -r tag_name; do
             version="${tag_name#v}"
 
             if ! echo "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -49,14 +55,10 @@ jobs:
               --pattern "enhanced-class-decompiler-*.zip" \
               --dir release-assets
 
-            zip_path="$(find release-assets -maxdepth 1 -type f -name 'enhanced-class-decompiler-*.zip' -print -quit)"
+            zip_path="$(ls -1 release-assets/enhanced-class-decompiler-*.zip | head -n 1)"
             if [ -z "${zip_path}" ]; then
-              if [ "${tag_name}" = "${CURRENT_TAG}" ]; then
-                echo "No enhanced-class-decompiler-*.zip asset found on release ${tag_name}."
-                exit 1
-              fi
-              echo "Skipping ${tag_name}: no enhanced-class-decompiler-*.zip asset found."
-              continue
+              echo "No enhanced-class-decompiler-*.zip asset found on release ${tag_name}."
+              exit 1
             fi
 
             unzip -q "${zip_path}" -d extracted
