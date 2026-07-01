@@ -21,7 +21,6 @@ jobs:
       - name: Build Pages content from latest release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          CURRENT_TAG: ${{ github.event.release.tag_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -55,10 +54,11 @@ jobs:
               --pattern "enhanced-class-decompiler-*.zip" \
               --dir release-assets
 
-            zip_path="$(ls -1 release-assets/enhanced-class-decompiler-*.zip | head -n 1)"
+            zip_path="$(find release-assets -maxdepth 1 -type f -name 'enhanced-class-decompiler-*.zip' | sort | head -n 1 || true)"
             if [ -z "${zip_path}" ]; then
-              echo "No enhanced-class-decompiler-*.zip asset found on release ${tag_name}."
-              exit 1
+              echo "Skipping release ${tag_name} because no enhanced-class-decompiler-*.zip asset was found."
+              rm -rf "public/updates/${version}"
+              continue
             fi
 
             unzip -q "${zip_path}" -d extracted
@@ -80,11 +80,16 @@ jobs:
 
             rsync -a --delete extracted/ "public/updates/${version}/"
 
-            if [ "${tag_name}" = "${CURRENT_TAG}" ]; then
+            if [ ! -d public/updates/latest ]; then
               mkdir -p public/updates/latest
               rsync -a --delete extracted/ public/updates/latest/
             fi
           done
+
+          if [ ! -d public/updates/latest ]; then
+            echo "No valid release asset was processed, so public/updates/latest was not created."
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
