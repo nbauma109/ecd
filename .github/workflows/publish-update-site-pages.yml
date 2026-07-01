@@ -31,7 +31,7 @@ jobs:
 
           releases_json="$(gh api "repos/${REPOSITORY}/releases" --paginate)"
 
-          echo "${releases_json}" | jq -r '.[] | select(.draft == false and .prerelease == false) | .tag_name' | while read -r tag_name; do
+          echo "${releases_json}" | jq -r '[.[] | select(.draft == false and .prerelease == false)] | sort_by(.published_at) | reverse | .[:5] | .[].tag_name' | while read -r tag_name; do
             version="${tag_name#v}"
 
             if ! echo "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
