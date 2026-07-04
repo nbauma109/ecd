@@ -52,8 +52,8 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
 
     // columns: display name | OSGi bundle symbolic name | P2 IU prefix
     private static final String[][] KNOWN_CONFLICTS = {
-        {"Enhanced Class Decompiler", "org.sf.feeling.decompiler",  "org.sf.feeling.decompiler"}, //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-        {"JD-Eclipse",                "org.jd.ide.eclipse.plugin",  "org.jd.ide.eclipse"},        //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            {"Enhanced Class Decompiler", "org.sf.feeling.decompiler",  "org.sf.feeling.decompiler"}, //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            {"JD-Eclipse",                "org.jd.ide.eclipse.plugin",  "org.jd.ide.eclipse"},        //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     };
 
     public record ConflictInfo(String name, String bundleId, String version, String p2Prefix) {}
@@ -205,7 +205,7 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             return false;
         }
         ServiceTracker<IProvisioningAgent, IProvisioningAgent> tracker =
-            new ServiceTracker<>(bundle.getBundleContext(), IProvisioningAgent.class, null);
+                new ServiceTracker<>(bundle.getBundleContext(), IProvisioningAgent.class, null);
         tracker.open();
         try {
             IProvisioningAgent agent = tracker.getService();
@@ -315,8 +315,8 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
             return;
         }
         boolean restart = MessageDialog.openQuestion(shell,
-            "Restart Required", //$NON-NLS-1$
-            "The selected plugins have been uninstalled.\nEclipse must restart to apply the changes. Restart now?"); //$NON-NLS-1$
+                "Restart Required", //$NON-NLS-1$
+                "The selected plugins have been uninstalled.\nEclipse must restart to apply the changes. Restart now?"); //$NON-NLS-1$
         if (restart) {
             PlatformUI.getWorkbench().restart();
         }
@@ -324,12 +324,12 @@ public class ConflictingPluginsDialog extends TitleAreaDialog {
 
     private void showManualInstructions() {
         MessageDialog.openInformation(getShell(),
-            "Manual Uninstall Required", //$NON-NLS-1$
-            """
-            Automatic uninstall is not available.
+                "Manual Uninstall Required", //$NON-NLS-1$
+                """
+                Automatic uninstall is not available.
 
-            To uninstall manually: Help → About Eclipse → Installation Details → Installed Software
-            Select the conflicting plugins and click 'Uninstall'.
-            """.stripIndent()); //$NON-NLS-1$
+                To uninstall manually: Help → About Eclipse → Installation Details → Installed Software
+                Select the conflicting plugins and click 'Uninstall'.
+                """.stripIndent()); //$NON-NLS-1$
     }
 }

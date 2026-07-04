@@ -31,9 +31,9 @@ import io.github.nbauma109.decompiler.popup.ConflictingPluginsDialog.ConflictInf
 public class ConflictingPluginsDialogTest {
 
     private static final ConflictInfo ECD_CONFLICT =
-        new ConflictInfo("Enhanced Class Decompiler", "org.sf.feeling.decompiler", "3.5.2", "org.sf.feeling.decompiler"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            new ConflictInfo("Enhanced Class Decompiler", "org.sf.feeling.decompiler", "3.5.2", "org.sf.feeling.decompiler"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     private static final ConflictInfo JDE_CONFLICT =
-        new ConflictInfo("JD-Eclipse", "org.jd.ide.eclipse.plugin", "2.0.0", "org.jd.ide.eclipse"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            new ConflictInfo("JD-Eclipse", "org.jd.ide.eclipse.plugin", "2.0.0", "org.jd.ide.eclipse"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
     // -------------------------------------------------------------------------
     // detectConflicts / openIfNeeded (no UI)
@@ -45,7 +45,7 @@ public class ConflictingPluginsDialogTest {
         assertNotNull("detectConflicts() must never return null", conflicts); //$NON-NLS-1$
         for (ConflictInfo ci : conflicts) {
             assertTrue("unexpected conflict detected: " + ci.bundleId(), //$NON-NLS-1$
-                "org.sf.feeling.decompiler".equals(ci.bundleId()) //$NON-NLS-1$
+                    "org.sf.feeling.decompiler".equals(ci.bundleId()) //$NON-NLS-1$
                     || "org.jd.ide.eclipse.plugin".equals(ci.bundleId())); //$NON-NLS-1$
         }
     }
@@ -61,7 +61,7 @@ public class ConflictingPluginsDialogTest {
                 int shellsBefore = Display.getDefault().getShells().length;
                 ConflictingPluginsDialog.openIfNeeded(parent);
                 assertEquals("no dialog shell should be opened when there are no conflicts", //$NON-NLS-1$
-                    shellsBefore, Display.getDefault().getShells().length);
+                        shellsBefore, Display.getDefault().getShells().length);
             } finally {
                 parent.dispose();
             }
@@ -173,8 +173,8 @@ public class ConflictingPluginsDialogTest {
             dialog.create();
             Shell shell = dialog.getShell();
             Button dismiss = collectButtons(shell).stream()
-                .filter(b -> "Dismiss".equals(b.getText())) //$NON-NLS-1$
-                .findFirst().orElse(null);
+                    .filter(b -> "Dismiss".equals(b.getText())) //$NON-NLS-1$
+                    .findFirst().orElse(null);
             assertNotNull("Dismiss button must exist", dismiss); //$NON-NLS-1$
             dismiss.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
             assertTrue("shell should be disposed after Dismiss", shell.isDisposed()); //$NON-NLS-1$
@@ -196,8 +196,8 @@ public class ConflictingPluginsDialogTest {
             }
 
             Button uninstall = collectButtons(shell).stream()
-                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
-                .findFirst().orElse(null);
+                    .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                    .findFirst().orElse(null);
             assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
             uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
 
@@ -216,7 +216,7 @@ public class ConflictingPluginsDialogTest {
             ConflictingPluginsDialog dialog = new ConflictingPluginsDialog(null, List.of(ECD_CONFLICT));
             dialog.create();
             assertTrue("shell title should mention ECD++", //$NON-NLS-1$
-                dialog.getShell().getText().contains("ECD++")); //$NON-NLS-1$
+                    dialog.getShell().getText().contains("ECD++")); //$NON-NLS-1$
             dialog.close();
         });
     }
@@ -230,8 +230,8 @@ public class ConflictingPluginsDialogTest {
             Shell shell = dialog.getShell();
 
             Button uninstall = collectButtons(shell).stream()
-                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
-                .findFirst().orElse(null);
+                    .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                    .findFirst().orElse(null);
             assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
 
             // Queue the dismissal before clicking — the MessageDialog's inner event loop
@@ -258,8 +258,8 @@ public class ConflictingPluginsDialogTest {
             Shell shell = dialog.getShell();
 
             Button uninstall = collectButtons(shell).stream()
-                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
-                .findFirst().orElse(null);
+                    .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                    .findFirst().orElse(null);
             assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
 
             display.asyncExec(() -> dismissShellByTitle(display, "Manual Uninstall Required")); //$NON-NLS-1$
@@ -283,8 +283,8 @@ public class ConflictingPluginsDialogTest {
             Shell shell = dialog.getShell();
 
             Button uninstall = collectButtons(shell).stream()
-                .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
-                .findFirst().orElse(null);
+                    .filter(b -> "Uninstall Selected".equals(b.getText())) //$NON-NLS-1$
+                    .findFirst().orElse(null);
             assertNotNull("Uninstall Selected button must exist", uninstall); //$NON-NLS-1$
             uninstall.notifyListeners(SWT.Selection, new org.eclipse.swt.widgets.Event());
 
@@ -306,7 +306,7 @@ public class ConflictingPluginsDialogTest {
             dialog.create();
             try {
                 assertFalse("should return false when IUs are absent from the P2 profile", //$NON-NLS-1$
-                    dialog.tryP2Uninstall(List.of(fake)));
+                        dialog.tryP2Uninstall(List.of(fake)));
             } catch (NoClassDefFoundError e) {
                 org.junit.Assume.assumeNoException("P2 is not available in this test runtime", e); //$NON-NLS-1$
             } finally {
@@ -322,7 +322,7 @@ public class ConflictingPluginsDialogTest {
             dialog.create();
             try {
                 assertFalse("should return false when nothing is selected", //$NON-NLS-1$
-                    dialog.tryP2Uninstall(List.of()));
+                        dialog.tryP2Uninstall(List.of()));
             } catch (NoClassDefFoundError e) {
                 org.junit.Assume.assumeNoException("P2 is not available in this test runtime", e); //$NON-NLS-1$
             } finally {

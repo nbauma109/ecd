@@ -78,79 +78,79 @@ public class BytecodeSourceRangeResolverTest {
     private static final String SOURCE = """
             package fixture;
 
-            @interface Marker {
-                String value();
-            }
+    @interface Marker {
+        String value();
+    }
 
-            enum Mode {
-                ON;
-                String text() { return name(); }
-            }
+    enum Mode {
+        ON;
+        String text() { return name(); }
+    }
 
-            record Rec(int value) {
-                int doubled() { return value * 2; }
-            }
+    record Rec(int value) {
+        int doubled() { return value * 2; }
+    }
 
-            class Base {
-                Base() {}
-                String inherited() { return "base"; }
-            }
+    class Base {
+        Base() {}
+        String inherited() { return "base"; }
+    }
 
-            class Owner extends Base {
-                int field;
+    class Owner extends Base {
+        int field;
 
-                class Inner {
-                    Inner(int value) {}
-                    Inner(String... values) {}
-                }
+        class Inner {
+            Inner(int value) {}
+            Inner(String... values) {}
+        }
 
-                Owner() {
-                    this(1);
-                }
+        Owner() {
+            this(1);
+        }
 
-                Owner(int value) {
-                    super();
-                    this.field = value;
-                }
+        Owner(int value) {
+            super();
+            this.field = value;
+        }
 
-                Owner(int value, String name) {
-                    this(value);
-                }
+        Owner(int value, String name) {
+            this(value);
+        }
 
-                void takes(int count, java.lang.String... names) {
-                    field = count;
-                    int local = field;
-                    System.out.println(names.length);
-                    System.out.printf("%d %s", count, names.length);
-                    System.out.printf("%d");
-                    super.inherited();
-                    Runnable first = this::target;
-                    Runnable second = Owner::staticTarget;
-                    java.util.function.Supplier<Owner> third = Owner::new;
-                    java.util.function.Supplier<String> fourth = super::inherited;
-                    new Owner(count);
-                    new Owner(count, names[0]);
-                }
+        void takes(int count, java.lang.String... names) {
+            field = count;
+            int local = field;
+            System.out.println(names.length);
+            System.out.printf("%d %s", count, names.length);
+            System.out.printf("%d");
+            super.inherited();
+            Runnable first = this::target;
+            Runnable second = Owner::staticTarget;
+            java.util.function.Supplier<Owner> third = Owner::new;
+            java.util.function.Supplier<String> fourth = super::inherited;
+            new Owner(count);
+            new Owner(count, names[0]);
+        }
 
-                void target() {}
-                static void staticTarget() {}
-                void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {}
-            }
+        void target() {}
+        static void staticTarget() {}
+        void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {}
+    }
 
-            class Prims {
-                void allPrims(boolean z, byte b, char c, double d, float f, long j, short s) {
-                    target();
-                }
-                void strMethod(java.lang.String s) {
-                    target();
-                }
-                void intMethod(String s) {
-                    target();
-                }
-                static void arrayOnly(Object[] values) {}
-                void target() {}
-            }
-            """;
+    class Prims {
+        void allPrims(boolean z, byte b, char c, double d, float f, long j, short s) {
+            target();
+        }
+        void strMethod(java.lang.String s) {
+            target();
+        }
+        void intMethod(String s) {
+            target();
+        }
+        static void arrayOnly(Object[] values) {}
+        void target() {}
+    }
+    """;
 
     private IProject project;
     private IType markerType;
@@ -239,19 +239,19 @@ public class BytecodeSourceRangeResolverTest {
     public void typeQualifiedMethodInvocationsResolveToTheirDeclaringOwners() {
         String src = """
                 package fixture;
-                class A {
-                    static void reset(int count) {}
-                }
-                class B {
-                    static void reset(int count) {}
-                }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        A.reset(count);
-                        B.reset(count);
-                    }
-                }
-                """;
+        class A {
+            static void reset(int count) {}
+        }
+        class B {
+            static void reset(int count) {}
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                A.reset(count);
+                B.reset(count);
+            }
+        }
+        """;
 
         BytecodeSearchEntry fromA = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.A", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -271,17 +271,17 @@ public class BytecodeSourceRangeResolverTest {
     public void packageQualifiedReceiversRequireExactDeclaringOwner() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        pkg1.Util.reset(count);
-                        pkg2.Util.reset(count);
-                        int left = pkg1.Util.field;
-                        int right = pkg2.Util.field;
-                        Runnable first = pkg1.Util::run;
-                        Runnable second = pkg2.Util::run;
-                    }
-                }
-                """;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                pkg1.Util.reset(count);
+                pkg2.Util.reset(count);
+                int left = pkg1.Util.field;
+                int right = pkg2.Util.field;
+                Runnable first = pkg1.Util::run;
+                Runnable second = pkg2.Util::run;
+            }
+        }
+        """;
 
         BytecodeSearchEntry method1 = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 "pkg1.Util", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -318,23 +318,23 @@ public class BytecodeSourceRangeResolverTest {
     public void typeMethodReferencesResolveToTheirDeclaringOwners() {
         String src = """
                 package fixture;
-                class A {
-                    static void reset(int count) {}
-                }
-                class B {
-                    static void reset(int count) {}
-                }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        java.util.function.IntConsumer first = A::reset;
-                        java.util.function.IntConsumer second = B::reset;
-                        java.util.function.Consumer<java.util.ArrayList<String>> third =
-                                java.util.ArrayList<String>::clear;
-                        java.util.function.Consumer<java.util.LinkedList<String>> fourth =
-                                java.util.LinkedList<String>::clear;
-                    }
-                }
-                """;
+        class A {
+            static void reset(int count) {}
+        }
+        class B {
+            static void reset(int count) {}
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                java.util.function.IntConsumer first = A::reset;
+                java.util.function.IntConsumer second = B::reset;
+                java.util.function.Consumer<java.util.ArrayList<String>> third =
+                        java.util.ArrayList<String>::clear;
+                java.util.function.Consumer<java.util.LinkedList<String>> fourth =
+                        java.util.LinkedList<String>::clear;
+            }
+        }
+        """;
 
         BytecodeSearchEntry fromA = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.A", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -364,19 +364,19 @@ public class BytecodeSourceRangeResolverTest {
     public void superMethodInvocationMatchesOnlyTheDirectSuperclass() {
         String src = """
                 package fixture;
-                class Base {
-                    void reset(int count) {}
-                }
-                class Other {
-                    static void reset(int count) {}
-                }
-                class Owner extends Base {
-                    void takes(int count, java.lang.String... names) {
-                        super.reset(count);
-                        Other.reset(count);
-                    }
-                }
-                """;
+        class Base {
+            void reset(int count) {}
+        }
+        class Other {
+            static void reset(int count) {}
+        }
+        class Owner extends Base {
+            void takes(int count, java.lang.String... names) {
+                super.reset(count);
+                Other.reset(count);
+            }
+        }
+        """;
 
         BytecodeSearchEntry base = reference(Kind.METHOD, takesMethod, "reset", "reset", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_BASE, "(I)V"); //$NON-NLS-1$
@@ -429,13 +429,13 @@ public class BytecodeSourceRangeResolverTest {
     public void ordinaryArrayParametersRequireExactArgumentCount() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        Prims.arrayOnly();
-                        Prims.arrayOnly(new Object[0]);
-                    }
-                }
-                """;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                Prims.arrayOnly();
+                Prims.arrayOnly(new Object[0]);
+            }
+        }
+        """;
 
         BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "arrayOnly", "arrayOnly", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_PRIMS, "([Ljava/lang/Object;)V"); //$NON-NLS-1$
@@ -461,12 +461,12 @@ public class BytecodeSourceRangeResolverTest {
         // window for takesMethod within this custom source (same name and parameter signature).
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        Object x = System.out;
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                Object x = System.out;
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -490,12 +490,12 @@ public class BytecodeSourceRangeResolverTest {
     public void packageQualifiedStaticFieldTypeQualifierIsFoundAsTypeReference() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        Object x = java.lang.System.out;
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                Object x = java.lang.System.out;
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "System", "java.lang.System", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -511,12 +511,12 @@ public class BytecodeSourceRangeResolverTest {
     public void singleSegmentPackageQualifierIsFoundAsPackageReference() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        pkg.Foo value = null;
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                pkg.Foo value = null;
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.PACKAGE, takesMethod, "pkg", "pkg", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -551,15 +551,15 @@ public class BytecodeSourceRangeResolverTest {
 
         String src = """
                 package fixture;
-                class Owner {
-                    class Inner {
-                        Inner(int value) {}
-                    }
-                    void takes(int count, java.lang.String... names) {
-                        new Inner(count);
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            class Inner {
+                Inner(int value) {}
+            }
+            void takes(int count, java.lang.String... names) {
+                new Inner(count);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
@@ -579,15 +579,15 @@ public class BytecodeSourceRangeResolverTest {
 
         String src = """
                 package fixture;
-                class Owner {
-                    class Inner {
-                        Inner(String... values) {}
-                    }
-                    void takes(int count, java.lang.String... names) {
-                        new Inner();
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            class Inner {
+                Inner(String... values) {}
+            }
+            void takes(int count, java.lang.String... names) {
+                new Inner();
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
         BytecodeSourceRangeResolver.SourceRange range = new BytecodeSourceRangeResolver()
@@ -613,14 +613,14 @@ public class BytecodeSourceRangeResolverTest {
     public void typeReferencesIgnoreSameNamedValueExpressions() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        Object Foo = null;
-                        consume(Foo);
-                        new Foo();
-                    }
-                }
-                """;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                Object Foo = null;
+                consume(Foo);
+                new Foo();
+            }
+        }
+        """;
 
         BytecodeSearchEntry entry = reference(Kind.TYPE, takesMethod, "Foo", "fixture.Foo", null, null); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -649,19 +649,19 @@ public class BytecodeSourceRangeResolverTest {
     public void superConstructorInvocationMatchesOnlyTheDirectSuperclass() {
         String src = """
                 package fixture;
-                class Base {
-                    Base(int value) {}
-                }
-                class Other {
-                    Other(int value) {}
-                }
-                class Owner extends Base {
-                    Owner(int value) {
-                        super(value);
-                        new Other(value);
-                    }
-                }
-                """;
+        class Base {
+            Base(int value) {}
+        }
+        class Other {
+            Other(int value) {}
+        }
+        class Owner extends Base {
+            Owner(int value) {
+                super(value);
+                new Other(value);
+            }
+        }
+        """;
 
         BytecodeSearchEntry base = reference(Kind.CONSTRUCTOR, intConstructor, "Base", FIXTURE_BASE, //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_BASE, "(I)V"); //$NON-NLS-1$
@@ -683,14 +683,14 @@ public class BytecodeSourceRangeResolverTest {
     public void parameterizedConstructorTypesResolveTheirRawTypeNames() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        new java.util.ArrayList<String>();
-                        java.util.function.Supplier<java.util.ArrayList<String>> created =
-                                java.util.ArrayList<String>::new;
-                    }
-                }
-                """;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                new java.util.ArrayList<String>();
+                java.util.function.Supplier<java.util.ArrayList<String>> created =
+                        java.util.ArrayList<String>::new;
+            }
+        }
+        """;
 
         BytecodeSearchEntry invocation = reference(Kind.CONSTRUCTOR, takesMethod, "ArrayList", "java.util.ArrayList", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.util.ArrayList", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -712,15 +712,15 @@ public class BytecodeSourceRangeResolverTest {
     public void parameterizedConstructorReferencesIgnoreAbsentSourceArguments() {
         String src = """
                 package fixture;
-                class Foo {
-                    Foo(String value) {}
-                }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        java.util.function.Function<String, Foo> created = Foo::new;
-                    }
-                }
-                """;
+        class Foo {
+            Foo(String value) {}
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                java.util.function.Function<String, Foo> created = Foo::new;
+            }
+        }
+        """;
 
         BytecodeSearchEntry entry = reference(Kind.CONSTRUCTOR, takesMethod, "Foo", "fixture.Foo", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -739,13 +739,13 @@ public class BytecodeSourceRangeResolverTest {
     public void packageQualifiedConstructorTypesRequireExactOwners() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        new p1.Widget();
-                        new p2.Widget();
-                    }
-                }
-                """;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                new p1.Widget();
+                new p2.Widget();
+            }
+        }
+        """;
 
         BytecodeSearchEntry first = reference(Kind.CONSTRUCTOR, takesMethod, "Widget", "p1.Widget", //$NON-NLS-1$ //$NON-NLS-2$
                 "p1.Widget", "()V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -792,15 +792,15 @@ public class BytecodeSourceRangeResolverTest {
         // Custom source: Base declares "x"; Owner (subclass) reads it unqualified.
         String src = """
                 package fixture;
-                class Base {
-                    int x;
-                }
-                class Owner extends Base {
-                    void target() {
-                        x = 1;
-                    }
-                }
-                """;
+        class Base {
+            int x;
+        }
+        class Owner extends Base {
+            void target() {
+                x = 1;
+            }
+        }
+        """;
 
         // targetMethod is void target() in Owner (0 parameters).
         // The bytecode entry says the field is declared on "fixture.Base".
@@ -823,17 +823,17 @@ public class BytecodeSourceRangeResolverTest {
     public void explicitThisAndSuperFieldAccessesResolveToTheirDeclaringOwners() {
         String src = """
                 package fixture;
-                class Base {
-                    int field;
-                }
-                class Owner extends Base {
-                    int field;
-                    void takes(int count, java.lang.String... names) {
-                        this.field = count;
-                        super.field = count;
-                    }
-                }
-                """;
+        class Base {
+            int field;
+        }
+        class Owner extends Base {
+            int field;
+            void takes(int count, java.lang.String... names) {
+                this.field = count;
+                super.field = count;
+            }
+        }
+        """;
 
         BytecodeSearchEntry ownerField = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
                 FIXTURE_OWNER, "I", Access.WRITE); //$NON-NLS-1$
@@ -856,17 +856,17 @@ public class BytecodeSourceRangeResolverTest {
     public void expressionQualifiedFieldAccessIsNotAssignedWithoutReceiverBindings() {
         String src = """
                 package fixture;
-                class Base {
-                    int field;
-                }
-                class Owner extends Base {
-                    int field;
-                    Owner receiver() { return this; }
-                    void takes(int count, java.lang.String... names) {
-                        receiver().field = count;
-                    }
-                }
-                """;
+        class Base {
+            int field;
+        }
+        class Owner extends Base {
+            int field;
+            Owner receiver() { return this; }
+            void takes(int count, java.lang.String... names) {
+                receiver().field = count;
+            }
+        }
+        """;
 
         BytecodeSearchEntry wrongOwner = reference(Kind.FIELD, takesMethod, FIELD, FIELD,
                 FIXTURE_BASE, "I", Access.WRITE); //$NON-NLS-1$
@@ -883,19 +883,19 @@ public class BytecodeSourceRangeResolverTest {
     public void expressionQualifiedMethodInvocationIsNotAssignedWithoutReceiverBindings() {
         String src = """
                 package fixture;
-                class First {
-                    int size() { return 1; }
-                }
-                class Second {
-                    int size() { return 2; }
-                }
-                class Owner {
-                    void takes(First first, Second second) {
-                        first.size();
-                        second.size();
-                    }
-                }
-                """;
+        class First {
+            int size() { return 1; }
+        }
+        class Second {
+            int size() { return 2; }
+        }
+        class Owner {
+            void takes(First first, Second second) {
+                first.size();
+                second.size();
+            }
+        }
+        """;
 
         BytecodeSearchEntry secondSize = reference(Kind.METHOD, takesMethod, "size", "size", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Second", "()I"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -913,13 +913,13 @@ public class BytecodeSourceRangeResolverTest {
     public void singleLocalVariableReceiverCallResolvesToTheOnlyCandidate() {
         String src = """
                 package fixture;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        java.io.PrintWriter pw = null;
-                        pw.println(count);
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                java.io.PrintWriter pw = null;
+                pw.println(count);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.io.PrintWriter", "(I)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -938,16 +938,16 @@ public class BytecodeSourceRangeResolverTest {
     public void multipleLocalVariableReceiverCallsWithImportResolveInOrder() {
         String src = """
                 package fixture;
-                import java.io.PrintWriter;
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        PrintWriter pw = null;
-                        pw.println("first");
-                        pw.println("second");
-                        pw.println("third");
-                    }
-                }
-                """; //$NON-NLS-1$
+        import java.io.PrintWriter;
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                PrintWriter pw = null;
+                pw.println("first");
+                pw.println("second");
+                pw.println("third");
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry e = reference(Kind.METHOD, takesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -970,15 +970,15 @@ public class BytecodeSourceRangeResolverTest {
         // which maps each variable name to its declared type and filters against the declaring owner.
         String src = """
                 package fixture;
-                import java.io.PrintWriter;
-                class Owner {
-                    void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {
-                        out.println("alpha");
-                        err.println("beta");
-                        out.println("gamma");
-                    }
-                }
-                """; //$NON-NLS-1$
+        import java.io.PrintWriter;
+        class Owner {
+            void printLines(java.io.PrintWriter out, java.io.PrintWriter err) {
+                out.println("alpha");
+                err.println("beta");
+                out.println("gamma");
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry e = reference(Kind.METHOD, printLinesMethod, "println", "println", //$NON-NLS-1$ //$NON-NLS-2$
                 "java.io.PrintWriter", "(Ljava/lang/String;)V"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -998,13 +998,13 @@ public class BytecodeSourceRangeResolverTest {
     public void explicitThisMethodInvocationResolvesLikeImplicitReceiver() {
         String src = """
                 package fixture;
-                class Owner {
-                    void helper() {}
-                    void takes(int count, java.lang.String... names) {
-                        this.helper();
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Owner {
+            void helper() {}
+            void takes(int count, java.lang.String... names) {
+                this.helper();
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry helper = reference(Kind.METHOD, takesMethod, "helper", "helper", //$NON-NLS-1$ //$NON-NLS-2$
                 FIXTURE_OWNER, "()V"); //$NON-NLS-1$
@@ -1021,15 +1021,15 @@ public class BytecodeSourceRangeResolverTest {
     public void qualifiedThisMethodInvocationResolvesToDeclaringOwner() throws JavaModelException {
         String src = """
                 package fixture;
-                class QualifiedThisOwner {
-                    void helper() {}
-                    class Inner {
-                        void takes(int count, java.lang.String... names) {
-                            QualifiedThisOwner.this.helper();
-                        }
-                    }
+        class QualifiedThisOwner {
+            void helper() {}
+            class Inner {
+                void takes(int count, java.lang.String... names) {
+                    QualifiedThisOwner.this.helper();
                 }
-                """; //$NON-NLS-1$
+            }
+        }
+        """; //$NON-NLS-1$
         ICompilationUnit unit = packageFragment.createCompilationUnit("QualifiedThisOwner.java", src, true, //$NON-NLS-1$
                 new NullProgressMonitor());
         IMethod innerTakes = method(unit.getType("QualifiedThisOwner").getType("Inner"), "takes", 2); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1049,17 +1049,17 @@ public class BytecodeSourceRangeResolverTest {
     public void localVariablesAreNotMatchedAsFieldReferences() {
         String src = """
                 package fixture;
-                class Foo {
-                    static int value;
-                }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        int value = count;
-                        consume(value);
-                        consume(Foo.value);
-                    }
-                }
-                """; //$NON-NLS-1$
+        class Foo {
+            static int value;
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                int value = count;
+                consume(value);
+                consume(Foo.value);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1076,18 +1076,18 @@ public class BytecodeSourceRangeResolverTest {
     public void forLoopVariablesDoNotHideLaterFieldReferences() {
         String src = """
                 package fixture;
-                class Foo {
-                    static int value;
+        class Foo {
+            static int value;
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                for (int value = 0; value < count; value++) {
+                    consume(value);
                 }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        for (int value = 0; value < count; value++) {
-                            consume(value);
-                        }
-                        consume(value);
-                    }
-                }
-                """; //$NON-NLS-1$
+                consume(value);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1106,19 +1106,19 @@ public class BytecodeSourceRangeResolverTest {
     public void enhancedForVariablesDoNotHideLaterFieldReferences() {
         String src = """
                 package fixture;
-                class Foo {
-                    static int value;
+        class Foo {
+            static int value;
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                for (int value : values()) {
+                    consume(value);
                 }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        for (int value : values()) {
-                            consume(value);
-                        }
-                        consume(value);
-                    }
-                    int[] values() { return new int[0]; }
-                }
-                """; //$NON-NLS-1$
+                consume(value);
+            }
+            int[] values() { return new int[0]; }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1137,20 +1137,20 @@ public class BytecodeSourceRangeResolverTest {
     public void catchParametersDoNotHideLaterFieldReferences() {
         String src = """
                 package fixture;
-                class Foo {
-                    static int value;
+        class Foo {
+            static int value;
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                try {
+                    consume(count);
+                } catch (Exception value) {
+                    consume(value);
                 }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        try {
-                            consume(count);
-                        } catch (Exception value) {
-                            consume(value);
-                        }
-                        consume(value);
-                    }
-                }
-                """; //$NON-NLS-1$
+                consume(value);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "I", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1169,17 +1169,17 @@ public class BytecodeSourceRangeResolverTest {
     public void lambdaParametersDoNotHideLaterFieldReferences() {
         String src = """
                 package fixture;
-                import java.util.function.Consumer;
-                class Foo {
-                    static String value;
-                }
-                class Owner {
-                    void takes(int count, java.lang.String... names) {
-                        Consumer<String> consumer = (String value) -> consume(value);
-                        consume(value);
-                    }
-                }
-                """; //$NON-NLS-1$
+        import java.util.function.Consumer;
+        class Foo {
+            static String value;
+        }
+        class Owner {
+            void takes(int count, java.lang.String... names) {
+                Consumer<String> consumer = (String value) -> consume(value);
+                consume(value);
+            }
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSearchEntry entry = reference(Kind.FIELD, takesMethod, "value", "value", //$NON-NLS-1$ //$NON-NLS-2$
                 "fixture.Foo", "Ljava/lang/String;", Access.READ); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1212,13 +1212,13 @@ public class BytecodeSourceRangeResolverTest {
         // variable also named "field".  The field initializer calls hashCode().
         String src = """
                 package fixture;
-                class Owner {
-                    void before() {
-                        int field = 0;
-                    }
-                    int field = hashCode();
-                }
-                """;
+        class Owner {
+            void before() {
+                int field = 0;
+            }
+            int field = hashCode();
+        }
+        """;
 
         IField fieldEl = ownerType.getField(FIELD); // IField "field" from the test project — declaring type "Owner"
         BytecodeSearchEntry entry = reference(Kind.METHOD, fieldEl,
@@ -1241,15 +1241,15 @@ public class BytecodeSourceRangeResolverTest {
     public void recordMemberReferencesUseTheRecordDeclarationWindow() throws JavaModelException {
         String src = """
                 package fixture;
-                class Padding {
-                    int one;
-                    int two;
-                    int three;
-                }
-                record Rec(int value) {
-                    int doubled() { return value * 2; }
-                }
-                """;
+        class Padding {
+            int one;
+            int two;
+            int three;
+        }
+        record Rec(int value) {
+            int doubled() { return value * 2; }
+        }
+        """;
 
         IMethod doubledMethod = method(recType, "doubled", 0); //$NON-NLS-1$
         BytecodeSearchEntry entry = reference(Kind.FIELD, doubledMethod,
@@ -1268,22 +1268,22 @@ public class BytecodeSourceRangeResolverTest {
     public void localClassOrdinalsSelectTheMatchingDeclarationWindow() {
         String src = """
                 package fixture;
-                class Owner {
-                    void first() {
-                        class Local {
-                            int marker = hit();
-                        }
-                    }
-
-                    void second() {
-                        class Local {
-                            int marker = hit();
-                        }
-                    }
-
-                    int hit() { return 0; }
+        class Owner {
+            void first() {
+                class Local {
+                    int marker = hit();
                 }
-                """;
+            }
+
+            void second() {
+                class Local {
+                    int marker = hit();
+                }
+            }
+
+            int hit() { return 0; }
+        }
+        """;
 
         IField marker = binaryLocalClassField("Owner$2Local.class", "marker"); //$NON-NLS-1$ //$NON-NLS-2$
         BytecodeSearchEntry entry = new BytecodeSearchEntry(
@@ -1331,7 +1331,7 @@ public class BytecodeSourceRangeResolverTest {
      * element lives inside a class file that has no source attachment (here a JRE
      * class), {@code classFile.getSource()} returns null, the blank-source guard fires,
      * and the resolver falls back to an enclosing range.
-     * @throws JavaModelException 
+     * @throws JavaModelException
      */
     @Test
     public void parseReturnsNullAndFallsBackForClassFileWithNoSourceAttachment() throws JavaModelException {
@@ -1414,12 +1414,12 @@ public class BytecodeSourceRangeResolverTest {
         // correct overload has String (unqualified) so the leftSimple branch resolves the match.
         String customSrc = """
                 package fixture;
-                class Prims {
-                    void strMethod(java.lang.Object o) {}
-                    void strMethod(String s) { target(); }
-                    void target() {}
-                }
-                """; //$NON-NLS-1$
+        class Prims {
+            void strMethod(java.lang.Object o) {}
+            void strMethod(String s) { target(); }
+            void target() {}
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         BytecodeSearchMatch match = new BytecodeSearchMatch(entry);
@@ -1452,11 +1452,11 @@ public class BytecodeSourceRangeResolverTest {
         // Custom source uses the fully-qualified java.lang.String so AST right is "java.lang.string" (qualified).
         String customSrc = """
                 package fixture;
-                class Prims {
-                    void intMethod(java.lang.String s) { target(); }
-                    void target() {}
-                }
-                """; //$NON-NLS-1$
+        class Prims {
+            void intMethod(java.lang.String s) { target(); }
+            void target() {}
+        }
+        """; //$NON-NLS-1$
 
         BytecodeSourceRangeResolver resolver = new BytecodeSourceRangeResolver();
         BytecodeSearchMatch match = new BytecodeSearchMatch(entry);

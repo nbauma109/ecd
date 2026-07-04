@@ -65,7 +65,7 @@ public class SetupRunnable implements Runnable {
     private static void openConflictDialogSafely() {
         try {
             ConflictingPluginsDialog.openIfNeeded(
-                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+                    PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
         } catch (Exception | NoClassDefFoundError e) {
             Logger.debug(e);
         }

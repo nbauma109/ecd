@@ -266,10 +266,10 @@ final class HeapEntryStore implements EntryStore {
             }
             Integer existing = ids.get(value);
             if (existing != null) {
-                return existing.intValue();
+                return existing;
             }
             int id = values.size();
-            ids.put(value, Integer.valueOf(id));
+            ids.put(value, id);
             values.add(value);
             return id;
         }

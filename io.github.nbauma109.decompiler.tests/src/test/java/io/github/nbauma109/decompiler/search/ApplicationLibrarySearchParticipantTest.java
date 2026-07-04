@@ -172,7 +172,7 @@ public class ApplicationLibrarySearchParticipantTest {
 
         assertTrue("All-occurrences searches must include indexed bytecode declarations", //$NON-NLS-1$
                 matches.stream()
-                        .anyMatch(ApplicationLibrarySearchParticipantTest::isDeclarationMatch));
+                .anyMatch(ApplicationLibrarySearchParticipantTest::isDeclarationMatch));
     }
 
     @Test
@@ -2727,8 +2727,8 @@ public class ApplicationLibrarySearchParticipantTest {
         run.visitCode();
         Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "java/lang/invoke/LambdaMetafactory", "metafactory", //$NON-NLS-1$ //$NON-NLS-2$
                 "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;" //$NON-NLS-1$
-                        + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
-                        + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
+                + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
+                + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
                 false);
         Handle implementation = new Handle(Opcodes.H_INVOKESTATIC, "pkg/LambdaUser", "lambda$run$0", "()V", false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         run.visitInvokeDynamicInsn("run", "()Ljava/lang/Runnable;", bootstrap, Type.getType("()V"), implementation, //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -2765,8 +2765,8 @@ public class ApplicationLibrarySearchParticipantTest {
         oneArg.visitCode();
         Handle bootstrap = new Handle(Opcodes.H_INVOKESTATIC, "java/lang/invoke/LambdaMetafactory", "metafactory", //$NON-NLS-1$ //$NON-NLS-2$
                 "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;" //$NON-NLS-1$
-                        + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
-                        + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
+                + "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)" //$NON-NLS-1$
+                + "Ljava/lang/invoke/CallSite;", //$NON-NLS-1$
                 false);
         Handle implementation = new Handle(Opcodes.H_INVOKESTATIC, "pkg/OverloadedLambdaUser", "lambda$run$0", //$NON-NLS-1$ //$NON-NLS-2$
                 "()V", false); //$NON-NLS-1$
