@@ -49,17 +49,22 @@ jobs:
             rm -rf release-assets extracted
             mkdir -p release-assets extracted "public/updates/${version}"
 
-            gh release download "${tag_name}" \
+            asset_name="$(gh release view "${tag_name}" \
               --repo "${REPOSITORY}" \
-              --pattern "enhanced-class-decompiler-*.zip" \
-              --dir release-assets
-
-            zip_path="$(find release-assets -maxdepth 1 -type f -name 'enhanced-class-decompiler-*.zip' | sort | head -n 1 || true)"
-            if [ -z "${zip_path}" ]; then
+              --json assets \
+              --jq '[.assets[].name | select(test("^enhanced-class-decompiler-.*\\.zip$"))] | sort | .[0] // ""')"
+            if [ -z "${asset_name}" ]; then
               echo "Skipping release ${tag_name} because no enhanced-class-decompiler-*.zip asset was found."
               rm -rf "public/updates/${version}"
               continue
             fi
+
+            gh release download "${tag_name}" \
+              --repo "${REPOSITORY}" \
+              --pattern "${asset_name}" \
+              --dir release-assets
+
+            zip_path="release-assets/${asset_name}"
 
             unzip -q "${zip_path}" -d extracted
 
