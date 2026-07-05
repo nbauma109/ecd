@@ -105,8 +105,7 @@ public class BytecodeJarIndexer {
                     effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
-            return jarWork(effectiveEntries.values(), HashUtils.sha256Hash(jar));
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | java.io.UncheckedIOException | IllegalStateException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }

@@ -106,8 +106,9 @@ final class SqliteEntryStore implements EntryStore {
             // needed to activate the mode (handled by BytecodeSearchIndex.vacuumIfNeeded).
             stmt.execute("PRAGMA auto_vacuum = FULL"); //$NON-NLS-1$
         }
-        boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$ //$NON-NLS-2$
-                || hasTable(conn, "entries") && (!hasTable(conn, "jar_locations") //$NON-NLS-1$ //$NON-NLS-2$
+boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$ //$NON-NLS-2$
+        || (hasTable(conn, "entries") || hasTable(conn, "jars")) //$NON-NLS-1$ //$NON-NLS-2$
+                && (!hasTable(conn, "jar_locations") //$NON-NLS-1$ //$NON-NLS-2$
                         || !hasColumn(conn, "jars", "content_hash")); //$NON-NLS-1$ //$NON-NLS-2$
         if (needsReset) {
             try (var s = conn.createStatement()) {
