@@ -17,7 +17,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -248,7 +247,7 @@ public final class BytecodeSearchIndex {
                     oldMap.values().stream()
                     .filter(idx -> !kept.contains(idx))
                     .forEach(JarIndex::close);
-                    pruneOrphanJarRows(plans, rebuilt.indexes());
+                    pruneOrphanJarRows(rebuilt.indexes());
                 } finally {
                     searchLock.writeLock().unlock();
                 }
@@ -308,7 +307,8 @@ public final class BytecodeSearchIndex {
         if (plan.dbJarId() >= 0) {
             subMonitor.worked(1);
             try {
-                return new JarIndex(jar, new SqliteEntryStore(activeConn, dbLock, plan.dbJarId()));
+                return new JarIndex(jar, new SqliteEntryStore(activeConn, dbLock, plan.dbJarId(), false,
+                        plan.key().rootHandle()));
             } catch (SQLException e) {
                 JavaDecompilerPlugin.logError(e, "Failed to open cached index for " + jar.getName()); //$NON-NLS-1$
                 return null;
@@ -324,26 +324,24 @@ public final class BytecodeSearchIndex {
     }
 
     // Called while searchLock.writeLock() is held by the caller.
-    private void pruneOrphanJarRows(List<JarPlan> plans, Map<RootKey, JarIndex> publishedIndexes) {
+    private void pruneOrphanJarRows(Map<RootKey, JarIndex> publishedIndexes) {
         Connection activeConn = getConn();
         if (activeConn == null) {
             return;
         }
-        Set<String> keepKeys = new HashSet<>();
-        for (JarPlan plan : plans) {
-            keepKeys.add(plan.key().rootHandle() + '\0' + plan.jar().getAbsolutePath());
-        }
-        // Collect only shared-connection jar_ids; in-memory stores have ids in a separate
-        // database and must not be confused with shared-DB row ids.
-        Set<Integer> liveJarIds = new HashSet<>();
-        for (JarIndex idx : publishedIndexes.values()) {
+        // Map each live workspace location to its shared content row. Multiple locations
+        // may deliberately point to the same jar_id.
+        Map<String, Integer> liveLocations = new LinkedHashMap<>();
+        for (Map.Entry<RootKey, JarIndex> entry : publishedIndexes.entrySet()) {
+            JarIndex idx = entry.getValue();
             if (idx.entries instanceof SqliteEntryStore ses && !ses.ownsConnection()) {
-                liveJarIds.add(ses.jarId());
+                RootKey key = entry.getKey();
+                liveLocations.put(key.rootHandle() + '\0' + key.path().toFile().getAbsolutePath(), ses.jarId());
             }
         }
         try {
             synchronized (dbLock) {
-                SqliteEntryStore.pruneOrphanJarRows(activeConn, keepKeys, liveJarIds);
+                SqliteEntryStore.pruneOrphanJarRows(activeConn, liveLocations);
                 SqliteEntryStore.pruneOrphanStrings(activeConn);
             }
         } catch (SQLException e) {
@@ -390,7 +388,7 @@ public final class BytecodeSearchIndex {
                         dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
                                 new SqliteEntryStore.JarKey(key.rootHandle(), jar.getAbsolutePath(),
                                         jar.lastModified(), jar.length(),
-                                        Runtime.version().feature(), work.fileCrc()));
+                                        Runtime.version().feature(), work.fileCrc(), work.contentHash()));
                     } catch (SQLException e) {
                         Logger.debug(e);
                     }

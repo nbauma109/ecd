@@ -26,13 +26,21 @@ public class HashUtils {
     }
 
     public static String sha1Hash(File file) {
+        return hash(file, "SHA-1"); //$NON-NLS-1$
+    }
+
+    public static String sha256Hash(File file) {
+        return hash(file, "SHA-256"); //$NON-NLS-1$
+    }
+
+    private static String hash(File file, String algorithm) {
         if (file != null) {
             try (InputStream fis = new FileInputStream(file)) {
-                return hexDigestOfStream(fis, MessageDigest.getInstance("SHA-1"));
+                return hexDigestOfStream(fis, MessageDigest.getInstance(algorithm));
             } catch (IOException e) {
-                throw new UncheckedIOException("Unable to compute SHA-1 for " + file, e);
+                throw new UncheckedIOException("Unable to compute " + algorithm + " for " + file, e); //$NON-NLS-1$ //$NON-NLS-2$
             } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException("SHA-1 algorithm is not available", e);
+                throw new IllegalStateException(algorithm + " algorithm is not available", e); //$NON-NLS-1$
             }
         }
         return null;
