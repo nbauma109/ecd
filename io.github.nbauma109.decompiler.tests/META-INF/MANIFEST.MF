@@ -40,7 +40,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.httpcomponents.core5.httpcore5;resolution:=optional,
  io.github.nbauma109.decompiler
 Bundle-Vendor: ECD Project Team
-Bundle-Version: 2026.6.1
+Bundle-Version: 2026.9.0
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: io.github.nbauma109.decompiler.tests;singleton:=true
 Eclipse-ExtensibleAPI: true
