@@ -128,7 +128,7 @@ public class BytecodeSearchEntry {
         return element == null ? anonymousElementFallback : element;
     }
 
-    String getElementHandle() {
+    public String getElementHandle() {
         return elementHandle;
     }
 
@@ -136,11 +136,11 @@ public class BytecodeSearchEntry {
         return anonymousElementFallback;
     }
 
-    String getName() {
+    public String getName() {
         return name;
     }
 
-    String getQualifiedName() {
+    public String getQualifiedName() {
         return qualifiedName;
     }
 

@@ -12,7 +12,7 @@ import org.eclipse.core.runtime.CoreException;
 
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 
-interface EntryStore extends AutoCloseable {
+public interface EntryStore extends AutoCloseable {
 
     @FunctionalInterface
     interface EntryConsumer {

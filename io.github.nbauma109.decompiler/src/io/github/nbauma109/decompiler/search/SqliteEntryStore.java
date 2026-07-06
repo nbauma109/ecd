@@ -36,7 +36,7 @@ import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
  * the {@code strings} table and referenced by integer id in {@code entries}, which keeps
  * the entries table compact even when the same string appears in millions of rows.
  */
-final class SqliteEntryStore implements EntryStore {
+public final class SqliteEntryStore implements EntryStore {
 
     static final String PLUGIN_ID = "io.github.nbauma109.decompiler"; //$NON-NLS-1$
 
@@ -66,15 +66,15 @@ final class SqliteEntryStore implements EntryStore {
     private final String indexedRootHandle;
     private final String requestedRootHandle;
 
-    SqliteEntryStore(Connection conn, Object dbLock, int jarId) throws SQLException {
+    public SqliteEntryStore(Connection conn, Object dbLock, int jarId) throws SQLException {
         this(conn, dbLock, jarId, false, null);
     }
 
-    SqliteEntryStore(Connection conn, Object dbLock, int jarId, boolean ownsConnection) throws SQLException {
+    public SqliteEntryStore(Connection conn, Object dbLock, int jarId, boolean ownsConnection) throws SQLException {
         this(conn, dbLock, jarId, ownsConnection, null);
     }
 
-    SqliteEntryStore(Connection conn, Object dbLock, int jarId, boolean ownsConnection,
+    public SqliteEntryStore(Connection conn, Object dbLock, int jarId, boolean ownsConnection,
             String requestedRootHandle) throws SQLException {
         this.conn = conn;
         this.dbLock = dbLock;
@@ -85,7 +85,7 @@ final class SqliteEntryStore implements EntryStore {
         this.size = querySize();
     }
 
-    static Connection openInMemoryDatabase() throws SQLException {
+    public static Connection openInMemoryDatabase() throws SQLException {
         try {
             Class.forName("org.sqlite.JDBC"); //$NON-NLS-1$
         } catch (ClassNotFoundException e) {
@@ -241,18 +241,18 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
         }
     }
 
-    record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc,
+    public record JarKey(String rootHandle, String path, long lastModified, long fileLength, int runtimeVersion, long fileCrc,
             String contentHash) {
     }
 
-    record JarRegistration(int jarId, boolean needsIndexing) {
+    public record JarRegistration(int jarId, boolean needsIndexing) {
     }
 
     /**
      * Returns the jar id if the jar is already in the database with matching metadata,
      * or -1 if it needs (re-)indexing.
      */
-    static int findJar(Connection conn, Object dbLock, JarKey key) throws SQLException {
+    public static int findJar(Connection conn, Object dbLock, JarKey key) throws SQLException {
         final Object lock = dbLock;
         synchronized (lock) {
             try (PreparedStatement ps = conn.prepareStatement(
@@ -279,7 +279,7 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
      * jar row. The workspace location is then linked to that canonical row.
      * Must be called inside a write transaction.
      */
-    static JarRegistration registerJar(Connection conn, String rootHandle, String path,
+    public static JarRegistration registerJar(Connection conn, String rootHandle, String path,
             long lastModified, long fileLength, int runtimeVersion, long fileCrc, String contentHash)
             throws SQLException {
         int jarId = -1;
