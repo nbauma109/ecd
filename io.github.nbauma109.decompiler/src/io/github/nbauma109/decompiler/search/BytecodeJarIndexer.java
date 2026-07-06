@@ -69,6 +69,7 @@ import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Access;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.Kind;
 import io.github.nbauma109.decompiler.search.BytecodeSearchEntry.TypeCategory;
+import io.github.nbauma109.decompiler.util.HashUtils;
 import io.github.nbauma109.decompiler.util.Logger;
 
 public class BytecodeJarIndexer {
@@ -104,14 +105,14 @@ public class BytecodeJarIndexer {
                     effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
-            return jarWork(effectiveEntries.values());
-        } catch (IOException e) {
+            return jarWork(effectiveEntries.values(), HashUtils.sha256Hash(jar));
+        } catch (IOException | java.io.UncheckedIOException | IllegalStateException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }
     }
 
-    private static JarWork jarWork(Collection<EffectiveClassEntry> effectiveEntries) {
+    private static JarWork jarWork(Collection<EffectiveClassEntry> effectiveEntries, String contentHash) {
         List<JarEntryWork> entries = new ArrayList<>(effectiveEntries.size());
         long totalImpact = 0L;
         long totalTicks = 0L;
@@ -132,7 +133,7 @@ public class BytecodeJarIndexer {
             buf.putLong(entry.entryCrc());
             fingerprint.update(buf.array());
         }
-        return new JarWork(entries, totalImpact, (int) totalTicks, fingerprint.getValue());
+        return new JarWork(entries, totalImpact, (int) totalTicks, fingerprint.getValue(), contentHash);
     }
 
     private static boolean isMultiReleaseJar(ZipFile zip) throws IOException {
@@ -241,9 +242,17 @@ public class BytecodeJarIndexer {
             synchronized (lock) {
                 reg = SqliteEntryStore.registerJar(activeConn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
-                        Runtime.version().feature(), work.fileCrc());
+                        Runtime.version().feature(), work.fileCrc(), work.contentHash());
             }
             int jarId = reg.jarId();
+            if (!reg.needsIndexing()) {
+                synchronized (lock) {
+                    activeConn.commit();
+                    activeConn.setAutoCommit(true);
+                }
+                return new BytecodeSearchIndex.JarIndex(jar,
+                        new SqliteEntryStore(activeConn, lock, jarId, ownsConn, rootHandle));
+            }
             try (ZipFile zip = new ZipFile(jar);
                     PreparedStatement insertPs = prepareLocked(activeConn, lock, insertSql, Statement.RETURN_GENERATED_KEYS);
                     PreparedStatement updatePs = prepareLocked(activeConn, lock, updateSql);
@@ -269,7 +278,8 @@ public class BytecodeJarIndexer {
                 activeConn.commit();
                 activeConn.setAutoCommit(true);
             }
-            return new BytecodeSearchIndex.JarIndex(jar, new SqliteEntryStore(activeConn, lock, jarId, ownsConn));
+            return new BytecodeSearchIndex.JarIndex(jar,
+                    new SqliteEntryStore(activeConn, lock, jarId, ownsConn, rootHandle));
         } catch (IOException | SQLException e) {
             JavaDecompilerPlugin.logError(e, FAILED_TO_INDEX_JAR + jar.getAbsolutePath()); //$NON-NLS-1$
             abortConn(activeConn, lock, ownsConn);
@@ -338,6 +348,8 @@ public class BytecodeJarIndexer {
     }
 
     private static final class DbWriteException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
         DbWriteException(SQLException cause) {
             super(cause);
         }
@@ -2011,7 +2023,8 @@ public class BytecodeJarIndexer {
         }
     }
 
-    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks, long fileCrc) {
+    public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks, long fileCrc,
+            String contentHash) {
     }
 
     public record JarEntryWork(String name, long impactBytes, int ticks) {

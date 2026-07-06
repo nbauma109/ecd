@@ -50,6 +50,15 @@ public class HashUtilsTest {
     }
 
     @Test
+    public void sha256HashReturnsExpectedDigestForExistingFile() throws IOException {
+        File file = new File(testRoot, "payload-sha256.txt"); //$NON-NLS-1$
+        Files.writeString(file.toPath(), "hello world", StandardCharsets.UTF_8); //$NON-NLS-1$
+
+        assertEquals("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9", //$NON-NLS-1$
+                HashUtils.sha256Hash(file));
+    }
+
+    @Test
     public void sha1HashReturnsNullForNullFile() {
         assertNull(HashUtils.sha1Hash(null));
     }
