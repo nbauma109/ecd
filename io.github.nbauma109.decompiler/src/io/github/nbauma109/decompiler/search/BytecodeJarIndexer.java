@@ -326,7 +326,7 @@ public class BytecodeJarIndexer {
     }
 
     private static void indexEntry(IndexContext context, JarEntryWork entryWork, SubMonitor subMonitor) {
-        subMonitor.subTask(entryWork.name());
+        subMonitor.subTask(context.jar().getName() + '!' + entryWork.name());
         try {
             ZipEntry entry = context.zip().getEntry(entryWork.name());
             if (entry != null) {

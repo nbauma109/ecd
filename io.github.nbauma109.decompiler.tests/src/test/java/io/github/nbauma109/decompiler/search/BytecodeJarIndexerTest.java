@@ -114,16 +114,23 @@ public class BytecodeJarIndexerTest {
             DecompilerTestSupport.configureClasspathWithJre(javaProject);
             IPackageFragmentRoot root = DecompilerTestSupport.addJarToClasspathAndGetRoot(javaProject, jar);
             AtomicInteger cancellationChecks = new AtomicInteger();
+            List<String> subTasks = new ArrayList<>();
             NullProgressMonitor monitor = new NullProgressMonitor() {
                 @Override
                 public boolean isCanceled() {
                     return cancellationChecks.incrementAndGet() > 1;
+                }
+
+                @Override
+                public void subTask(String name) {
+                    subTasks.add(name);
                 }
             };
 
             try (Connection conn = openTestDatabase()) {
                 assertNull(BytecodeJarIndexer.index(root, jar, BytecodeJarIndexer.plan(jar), conn, new Object(), monitor));
             }
+            assertEquals(List.of("canceled.jar!pkg/First.class"), subTasks); //$NON-NLS-1$
         } finally {
             if (project.exists()) {
                 project.delete(true, true, new NullProgressMonitor());
