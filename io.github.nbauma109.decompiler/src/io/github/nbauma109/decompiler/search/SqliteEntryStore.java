@@ -106,8 +106,8 @@ public final class SqliteEntryStore implements EntryStore {
             // needed to activate the mode (handled by BytecodeSearchIndex.vacuumIfNeeded).
             stmt.execute("PRAGMA auto_vacuum = FULL"); //$NON-NLS-1$
         }
-boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$ //$NON-NLS-2$
-        || (hasTable(conn, "entries") || hasTable(conn, "jars")) //$NON-NLS-1$ //$NON-NLS-2$
+        boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$ //$NON-NLS-2$
+                || (hasTable(conn, "entries") || hasTable(conn, "jars")) //$NON-NLS-1$ //$NON-NLS-2$
                 && (!hasTable(conn, "jar_locations") //$NON-NLS-1$ //$NON-NLS-2$
                         || !hasColumn(conn, "jars", "content_hash")); //$NON-NLS-1$ //$NON-NLS-2$
         if (needsReset) {
@@ -147,37 +147,37 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
                                                     jar_id INTEGER NOT NULL REFERENCES jars(id) ON DELETE CASCADE,
                                                     PRIMARY KEY(root_handle, path)
                                                     ) WITHOUT ROWID"""); //$NON-NLS-1$
-                                    // entries uses integer ids into strings instead of storing text inline,
-                                    // cutting per-row size from ~280 bytes (7 text columns) to ~56 bytes (7 ints).
-                                    stmt.execute("""
-                                            CREATE TABLE IF NOT EXISTS entries (
-                                                    id INTEGER PRIMARY KEY,
-                                                    jar_id INTEGER NOT NULL REFERENCES jars(id) ON DELETE CASCADE,
-                                                    kind INTEGER NOT NULL,
-                                                    declaration INTEGER NOT NULL,
-                                                    access_flags INTEGER NOT NULL,
-                                                    type_category INTEGER NOT NULL,
-                                                    element_handle_id INTEGER NOT NULL DEFAULT 0,
-                                                    name_id INTEGER NOT NULL DEFAULT 0,
-                                                    qualified_name_id INTEGER NOT NULL DEFAULT 0,
-                                                    declaring_type_name_id INTEGER NOT NULL DEFAULT 0,
-                                                    descriptor_id INTEGER NOT NULL DEFAULT 0,
-                                                    occurrence_count INTEGER NOT NULL DEFAULT 1,
-                                                    fallback_handle_id INTEGER NOT NULL DEFAULT 0
-                                                    )"""); //$NON-NLS-1$
+                                            // entries uses integer ids into strings instead of storing text inline,
+                                            // cutting per-row size from ~280 bytes (7 text columns) to ~56 bytes (7 ints).
                                             stmt.execute("""
-                                                    CREATE INDEX IF NOT EXISTS idx_entries_name
-                                                    ON entries(jar_id, kind, name_id)"""); //$NON-NLS-1$
-                                                    // Most member entries use the same value for name and
-                                                    // qualified_name. Their qualified-name lookup is already
-                                                    // covered by idx_entries_name, so do not duplicate those rows
-                                                    // in a second, often very large, index. Dropping the old index
-                                                    // also migrates existing databases on first startup.
-                                                    stmt.execute("DROP INDEX IF EXISTS idx_entries_qname"); //$NON-NLS-1$
+                                                    CREATE TABLE IF NOT EXISTS entries (
+                                                            id INTEGER PRIMARY KEY,
+                                                            jar_id INTEGER NOT NULL REFERENCES jars(id) ON DELETE CASCADE,
+                                                            kind INTEGER NOT NULL,
+                                                            declaration INTEGER NOT NULL,
+                                                            access_flags INTEGER NOT NULL,
+                                                            type_category INTEGER NOT NULL,
+                                                            element_handle_id INTEGER NOT NULL DEFAULT 0,
+                                                            name_id INTEGER NOT NULL DEFAULT 0,
+                                                            qualified_name_id INTEGER NOT NULL DEFAULT 0,
+                                                            declaring_type_name_id INTEGER NOT NULL DEFAULT 0,
+                                                            descriptor_id INTEGER NOT NULL DEFAULT 0,
+                                                            occurrence_count INTEGER NOT NULL DEFAULT 1,
+                                                            fallback_handle_id INTEGER NOT NULL DEFAULT 0
+                                                            )"""); //$NON-NLS-1$
                                                     stmt.execute("""
-                                                            CREATE INDEX IF NOT EXISTS idx_entries_distinct_qname
-                                                            ON entries(jar_id, kind, qualified_name_id)
-                                                            WHERE qualified_name_id != name_id"""); //$NON-NLS-1$
+                                                            CREATE INDEX IF NOT EXISTS idx_entries_name
+                                                            ON entries(jar_id, kind, name_id)"""); //$NON-NLS-1$
+                                                            // Most member entries use the same value for name and
+                                                            // qualified_name. Their qualified-name lookup is already
+                                                            // covered by idx_entries_name, so do not duplicate those rows
+                                                            // in a second, often very large, index. Dropping the old index
+                                                            // also migrates existing databases on first startup.
+                                                            stmt.execute("DROP INDEX IF EXISTS idx_entries_qname"); //$NON-NLS-1$
+                                                            stmt.execute("""
+                                                                    CREATE INDEX IF NOT EXISTS idx_entries_distinct_qname
+                                                                    ON entries(jar_id, kind, qualified_name_id)
+                                                                    WHERE qualified_name_id != name_id"""); //$NON-NLS-1$
         }
     }
 
@@ -259,7 +259,7 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
                     "SELECT l.jar_id FROM jar_locations l JOIN jars j ON j.id = l.jar_id " + //$NON-NLS-1$
                             "WHERE l.root_handle = ? AND l.path = ? AND l.last_modified = ? " + //$NON-NLS-1$
                             "AND l.file_length = ? AND j.runtime_version = ? " + //$NON-NLS-1$
-                            "AND j.file_crc = ? AND j.content_hash = ?")) { //$NON-NLS-1$
+                    "AND j.file_crc = ? AND j.content_hash = ?")) { //$NON-NLS-1$
                 ps.setString(1, key.rootHandle());
                 ps.setString(2, key.path());
                 ps.setLong(3, key.lastModified());
@@ -281,7 +281,7 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
      */
     public static JarRegistration registerJar(Connection conn, String rootHandle, String path,
             long lastModified, long fileLength, int runtimeVersion, long fileCrc, String contentHash)
-            throws SQLException {
+                    throws SQLException {
         int jarId = -1;
         try (PreparedStatement find = conn.prepareStatement(
                 "SELECT id FROM jars WHERE runtime_version = ? AND content_hash = ?")) { //$NON-NLS-1$
@@ -316,221 +316,221 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
         }
         try (PreparedStatement link = conn.prepareStatement("""
                 INSERT INTO jar_locations(root_handle, path, last_modified, file_length, jar_id)
-                        VALUES(?, ?, ?, ?, ?)
+                VALUES(?, ?, ?, ?, ?)
                 ON CONFLICT(root_handle, path) DO UPDATE SET
-                        last_modified = excluded.last_modified,
-                        file_length = excluded.file_length,
-                        jar_id = excluded.jar_id""")) { //$NON-NLS-1$
-            link.setString(1, rootHandle);
-            link.setString(2, path);
-            link.setLong(3, lastModified);
-            link.setLong(4, fileLength);
-            link.setInt(5, jarId);
-            link.executeUpdate();
-        }
-        return new JarRegistration(jarId, needsIndexing);
+                last_modified = excluded.last_modified,
+                file_length = excluded.file_length,
+                jar_id = excluded.jar_id""")) { //$NON-NLS-1$
+                link.setString(1, rootHandle);
+                link.setString(2, path);
+                link.setLong(3, lastModified);
+                link.setLong(4, fileLength);
+                link.setInt(5, jarId);
+                link.executeUpdate();
     }
+    return new JarRegistration(jarId, needsIndexing);
+}
 
-    int jarId() {
-        return jarId;
-    }
+int jarId() {
+    return jarId;
+}
 
-    boolean ownsConnection() {
-        return ownsConnection;
-    }
+boolean ownsConnection() {
+    return ownsConnection;
+}
 
-    private String queryIndexedRootHandle() throws SQLException {
-        synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT root_handle FROM jars WHERE id = ?")) { //$NON-NLS-1$
-                ps.setInt(1, jarId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? rs.getString(1) : ""; //$NON-NLS-1$
-                }
+private String queryIndexedRootHandle() throws SQLException {
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT root_handle FROM jars WHERE id = ?")) { //$NON-NLS-1$
+            ps.setInt(1, jarId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : ""; //$NON-NLS-1$
             }
         }
     }
+}
 
-    private int querySize() throws SQLException {
-        synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT COUNT(*) FROM entries WHERE jar_id = ?")) { //$NON-NLS-1$
-                ps.setInt(1, jarId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? rs.getInt(1) : 0;
-                }
+private int querySize() throws SQLException {
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT COUNT(*) FROM entries WHERE jar_id = ?")) { //$NON-NLS-1$
+            ps.setInt(1, jarId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
             }
         }
     }
+}
 
-    @Override
-    public int size() {
-        return size;
-    }
+@Override
+public int size() {
+    return size;
+}
 
-    @Override
-    public void collect(Kind kind, String name, String qualifiedName, boolean wildcard,
-            EntryStore.EntryConsumer consumer) throws CoreException {
-        try {
-            if (wildcard) {
-                collectAll(kind, consumer);
+@Override
+public void collect(Kind kind, String name, String qualifiedName, boolean wildcard,
+        EntryStore.EntryConsumer consumer) throws CoreException {
+    try {
+        if (wildcard) {
+            collectAll(kind, consumer);
+        } else {
+            String searchName = name == null ? "" : name; //$NON-NLS-1$
+            String searchQName = qualifiedName == null ? "" : qualifiedName; //$NON-NLS-1$
+            if (searchName.equals(searchQName)) {
+                collectByName(kind, searchName, consumer);
             } else {
-                String searchName = name == null ? "" : name; //$NON-NLS-1$
-                String searchQName = qualifiedName == null ? "" : qualifiedName; //$NON-NLS-1$
-                if (searchName.equals(searchQName)) {
-                    collectByName(kind, searchName, consumer);
-                } else {
-                    collectByNameOrQName(kind, searchName, searchQName, consumer);
-                }
+                collectByNameOrQName(kind, searchName, searchQName, consumer);
             }
-        } catch (SQLException e) {
-            throw new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, e.getMessage(), e));
+        }
+    } catch (SQLException e) {
+        throw new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, e.getMessage(), e));
+    }
+}
+
+private void collectAll(Kind kind, EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
+    String sql = SELECT_ENTRIES_WHERE + "e.jar_id = ? AND e.kind = ?"; //$NON-NLS-1$
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, jarId);
+            ps.setInt(2, kind.ordinal());
+            emit(ps, consumer);
         }
     }
+}
 
-    private void collectAll(Kind kind, EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
-        String sql = SELECT_ENTRIES_WHERE + "e.jar_id = ? AND e.kind = ?"; //$NON-NLS-1$
+private void collectByName(Kind kind, String searchName, EntryStore.EntryConsumer consumer)
+        throws SQLException, CoreException {
+    if (StringUtils.isBlank(searchName)) {
+        return;
+    }
+    String sql = SELECT_ENTRIES_WHERE +
+            "e.jar_id = ? AND e.kind = ? AND e.name_id IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, jarId);
+            ps.setInt(2, kind.ordinal());
+            ps.setString(3, searchName);
+            emit(ps, consumer);
+        }
+    }
+}
+
+private void collectByNameOrQName(Kind kind, String searchName, String searchQName,
+        EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
+    boolean hasName = !StringUtils.isBlank(searchName);
+    boolean hasQName = !StringUtils.isBlank(searchQName);
+    if (!hasName && !hasQName) {
+        return;
+    }
+    if (!hasName) {
+        collectByQName(kind, searchQName, consumer);
+        return;
+    }
+    if (!hasQName) {
+        collectByName(kind, searchName, consumer);
+        return;
+    }
+    // Split the alternatives so SQLite can use the compact partial qname index.
+    // The branches are disjoint, which avoids the temporary table required by UNION.
+    String sql = SELECT_ENTRIES_WHERE +
+            "e.jar_id = ? AND e.kind = ? AND " + //$NON-NLS-1$
+            "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
+            "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
+            "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id = e.name_id AND " + //$NON-NLS-1$
+            "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
+            "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
+            "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id != e.name_id AND " + //$NON-NLS-1$
+            "e.qualified_name_id IN (SELECT id FROM strings WHERE value = ?) AND " + //$NON-NLS-1$
+            "e.name_id NOT IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, jarId);
+            ps.setInt(2, kind.ordinal());
+            ps.setString(3, searchName);
+            ps.setInt(4, jarId);
+            ps.setInt(5, kind.ordinal());
+            ps.setString(6, searchQName);
+            ps.setInt(7, jarId);
+            ps.setInt(8, kind.ordinal());
+            ps.setString(9, searchQName);
+            ps.setString(10, searchName);
+            emit(ps, consumer);
+        }
+    }
+}
+
+private void collectByQName(Kind kind, String searchQName, EntryStore.EntryConsumer consumer)
+        throws SQLException, CoreException {
+    String sql = SELECT_ENTRIES_WHERE +
+            "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id = e.name_id AND " + //$NON-NLS-1$
+            "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
+            "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
+            "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id != e.name_id AND " + //$NON-NLS-1$
+            "e.qualified_name_id IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
+    synchronized (dbLock) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, jarId);
+            ps.setInt(2, kind.ordinal());
+            ps.setString(3, searchQName);
+            ps.setInt(4, jarId);
+            ps.setInt(5, kind.ordinal());
+            ps.setString(6, searchQName);
+            emit(ps, consumer);
+        }
+    }
+}
+
+private void emit(PreparedStatement ps, EntryStore.EntryConsumer consumer)
+        throws SQLException, CoreException {
+    try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            consumer.accept(rowToEntry(rs));
+        }
+    }
+}
+
+private BytecodeSearchEntry rowToEntry(ResultSet rs) throws SQLException {
+    Kind kind = Kind.values()[rs.getInt(1)];
+    boolean declaration = rs.getInt(2) != 0;
+    Access access = Access.values()[rs.getInt(3)];
+    TypeCategory typeCategory = TypeCategory.values()[rs.getInt(4)];
+    String elementHandle = translateHandle(emptyToNull(rs.getString(5)));
+    String name = emptyToNull(rs.getString(6));
+    String qualifiedName = emptyToNull(rs.getString(7));
+    String declaringTypeName = emptyToNull(rs.getString(8));
+    String descriptor = emptyToNull(rs.getString(9));
+    int occurrenceCount = rs.getInt(10);
+    String fallbackHandle = translateHandle(emptyToNull(rs.getString(11)));
+    IJavaElement fallback = fallbackHandle == null ? null : JavaCore.create(fallbackHandle);
+    return new BytecodeSearchEntry(kind, declaration,
+            BytecodeSearchEntry.elementReference(elementHandle, fallback),
+            BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor),
+            access, typeCategory, occurrenceCount);
+}
+
+private String translateHandle(String handle) {
+    if (handle == null || indexedRootHandle.isEmpty() || indexedRootHandle.equals(requestedRootHandle)
+            || !handle.startsWith(indexedRootHandle)) {
+        return handle;
+    }
+    return requestedRootHandle + handle.substring(indexedRootHandle.length());
+}
+
+private static String emptyToNull(String s) {
+    return s == null || s.isEmpty() ? null : s;
+}
+
+@Override
+public void close() {
+    if (ownsConnection) {
         synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, jarId);
-                ps.setInt(2, kind.ordinal());
-                emit(ps, consumer);
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                // in-memory connection cleanup is non-fatal
             }
         }
     }
-
-    private void collectByName(Kind kind, String searchName, EntryStore.EntryConsumer consumer)
-            throws SQLException, CoreException {
-        if (StringUtils.isBlank(searchName)) {
-            return;
-        }
-        String sql = SELECT_ENTRIES_WHERE +
-                "e.jar_id = ? AND e.kind = ? AND e.name_id IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
-        synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, jarId);
-                ps.setInt(2, kind.ordinal());
-                ps.setString(3, searchName);
-                emit(ps, consumer);
-            }
-        }
-    }
-
-    private void collectByNameOrQName(Kind kind, String searchName, String searchQName,
-            EntryStore.EntryConsumer consumer) throws SQLException, CoreException {
-        boolean hasName = !StringUtils.isBlank(searchName);
-        boolean hasQName = !StringUtils.isBlank(searchQName);
-        if (!hasName && !hasQName) {
-            return;
-        }
-        if (!hasName) {
-            collectByQName(kind, searchQName, consumer);
-            return;
-        }
-        if (!hasQName) {
-            collectByName(kind, searchName, consumer);
-            return;
-        }
-        // Split the alternatives so SQLite can use the compact partial qname index.
-        // The branches are disjoint, which avoids the temporary table required by UNION.
-        String sql = SELECT_ENTRIES_WHERE +
-                "e.jar_id = ? AND e.kind = ? AND " + //$NON-NLS-1$
-                "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
-                "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
-                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id = e.name_id AND " + //$NON-NLS-1$
-                "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
-                "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
-                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id != e.name_id AND " + //$NON-NLS-1$
-                "e.qualified_name_id IN (SELECT id FROM strings WHERE value = ?) AND " + //$NON-NLS-1$
-                "e.name_id NOT IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
-        synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, jarId);
-                ps.setInt(2, kind.ordinal());
-                ps.setString(3, searchName);
-                ps.setInt(4, jarId);
-                ps.setInt(5, kind.ordinal());
-                ps.setString(6, searchQName);
-                ps.setInt(7, jarId);
-                ps.setInt(8, kind.ordinal());
-                ps.setString(9, searchQName);
-                ps.setString(10, searchName);
-                emit(ps, consumer);
-            }
-        }
-    }
-
-    private void collectByQName(Kind kind, String searchQName, EntryStore.EntryConsumer consumer)
-            throws SQLException, CoreException {
-        String sql = SELECT_ENTRIES_WHERE +
-                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id = e.name_id AND " + //$NON-NLS-1$
-                "e.name_id IN (SELECT id FROM strings WHERE value = ?) " + //$NON-NLS-1$
-                "UNION ALL " + SELECT_ENTRIES_WHERE + //$NON-NLS-1$
-                "e.jar_id = ? AND e.kind = ? AND e.qualified_name_id != e.name_id AND " + //$NON-NLS-1$
-                "e.qualified_name_id IN (SELECT id FROM strings WHERE value = ?)"; //$NON-NLS-1$
-        synchronized (dbLock) {
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, jarId);
-                ps.setInt(2, kind.ordinal());
-                ps.setString(3, searchQName);
-                ps.setInt(4, jarId);
-                ps.setInt(5, kind.ordinal());
-                ps.setString(6, searchQName);
-                emit(ps, consumer);
-            }
-        }
-    }
-
-    private void emit(PreparedStatement ps, EntryStore.EntryConsumer consumer)
-            throws SQLException, CoreException {
-        try (ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                consumer.accept(rowToEntry(rs));
-            }
-        }
-    }
-
-    private BytecodeSearchEntry rowToEntry(ResultSet rs) throws SQLException {
-        Kind kind = Kind.values()[rs.getInt(1)];
-        boolean declaration = rs.getInt(2) != 0;
-        Access access = Access.values()[rs.getInt(3)];
-        TypeCategory typeCategory = TypeCategory.values()[rs.getInt(4)];
-        String elementHandle = translateHandle(emptyToNull(rs.getString(5)));
-        String name = emptyToNull(rs.getString(6));
-        String qualifiedName = emptyToNull(rs.getString(7));
-        String declaringTypeName = emptyToNull(rs.getString(8));
-        String descriptor = emptyToNull(rs.getString(9));
-        int occurrenceCount = rs.getInt(10);
-        String fallbackHandle = translateHandle(emptyToNull(rs.getString(11)));
-        IJavaElement fallback = fallbackHandle == null ? null : JavaCore.create(fallbackHandle);
-        return new BytecodeSearchEntry(kind, declaration,
-                BytecodeSearchEntry.elementReference(elementHandle, fallback),
-                BytecodeSearchEntry.symbolReference(name, qualifiedName, declaringTypeName, descriptor),
-                access, typeCategory, occurrenceCount);
-    }
-
-    private String translateHandle(String handle) {
-        if (handle == null || indexedRootHandle.isEmpty() || indexedRootHandle.equals(requestedRootHandle)
-                || !handle.startsWith(indexedRootHandle)) {
-            return handle;
-        }
-        return requestedRootHandle + handle.substring(indexedRootHandle.length());
-    }
-
-    private static String emptyToNull(String s) {
-        return s == null || s.isEmpty() ? null : s;
-    }
-
-    @Override
-    public void close() {
-        if (ownsConnection) {
-            synchronized (dbLock) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    // in-memory connection cleanup is non-fatal
-                }
-            }
-        }
-    }
+}
 }
