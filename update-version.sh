@@ -16,7 +16,7 @@ if [ -z "$VERSION" ]; then
 	exit 1
 fi
 
-M3_VERSION=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/apache/maven/releases/latest | sed 's,https://github.com/apache/maven/releases/tag/maven-,,g')
+M3_VERSION="3.9.9"
 
 # Extract the Tycho version from pom.xml
 TYCHO_VERSION=$(grep "<tycho.version>" pom.xml | sed 's/.*<tycho.version>\(.*\)<\/tycho.version>.*/\1/')
