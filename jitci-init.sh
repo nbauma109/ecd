@@ -10,7 +10,7 @@ echo "JAVA_HOME=$JAVA_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 
-M3_VERSION="$(curl -Ls -o /dev/null -w '%{url_effective}' https://github.com/apache/maven/releases/latest | sed 's#.*/maven-##')"
+M3_VERSION="3.9.9"
 MVN_DIR="/home/jitpack/tools/apache-maven-${M3_VERSION}"
 if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
   mkdir -p "$MVN_DIR"
