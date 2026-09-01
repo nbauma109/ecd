@@ -41,7 +41,7 @@ public class SqliteEntryStoreTest {
 
             try (ResultSet rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM entries INDEXED BY idx_entries_distinct_qname " + //$NON-NLS-1$
-                            "WHERE qualified_name_id != name_id")) { //$NON-NLS-1$
+                    "WHERE qualified_name_id != name_id")) { //$NON-NLS-1$
                 assertTrue(rs.next());
                 assertEquals(2, rs.getInt(1));
             }
@@ -113,20 +113,20 @@ public class SqliteEntryStoreTest {
                     INSERT INTO jars(id, root_handle, path, last_modified, file_length, runtime_version, file_crc,
                             content_hash)
                     VALUES(1, '=canonical', '/tmp/test.jar', 1, 1, 21, 1, 'fixture-hash')"""); //$NON-NLS-1$
-            stmt.executeUpdate("""
-                    INSERT INTO jar_locations(root_handle, path, last_modified, file_length, jar_id)
-                    VALUES('=canonical', '/tmp/test.jar', 1, 1, 1)"""); //$NON-NLS-1$
-            stmt.executeUpdate("""
-                    INSERT INTO strings(id, value) VALUES
-                    (1, 'alpha'), (2, 'beta'), (3, 'pkg.beta'), (4, 'pkg.Gamma'),
-                    (5, '=canonical/pkg/Type.class')"""); //$NON-NLS-1$
-            stmt.executeUpdate("""
-                    INSERT INTO entries(jar_id, kind, declaration, access_flags, type_category,
-                            element_handle_id, name_id, qualified_name_id) VALUES
-                    (1, 1, 0, 0, 0, 5, 1, 1),
-                    (1, 1, 0, 0, 0, 0, 2, 3),
-                    (1, 1, 0, 0, 0, 0, 1, 3),
-                    (1, 1, 0, 0, 0, 0, 4, 4)"""); //$NON-NLS-1$
+                    stmt.executeUpdate("""
+                            INSERT INTO jar_locations(root_handle, path, last_modified, file_length, jar_id)
+                            VALUES('=canonical', '/tmp/test.jar', 1, 1, 1)"""); //$NON-NLS-1$
+                            stmt.executeUpdate("""
+                                    INSERT INTO strings(id, value) VALUES
+                                    (1, 'alpha'), (2, 'beta'), (3, 'pkg.beta'), (4, 'pkg.Gamma'),
+                                    (5, '=canonical/pkg/Type.class')"""); //$NON-NLS-1$
+                                    stmt.executeUpdate("""
+                                            INSERT INTO entries(jar_id, kind, declaration, access_flags, type_category,
+                                                    element_handle_id, name_id, qualified_name_id) VALUES
+                                            (1, 1, 0, 0, 0, 5, 1, 1),
+                                            (1, 1, 0, 0, 0, 0, 2, 3),
+                                            (1, 1, 0, 0, 0, 0, 1, 3),
+                                            (1, 1, 0, 0, 0, 0, 4, 4)"""); //$NON-NLS-1$
         }
         return conn;
     }
