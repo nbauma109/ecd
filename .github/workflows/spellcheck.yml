@@ -21,7 +21,7 @@ jobs:
 
       # Pass 1: apply all unambiguous fixes
       - name: Pass 1 — Apply typos safe fixes
-        uses: crate-ci/typos@v1
+        uses: crate-ci/typos@v1.48.0
         continue-on-error: true
         with:
           files: .
