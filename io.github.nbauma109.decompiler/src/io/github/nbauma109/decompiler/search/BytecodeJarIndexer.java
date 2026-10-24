@@ -39,6 +39,7 @@ import java.util.zip.ZipFile;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IField;
@@ -93,21 +94,52 @@ public class BytecodeJarIndexer {
     }
 
     public static JarWork plan(File jar) {
+        JarWork work = scan(jar, null);
+        return work == null ? null : withContentHash(work, jar);
+    }
+
+    /**
+     * Inspects the zip directory and computes the ordered entry fingerprint without reading
+     * the whole archive. The expensive content hash is intentionally left {@code null} so
+     * that callers can first try the location/fingerprint cache and only hash a jar that is
+     * not already indexed.
+     */
+    public static JarWork scan(File jar, IProgressMonitor monitor) {
         try (ZipFile zip = new ZipFile(jar)) {
             Map<String, EffectiveClassEntry> effectiveEntries = new LinkedHashMap<>();
             boolean multiRelease = isMultiReleaseJar(zip);
             int runtimeFeatureVersion = Runtime.version().feature();
             Enumeration<? extends ZipEntry> zipEntries = zip.entries();
+            int inspected = 0;
             while (zipEntries.hasMoreElements()) {
+                if (monitor != null && (inspected++ & 0xFF) == 0 && monitor.isCanceled()) {
+                    throw new OperationCanceledException();
+                }
                 ZipEntry entry = zipEntries.nextElement();
                 EffectiveClassEntry candidate = effectiveClassEntry(entry, multiRelease, runtimeFeatureVersion);
                 if (candidate != null) {
                     effectiveEntries.merge(candidate.logicalName(), candidate, EffectiveClassEntry::newer);
                 }
             }
-            return jarWork(effectiveEntries.values(), HashUtils.sha256Hash(jar));
+            return jarWork(effectiveEntries.values(), null);
         } catch (IOException | java.io.UncheckedIOException | IllegalStateException e) {
             JavaDecompilerPlugin.logError(e, "Failed to inspect jar " + jar.getAbsolutePath()); //$NON-NLS-1$
+            return null;
+        }
+    }
+
+    /**
+     * Computes the SHA-256 content hash if it has not been computed yet. A failure is logged
+     * and reported as {@code null} so that one unreadable jar does not abort the whole refresh.
+     */
+    public static JarWork withContentHash(JarWork work, File jar) {
+        if (work == null || work.contentHash() != null) {
+            return work;
+        }
+        try {
+            return work.withContentHash(HashUtils.sha256Hash(jar));
+        } catch (java.io.UncheckedIOException | IllegalStateException e) {
+            JavaDecompilerPlugin.logError(e, "Failed to hash jar " + jar.getAbsolutePath()); //$NON-NLS-1$
             return null;
         }
     }
@@ -229,12 +261,18 @@ public class BytecodeJarIndexer {
         }
         String rootHandle = root != null ? root.getHandleIdentifier() : ""; //$NON-NLS-1$
         Map<String, String> strings = new HashMap<>();
+        String contentHash = work.contentHash();
         String insertSql =
                 "INSERT INTO entries(jar_id,kind,declaration,access_flags,type_category," + //$NON-NLS-1$
                         "element_handle_id,name_id,qualified_name_id," + //$NON-NLS-1$
                         "declaring_type_name_id,descriptor_id,occurrence_count,fallback_handle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"; //$NON-NLS-1$
         String updateSql = "UPDATE entries SET occurrence_count = occurrence_count + 1 WHERE id = ?"; //$NON-NLS-1$
         try {
+            if (contentHash == null) {
+                // The planner may have reused a scan result without hashing it. The hash is
+                // still needed to deduplicate identical content across workspace locations.
+                contentHash = HashUtils.sha256Hash(jar);
+            }
             synchronized (lock) {
                 activeConn.setAutoCommit(false);
             }
@@ -242,7 +280,7 @@ public class BytecodeJarIndexer {
             synchronized (lock) {
                 reg = SqliteEntryStore.registerJar(activeConn, rootHandle,
                         jar.getAbsolutePath(), jar.lastModified(), jar.length(),
-                        Runtime.version().feature(), work.fileCrc(), work.contentHash());
+                        Runtime.version().feature(), work.fileCrc(), contentHash);
             }
             int jarId = reg.jarId();
             if (!reg.needsIndexing()) {
@@ -2025,6 +2063,10 @@ public class BytecodeJarIndexer {
 
     public record JarWork(List<JarEntryWork> entries, long totalImpact, int totalTicks, long fileCrc,
             String contentHash) {
+
+        JarWork withContentHash(String hash) {
+            return new JarWork(entries, totalImpact, totalTicks, fileCrc, hash);
+        }
     }
 
     public record JarEntryWork(String name, long impactBytes, int ticks) {

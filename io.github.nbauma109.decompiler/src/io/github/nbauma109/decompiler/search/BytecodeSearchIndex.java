@@ -231,9 +231,12 @@ public final class BytecodeSearchIndex {
         }
         boolean scheduleAgain;
         try {
-            Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource();
-            List<JarPlan> plans = plan(roots);
-            RebuildResult rebuilt = rebuild(plans, monitor);
+            Map<RootKey, IPackageFragmentRoot> roots = collectApplicationLibraryRootsWithoutSource(monitor);
+            SubMonitor progress = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
+                    Math.max(roots.size(), 1));
+            List<JarPlan> plans = plan(roots, progress);
+            progress.setWorkRemaining(totalTicks(plans));
+            RebuildResult rebuilt = rebuild(plans, progress);
             if (!rebuilt.completed()) {
                 return;
             }
@@ -269,10 +272,8 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private RebuildResult rebuild(List<JarPlan> plans, IProgressMonitor monitor) {
+    private RebuildResult rebuild(List<JarPlan> plans, SubMonitor subMonitor) {
         Connection activeConn = getConn();
-        SubMonitor subMonitor = SubMonitor.convert(monitor, "Index application library bytecode", //$NON-NLS-1$
-                totalTicks(plans));
         Map<RootKey, JarIndex> rebuilt = new LinkedHashMap<>();
         Set<JarIndex> reused = Collections.newSetFromMap(new IdentityHashMap<>());
         try {
@@ -341,8 +342,11 @@ public final class BytecodeSearchIndex {
         }
         try {
             synchronized (dbLock) {
-                SqliteEntryStore.pruneOrphanJarRows(activeConn, liveLocations);
-                SqliteEntryStore.pruneOrphanStrings(activeConn);
+                // Strings only become orphaned when a jar/location row is removed. Avoid the
+                // full-table UNION scan on every refresh when nothing was pruned.
+                if (SqliteEntryStore.pruneOrphanJarRows(activeConn, liveLocations)) {
+                    SqliteEntryStore.pruneOrphanStrings(activeConn);
+                }
             }
         } catch (SQLException e) {
             Logger.debug(e);
@@ -367,36 +371,77 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private List<JarPlan> plan(Map<RootKey, IPackageFragmentRoot> roots) {
+    private List<JarPlan> plan(Map<RootKey, IPackageFragmentRoot> roots, IProgressMonitor monitor) {
         Connection activeConn = getConn();
         List<JarPlan> plans = new ArrayList<>(roots.size());
+        JarScanCache scans = new JarScanCache();
+        int processed = 0;
         for (Map.Entry<RootKey, IPackageFragmentRoot> rootEntry : roots.entrySet()) {
+            if (monitor != null && (processed++ & 0xF) == 0 && monitor.isCanceled()) {
+                throw new OperationCanceledException();
+            }
             RootKey key = rootEntry.getKey();
             IPath path = key.path();
             File jar = path.toFile();
+            if (monitor != null) {
+                monitor.subTask(jar.getName());
+                monitor.worked(1);
+            }
             JarIndex existing = indexes.get().get(key);
             if (existing != null && existing.matches(jar)) {
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, -1, 1));
-            } else {
-                BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.plan(jar);
-                if (work == null) {
-                    continue;
-                }
-                int dbJarId = -1;
-                if (activeConn != null) {
-                    try {
-                        dbJarId = SqliteEntryStore.findJar(activeConn, dbLock,
-                                new SqliteEntryStore.JarKey(key.rootHandle(), jar.getAbsolutePath(),
-                                        jar.lastModified(), jar.length(),
-                                        Runtime.version().feature(), work.fileCrc(), work.contentHash()));
-                    } catch (SQLException e) {
-                        Logger.debug(e);
-                    }
-                }
-                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
+                continue;
             }
+            BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
+            if (work == null) {
+                continue;
+            }
+            int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
+            if (dbJarId >= 0) {
+                // The ZIP fingerprint is sufficient to prove that the indexed content is
+                // unchanged. Do not retain the entry list and do not compute the SHA-256.
+                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, null, dbJarId, 1));
+                continue;
+            }
+            work = BytecodeJarIndexer.withContentHash(work, jar);
+            if (work == null) {
+                continue;
+            }
+            scans.put(jar, work);
+            dbJarId = findJar(activeConn, key, jar, work);
+            plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
         }
         return plans;
+    }
+
+    private int findJarByFingerprint(Connection activeConn, RootKey key, File jar,
+            BytecodeJarIndexer.JarWork work) {
+        if (activeConn == null) {
+            return -1;
+        }
+        try {
+            return SqliteEntryStore.findJarByFingerprint(activeConn, dbLock,
+                    new SqliteEntryStore.JarKey(key.rootHandle(), jar.getAbsolutePath(),
+                            jar.lastModified(), jar.length(), Runtime.version().feature(), work.fileCrc(), null));
+        } catch (SQLException e) {
+            Logger.debug(e);
+            return -1;
+        }
+    }
+
+    private int findJar(Connection activeConn, RootKey key, File jar, BytecodeJarIndexer.JarWork work) {
+        if (activeConn == null) {
+            return -1;
+        }
+        try {
+            return SqliteEntryStore.findJar(activeConn, dbLock,
+                    new SqliteEntryStore.JarKey(key.rootHandle(), jar.getAbsolutePath(),
+                            jar.lastModified(), jar.length(), Runtime.version().feature(), work.fileCrc(),
+                            work.contentHash()));
+        } catch (SQLException e) {
+            Logger.debug(e);
+            return -1;
+        }
     }
 
     private static int totalTicks(List<JarPlan> plans) {
@@ -448,16 +493,22 @@ public final class BytecodeSearchIndex {
         }
     }
 
-    private static Map<RootKey, IPackageFragmentRoot> collectApplicationLibraryRootsWithoutSource()
-            throws JavaModelException {
+    private static Map<RootKey, IPackageFragmentRoot> collectApplicationLibraryRootsWithoutSource(
+            IProgressMonitor monitor) throws JavaModelException {
         IJavaModel javaModel = JavaCore.create(ResourcesPlugin.getWorkspace().getRoot());
         Map<RootKey, IPackageFragmentRoot> candidates = new LinkedHashMap<>();
 
         for (IJavaProject project : javaModel.getJavaProjects()) {
+            if (monitor != null && monitor.isCanceled()) {
+                throw new OperationCanceledException();
+            }
             if (!project.exists() || !project.getProject().isOpen()) {
                 continue;
             }
             for (IPackageFragmentRoot root : project.getAllPackageFragmentRoots()) {
+                if (monitor != null && monitor.isCanceled()) {
+                    throw new OperationCanceledException();
+                }
                 collectRoot(root, candidates);
             }
         }

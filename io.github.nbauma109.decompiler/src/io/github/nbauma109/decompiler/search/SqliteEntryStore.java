@@ -96,7 +96,7 @@ public final class SqliteEntryStore implements EntryStore {
         return c;
     }
 
-    static void initSchema(Connection conn) throws SQLException {
+    public static void initSchema(Connection conn) throws SQLException {
         try (var stmt = conn.createStatement()) {
             stmt.execute("PRAGMA journal_mode=WAL"); //$NON-NLS-1$
             stmt.execute("PRAGMA synchronous=NORMAL"); //$NON-NLS-1$
@@ -202,7 +202,8 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
         }
     }
 
-    static void pruneOrphanJarRows(Connection conn, Map<String, Integer> liveLocations) throws SQLException {
+    public static boolean pruneOrphanJarRows(Connection conn, Map<String, Integer> liveLocations) throws SQLException {
+        boolean changed = false;
         try (PreparedStatement sel = conn.prepareStatement(
                 "SELECT root_handle, path, jar_id FROM jar_locations"); //$NON-NLS-1$
                 PreparedStatement del = conn.prepareStatement(
@@ -216,6 +217,7 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
                         del.setString(1, rootHandle);
                         del.setString(2, path);
                         del.addBatch();
+                        changed = true;
                     }
                 }
             }
@@ -223,8 +225,9 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
         }
         try (PreparedStatement del = conn.prepareStatement(
                 "DELETE FROM jars WHERE id NOT IN (SELECT jar_id FROM jar_locations)")) { //$NON-NLS-1$
-            del.executeUpdate();
+            changed |= del.executeUpdate() > 0;
         }
+        return changed;
     }
 
     static void pruneOrphanStrings(Connection conn) throws SQLException {
@@ -267,6 +270,36 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
                 ps.setInt(5, key.runtimeVersion());
                 ps.setLong(6, key.fileCrc());
                 ps.setString(7, key.contentHash());
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : -1;
+                }
+            }
+        }
+    }
+
+    /**
+     * Fast-path lookup that compares the workspace location metadata and the ordered ZIP entry
+     * fingerprint, but deliberately not the SHA-256 content hash. The fingerprint is cheap to
+     * obtain (zip central directory only) and changes whenever an indexed class entry is
+     * renamed, resized or has different bytes. This avoids reading every jar in full on each
+     * startup while still invalidating the cache when a jar is modified, including when its
+     * modification time and length have been preserved.
+     *
+     * @return the jar id when the location and fingerprint match, or -1 otherwise
+     */
+    public static int findJarByFingerprint(Connection conn, Object dbLock, JarKey key) throws SQLException {
+        final Object lock = dbLock;
+        synchronized (lock) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT l.jar_id FROM jar_locations l JOIN jars j ON j.id = l.jar_id " + //$NON-NLS-1$
+                            "WHERE l.root_handle = ? AND l.path = ? AND l.last_modified = ? " + //$NON-NLS-1$
+                            "AND l.file_length = ? AND j.runtime_version = ? AND j.file_crc = ?")) { //$NON-NLS-1$
+                ps.setString(1, key.rootHandle());
+                ps.setString(2, key.path());
+                ps.setLong(3, key.lastModified());
+                ps.setLong(4, key.fileLength());
+                ps.setInt(5, key.runtimeVersion());
+                ps.setLong(6, key.fileCrc());
                 try (ResultSet rs = ps.executeQuery()) {
                     return rs.next() ? rs.getInt(1) : -1;
                 }
