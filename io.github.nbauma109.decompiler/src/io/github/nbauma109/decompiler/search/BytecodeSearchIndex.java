@@ -280,8 +280,13 @@ public final class BytecodeSearchIndex {
             for (JarPlan plan : plans) {
                 JarIndex index = rebuild(plan, activeConn, subMonitor);
                 if (index == null) {
-                    rebuilt.values().stream().filter(idx -> !reused.contains(idx)).forEach(JarIndex::close);
-                    return new RebuildResult(false, Map.of());
+                    if (subMonitor.isCanceled()) {
+                        rebuilt.values().stream().filter(idx -> !reused.contains(idx)).forEach(JarIndex::close);
+                        return new RebuildResult(false, Map.of());
+                    }
+                    // The failure is already logged: skip this jar, one unreadable jar must not keep the
+                    // others from being published. It is tried again by the next refresh.
+                    continue;
                 }
                 if (index == plan.existing()) {
                     reused.add(index);

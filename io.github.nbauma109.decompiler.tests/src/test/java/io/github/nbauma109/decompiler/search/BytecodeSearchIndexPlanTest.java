@@ -101,6 +101,45 @@ public class BytecodeSearchIndexPlanTest {
         }
     }
 
+    @Test
+    public void unreadableJarDoesNotKeepTheOthersFromBeingPublished() throws Exception {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-search-rebuild-failure"); //$NON-NLS-1$
+        File good = new File(tempDir, "good.jar"); //$NON-NLS-1$
+        File bad = new File(tempDir, "bad.jar"); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup first = null;
+        DecompilerTestSupport.BundleJarProjectSetup second = null;
+        try {
+            createJar(good);
+            createJar(bad);
+            first = DecompilerTestSupport.createJavaProjectWithJar(good, "bytecode-search-rebuild-good"); //$NON-NLS-1$
+            second = DecompilerTestSupport.createJavaProjectWithJar(bad, "bytecode-search-rebuild-bad"); //$NON-NLS-1$
+
+            BytecodeSearchIndex index = newSearchIndex(null);
+            List<?> plans = plan(index, roots(first, second));
+            assertEquals(2, plans.size());
+            // the jar becomes unreadable after it was planned
+            java.nio.file.Files.write(bad.toPath(), new byte[] { 1, 2, 3 });
+
+            Method rebuild = BytecodeSearchIndex.class.getDeclaredMethod("rebuild", List.class, //$NON-NLS-1$
+                    org.eclipse.core.runtime.SubMonitor.class);
+            rebuild.setAccessible(true);
+            Object result = rebuild.invoke(index, plans,
+                    org.eclipse.core.runtime.SubMonitor.convert(new NullProgressMonitor(), 100));
+            Method completed = result.getClass().getDeclaredMethod("completed"); //$NON-NLS-1$
+            Method indexes = result.getClass().getDeclaredMethod("indexes"); //$NON-NLS-1$
+            completed.setAccessible(true);
+            indexes.setAccessible(true);
+            assertTrue((Boolean) completed.invoke(result));
+            Map<?, ?> published = (Map<?, ?>) indexes.invoke(result);
+            assertEquals(1, published.size());
+            assertTrue(published.keySet().iterator().next().toString().contains("good.jar")); //$NON-NLS-1$
+        } finally {
+            deleteProject(first);
+            deleteProject(second);
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
     private static BytecodeSearchIndex newSearchIndex(Connection conn) throws Exception {
         Constructor<BytecodeSearchIndex> constructor = BytecodeSearchIndex.class.getDeclaredConstructor();
         constructor.setAccessible(true);
