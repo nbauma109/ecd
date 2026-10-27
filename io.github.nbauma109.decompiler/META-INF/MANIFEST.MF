@@ -24,7 +24,7 @@ Bundle-ClassPath: target/lib/sqlite-jdbc.jar,
  .
 Bundle-Name: Enhanced Class Decompiler
 Bundle-Localization: plugin
-Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-RequiredExecutionEnvironment: JavaSE-25
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.resources,
  org.eclipse.jface,

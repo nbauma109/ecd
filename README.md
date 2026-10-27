@@ -197,7 +197,7 @@ The following keyboard shortcuts are available when working with decompiled clas
 
 ## How to build from source?
 
-  Requirement: JDK 21 (make sure `JAVA_HOME` environment variable points to an appropriate JDK)
+  Requirement: JDK 25 (make sure `JAVA_HOME` environment variable points to an appropriate JDK)
 
   If you want to test the latest features of this plugin, you have to build it from source. For this, proceed as following:
 
