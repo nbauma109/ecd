@@ -403,8 +403,8 @@ public final class BytecodeSearchIndex {
             }
             int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
             if (dbJarId >= 0) {
-                // The ZIP fingerprint is sufficient to prove that the indexed content is
-                // unchanged. Do not retain the entry list and do not compute the SHA-256.
+                // Known location with unchanged mtime, length and class-entry CRC32: reuse it without
+                // computing the SHA-256. Unknown locations take the hashing path below.
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, null, dbJarId, 1));
                 continue;
             }

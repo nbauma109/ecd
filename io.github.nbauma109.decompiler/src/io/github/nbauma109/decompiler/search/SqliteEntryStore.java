@@ -278,12 +278,14 @@ boolean needsReset = hasColumn(conn, "entries", "normalized_name") //$NON-NLS-1$
     }
 
     /**
-     * Fast-path lookup that compares the workspace location metadata and the ordered ZIP entry
-     * fingerprint, but deliberately not the SHA-256 content hash. The fingerprint is cheap to
-     * obtain (zip central directory only) and changes whenever an indexed class entry is
-     * renamed, resized or has different bytes. This avoids reading every jar in full on each
-     * startup while still invalidating the cache when a jar is modified, including when its
-     * modification time and length have been preserved.
+     * Location-based fast path for a jar that is already known at this exact location. It matches
+     * root handle, path, modification time, file length, runtime version and {@code file_crc}, but
+     * deliberately not the SHA-256 content hash. {@code file_crc} is a CRC32 over the class entries
+     * only (logical name, uncompressed size and stored ZIP CRC of each), read from the ZIP central
+     * directory; it does not contain the path. It is a cheap change detector for a known location,
+     * not a content identity: CRC32 can collide, which for bytecode search would at worst reuse a
+     * stale index. A jar at a location that is not registered yet never matches here, so it is hashed
+     * with SHA-256 and shares indexed data through {@link #registerJar} (content identity).
      *
      * @return the jar id when the location and fingerprint match, or -1 otherwise
      */
