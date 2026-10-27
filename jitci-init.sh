@@ -10,7 +10,8 @@ echo "JAVA_HOME=$JAVA_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 
-M3_VERSION="$(curl -Ls -o /dev/null -w '%{url_effective}' https://github.com/apache/maven/releases/latest | sed 's#.*/maven-##')"
+# Pinned to 3.9.16, the last Maven version with a passing CI. Builds with the then-latest 3.10.0 fail with "Invalid Collect Request".
+M3_VERSION="3.9.16"
 MVN_DIR="/home/jitpack/tools/apache-maven-${M3_VERSION}"
 if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
   mkdir -p "$MVN_DIR"
