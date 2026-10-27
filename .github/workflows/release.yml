@@ -88,6 +88,7 @@ jobs:
           clean
           verify
           -DskipTests
+          -Dmaven.resolver.validation=MILD
           -Dsigning.disabled=false
           "-Dsigning.keystore=${{ steps.signing.outputs.keystore_path }}"
           "-Dsigning.storetype=${ECD_SIGNING_STORETYPE}"
