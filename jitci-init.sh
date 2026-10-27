@@ -18,4 +18,4 @@ if [[ ! -x "$MVN_DIR/bin/mvn" ]]; then
 fi
 export PATH="$MVN_DIR/bin:$PATH"
 
-mvn -V -B -ntp de.qaware.maven:go-offline-maven-plugin:resolve-dependencies --no-transfer-progress
+mvn -V -B -ntp -Dmaven.resolver.validation=MILD de.qaware.maven:go-offline-maven-plugin:resolve-dependencies --no-transfer-progress

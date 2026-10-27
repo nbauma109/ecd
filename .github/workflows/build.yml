@@ -35,4 +35,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
-        run: mvn -B -DskipTests -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+        run: mvn -B -DskipTests -ntp -Dmaven.resolver.validation=MILD verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
