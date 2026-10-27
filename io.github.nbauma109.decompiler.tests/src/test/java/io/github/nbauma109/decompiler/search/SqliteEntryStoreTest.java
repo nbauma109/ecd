@@ -16,7 +16,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -103,6 +105,77 @@ public class SqliteEntryStoreTest {
             assertEquals(2, matches.size());
             assertTrue(matches.stream().anyMatch(
                     entry -> "=alias/pkg/Type.class".equals(entry.getElementHandle()))); //$NON-NLS-1$
+        }
+    }
+
+    @Test
+    public void fingerprintLookupDoesNotNeedContentHashButRejectsChangedMetadata() throws Exception {
+        try (Connection conn = databaseWithEntries()) {
+            Object lock = new Object();
+            assertEquals(1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=canonical", "/tmp/test.jar", 1, 1, 21, 1, null))); //$NON-NLS-1$ //$NON-NLS-2$
+            // A modified jar changes its ZIP entry fingerprint even if mtime and length are kept.
+            assertEquals(-1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=canonical", "/tmp/test.jar", 1, 1, 21, 2, null))); //$NON-NLS-1$ //$NON-NLS-2$
+            // Changed mtime, length and runtime version must invalidate the location cache too.
+            assertEquals(-1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=canonical", "/tmp/test.jar", 2, 1, 21, 1, null))); //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals(-1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=canonical", "/tmp/test.jar", 1, 2, 21, 1, null))); //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals(-1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=canonical", "/tmp/test.jar", 1, 1, 17, 1, null))); //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals(-1, SqliteEntryStore.findJarByFingerprint(conn, lock,
+                    new SqliteEntryStore.JarKey("=other", "/tmp/test.jar", 1, 1, 21, 1, null))); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+    }
+
+    @Test
+    public void initSchemaKeepsCurrentDataAndResetsLegacySchema() throws Exception {
+        try (Connection conn = SqliteEntryStore.openInMemoryDatabase();
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("INSERT INTO strings(value) VALUES('kept')"); //$NON-NLS-1$
+            SqliteEntryStore.initSchema(conn);
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM strings WHERE value = 'kept'")) { //$NON-NLS-1$
+                assertTrue(rs.next());
+                assertEquals(1, rs.getInt(1));
+            }
+        }
+
+        try (Connection conn = SqliteEntryStore.openInMemoryDatabase();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE entries"); //$NON-NLS-1$
+            stmt.execute("DROP TABLE jar_locations"); //$NON-NLS-1$
+            stmt.execute("DROP TABLE jars"); //$NON-NLS-1$
+            stmt.execute("DROP TABLE strings"); //$NON-NLS-1$
+            stmt.execute("CREATE TABLE entries (id INTEGER PRIMARY KEY, normalized_name TEXT)"); //$NON-NLS-1$
+            stmt.execute("CREATE TABLE jars (id INTEGER PRIMARY KEY, root_handle TEXT, path TEXT)"); //$NON-NLS-1$
+            stmt.execute("INSERT INTO jars(id, root_handle, path) VALUES(1, '=old', '/tmp/old.jar')"); //$NON-NLS-1$
+
+            SqliteEntryStore.initSchema(conn);
+
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM pragma_table_info('jars') " + //$NON-NLS-1$
+                    "WHERE name = 'content_hash'")) { //$NON-NLS-1$
+                assertTrue(rs.next());
+                assertEquals(1, rs.getInt(1));
+            }
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM sqlite_master " + //$NON-NLS-1$
+                    "WHERE type = 'table' AND name = 'jar_locations'")) { //$NON-NLS-1$
+                assertTrue(rs.next());
+                assertEquals(1, rs.getInt(1));
+            }
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM jars")) { //$NON-NLS-1$
+                assertTrue(rs.next());
+                assertEquals(0, rs.getInt(1));
+            }
+        }
+    }
+
+    @Test
+    public void pruneOrphanJarRowsReportsWhetherAnythingWasRemoved() throws Exception {
+        try (Connection conn = databaseWithEntries()) {
+            Map<String, Integer> liveLocations = new HashMap<>();
+            assertTrue(SqliteEntryStore.pruneOrphanJarRows(conn, liveLocations));
+            assertFalse(SqliteEntryStore.pruneOrphanJarRows(conn, liveLocations));
         }
     }
 

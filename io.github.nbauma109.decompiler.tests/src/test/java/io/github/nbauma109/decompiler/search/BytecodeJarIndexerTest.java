@@ -8,6 +8,7 @@
 package io.github.nbauma109.decompiler.search;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -57,6 +58,57 @@ public class BytecodeJarIndexerTest {
 
             assertEquals(1, work.entries().size());
             assertEquals("pkg/Base.class", work.entries().get(0).name()); //$NON-NLS-1$
+            assertNotNull(work.contentHash());
+        } finally {
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void scanLeavesContentHashForTheCacheFastPath() throws IOException {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-scan"); //$NON-NLS-1$
+        File jar = new File(tempDir, "scan.jar"); //$NON-NLS-1$
+        try {
+            createJar(jar);
+
+            BytecodeJarIndexer.JarWork work = BytecodeJarIndexer.scan(jar, null);
+
+            assertNotNull(work);
+            assertNull(work.contentHash());
+            BytecodeJarIndexer.JarWork hashed = BytecodeJarIndexer.withContentHash(work, jar);
+            assertNotNull(hashed);
+            assertEquals(work.fileCrc(), hashed.fileCrc());
+            assertNotNull(hashed.contentHash());
+        } finally {
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void scanFingerprintChangesWhenAClassIsModifiedWithSameTimestamp() throws IOException {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-jar-indexer-modified"); //$NON-NLS-1$
+        File jar = new File(tempDir, "modified.jar"); //$NON-NLS-1$
+        try {
+            try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+                addClass(output, "pkg/Base.class", emptyClassBytes("pkg/Base")); //$NON-NLS-1$ //$NON-NLS-2$
+            }
+            long lastModified = jar.lastModified();
+            BytecodeJarIndexer.JarWork before = BytecodeJarIndexer.scan(jar, null);
+
+            try (JarOutputStream output = new JarOutputStream(new FileOutputStream(jar))) {
+                ClassWriter writer = new ClassWriter(0);
+                writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, "pkg/Base", null, "java/lang/Object", null); //$NON-NLS-1$ //$NON-NLS-2$
+                writer.visitField(Opcodes.ACC_PUBLIC, "value", "I", null, null).visitEnd(); //$NON-NLS-1$ //$NON-NLS-2$
+                writer.visitEnd();
+                addClass(output, "pkg/Base.class", writer.toByteArray()); //$NON-NLS-1$
+            }
+            jar.setLastModified(lastModified);
+
+            BytecodeJarIndexer.JarWork after = BytecodeJarIndexer.scan(jar, null);
+
+            assertNotNull(before);
+            assertNotNull(after);
+            assertNotEquals(before.fileCrc(), after.fileCrc());
         } finally {
             org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
         }
