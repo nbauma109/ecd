@@ -2,8 +2,8 @@
 set -eo pipefail
 
 . ~/.sdkman/bin/sdkman-init.sh
-sdk install java 21.0.10-oracle
-sdk use java 21.0.10-oracle
+sdk install java 25.0.4-tem
+sdk use java 25.0.4-tem
 export JAVA_HOME=~/.sdkman/candidates/java/current
 
 echo "JAVA_HOME=$JAVA_HOME"
