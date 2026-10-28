@@ -395,14 +395,14 @@ public final class BytecodeSearchIndex {
                 monitor.subTask(jar.getName());
                 monitor.worked(1);
             }
+            if (isOpenSource(jar)) {
+                // Checked before reusing an existing index so enabling the preference also drops jars indexed
+                // earlier: skipped jars are absent from the published map, so pruneOrphanJarRows() removes them.
+                continue;
+            }
             JarIndex existing = indexes.get().get(key);
             if (existing != null && existing.matches(jar)) {
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, -1, 1));
-                continue;
-            }
-            if (isOpenSource(jar)) {
-                // Skipped jars are absent from the published map, so pruneOrphanJarRows() drops any rows
-                // indexed before the jar was recognized as open source.
                 continue;
             }
             JarPlan plan = planNewJar(activeConn, scans, key, rootEntry.getValue(), jar, monitor);

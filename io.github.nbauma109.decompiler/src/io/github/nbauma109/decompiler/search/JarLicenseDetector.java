@@ -70,7 +70,11 @@ public final class JarLicenseDetector {
             licensePattern("unlicense", "cc0", "creative commons zero", "zlib(?:/libpng)? license")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     // A bare "MIT" is only trusted in a declared license name, never in free text ("mit" is a German word).
     private static final Pattern DECLARED_MIT = Pattern.compile("(?:^|[\\s(])mit(?:$|[\\s)])"); //$NON-NLS-1$
-    private static final Pattern PROPRIETARY = Pattern.compile("\\b(?:proprietary|confidential)\\b"); //$NON-NLS-1$
+    // Only explicit declarations: standard license texts (GPL, ...) mention "proprietary programs".
+    private static final Pattern PROPRIETARY = Pattern.compile(
+            "\\b(?:proprietary and confidential|confidential and proprietary|strictly confidential" //$NON-NLS-1$
+                    + "|(?:is|are) (?:the )?(?:proprietary|confidential)|proprietary (?:software )?licen[sc]e)\\b"); //$NON-NLS-1$
+    private static final Pattern XML_COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL); //$NON-NLS-1$
 
     private JarLicenseDetector() {
     }
@@ -82,6 +86,7 @@ public final class JarLicenseDetector {
     public static Verdict classify(File jar) {
         try (ZipFile zip = new ZipFile(jar)) {
             List<ZipEntry> poms = new ArrayList<>();
+            boolean tooManyPoms = false;
             List<ZipEntry> licenseFiles = new ArrayList<>();
             ZipEntry manifest = null;
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -94,6 +99,8 @@ public final class JarLicenseDetector {
                 if (name.startsWith(MAVEN_DIR) && name.endsWith(POM_XML)) {
                     if (poms.size() < MAX_POMS) {
                         poms.add(entry);
+                    } else {
+                        tooManyPoms = true;
                     }
                 } else if (MANIFEST.equals(name)) {
                     manifest = entry;
@@ -101,7 +108,8 @@ public final class JarLicenseDetector {
                     licenseFiles.add(entry);
                 }
             }
-            return classify(zip, poms, licenseFiles, manifest);
+            // Not every bundled pom can be inspected, so open source cannot be established.
+            return tooManyPoms ? Verdict.UNKNOWN : classify(zip, poms, licenseFiles, manifest);
         } catch (IOException | RuntimeException e) {
             Logger.debug(e);
             return Verdict.UNKNOWN;
@@ -142,7 +150,7 @@ public final class JarLicenseDetector {
 
     static List<String> declaredLicenses(String pomXml) {
         List<String> declared = new ArrayList<>();
-        Matcher licenses = LICENSES_BLOCK.matcher(pomXml);
+        Matcher licenses = LICENSES_BLOCK.matcher(XML_COMMENT.matcher(pomXml).replaceAll(""));
         while (licenses.find()) {
             Matcher license = LICENSE_BLOCK.matcher(licenses.group(1));
             while (license.find()) {

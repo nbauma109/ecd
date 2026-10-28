@@ -75,6 +75,30 @@ public class JarLicenseDetectorTest {
     }
 
     @Test
+    public void commentedOutLicenseIsIgnored() throws IOException {
+        assertEquals(Verdict.UNKNOWN, classify("META-INF/maven/g/a/pom.xml", //$NON-NLS-1$
+                "<project><!-- <licenses><license><name>MIT</name></license></licenses> --></project>")); //$NON-NLS-1$
+    }
+
+    @Test
+    public void standardGplTextMentioningProprietaryProgramsIsOpenSource() throws IOException {
+        assertEquals(Verdict.OPEN_SOURCE, classify("LICENSE.html", //$NON-NLS-1$
+                "GNU General Public License ... incorporate it into proprietary programs ...")); //$NON-NLS-1$
+    }
+
+    @Test
+    public void tooManyBundledPomsIsUnknown() throws IOException {
+        String[] entries = new String[66 * 2];
+        for (int i = 0; i < 65; i++) {
+            entries[i * 2] = "META-INF/maven/g/a" + i + "/pom.xml"; //$NON-NLS-1$ //$NON-NLS-2$
+            entries[i * 2 + 1] = APACHE_POM;
+        }
+        entries[130] = "META-INF/maven/g/own/pom.xml"; //$NON-NLS-1$
+        entries[131] = pom("ACME Commercial License"); //$NON-NLS-1$
+        assertEquals(Verdict.UNKNOWN, classify(entries));
+    }
+
+    @Test
     public void noEvidenceOrUnreadableJarIsUnknown() throws IOException {
         assertEquals(Verdict.UNKNOWN, classify("a/B.class", "x")); //$NON-NLS-1$ //$NON-NLS-2$
         File dir = DecompilerTestSupport.createTargetTempDir("license-detector-bad"); //$NON-NLS-1$
