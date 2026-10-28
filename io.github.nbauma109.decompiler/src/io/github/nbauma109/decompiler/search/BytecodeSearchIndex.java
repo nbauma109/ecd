@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -77,6 +78,8 @@ public final class BytecodeSearchIndex {
 
     private final IElementChangedListener classpathListener = this::classpathChanged;
 
+    // Offline license verdicts, keyed by path/mtime/length so a replaced jar is classified again.
+    private final Map<JarScanCache.ScanKey, Boolean> licenseVerdicts = new ConcurrentHashMap<>();
     private final AtomicReference<Map<RootKey, JarIndex>> indexes =
             new AtomicReference<>(Collections.emptyMap());
     private final AtomicBoolean started = new AtomicBoolean();
@@ -397,6 +400,11 @@ public final class BytecodeSearchIndex {
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, -1, 1));
                 continue;
             }
+            if (isOpenSource(jar)) {
+                // Skipped jars are absent from the published map, so pruneOrphanJarRows() drops any rows
+                // indexed before the jar was recognized as open source.
+                continue;
+            }
             BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
             if (work == null) {
                 continue;
@@ -417,6 +425,11 @@ public final class BytecodeSearchIndex {
             plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
         }
         return plans;
+    }
+
+    private boolean isOpenSource(File jar) {
+        return licenseVerdicts.computeIfAbsent(JarScanCache.scanKey(jar),
+                ignored -> JarLicenseDetector.classify(jar) == JarLicenseDetector.Verdict.OPEN_SOURCE);
     }
 
     private int findJarByFingerprint(Connection activeConn, RootKey key, File jar,
