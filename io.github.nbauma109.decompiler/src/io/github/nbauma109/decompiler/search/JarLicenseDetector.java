@@ -57,23 +57,26 @@ public final class JarLicenseDetector {
     private static final Pattern LICENSE_FILE_NAME = Pattern.compile(
             "(?i)(?:META-INF/)?(?:license|licence|copying|unlicense)(?:[-_.][^/]*)?"); //$NON-NLS-1$
 
-    private static final Pattern OPEN_SOURCE = Pattern.compile("\\b(?:" //$NON-NLS-1$
-            + "apache[- ](?:software )?(?:license|licence|2)|apache-2\\.0|apache\\.org/licenses" //$NON-NLS-1$
-            + "|mit (?:license|licence)|mit-0|opensource\\.org/licenses/mit" //$NON-NLS-1$
-            + "|permission is hereby granted, free of charge" //$NON-NLS-1$
-            + "|bsd(?:[- ]?[23](?:[- ]clause)?)?|redistribution and use in source and binary forms" //$NON-NLS-1$
-            + "|(?:gnu )?(?:lesser |library |affero )?general public license|a?l?gpl(?:-?v?[23])?" //$NON-NLS-1$
-            + "|mozilla public license|mpl[- ]?(?:1\\.1|2\\.0)" //$NON-NLS-1$
-            + "|eclipse public license|eclipse distribution license|epl[- ]?(?:1\\.0|2\\.0)" //$NON-NLS-1$
-            + "|common development and distribution license|cddl" //$NON-NLS-1$
-            + "|isc license|permission to use, copy, modify, and/or distribute this software" //$NON-NLS-1$
-            + "|unlicense|cc0|creative commons zero|zlib(?:/libpng)? license" //$NON-NLS-1$
-            + ")\\b"); //$NON-NLS-1$
+    private static final List<Pattern> OPEN_SOURCE = List.of(
+            licensePattern("apache[- ](?:software )?(?:license|licence|2)", "apache-2\\.0", "apache\\.org/licenses"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            licensePattern("mit (?:license|licence)", "mit-0", "opensource\\.org/licenses/mit", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    "permission is hereby granted, free of charge"), //$NON-NLS-1$
+            licensePattern("bsd(?:[- ]?[23](?:[- ]clause)?)?", "redistribution and use in source and binary forms"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            licensePattern("(?:gnu )?(?:lesser |library |affero )?general public license", "a?l?gpl(?:-?v?[23])?"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            licensePattern("mozilla public license", "mpl[- ]?(?:1\\.1|2\\.0)"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            licensePattern("eclipse public license", "eclipse distribution license", "epl[- ]?(?:1\\.0|2\\.0)"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            licensePattern("common development and distribution license", "cddl"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            licensePattern("isc license", "permission to use, copy, modify, and/or distribute this software"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            licensePattern("unlicense", "cc0", "creative commons zero", "zlib(?:/libpng)? license")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
     // A bare "MIT" is only trusted in a declared license name, never in free text ("mit" is a German word).
     private static final Pattern DECLARED_MIT = Pattern.compile("(?:^|[\\s(])mit(?:$|[\\s)])"); //$NON-NLS-1$
     private static final Pattern PROPRIETARY = Pattern.compile("\\b(?:proprietary|confidential)\\b"); //$NON-NLS-1$
 
     private JarLicenseDetector() {
+    }
+
+    private static Pattern licensePattern(String... alternatives) {
+        return Pattern.compile("\\b(?:" + String.join("|", alternatives) + ")\\b"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     }
 
     public static Verdict classify(File jar) {
@@ -155,7 +158,11 @@ public final class JarLicenseDetector {
     }
 
     static boolean isOpenSourceText(String text) {
-        return text != null && OPEN_SOURCE.matcher(text.toLowerCase(Locale.ROOT)).find();
+        if (text == null) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        return OPEN_SOURCE.stream().anyMatch(pattern -> pattern.matcher(lower).find());
     }
 
     private static boolean isOpenSourceDeclaration(String declared) {

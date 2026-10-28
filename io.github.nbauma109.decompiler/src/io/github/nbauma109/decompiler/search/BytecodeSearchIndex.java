@@ -405,26 +405,33 @@ public final class BytecodeSearchIndex {
                 // indexed before the jar was recognized as open source.
                 continue;
             }
-            BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
-            if (work == null) {
-                continue;
+            JarPlan plan = planNewJar(activeConn, scans, key, rootEntry.getValue(), jar, monitor);
+            if (plan != null) {
+                plans.add(plan);
             }
-            int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
-            if (dbJarId >= 0) {
-                // Known location with unchanged mtime, length and class-entry CRC32: reuse it without
-                // computing the SHA-256. Unknown locations take the hashing path below.
-                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, null, dbJarId, 1));
-                continue;
-            }
-            work = BytecodeJarIndexer.withContentHash(work, jar);
-            if (work == null) {
-                continue;
-            }
-            scans.put(jar, work);
-            dbJarId = findJar(activeConn, key, jar, work);
-            plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
         }
         return plans;
+    }
+
+    private JarPlan planNewJar(Connection activeConn, JarScanCache scans, RootKey key, IPackageFragmentRoot root,
+            File jar, IProgressMonitor monitor) {
+        BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
+        if (work == null) {
+            return null;
+        }
+        int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
+        if (dbJarId >= 0) {
+            // Known location with unchanged mtime, length and class-entry CRC32: reuse it without
+            // computing the SHA-256. Unknown locations take the hashing path below.
+            return new JarPlan(key, root, jar, null, null, dbJarId, 1);
+        }
+        work = BytecodeJarIndexer.withContentHash(work, jar);
+        if (work == null) {
+            return null;
+        }
+        scans.put(jar, work);
+        dbJarId = findJar(activeConn, key, jar, work);
+        return new JarPlan(key, root, jar, null, work, dbJarId, work.totalTicks());
     }
 
     private boolean isOpenSource(File jar) {
