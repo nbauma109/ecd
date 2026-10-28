@@ -47,6 +47,7 @@ import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.TextSelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
@@ -433,6 +434,42 @@ public class JavaDecompilerClassFileEditorTest {
         assertInnerMethodDeclarationSelection(TEST_INNER_CLASS, "Inner1.method1"); //$NON-NLS-1$ //$NON-NLS-2$
         assertInnerMethodDeclarationSelection("Test$Inner3.class", "Inner3.method1"); //$NON-NLS-1$ //$NON-NLS-2$
         assertInnerMethodDeclarationSelection("Test$Inner4.class", "Inner4.method1"); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    /**
+     * Issue #447: with a member of an inner class selected in the outline, the editor jumps back to it
+     * whenever the selection is synchronized, e.g. while scrolling with the mouse wheel. JDT synchronizes
+     * with {@code setSelection(reference, false)}, which must not move the caret or scroll the editor.
+     */
+    @Test
+    public void testSynchronizingNestedSelectionWithoutMoveCursorDoesNotMoveCaret()
+            throws CoreException {
+        IPackageFragment pkg = jarRoot.getPackageFragment(TEST_PACKAGE);
+        assertTrue(pkg.exists());
+
+        IClassFile innerClassFile = pkg.getClassFile(TEST_INNER_CLASS);
+        assertTrue(innerClassFile.exists());
+
+        IMethod method = getType(innerClassFile).getMethod("method1", new String[0]); //$NON-NLS-1$
+        assertTrue(method.exists());
+
+        openedEditor = openDefault(method);
+        assertTrue(openedEditor instanceof JavaDecompilerClassFileEditor);
+        JavaDecompilerClassFileEditor editor = (JavaDecompilerClassFileEditor) openedEditor;
+        assertTrue(waitForNestedMethodDeclarationSelection(editor, "Inner1.method1")); //$NON-NLS-1$
+
+        // The user moves away from the nested declaration (the caret is now elsewhere in the editor).
+        runInUiThread(() -> editor.getSelectionProvider().setSelection(new TextSelection(0, 0)));
+        drainUiEvents();
+        assertEquals(0, selectedSelection(editor).getOffset());
+
+        // The outline/editor synchronization re-selects the nested method without asking to move the cursor.
+        runInUiThread(() -> editor.setSelection(method, false));
+        drainUiEvents();
+
+        ITextSelection after = selectedSelection(editor);
+        assertEquals("setSelection(reference, false) must not move the caret, but it jumped to: " //$NON-NLS-1$
+                + selectedContext(editor), 0, after.getOffset());
     }
 
     @Test

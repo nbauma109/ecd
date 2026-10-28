@@ -223,7 +223,9 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         }
         ISourceReference selection = resolveSelectionTarget(reference);
         super.setSelection(selection, moveCursor);
-        revealNestedDeclaration(selection);
+        if (moveCursor) {
+            revealNestedDeclaration(selection);
+        }
 
         this.selectedElement = selection;
         syncPackageExplorer(selection);
