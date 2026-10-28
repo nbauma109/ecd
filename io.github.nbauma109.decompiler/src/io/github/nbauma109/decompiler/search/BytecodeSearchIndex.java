@@ -182,7 +182,7 @@ public final class BytecodeSearchIndex {
         return count;
     }
 
-    synchronized void scheduleRefresh() {
+    public synchronized void scheduleRefresh() {
         scheduleRefresh(REFRESH_DELAY);
     }
 
@@ -428,6 +428,10 @@ public final class BytecodeSearchIndex {
     }
 
     private boolean isOpenSource(File jar) {
+        JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
+        if (plugin != null && !plugin.getPreferenceStore().getBoolean(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS)) {
+            return false;
+        }
         return licenseVerdicts.computeIfAbsent(JarScanCache.scanKey(jar),
                 ignored -> JarLicenseDetector.classify(jar) == JarLicenseDetector.Verdict.OPEN_SOURCE);
     }

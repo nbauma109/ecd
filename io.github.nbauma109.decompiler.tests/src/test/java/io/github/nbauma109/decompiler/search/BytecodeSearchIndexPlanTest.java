@@ -27,10 +27,12 @@ import java.util.Map;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
+import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.testutil.DecompilerTestSupport;
 
 @SuppressWarnings("restriction")
@@ -97,6 +99,30 @@ public class BytecodeSearchIndexPlanTest {
         } finally {
             deleteProject(first);
             deleteProject(second);
+            org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
+        }
+    }
+
+    @Test
+    public void openSourceJarIsSkippedUnlessThePreferenceIsOff() throws Exception {
+        File tempDir = DecompilerTestSupport.createTargetTempDir("bytecode-search-plan-open-source"); //$NON-NLS-1$
+        File jar = new File(tempDir, "oss.jar"); //$NON-NLS-1$
+        DecompilerTestSupport.BundleJarProjectSetup setup = null;
+        IPreferenceStore store = JavaDecompilerPlugin.getDefault().getPreferenceStore();
+        boolean previous = store.getBoolean(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS);
+        try {
+            createJar(jar, "META-INF/LICENSE", "Apache License\nVersion 2.0"); //$NON-NLS-1$ //$NON-NLS-2$
+            setup = DecompilerTestSupport.createJavaProjectWithJar(jar, "bytecode-search-plan-open-source"); //$NON-NLS-1$
+            BytecodeSearchIndex index = newSearchIndex(null);
+
+            store.setValue(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS, true);
+            assertEquals(0, plan(index, roots(setup)).size());
+
+            store.setValue(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS, false);
+            assertEquals(1, plan(index, roots(setup)).size());
+        } finally {
+            store.setValue(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS, previous);
+            deleteProject(setup);
             org.apache.commons.io.FileUtils.deleteQuietly(tempDir);
         }
     }
@@ -196,6 +222,10 @@ public class BytecodeSearchIndexPlanTest {
     }
 
     private static void createJar(File jar) throws IOException {
+        createJar(jar, null, null);
+    }
+
+    private static void createJar(File jar, String extraEntry, String extraContent) throws IOException {
         try (FileOutputStream file = new FileOutputStream(jar);
                 java.util.jar.JarOutputStream output = new java.util.jar.JarOutputStream(file)) {
             ClassWriter writer = new ClassWriter(0);
@@ -204,6 +234,11 @@ public class BytecodeSearchIndexPlanTest {
             output.putNextEntry(new java.util.jar.JarEntry("pkg/Type.class")); //$NON-NLS-1$
             output.write(writer.toByteArray());
             output.closeEntry();
+            if (extraEntry != null) {
+                output.putNextEntry(new java.util.jar.JarEntry(extraEntry));
+                output.write(extraContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                output.closeEntry();
+            }
         }
     }
 }
