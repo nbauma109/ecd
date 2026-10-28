@@ -118,39 +118,53 @@ public final class JarLicenseDetector {
 
     private static Verdict classify(ZipFile zip, List<ZipEntry> poms, List<ZipEntry> licenseFiles, ZipEntry manifest)
             throws IOException {
+        int declaring = countOpenSourcePoms(zip, poms);
+        if (declaring < 0) {
+            return Verdict.UNKNOWN;
+        }
+        if (poms.size() > 1) {
+            // Bundled projects: the license files may belong to any of them.
+            return declaring == poms.size() ? Verdict.OPEN_SOURCE : Verdict.UNKNOWN;
+        }
+        if (declaring == 1 || manifest != null && isOpenSourceDeclaration(bundleLicense(zip, manifest))
+                || hasOpenSourceLicenseFile(zip, licenseFiles)) {
+            return Verdict.OPEN_SOURCE;
+        }
+        return Verdict.UNKNOWN;
+    }
+
+    /**
+     * Counts the poms declaring licenses, all of them open source, or returns -1 when a pom declares a
+     * license that is not recognized or cannot be read completely.
+     */
+    private static int countOpenSourcePoms(ZipFile zip, List<ZipEntry> poms) throws IOException {
         int declaring = 0;
         for (ZipEntry pom : poms) {
             String pomXml = readText(zip, pom);
             if (pomXml == null) {
                 // An unread part of the pom may hold a declaration that contradicts the others.
-                return Verdict.UNKNOWN;
+                return -1;
             }
             List<String> declared = declaredLicenses(pomXml);
             if (declared.isEmpty()) {
                 continue;
             }
             if (!declared.stream().allMatch(JarLicenseDetector::isOpenSourceDeclaration)) {
-                return Verdict.UNKNOWN;
+                return -1;
             }
             declaring++;
         }
-        if (poms.size() > 1) {
-            // Bundled projects: the license files may belong to any of them.
-            return declaring == poms.size() ? Verdict.OPEN_SOURCE : Verdict.UNKNOWN;
-        }
-        if (declaring == 1) {
-            return Verdict.OPEN_SOURCE;
-        }
-        if (manifest != null && isOpenSourceDeclaration(bundleLicense(zip, manifest))) {
-            return Verdict.OPEN_SOURCE;
-        }
+        return declaring;
+    }
+
+    private static boolean hasOpenSourceLicenseFile(ZipFile zip, List<ZipEntry> licenseFiles) throws IOException {
         for (ZipEntry licenseFile : licenseFiles) {
             String text = readText(zip, licenseFile);
             if (text != null && isOpenSourceText(text) && !PROPRIETARY.matcher(text.toLowerCase(Locale.ROOT)).find()) {
-                return Verdict.OPEN_SOURCE;
+                return true;
             }
         }
-        return Verdict.UNKNOWN;
+        return false;
     }
 
     static List<String> declaredLicenses(String pomXml) {
