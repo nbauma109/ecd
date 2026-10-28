@@ -17,8 +17,10 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -76,6 +78,10 @@ public final class JarLicenseDetector {
     // A bare "MIT" is only trusted in a declared license name, never in free text ("mit" is a German word).
     private static final Pattern DECLARED_MIT = Pattern.compile("(?:^|[\\s(])mit(?:$|[\\s)])"); //$NON-NLS-1$
     // Only explicit declarations: standard license texts (GPL, ...) mention "proprietary programs".
+    // Conjunctions and modifiers that may add terms to a recognized license name; the remainder is checked
+    // after the license names are removed, so "Common Development and Distribution License" is unaffected.
+    private static final Pattern RESTRICTIVE = Pattern.compile(
+            "\\b(?:and|with|plus|except|excluding|clause|licenseref|proprietary|commercial|confidential|restricted)\\b"); //$NON-NLS-1$
     private static final Pattern PROPRIETARY = Pattern.compile(
             "\\b(?:proprietary and confidential|confidential and proprietary|strictly confidential" //$NON-NLS-1$
                     + "|(?:is|are) (?:the )?(?:proprietary|confidential)|proprietary (?:software )?licen[sc]e)\\b"); //$NON-NLS-1$
@@ -152,10 +158,11 @@ public final class JarLicenseDetector {
                 // An unread part of the pom may hold a declaration that contradicts the others.
                 return -1;
             }
-            List<String> declared = declaredLicenses(pomXml);
-            if (declared == null) {
+            Optional<List<String>> parsed = declaredLicenses(pomXml);
+            if (parsed.isEmpty()) {
                 return -1;
             }
+            List<String> declared = parsed.get();
             if (declared.isEmpty()) {
                 continue;
             }
@@ -178,10 +185,10 @@ public final class JarLicenseDetector {
     }
 
     /**
-     * Returns the license names and urls declared in the pom's {@code <licenses>} element, or {@code null}
-     * when the pom cannot be interpreted reliably, which callers must treat like a contradicting declaration.
+     * Returns the license names and urls declared in the pom's {@code <licenses>} element, or empty when the
+     * pom cannot be interpreted reliably, which callers must treat like a contradicting declaration.
      */
-    static List<String> declaredLicenses(String pomXml) {
+    static Optional<List<String>> declaredLicenses(String pomXml) {
         Element project;
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -193,7 +200,7 @@ public final class JarLicenseDetector {
             project = builder.parse(new InputSource(new StringReader(pomXml))).getDocumentElement();
         } catch (ParserConfigurationException | SAXException | IOException | RuntimeException e) {
             Logger.debug(e);
-            return null;
+            return Optional.empty();
         }
         List<String> declared = new ArrayList<>();
         for (Element licenses : childElements(project, "licenses")) { //$NON-NLS-1$
@@ -207,7 +214,7 @@ public final class JarLicenseDetector {
                 declared.add(text.toString());
             }
         }
-        return declared;
+        return Optional.of(declared);
     }
 
     private static List<Element> childElements(Element parent, String localName) {
@@ -228,8 +235,26 @@ public final class JarLicenseDetector {
         return OPEN_SOURCE.stream().anyMatch(pattern -> pattern.matcher(lower).find());
     }
 
+    /**
+     * A declaration is accepted only when everything left after removing the recognized license names is
+     * free of restrictive terms, so "MIT AND LicenseRef-Proprietary" or "Apache 2.0 with Commons Clause" are not.
+     */
     private static boolean isOpenSourceDeclaration(String declared) {
-        return isOpenSourceText(declared) || declared != null && DECLARED_MIT.matcher(declared.toLowerCase(Locale.ROOT)).find();
+        if (declared == null) {
+            return false;
+        }
+        String remainder = declared.toLowerCase(Locale.ROOT);
+        boolean recognized = false;
+        List<Pattern> names = new ArrayList<>(OPEN_SOURCE);
+        names.add(DECLARED_MIT);
+        for (Pattern name : names) {
+            Matcher matcher = name.matcher(remainder);
+            if (matcher.find()) {
+                recognized = true;
+                remainder = matcher.replaceAll(" ");
+            }
+        }
+        return recognized && !RESTRICTIVE.matcher(remainder).find();
     }
 
     private static String bundleLicense(ZipFile zip, ZipEntry manifestEntry) throws IOException {

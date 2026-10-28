@@ -142,6 +142,21 @@ public class JarLicenseDetectorTest {
     }
 
     @Test
+    public void compoundDeclarationsWithRestrictiveTermsAreUnknown() throws IOException {
+        for (String name : new String[] { "MIT AND LicenseRef-Proprietary", "Apache License 2.0 with Commons Clause" }) { //$NON-NLS-1$ //$NON-NLS-2$
+            assertEquals(name, Verdict.UNKNOWN, classify("META-INF/maven/g/a/pom.xml", pom(name))); //$NON-NLS-1$
+        }
+    }
+
+    @Test
+    public void alternativeAndNamedDeclarationsAreOpenSource() throws IOException {
+        for (String name : new String[] { "MIT OR Apache-2.0", "Common Development and Distribution License (CDDL) v1.0", //$NON-NLS-1$ //$NON-NLS-2$
+                "Eclipse Public License - v 2.0" }) { //$NON-NLS-1$
+            assertEquals(name, Verdict.OPEN_SOURCE, classify("META-INF/maven/g/a/pom.xml", pom(name))); //$NON-NLS-1$
+        }
+    }
+
+    @Test
     public void noEvidenceOrUnreadableJarIsUnknown() throws IOException {
         assertEquals(Verdict.UNKNOWN, classify("a/B.class", "x")); //$NON-NLS-1$ //$NON-NLS-2$
         File dir = DecompilerTestSupport.createTargetTempDir("license-detector-bad"); //$NON-NLS-1$
