@@ -11,6 +11,7 @@ package io.github.nbauma109.decompiler.search;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -18,10 +19,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import io.github.nbauma109.decompiler.util.Logger;
 
@@ -48,12 +59,6 @@ public final class JarLicenseDetector {
     private static final String MANIFEST = "META-INF/MANIFEST.MF"; //$NON-NLS-1$
     private static final String BUNDLE_LICENSE = "Bundle-License"; //$NON-NLS-1$
 
-    private static final Pattern LICENSES_BLOCK = Pattern.compile("<licenses>(.*?)</licenses>", //$NON-NLS-1$
-            Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
-    private static final Pattern LICENSE_BLOCK = Pattern.compile("<license>(.*?)</license>", //$NON-NLS-1$
-            Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
-    private static final Pattern NAME_OR_URL = Pattern.compile("<(?:name|url)>(.*?)</(?:name|url)>", //$NON-NLS-1$
-            Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     private static final Pattern LICENSE_FILE_NAME = Pattern.compile(
             "(?i)(?:META-INF/)?(?:license|licence|copying|unlicense)(?:[-_.][^/]*)?"); //$NON-NLS-1$
 
@@ -74,7 +79,6 @@ public final class JarLicenseDetector {
     private static final Pattern PROPRIETARY = Pattern.compile(
             "\\b(?:proprietary and confidential|confidential and proprietary|strictly confidential" //$NON-NLS-1$
                     + "|(?:is|are) (?:the )?(?:proprietary|confidential)|proprietary (?:software )?licen[sc]e)\\b"); //$NON-NLS-1$
-    private static final Pattern XML_COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL); //$NON-NLS-1$
 
     private JarLicenseDetector() {
     }
@@ -149,6 +153,9 @@ public final class JarLicenseDetector {
                 return -1;
             }
             List<String> declared = declaredLicenses(pomXml);
+            if (declared == null) {
+                return -1;
+            }
             if (declared.isEmpty()) {
                 continue;
             }
@@ -170,21 +177,47 @@ public final class JarLicenseDetector {
         return false;
     }
 
+    /**
+     * Returns the license names and urls declared in the pom's {@code <licenses>} element, or {@code null}
+     * when the pom cannot be interpreted reliably, which callers must treat like a contradicting declaration.
+     */
     static List<String> declaredLicenses(String pomXml) {
+        Element project;
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true); //$NON-NLS-1$
+            factory.setNamespaceAware(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            builder.setErrorHandler(new DefaultHandler());
+            project = builder.parse(new InputSource(new StringReader(pomXml))).getDocumentElement();
+        } catch (ParserConfigurationException | SAXException | IOException | RuntimeException e) {
+            Logger.debug(e);
+            return null;
+        }
         List<String> declared = new ArrayList<>();
-        Matcher licenses = LICENSES_BLOCK.matcher(XML_COMMENT.matcher(pomXml).replaceAll(""));
-        while (licenses.find()) {
-            Matcher license = LICENSE_BLOCK.matcher(licenses.group(1));
-            while (license.find()) {
+        for (Element licenses : childElements(project, "licenses")) { //$NON-NLS-1$
+            for (Element license : childElements(licenses, "license")) { //$NON-NLS-1$
                 StringBuilder text = new StringBuilder();
-                Matcher field = NAME_OR_URL.matcher(license.group(1));
-                while (field.find()) {
-                    text.append(field.group(1).trim()).append(' ');
+                for (Element field : childElements(license, null)) {
+                    if ("name".equals(field.getLocalName()) || "url".equals(field.getLocalName())) { //$NON-NLS-1$ //$NON-NLS-2$
+                        text.append(field.getTextContent().trim()).append(' ');
+                    }
                 }
                 declared.add(text.toString());
             }
         }
         return declared;
+    }
+
+    private static List<Element> childElements(Element parent, String localName) {
+        List<Element> children = new ArrayList<>();
+        for (Node child = parent.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child instanceof Element element && (localName == null || localName.equals(element.getLocalName()))) {
+                children.add(element);
+            }
+        }
+        return children;
     }
 
     static boolean isOpenSourceText(String text) {

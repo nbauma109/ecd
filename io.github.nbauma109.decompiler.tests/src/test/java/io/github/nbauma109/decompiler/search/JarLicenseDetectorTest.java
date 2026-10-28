@@ -126,6 +126,22 @@ public class JarLicenseDetectorTest {
     }
 
     @Test
+    public void validXmlVariationsAreInterpreted() throws IOException {
+        String commercial = "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><licenses ><license ><name >ACME Commercial</name>" //$NON-NLS-1$
+                + "</license></licenses ></project>"; //$NON-NLS-1$
+        assertEquals(Verdict.UNKNOWN, classify("META-INF/maven/g/a/pom.xml", commercial, //$NON-NLS-1$
+                "META-INF/LICENSE-dependency.txt", MIT_TEXT)); //$NON-NLS-1$
+        assertEquals(Verdict.OPEN_SOURCE, classify("META-INF/maven/g/a/pom.xml", //$NON-NLS-1$
+                commercial.replace("ACME Commercial", "MIT"))); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
+    public void uninterpretablePomIsUnknown() throws IOException {
+        assertEquals(Verdict.UNKNOWN, classify("META-INF/maven/g/a/pom.xml", "<project><licenses>", //$NON-NLS-1$ //$NON-NLS-2$
+                "META-INF/LICENSE-dependency.txt", MIT_TEXT)); //$NON-NLS-1$
+    }
+
+    @Test
     public void noEvidenceOrUnreadableJarIsUnknown() throws IOException {
         assertEquals(Verdict.UNKNOWN, classify("a/B.class", "x")); //$NON-NLS-1$ //$NON-NLS-2$
         File dir = DecompilerTestSupport.createTargetTempDir("license-detector-bad"); //$NON-NLS-1$
