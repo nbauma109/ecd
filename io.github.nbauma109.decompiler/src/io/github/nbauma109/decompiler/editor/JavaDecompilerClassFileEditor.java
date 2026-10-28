@@ -224,6 +224,12 @@ public class JavaDecompilerClassFileEditor extends ClassFileEditor {
         ISourceReference selection = resolveSelectionTarget(reference);
         super.setSelection(selection, moveCursor);
         if (moveCursor) {
+            /*
+             * The cursor only has to move when the selection comes from an explicit navigation such as
+             * opening a member or choosing it in the outline. Eclipse also calls this method with
+             * moveCursor set to false to keep the highlight in sync while the user scrolls or types,
+             * and revealing the nested declaration at that moment would pull the editor back to it.
+             */
             revealNestedDeclaration(selection);
         }
 
