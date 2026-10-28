@@ -120,7 +120,12 @@ public final class JarLicenseDetector {
             throws IOException {
         int declaring = 0;
         for (ZipEntry pom : poms) {
-            List<String> declared = declaredLicenses(readText(zip, pom));
+            String pomXml = readText(zip, pom);
+            if (pomXml == null) {
+                // An unread part of the pom may hold a declaration that contradicts the others.
+                return Verdict.UNKNOWN;
+            }
+            List<String> declared = declaredLicenses(pomXml);
             if (declared.isEmpty()) {
                 continue;
             }
@@ -141,7 +146,7 @@ public final class JarLicenseDetector {
         }
         for (ZipEntry licenseFile : licenseFiles) {
             String text = readText(zip, licenseFile);
-            if (isOpenSourceText(text) && !PROPRIETARY.matcher(text.toLowerCase(Locale.ROOT)).find()) {
+            if (text != null && isOpenSourceText(text) && !PROPRIETARY.matcher(text.toLowerCase(Locale.ROOT)).find()) {
                 return Verdict.OPEN_SOURCE;
             }
         }
@@ -183,9 +188,11 @@ public final class JarLicenseDetector {
         }
     }
 
+    /** Returns the entry's text, or {@code null} when it exceeds {@link #MAX_TEXT_BYTES} and would be truncated. */
     private static String readText(ZipFile zip, ZipEntry entry) throws IOException {
         try (InputStream in = zip.getInputStream(entry)) {
-            return new String(in.readNBytes(MAX_TEXT_BYTES), StandardCharsets.UTF_8);
+            byte[] bytes = in.readNBytes(MAX_TEXT_BYTES + 1);
+            return bytes.length > MAX_TEXT_BYTES ? null : new String(bytes, StandardCharsets.UTF_8);
         }
     }
 }

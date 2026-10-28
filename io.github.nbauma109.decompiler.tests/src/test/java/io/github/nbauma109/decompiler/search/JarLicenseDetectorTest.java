@@ -99,6 +99,20 @@ public class JarLicenseDetectorTest {
     }
 
     @Test
+    public void oversizedPomIsUnknown() throws IOException {
+        String padding = "x".repeat(70 * 1024); //$NON-NLS-1$
+        assertEquals(Verdict.UNKNOWN, classify("META-INF/maven/g/a/pom.xml", //$NON-NLS-1$
+                "<project><description>" + padding + "</description>" //$NON-NLS-1$ //$NON-NLS-2$
+                        + pom("ACME Commercial License").replace("<project>", ""), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                "META-INF/LICENSE-dependency.txt", MIT_TEXT)); //$NON-NLS-1$
+    }
+
+    @Test
+    public void oversizedLicenseFileIsIgnored() throws IOException {
+        assertEquals(Verdict.UNKNOWN, classify("LICENSE", MIT_TEXT + "x".repeat(70 * 1024))); //$NON-NLS-1$ //$NON-NLS-2$
+    }
+
+    @Test
     public void noEvidenceOrUnreadableJarIsUnknown() throws IOException {
         assertEquals(Verdict.UNKNOWN, classify("a/B.class", "x")); //$NON-NLS-1$ //$NON-NLS-2$
         File dir = DecompilerTestSupport.createTargetTempDir("license-detector-bad"); //$NON-NLS-1$
