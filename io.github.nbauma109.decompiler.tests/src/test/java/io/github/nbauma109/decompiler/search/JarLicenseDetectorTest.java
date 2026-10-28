@@ -113,6 +113,13 @@ public class JarLicenseDetectorTest {
     }
 
     @Test
+    public void proprietaryBundleLicenseWinsOverBundledLicenseFile() throws IOException {
+        assertEquals(Verdict.UNKNOWN, classify("META-INF/MANIFEST.MF", //$NON-NLS-1$
+                "Manifest-Version: 1.0\nBundle-License: ACME Proprietary License\n", //$NON-NLS-1$
+                "META-INF/LICENSE-dependency.txt", MIT_TEXT)); //$NON-NLS-1$
+    }
+
+    @Test
     public void noEvidenceOrUnreadableJarIsUnknown() throws IOException {
         assertEquals(Verdict.UNKNOWN, classify("a/B.class", "x")); //$NON-NLS-1$ //$NON-NLS-2$
         File dir = DecompilerTestSupport.createTargetTempDir("license-detector-bad"); //$NON-NLS-1$
