@@ -122,19 +122,18 @@ public final class JarLicenseDetector {
         if (declaring < 0) {
             return Verdict.UNKNOWN;
         }
+        String bundleLicense = manifest == null ? null : bundleLicense(zip, manifest);
+        boolean bundleDeclared = bundleLicense != null && !bundleLicense.isBlank();
+        if (bundleDeclared && !isOpenSourceDeclaration(bundleLicense)) {
+            // An explicit declaration wins over poms and license files, which may belong to a bundled dependency.
+            return Verdict.UNKNOWN;
+        }
         if (poms.size() > 1) {
             // Bundled projects: the license files may belong to any of them.
             return declaring == poms.size() ? Verdict.OPEN_SOURCE : Verdict.UNKNOWN;
         }
-        if (declaring == 1) {
-            return Verdict.OPEN_SOURCE;
-        }
-        String bundleLicense = manifest == null ? null : bundleLicense(zip, manifest);
-        if (bundleLicense != null && !bundleLicense.isBlank()) {
-            // An explicit declaration wins over license files, which may belong to a bundled dependency.
-            return isOpenSourceDeclaration(bundleLicense) ? Verdict.OPEN_SOURCE : Verdict.UNKNOWN;
-        }
-        return hasOpenSourceLicenseFile(zip, licenseFiles) ? Verdict.OPEN_SOURCE : Verdict.UNKNOWN;
+        return declaring == 1 || bundleDeclared || hasOpenSourceLicenseFile(zip, licenseFiles) ? Verdict.OPEN_SOURCE
+                : Verdict.UNKNOWN;
     }
 
     /**
