@@ -64,6 +64,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     public static final String EXPORT_ENCODING = "io.github.nbauma109.decompiler.export.encoding"; //$NON-NLS-1$ ;
     public static final String ATTACH_SOURCE = "io.github.nbauma109.decompiler.attach_source"; //$NON-NLS-1$ ;
     public static final String WAIT_FOR_SOURCES = "io.github.nbauma109.decompiler.wait_for_sources"; //$NON-NLS-1$ ;
+    public static final String SKIP_OPEN_SOURCE_JARS = "io.github.nbauma109.decompiler.skip_open_source_jars"; //$NON-NLS-1$ ;
     public static final String EXCLUDE_PACKAGES = "io.github.nbauma109.decompiler.exclude_packages"; //$NON-NLS-1$ ;
 
     private static final String classFileAttributePreferencesPrefix = "CLASS_FILE_ATTR_"; //$NON-NLS-1$
@@ -153,6 +154,7 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
         store.setDefault(DEFAULT_EDITOR, true);
         store.setDefault(ATTACH_SOURCE, true);
         store.setDefault(WAIT_FOR_SOURCES, true);
+        store.setDefault(SKIP_OPEN_SOURCE_JARS, true);
         store.setDefault(EXPORT_ENCODING, StandardCharsets.UTF_8.name());
         store.setDefault(NEXUS_BYPASS_PROXY, true);
 
@@ -171,6 +173,8 @@ public class JavaDecompilerPlugin extends AbstractUIPlugin implements IPropertyC
     public void propertyChange(PropertyChangeEvent event) {
         if (event.getProperty().equals(IGNORE_EXISTING)) {
             JavaDecompilerBufferManager.closeDecompilerBuffers(false);
+        } else if (event.getProperty().equals(SKIP_OPEN_SOURCE_JARS)) {
+            BytecodeSearchIndex.getDefault().scheduleRefresh();
         }
     }
 

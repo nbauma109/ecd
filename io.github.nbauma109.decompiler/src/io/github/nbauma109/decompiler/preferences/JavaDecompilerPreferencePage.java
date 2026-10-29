@@ -99,6 +99,11 @@ public class JavaDecompilerPreferencePage extends FieldEditorPreferencePage impl
             createExcludePackagesFieldEditor(basicGroup);
         }
 
+        BooleanFieldEditor skipOpenSourceJars = new BooleanFieldEditor(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS,
+                Messages.getString("JavaDecompilerPreferencePage.Label.SkipOpenSourceJars"), //$NON-NLS-1$
+                basicGroup);
+        addField(skipOpenSourceJars);
+
         BooleanFieldEditor alwaysUse = new BooleanFieldEditor(JavaDecompilerPlugin.IGNORE_EXISTING,
                 Messages.getString("JavaDecompilerPreferencePage.Label.IgnoreExistSource"), //$NON-NLS-1$
                 basicGroup);

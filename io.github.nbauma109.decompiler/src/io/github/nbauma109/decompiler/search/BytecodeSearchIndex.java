@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -77,6 +78,8 @@ public final class BytecodeSearchIndex {
 
     private final IElementChangedListener classpathListener = this::classpathChanged;
 
+    // Offline license verdicts, keyed by path/mtime/length so a replaced jar is classified again.
+    private final Map<JarScanCache.ScanKey, Boolean> licenseVerdicts = new ConcurrentHashMap<>();
     private final AtomicReference<Map<RootKey, JarIndex>> indexes =
             new AtomicReference<>(Collections.emptyMap());
     private final AtomicBoolean started = new AtomicBoolean();
@@ -179,7 +182,7 @@ public final class BytecodeSearchIndex {
         return count;
     }
 
-    synchronized void scheduleRefresh() {
+    public synchronized void scheduleRefresh() {
         scheduleRefresh(REFRESH_DELAY);
     }
 
@@ -392,31 +395,52 @@ public final class BytecodeSearchIndex {
                 monitor.subTask(jar.getName());
                 monitor.worked(1);
             }
+            if (isOpenSource(jar)) {
+                // Checked before reusing an existing index so enabling the preference also drops jars indexed
+                // earlier: skipped jars are absent from the published map, so pruneOrphanJarRows() removes them.
+                continue;
+            }
             JarIndex existing = indexes.get().get(key);
             if (existing != null && existing.matches(jar)) {
                 plans.add(new JarPlan(key, rootEntry.getValue(), jar, existing, null, -1, 1));
                 continue;
             }
-            BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
-            if (work == null) {
-                continue;
+            JarPlan plan = planNewJar(activeConn, scans, key, rootEntry.getValue(), jar, monitor);
+            if (plan != null) {
+                plans.add(plan);
             }
-            int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
-            if (dbJarId >= 0) {
-                // Known location with unchanged mtime, length and class-entry CRC32: reuse it without
-                // computing the SHA-256. Unknown locations take the hashing path below.
-                plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, null, dbJarId, 1));
-                continue;
-            }
-            work = BytecodeJarIndexer.withContentHash(work, jar);
-            if (work == null) {
-                continue;
-            }
-            scans.put(jar, work);
-            dbJarId = findJar(activeConn, key, jar, work);
-            plans.add(new JarPlan(key, rootEntry.getValue(), jar, null, work, dbJarId, work.totalTicks()));
         }
         return plans;
+    }
+
+    private JarPlan planNewJar(Connection activeConn, JarScanCache scans, RootKey key, IPackageFragmentRoot root,
+            File jar, IProgressMonitor monitor) {
+        BytecodeJarIndexer.JarWork work = scans.scan(jar, monitor);
+        if (work == null) {
+            return null;
+        }
+        int dbJarId = findJarByFingerprint(activeConn, key, jar, work);
+        if (dbJarId >= 0) {
+            // Known location with unchanged mtime, length and class-entry CRC32: reuse it without
+            // computing the SHA-256. Unknown locations take the hashing path below.
+            return new JarPlan(key, root, jar, null, null, dbJarId, 1);
+        }
+        work = BytecodeJarIndexer.withContentHash(work, jar);
+        if (work == null) {
+            return null;
+        }
+        scans.put(jar, work);
+        dbJarId = findJar(activeConn, key, jar, work);
+        return new JarPlan(key, root, jar, null, work, dbJarId, work.totalTicks());
+    }
+
+    private boolean isOpenSource(File jar) {
+        JavaDecompilerPlugin plugin = JavaDecompilerPlugin.getDefault();
+        if (plugin != null && !plugin.getPreferenceStore().getBoolean(JavaDecompilerPlugin.SKIP_OPEN_SOURCE_JARS)) {
+            return false;
+        }
+        return licenseVerdicts.computeIfAbsent(JarScanCache.scanKey(jar),
+                ignored -> JarLicenseDetector.classify(jar) == JarLicenseDetector.Verdict.OPEN_SOURCE);
     }
 
     private int findJarByFingerprint(Connection activeConn, RootKey key, File jar,
