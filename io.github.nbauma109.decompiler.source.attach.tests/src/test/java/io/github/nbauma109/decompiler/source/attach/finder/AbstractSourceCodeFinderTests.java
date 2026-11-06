@@ -22,8 +22,8 @@ import io.github.nbauma109.decompiler.util.HashUtils;
 public abstract class AbstractSourceCodeFinderTests {
 
     protected void testFindCommonsIo(String serviceUrl) throws IOException {
-        String gavUrl = "https://repo1.maven.org/maven2/commons-io/commons-io/2.16.0/";
-        String fileName = "commons-io-2.16.0";
+        String gavUrl = "https://repo1.maven.org/maven2/commons-io/commons-io/2.11.0/";
+        String fileName = "commons-io-2.11.0";
         testFind(serviceUrl, gavUrl, fileName);
     }
 
