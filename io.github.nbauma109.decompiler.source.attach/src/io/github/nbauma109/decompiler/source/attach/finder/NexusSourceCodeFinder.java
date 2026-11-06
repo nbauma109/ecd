@@ -157,6 +157,11 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
                     }
                     break;
             }
+            if (candidates.isEmpty() && d.family != NexusFamily.NXRM3 && !canceled) {
+                // Some servers only index artifacts with a classifier (e.g. sources), so the
+                // SHA-1 of the main jar is unknown: fall back to the GAV embedded in the jar.
+                candidates.putAll(nx2SearchByJarGav(d.base, binFile));
+            }
         } catch (Throwable t) {
             Logger.debug(t);
         }
@@ -450,6 +455,28 @@ public class NexusSourceCodeFinder extends AbstractSourceCodeFinder implements S
 
         // Fall back to Lucene search
         tryNx2LuceneSearch(base, sha1, sink);
+        return sink;
+    }
+
+    private Map<GAV, String> nx2SearchByJarGav(String base, String binFile) {
+        Map<GAV, String> sink = new LinkedHashMap<>();
+        if (binFile == null) {
+            return sink;
+        }
+        try {
+            Optional<GAV> gav = findGAVFromFile(binFile);
+            if (gav.isPresent()) {
+                GAV g = gav.get();
+                String u = base + "/service/local/lucene/search?g=" + urlenc(g.getGroupId())
+                        + "&a=" + urlenc(g.getArtifactId()) + "&v=" + urlenc(g.getVersion());
+                JsonObject root = getJson(u);
+                if (root != null) {
+                    processNx2LuceneResults(base, root, sink);
+                }
+            }
+        } catch (Throwable t) {
+            Logger.debug(t);
+        }
         return sink;
     }
 
