@@ -42,11 +42,11 @@ import org.eclipse.jdt.internal.core.PackageFragmentRoot;
 import org.eclipse.jdt.internal.core.SourceMapper;
 import org.eclipse.jdt.internal.ui.javaeditor.IClassFileEditorInput;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.jd.core.v1.parser.ParseException;
-import org.jd.core.v1.util.ParserRealigner;
 
 import com.heliosdecompiler.transformerapi.StandardTransformers.Decompilers;
 import com.heliosdecompiler.transformerapi.decompilers.Decompiler;
+import com.heliosdecompiler.transformerapi.decompilers.Decompiler.RealignResult;
+import com.heliosdecompiler.transformerapi.decompilers.RealignStatus;
 
 import io.github.nbauma109.decompiler.JavaDecompilerPlugin;
 import io.github.nbauma109.decompiler.util.DecompileUtil;
@@ -213,16 +213,11 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         if ((showLineNumber && align)
                 || JavaDecompilerPlugin.getDefault().isDebug()
                 || UIUtil.isDebugPerspective()) {
-            if (currentDecompiler.supportsRealignment()) {
-                realignStatus = RealignStatus.NATIVELY_REALIGNED;
-            } else {
-                try {
-                    code = new ParserRealigner().realign(code);
-                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
-                } catch (ParseException e) {
-                    exceptions.add(e);
-                    realignStatus = RealignStatus.PARSE_ERROR;
-                }
+            RealignResult realignResult = currentDecompiler.realign(code);
+            code = realignResult.source();
+            realignStatus = realignResult.status();
+            if (realignResult.error() != null) {
+                exceptions.add(realignResult.error());
             }
         }
 
@@ -396,16 +391,11 @@ public class BaseDecompilerSourceMapper extends DecompilerSourceMapper {
         if ((showLineNumber && align)
                 || JavaDecompilerPlugin.getDefault().isDebug()
                 || UIUtil.isDebugPerspective()) {
-            if (currentDecompiler.supportsRealignment()) {
-                realignStatus = RealignStatus.NATIVELY_REALIGNED;
-            } else {
-                try {
-                    code = new ParserRealigner().realign(code);
-                    realignStatus = RealignStatus.PARSED_AND_REALIGNED;
-                } catch (ParseException e) {
-                    exceptions.add(e);
-                    realignStatus = RealignStatus.PARSE_ERROR;
-                }
+            RealignResult realignResult = currentDecompiler.realign(code);
+            code = realignResult.source();
+            realignStatus = realignResult.status();
+            if (realignResult.error() != null) {
+                exceptions.add(realignResult.error());
             }
         }
 

@@ -63,6 +63,7 @@ Bundle-Activator: io.github.nbauma109.decompiler.JavaDecompilerPlugin
 Bundle-SymbolicName: io.github.nbauma109.decompiler;singleton:=true
 Eclipse-ExtensibleAPI: true
 Export-Package: com.eclipsesource.json,
+ com.heliosdecompiler.transformerapi.decompilers,
  org.objectweb.asm,
  io.github.nbauma109.decompiler,
  io.github.nbauma109.decompiler.actions,
