@@ -6,6 +6,9 @@ updates:
       interval: "daily"
       time: "17:00"
       timezone: "Europe/Paris"
+    cooldown:
+      exclude:
+        - "io.github.nbauma109:*"
     open-pull-requests-limit: 30
 
   - package-ecosystem: "github-actions"
